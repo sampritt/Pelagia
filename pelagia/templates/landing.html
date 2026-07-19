@@ -7,33 +7,35 @@
     <div class="landing-copy">
         <span class="brand-mark large"></span>
         <h1>Pelagia</h1>
-        <p>Log dives, share blue-water moments, and build a map of every place you have been beneath the surface.</p>
+        <p>A sharper activity log for divers: clean stats, vivid routes, shared sessions, and a living map of every descent.</p>
+        <div class="landing-stats" aria-label="Pelagia highlights">
+            <div><span>140 ft</span><small>Depth ready</small></div>
+            <div><span>12k+</span><small>Dive sites</small></div>
+            <div><span>8k+</span><small>Species rows</small></div>
+        </div>
     </div>
     <div class="auth-grid">
-        <form class="auth-panel" method="post" action="{{ url_for('login') }}">
-            <h2>Log in</h2>
-            <label>
-                Username
-                <input name="username" autocomplete="username" required>
-            </label>
-            <label>
-                Password
-                <input name="password" type="password" autocomplete="current-password" required>
-            </label>
-            <button class="primary-button" type="submit">Log in</button>
-        </form>
-        <form class="auth-panel accent" method="post" action="{{ url_for('signup') }}">
-            <h2>Sign up</h2>
-            <label>
-                Username
-                <input name="username" autocomplete="username" minlength="3" required>
-            </label>
-            <label>
-                Password
-                <input name="password" type="password" autocomplete="new-password" minlength="6" required>
-            </label>
-            <button class="primary-button" type="submit">Create account</button>
-        </form>
+        <section class="auth-panel auth-card" data-auth-panel>
+            <div class="auth-header">
+                <p class="eyebrow">Dive log</p>
+                <h2>Start your session</h2>
+            </div>
+            <div class="auth-toggle" role="tablist" aria-label="Authentication mode">
+                <button class="active" type="button" role="tab" aria-selected="true" data-auth-tab="login" data-auth-action="{{ url_for('login') }}" data-auth-submit="Log in" data-auth-title="Start your session">Log in</button>
+                <button type="button" role="tab" aria-selected="false" data-auth-tab="signup" data-auth-action="{{ url_for('signup') }}" data-auth-submit="Create account" data-auth-title="Create your account">Sign up</button>
+            </div>
+            <form class="auth-form" method="post" action="{{ url_for('login') }}" data-auth-form>
+                <label>
+                    Username
+                    <input name="username" autocomplete="username" required>
+                </label>
+                <label>
+                    Password
+                    <input name="password" type="password" autocomplete="current-password" required>
+                </label>
+                <button class="primary-button" type="submit" data-auth-submit-button>Log in</button>
+            </form>
+        </section>
     </div>
 </section>
 {% endblock %}

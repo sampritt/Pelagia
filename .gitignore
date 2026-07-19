@@ -1,0 +1,11 @@
+.DS_Store
+__pycache__/
+*.py[cod]
+.venv/
+.venv312/
+instance/*.sqlite3
+instance/*.sqlite3-*
+pelagia/static/uploads/dives/*
+pelagia/static/uploads/profiles/*
+!pelagia/static/uploads/dives/.gitkeep
+!pelagia/static/uploads/profiles/.gitkeep

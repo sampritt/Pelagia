@@ -17,10 +17,10 @@
             <span>Pelagia</span>
         </a>
         <nav class="desktop-nav" aria-label="Primary">
-            <a class="{{ 'active' if request.endpoint == 'home' else '' }}" href="{{ url_for('home') }}">Home</a>
+            <a class="{{ 'active' if request.endpoint == 'home' else '' }}" href="{{ url_for('home') }}">Feed</a>
             <a class="{{ 'active' if request.endpoint == 'map_view' else '' }}" href="{{ url_for('map_view') }}">Map</a>
-            <a class="{{ 'active' if request.endpoint == 'profile' else '' }}" href="{{ url_for('profile') }}">You</a>
-            <a class="nav-cta {{ 'active' if request.endpoint == 'log_dive' else '' }}" href="{{ url_for('log_dive') }}">+ Log a Dive</a>
+            <a class="{{ 'active' if request.endpoint == 'profile' else '' }}" href="{{ url_for('profile') }}">Profile</a>
+            <a class="nav-cta {{ 'active' if request.endpoint == 'log_dive' else '' }}" href="{{ url_for('log_dive') }}"><span aria-hidden="true">+</span> Log Dive</a>
         </nav>
         <div class="user-corner">
             <a class="mini-avatar" href="{{ url_for('profile') }}" aria-label="Profile">
@@ -53,10 +53,10 @@
 
     {% if me %}
     <nav class="mobile-nav" aria-label="Primary mobile">
-        <a class="{{ 'active' if request.endpoint == 'home' else '' }}" href="{{ url_for('home') }}">Home</a>
+        <a class="{{ 'active' if request.endpoint == 'home' else '' }}" href="{{ url_for('home') }}">Feed</a>
         <a class="{{ 'active' if request.endpoint == 'map_view' else '' }}" href="{{ url_for('map_view') }}">Map</a>
-        <a class="mobile-log {{ 'active' if request.endpoint == 'log_dive' else '' }}" href="{{ url_for('log_dive') }}">+</a>
-        <a class="{{ 'active' if request.endpoint == 'profile' else '' }}" href="{{ url_for('profile') }}">You</a>
+        <a class="mobile-log {{ 'active' if request.endpoint == 'log_dive' else '' }}" href="{{ url_for('log_dive') }}" aria-label="Log dive">+</a>
+        <a class="{{ 'active' if request.endpoint == 'profile' else '' }}" href="{{ url_for('profile') }}">Profile</a>
     </nav>
     {% endif %}
 

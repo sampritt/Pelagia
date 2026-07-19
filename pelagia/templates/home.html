@@ -2,27 +2,52 @@
 {% block title %}Home - Pelagia{% endblock %}
 
 {% block content %}
-<section class="content-column feed-column">
-    <div class="section-head">
-        <div>
-            <p class="eyebrow">Home</p>
-            <h1>Recent dives</h1>
+<section class="activity-layout">
+    <div class="feed-main">
+        <div class="section-head">
+            <div>
+                <p class="eyebrow">Feed</p>
+                <h1>Recent dives</h1>
+                <p class="section-copy">The latest logged sessions from Pelagia divers.</p>
+            </div>
+            <a class="primary-button compact" href="{{ url_for('log_dive') }}"><span aria-hidden="true">+</span> Log Dive</a>
         </div>
-        <a class="primary-button compact" href="{{ url_for('log_dive') }}">+ Log a Dive</a>
+
+        {% if dives %}
+            <div class="feed-list">
+                {% for dive in dives %}
+                    {% include "_dive_card.html" %}
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="empty-state">
+                <h2>No dives yet</h2>
+                <p>Your first log will appear here with photos, stats, map coordinates, likes, and comments.</p>
+                <a class="primary-button" href="{{ url_for('log_dive') }}">Log Dive</a>
+            </div>
+        {% endif %}
     </div>
 
-    {% if dives %}
-        <div class="feed-list">
-            {% for dive in dives %}
-                {% include "_dive_card.html" %}
-            {% endfor %}
+    <aside class="feed-rail" aria-label="Feed summary">
+        <div class="feed-rail-card">
+            <img src="{{ url_for('static', filename='img/ocean-satellite.png') }}" alt="">
+            <div>
+                <p class="eyebrow">Pelagia</p>
+                <h2>Activity dashboard</h2>
+                <p>{{ dives|length }} recent {{ 'dive' if dives|length == 1 else 'dives' }} in the feed.</p>
+                <div class="rail-metric">
+                    <div><span>{{ dives|length }}</span><small>logs</small></div>
+                    <div><span>{% if dives %}{{ dives[0].date }}{% else %}-{% endif %}</span><small>latest</small></div>
+                </div>
+            </div>
         </div>
-    {% else %}
-        <div class="empty-state">
-            <h2>No dives yet</h2>
-            <p>Your first log will appear here with photos, stats, map coordinates, likes, and comments.</p>
-            <a class="primary-button" href="{{ url_for('log_dive') }}">Log a Dive</a>
+        <div class="feed-rail-card">
+            <div>
+                <p class="eyebrow">Route book</p>
+                <h2>{% if dives %}{{ dives[0].site_name }}{% else %}No route yet{% endif %}</h2>
+                <p>{% if dives %}{{ dives[0].country_or_area or "Coordinates pending" }}{% else %}New logs with coordinates will plot on the map.{% endif %}</p>
+            </div>
         </div>
-    {% endif %}
+    </aside>
 </section>
 {% endblock %}

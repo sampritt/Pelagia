@@ -160,9 +160,9 @@ def register_routes(app):
     @login_required
     def log_dive():
         if request.method == "POST":
-            dive_id = create_dive_from_request(session["user_id"], request)
+            create_dive_from_request(session["user_id"], request)
             flash("Dive logged.")
-            return redirect(url_for("home", open=dive_id))
+            return redirect(url_for("home"))
         return render_template("log_dive.html", exposures=EXPOSURES, today=date.today().isoformat())
 
     @app.route("/you", methods=("GET", "POST"))
@@ -528,7 +528,7 @@ def site_payload(row):
 
 def clamp_int(value, minimum, maximum):
     try:
-        parsed = int(round(float(value)))
+        parsed = int(float(value) + 0.5)
     except (TypeError, ValueError):
         parsed = minimum
     return max(minimum, min(maximum, parsed))
