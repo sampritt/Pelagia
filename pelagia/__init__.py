@@ -154,7 +154,15 @@ def register_routes(app):
     @login_required
     def home():
         dives = fetch_dives(scope="all", user_id=session["user_id"])
-        return render_template("home.html", dives=dives)
+        latest_my_dives = fetch_dives(scope="mine", user_id=session["user_id"], limit=1)
+        stats = get_profile_stats(session["user_id"])
+        return render_template(
+            "home.html",
+            dives=dives,
+            latest_my_dive=latest_my_dives[0] if latest_my_dives else None,
+            stats=stats,
+            user=current_user(),
+        )
 
     @app.route("/dive/new", methods=("GET", "POST"))
     @login_required

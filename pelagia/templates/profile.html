@@ -15,12 +15,11 @@
             </label>
         </form>
         <div>
-            <p class="eyebrow">Profile</p>
             <h1>{{ user.username }}</h1>
             <p class="profile-meta">{{ stats.summary.account_age_days }} days on Pelagia</p>
             <div class="profile-actions">
-                <a class="primary-button compact" href="{{ url_for('log_dive') }}"><span aria-hidden="true">+</span> Log Dive</a>
-                <a class="ghost-button" href="{{ url_for('map_view') }}">View Map</a>
+                <a class="primary-button compact" href="{{ url_for('log_dive') }}"><span aria-hidden="true">+</span> Log dive</a>
+                <a class="ghost-button" href="{{ url_for('map_view') }}">View map</a>
             </div>
         </div>
     </div>
@@ -37,12 +36,8 @@
         <span class="profile-map-world"></span>
     </button>
 
-    <div class="section-head slim">
-        <div>
-            <p class="eyebrow">Latest</p>
-            <h2>Your dives</h2>
-            <p class="section-copy">Recent logged activity from your profile.</p>
-        </div>
+    <div class="feed-toolbar">
+        <span>{{ recent_dives|length }} recent {{ 'activity' if recent_dives|length == 1 else 'activities' }}</span>
     </div>
     {% if recent_dives %}
         <div class="feed-list compact-list">
@@ -53,7 +48,7 @@
     {% else %}
         <div class="empty-state">
             <h2>No dives logged</h2>
-            <a class="primary-button" href="{{ url_for('log_dive') }}">Log a Dive</a>
+            <a class="primary-button" href="{{ url_for('log_dive') }}">Log a dive</a>
         </div>
     {% endif %}
 </section>
