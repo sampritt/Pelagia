@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% block title %}Log a Dive - Pelagia{% endblock %}
+
+{% block content %}
+<section class="log-layout">
+    <form class="dive-form keyboard-flow" method="post" enctype="multipart/form-data" data-dive-form>
+        <div class="section-head">
+            <div>
+                <p class="eyebrow">New log</p>
+                <h1>Log a Dive</h1>
+            </div>
+            <button class="primary-button compact" type="submit">Save dive</button>
+        </div>
+
+        <div class="form-grid">
+            <label>
+                Date
+                <input type="date" name="date" value="{{ today }}" required>
+            </label>
+            <label class="autocomplete-field wide">
+                Dive site
+                <input name="site_name" id="siteName" type="text" autocomplete="off" data-site-input required>
+                <input name="dive_site_id" id="diveSiteId" type="hidden">
+                <div class="autocomplete-menu" data-site-results hidden></div>
+            </label>
+            <label>
+                Country
+                <input name="country_or_area" id="country" data-country-input>
+            </label>
+            <label>
+                Latitude
+                <input name="latitude" id="latitude" inputmode="decimal">
+            </label>
+            <label>
+                Longitude
+                <input name="longitude" id="longitude" inputmode="decimal">
+            </label>
+        </div>
+
+        <div class="control-panel">
+            <div class="range-control">
+                <div>
+                    <label for="depthFt">Depth</label>
+                    <output id="depthOutput">40 ft</output>
+                </div>
+                <input type="range" min="0" max="140" step="1" value="40" data-range="depth">
+                <input id="depthFt" name="depth_ft" type="number" min="0" max="140" step="1" value="40" data-number="depth">
+            </div>
+            <div class="range-control">
+                <div>
+                    <label for="durationMin">Time</label>
+                    <output id="durationOutput">80 min</output>
+                </div>
+                <input type="range" min="0" max="120" step="10" value="80" data-range="duration">
+                <input id="durationMin" name="duration_min" type="number" min="0" max="120" step="10" value="80" data-number="duration">
+            </div>
+            <div class="range-control">
+                <div>
+                    <label for="weightLbs">Weight</label>
+                    <output id="weightOutput">0 lb</output>
+                </div>
+                <input type="range" min="0" max="20" step="1" value="0" data-range="weight">
+                <input id="weightLbs" name="weight_lbs" type="number" min="0" max="20" step="1" value="0" data-number="weight">
+            </div>
+            <label>
+                Exposure
+                <select name="exposure">
+                    {% for exposure in exposures %}
+                        <option value="{{ exposure }}" {{ 'selected' if exposure == '3mm' else '' }}>{{ exposure }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+        </div>
+
+        <div class="species-panel">
+            <label class="autocomplete-field">
+                Species observed
+                <input id="speciesInput" type="text" autocomplete="off" data-species-input>
+                <div class="autocomplete-menu" data-species-results hidden></div>
+            </label>
+            <input type="hidden" name="species_json" id="speciesJson" value="[]">
+            <div class="tag-row" data-species-tags></div>
+            <div class="suggestion-row" data-species-suggestions></div>
+        </div>
+
+        <label>
+            Notes
+            <textarea name="notes" rows="5"></textarea>
+        </label>
+
+        <label class="upload-box">
+            <span>Photos</span>
+            <input type="file" name="photos" accept="image/*" multiple data-photo-input>
+            <div class="preview-row" data-photo-preview></div>
+        </label>
+    </form>
+</section>
+{% endblock %}

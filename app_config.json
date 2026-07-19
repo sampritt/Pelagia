@@ -1,0 +1,9 @@
+{
+  "database_path": "instance/pelagia.sqlite3",
+  "upload_folder": "pelagia/static/uploads",
+  "secret_key": "change-this-local-dev-secret",
+  "data_sources": {
+    "dive_sites_csv": "data/global_dive_sites_master.csv",
+    "species_csv": "data/marine_species_top50_country_or_area_common_name.csv"
+  }
+}

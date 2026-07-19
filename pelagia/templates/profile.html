@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}You - Pelagia{% endblock %}
+
+{% block content %}
+<section class="profile-layout">
+    <div class="profile-hero">
+        <form class="profile-photo-form" method="post" enctype="multipart/form-data">
+            <label class="profile-avatar">
+                {% if user.profile_photo %}
+                    <img src="{{ url_for('static', filename=user.profile_photo) }}" alt="">
+                {% else %}
+                    <span>{{ user.username[:1]|upper }}</span>
+                {% endif %}
+                <input type="file" name="profile_photo" accept="image/*" onchange="this.form.submit()">
+            </label>
+        </form>
+        <div>
+            <p class="eyebrow">You</p>
+            <h1>{{ user.username }}</h1>
+            <p>{{ stats.summary.account_age_days }} days on Pelagia</p>
+        </div>
+    </div>
+
+    <div class="stats-grid">
+        <div><span>{{ stats.summary.dive_count }}</span><small>dives</small></div>
+        <div><span>{{ stats.summary.total_minutes }}</span><small>minutes</small></div>
+        <div><span>{{ stats.summary.country_count }}</span><small>countries</small></div>
+        <div><span>{{ stats.summary.location_count }}</span><small>locations</small></div>
+    </div>
+
+    <button class="profile-map" type="button" data-profile-map data-pins='{{ stats.pins|tojson }}'>
+        <span class="map-title">Dive map</span>
+        <span class="profile-map-world"></span>
+    </button>
+
+    <div class="section-head slim">
+        <div>
+            <p class="eyebrow">Latest</p>
+            <h2>Your dives</h2>
+        </div>
+    </div>
+    {% if recent_dives %}
+        <div class="feed-list compact-list">
+            {% for dive in recent_dives %}
+                {% include "_dive_card.html" %}
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="empty-state">
+            <h2>No dives logged</h2>
+            <a class="primary-button" href="{{ url_for('log_dive') }}">Log a Dive</a>
+        </div>
+    {% endif %}
+</section>
+{% endblock %}

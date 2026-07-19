@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Home - Pelagia{% endblock %}
+
+{% block content %}
+<section class="content-column feed-column">
+    <div class="section-head">
+        <div>
+            <p class="eyebrow">Home</p>
+            <h1>Recent dives</h1>
+        </div>
+        <a class="primary-button compact" href="{{ url_for('log_dive') }}">+ Log a Dive</a>
+    </div>
+
+    {% if dives %}
+        <div class="feed-list">
+            {% for dive in dives %}
+                {% include "_dive_card.html" %}
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="empty-state">
+            <h2>No dives yet</h2>
+            <p>Your first log will appear here with photos, stats, map coordinates, likes, and comments.</p>
+            <a class="primary-button" href="{{ url_for('log_dive') }}">Log a Dive</a>
+        </div>
+    {% endif %}
+</section>
+{% endblock %}

@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Map - Pelagia{% endblock %}
+{% block body_class %}map-body{% endblock %}
+
+{% block content %}
+<section class="map-page">
+    <div class="map-toolbar">
+        <div>
+            <p class="eyebrow">Map</p>
+            <h1>Your dive locations</h1>
+        </div>
+        <div class="map-controls">
+            <button class="icon-button" type="button" id="zoomOut" aria-label="Zoom out">&minus;</button>
+            <button class="icon-button" type="button" id="zoomIn" aria-label="Zoom in">+</button>
+        </div>
+    </div>
+    <div class="ocean-map" id="oceanMap">
+        <div class="map-world" id="mapWorld"></div>
+    </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script defer src="{{ url_for('static', filename='js/map.js') }}"></script>
+{% endblock %}

@@ -1,0 +1,573 @@
+import json
+import os
+import uuid
+from datetime import date
+from functools import wraps
+from pathlib import Path
+from sqlite3 import IntegrityError
+
+from flask import (
+    Flask,
+    abort,
+    current_app,
+    flash,
+    jsonify,
+    redirect,
+    render_template,
+    request,
+    session,
+    url_for,
+)
+from werkzeug.security import check_password_hash, generate_password_hash
+from werkzeug.utils import secure_filename
+
+from . import db as database
+from .importer import import_reference_data
+
+
+EXPOSURES = ("swimsuit", "shorty", "2mm", "3mm", "4mm", "5mm", "6mm", "7mm", "dry suit")
+ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "gif", "webp"}
+
+
+def create_app(test_config=None):
+    app = Flask(__name__, instance_relative_config=True)
+    config_path = Path(os.environ.get("PELAGIA_CONFIG", "app_config.json")).resolve()
+    config = _load_json_config(config_path)
+
+    app.config.from_mapping(
+        SECRET_KEY=config.get("secret_key", "pelagia-dev"),
+        DATABASE=str(_resolve_path(config_path, config.get("database_path", "instance/pelagia.sqlite3"))),
+        UPLOAD_FOLDER=str(_resolve_path(config_path, config.get("upload_folder", "pelagia/static/uploads"))),
+        MAX_CONTENT_LENGTH=24 * 1024 * 1024,
+        PELAGIA_LOCAL_CONFIG=config,
+        PELAGIA_CONFIG_PATH=str(config_path),
+    )
+    if test_config:
+        app.config.update(test_config)
+
+    Path(app.config["UPLOAD_FOLDER"], "dives").mkdir(parents=True, exist_ok=True)
+    Path(app.config["UPLOAD_FOLDER"], "profiles").mkdir(parents=True, exist_ok=True)
+
+    database.init_app(app)
+    with app.app_context():
+        database.init_db()
+        _ensure_reference_data(app)
+
+    register_routes(app)
+    return app
+
+
+def _load_json_config(config_path):
+    if not config_path.exists():
+        raise FileNotFoundError(f"Missing Pelagia config file: {config_path}")
+    return json.loads(config_path.read_text())
+
+
+def _resolve_path(config_path, value):
+    path = Path(value).expanduser()
+    if path.is_absolute():
+        return path
+    return config_path.parent / path
+
+
+def _ensure_reference_data(app):
+    if database.table_count("dive_sites") and database.table_count("species"):
+        return
+    import_reference_data(
+        app.config["DATABASE"],
+        app.config["PELAGIA_LOCAL_CONFIG"],
+        app.config["PELAGIA_CONFIG_PATH"],
+    )
+
+
+def login_required(view):
+    @wraps(view)
+    def wrapped_view(**kwargs):
+        if not session.get("user_id"):
+            return redirect(url_for("landing"))
+        if current_user() is None:
+            session.clear()
+            return redirect(url_for("landing"))
+        return view(**kwargs)
+
+    return wrapped_view
+
+
+def current_user():
+    user_id = session.get("user_id")
+    if not user_id:
+        return None
+    return (
+        database.get_db()
+        .execute("SELECT id, username, profile_photo, created_at FROM users WHERE id = ?", (user_id,))
+        .fetchone()
+    )
+
+
+def register_routes(app):
+    app.jinja_env.globals["current_user"] = current_user
+
+    @app.route("/")
+    def landing():
+        if session.get("user_id"):
+            return redirect(url_for("home"))
+        return render_template("landing.html")
+
+    @app.post("/signup")
+    def signup():
+        username = request.form.get("username", "").strip()
+        password = request.form.get("password", "")
+        if len(username) < 3 or len(password) < 6:
+            flash("Use a username of 3+ characters and a password of 6+ characters.")
+            return redirect(url_for("landing"))
+        try:
+            cur = database.get_db().execute(
+                "INSERT INTO users (username, password_hash) VALUES (?, ?)",
+                (username, generate_password_hash(password)),
+            )
+            database.get_db().commit()
+        except IntegrityError:
+            flash("That username is already taken.")
+            return redirect(url_for("landing"))
+        session.clear()
+        session["user_id"] = cur.lastrowid
+        return redirect(url_for("home"))
+
+    @app.post("/login")
+    def login():
+        username = request.form.get("username", "").strip()
+        password = request.form.get("password", "")
+        user = database.get_db().execute("SELECT * FROM users WHERE username = ?", (username,)).fetchone()
+        if user is None or not check_password_hash(user["password_hash"], password):
+            flash("Username or password does not match.")
+            return redirect(url_for("landing"))
+        session.clear()
+        session["user_id"] = user["id"]
+        return redirect(url_for("home"))
+
+    @app.post("/logout")
+    def logout():
+        session.clear()
+        return redirect(url_for("landing"))
+
+    @app.route("/home")
+    @login_required
+    def home():
+        dives = fetch_dives(scope="all", user_id=session["user_id"])
+        return render_template("home.html", dives=dives)
+
+    @app.route("/dive/new", methods=("GET", "POST"))
+    @login_required
+    def log_dive():
+        if request.method == "POST":
+            dive_id = create_dive_from_request(session["user_id"], request)
+            flash("Dive logged.")
+            return redirect(url_for("home", open=dive_id))
+        return render_template("log_dive.html", exposures=EXPOSURES, today=date.today().isoformat())
+
+    @app.route("/you", methods=("GET", "POST"))
+    @login_required
+    def profile():
+        if request.method == "POST":
+            photo = request.files.get("profile_photo")
+            if photo and photo.filename and _allowed_file(photo.filename):
+                filename = _save_upload(photo, "profiles")
+                database.get_db().execute(
+                    "UPDATE users SET profile_photo = ? WHERE id = ?",
+                    (filename, session["user_id"]),
+                )
+                database.get_db().commit()
+                flash("Profile photo updated.")
+            return redirect(url_for("profile"))
+
+        user = current_user()
+        stats = get_profile_stats(user["id"])
+        recent_dives = fetch_dives(scope="mine", user_id=user["id"], limit=6)
+        return render_template("profile.html", user=user, stats=stats, recent_dives=recent_dives)
+
+    @app.route("/map")
+    @login_required
+    def map_view():
+        return render_template("map.html")
+
+    @app.get("/api/sites")
+    @login_required
+    def api_sites():
+        query = request.args.get("q", "").strip()
+        if not query:
+            return jsonify([])
+        like = f"%{query.lower()}%"
+        prefix = f"{query.lower()}%"
+        rows = database.get_db().execute(
+            """
+            SELECT id, name, country_or_area, country_code, latitude, longitude, max_depth_m
+            FROM dive_sites
+            WHERE lower(name) LIKE ? OR lower(country_or_area) LIKE ?
+            ORDER BY
+                CASE WHEN lower(name) LIKE ? THEN 0 ELSE 1 END,
+                name
+            LIMIT 14
+            """,
+            (like, like, prefix),
+        ).fetchall()
+        return jsonify([site_payload(row) for row in rows])
+
+    @app.get("/api/species")
+    @login_required
+    def api_species():
+        query = request.args.get("q", "").strip()
+        country = request.args.get("country", "").strip()
+        if not query:
+            return jsonify([])
+        like = f"%{query.lower()}%"
+        if country:
+            rows = database.get_db().execute(
+                """
+                SELECT common_name, MIN(country_or_area) AS country_or_area,
+                       MIN(CASE WHEN lower(country_or_area) = lower(?) THEN 0 ELSE 1 END) AS country_rank
+                FROM species
+                WHERE lower(common_name) LIKE ?
+                GROUP BY lower(common_name)
+                ORDER BY country_rank, common_name
+                LIMIT 14
+                """,
+                (country, like),
+            ).fetchall()
+        else:
+            rows = database.get_db().execute(
+                """
+                SELECT common_name, MIN(country_or_area) AS country_or_area
+                FROM species
+                WHERE lower(common_name) LIKE ?
+                GROUP BY lower(common_name)
+                ORDER BY common_name
+                LIMIT 14
+                """,
+                (like,),
+            ).fetchall()
+        return jsonify([dict(row) for row in rows])
+
+    @app.get("/api/species-suggestions")
+    @login_required
+    def api_species_suggestions():
+        site_id = request.args.get("site_id", type=int)
+        country = request.args.get("country", "").strip()
+        if site_id:
+            rows = database.get_db().execute(
+                """
+                SELECT DISTINCT s.common_name
+                FROM dive_sites ds
+                JOIN species s ON lower(s.country_or_area) = lower(ds.country_or_area)
+                WHERE ds.id = ?
+                ORDER BY s.id
+                LIMIT 5
+                """,
+                (site_id,),
+            ).fetchall()
+        elif country:
+            rows = database.get_db().execute(
+                """
+                SELECT DISTINCT common_name
+                FROM species
+                WHERE lower(country_or_area) = lower(?)
+                ORDER BY id
+                LIMIT 5
+                """,
+                (country,),
+            ).fetchall()
+        else:
+            rows = []
+        return jsonify([row["common_name"] for row in rows])
+
+    @app.get("/api/dives/mine")
+    @login_required
+    def api_my_dives():
+        return jsonify([dive_to_json(dive) for dive in fetch_dives(scope="mine", user_id=session["user_id"], limit=500)])
+
+    @app.get("/api/dives/<int:dive_id>")
+    @login_required
+    def api_dive(dive_id):
+        dive = fetch_dive(dive_id, session["user_id"])
+        if dive is None:
+            abort(404)
+        return jsonify(dive_to_json(dive))
+
+    @app.post("/api/dives/<int:dive_id>/like")
+    @login_required
+    def api_like(dive_id):
+        db = database.get_db()
+        exists = db.execute(
+            "SELECT 1 FROM likes WHERE dive_id = ? AND user_id = ?",
+            (dive_id, session["user_id"]),
+        ).fetchone()
+        if exists:
+            db.execute("DELETE FROM likes WHERE dive_id = ? AND user_id = ?", (dive_id, session["user_id"]))
+            liked = False
+        else:
+            db.execute("INSERT OR IGNORE INTO likes (dive_id, user_id) VALUES (?, ?)", (dive_id, session["user_id"]))
+            liked = True
+        db.commit()
+        count = db.execute("SELECT COUNT(*) AS count FROM likes WHERE dive_id = ?", (dive_id,)).fetchone()["count"]
+        return jsonify({"liked": liked, "count": count})
+
+    @app.post("/api/dives/<int:dive_id>/comments")
+    @login_required
+    def api_comment(dive_id):
+        body = request.form.get("body", "").strip()
+        if not body:
+            return jsonify({"error": "Comment cannot be empty."}), 400
+        db = database.get_db()
+        db.execute(
+            "INSERT INTO comments (dive_id, user_id, body) VALUES (?, ?, ?)",
+            (dive_id, session["user_id"], body[:600]),
+        )
+        db.commit()
+        dive = fetch_dive(dive_id, session["user_id"])
+        return jsonify({"comments": [dict(comment) for comment in dive["comments"]]})
+
+
+def create_dive_from_request(user_id, form_request):
+    form = form_request.form
+    depth = clamp_int(form.get("depth_ft"), 0, 140)
+    duration = clamp_int(form.get("duration_min"), 0, 120)
+    weight = clamp_int(form.get("weight_lbs"), 0, 20)
+    exposure = form.get("exposure") if form.get("exposure") in EXPOSURES else "3mm"
+    date_value = form.get("date") or date.today().isoformat()
+    site_name = form.get("site_name", "").strip() or "Unlisted site"
+    country = form.get("country_or_area", "").strip()
+    latitude = maybe_float(form.get("latitude"))
+    longitude = maybe_float(form.get("longitude"))
+    dive_site_id = maybe_int(form.get("dive_site_id"))
+
+    db = database.get_db()
+    cur = db.execute(
+        """
+        INSERT INTO dives (
+            user_id, dive_site_id, date, site_name, country_or_area, latitude, longitude,
+            depth_ft, duration_min, weight_lbs, exposure, notes
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            user_id,
+            dive_site_id,
+            date_value,
+            site_name,
+            country,
+            latitude,
+            longitude,
+            depth,
+            duration,
+            weight,
+            exposure,
+            form.get("notes", "").strip(),
+        ),
+    )
+    dive_id = cur.lastrowid
+
+    species_names = []
+    try:
+        species_names = json.loads(form.get("species_json", "[]"))
+    except json.JSONDecodeError:
+        species_names = []
+    for common_name in dedupe_species(species_names):
+        db.execute(
+            "INSERT INTO dive_species (dive_id, common_name) VALUES (?, ?)",
+            (dive_id, common_name),
+        )
+
+    for photo in form_request.files.getlist("photos"):
+        if photo and photo.filename and _allowed_file(photo.filename):
+            filename = _save_upload(photo, "dives")
+            db.execute("INSERT INTO photos (dive_id, filename) VALUES (?, ?)", (dive_id, filename))
+
+    db.commit()
+    return dive_id
+
+
+def fetch_dives(scope, user_id, limit=80):
+    where = ""
+    params = []
+    if scope == "mine":
+        where = "WHERE d.user_id = ?"
+        params.append(user_id)
+    params.append(limit)
+    rows = database.get_db().execute(
+        f"""
+        SELECT
+            d.*,
+            u.username,
+            u.profile_photo,
+            (SELECT COUNT(*) FROM likes WHERE dive_id = d.id) AS like_count,
+            (SELECT COUNT(*) FROM comments WHERE dive_id = d.id) AS comment_count,
+            EXISTS(SELECT 1 FROM likes WHERE dive_id = d.id AND user_id = ?) AS liked_by_me
+        FROM dives d
+        JOIN users u ON u.id = d.user_id
+        {where}
+        ORDER BY d.date DESC, d.created_at DESC
+        LIMIT ?
+        """,
+        [user_id] + params,
+    ).fetchall()
+    return [hydrate_dive(row) for row in rows]
+
+
+def fetch_dive(dive_id, viewer_user_id):
+    row = database.get_db().execute(
+        """
+        SELECT
+            d.*,
+            u.username,
+            u.profile_photo,
+            (SELECT COUNT(*) FROM likes WHERE dive_id = d.id) AS like_count,
+            (SELECT COUNT(*) FROM comments WHERE dive_id = d.id) AS comment_count,
+            EXISTS(SELECT 1 FROM likes WHERE dive_id = d.id AND user_id = ?) AS liked_by_me
+        FROM dives d
+        JOIN users u ON u.id = d.user_id
+        WHERE d.id = ?
+        """,
+        (viewer_user_id, dive_id),
+    ).fetchone()
+    if row is None:
+        return None
+    return hydrate_dive(row)
+
+
+def hydrate_dive(row):
+    db = database.get_db()
+    dive = dict(row)
+    dive["photos"] = db.execute("SELECT filename FROM photos WHERE dive_id = ?", (row["id"],)).fetchall()
+    dive["species"] = db.execute(
+        "SELECT common_name FROM dive_species WHERE dive_id = ? ORDER BY common_name",
+        (row["id"],),
+    ).fetchall()
+    dive["comments"] = db.execute(
+        """
+        SELECT c.id, c.body, c.created_at, u.username
+        FROM comments c
+        JOIN users u ON u.id = c.user_id
+        WHERE c.dive_id = ?
+        ORDER BY c.created_at
+        """,
+        (row["id"],),
+    ).fetchall()
+    return dive
+
+
+def get_profile_stats(user_id):
+    db = database.get_db()
+    stats = db.execute(
+        """
+        SELECT
+            COUNT(*) AS dive_count,
+            COALESCE(SUM(duration_min), 0) AS total_minutes,
+            COUNT(DISTINCT NULLIF(country_or_area, '')) AS country_count,
+            COUNT(DISTINCT site_name || '|' || COALESCE(country_or_area, '')) AS location_count,
+            MIN(date) AS first_dive
+        FROM dives
+        WHERE user_id = ?
+        """,
+        (user_id,),
+    ).fetchone()
+    pins = db.execute(
+        """
+        SELECT id, site_name, latitude, longitude, date
+        FROM dives
+        WHERE user_id = ? AND latitude IS NOT NULL AND longitude IS NOT NULL
+        ORDER BY date DESC
+        LIMIT 200
+        """,
+        (user_id,),
+    ).fetchall()
+    account_age = db.execute(
+        "SELECT CAST(julianday('now') - julianday(created_at) AS INTEGER) AS days FROM users WHERE id = ?",
+        (user_id,),
+    ).fetchone()
+    summary = dict(stats)
+    summary["account_age_days"] = int(account_age["days"] or 0)
+    return {"summary": summary, "pins": [dict(pin) for pin in pins]}
+
+
+def dive_to_json(dive):
+    return {
+        "id": dive["id"],
+        "username": dive["username"],
+        "date": dive["date"],
+        "site_name": dive["site_name"],
+        "country_or_area": dive["country_or_area"],
+        "latitude": dive["latitude"],
+        "longitude": dive["longitude"],
+        "depth_ft": dive["depth_ft"],
+        "duration_min": dive["duration_min"],
+        "weight_lbs": dive["weight_lbs"],
+        "exposure": dive["exposure"],
+        "notes": dive["notes"],
+        "like_count": dive["like_count"],
+        "comment_count": dive["comment_count"],
+        "liked_by_me": bool(dive["liked_by_me"]),
+        "photos": [url_for("static", filename=photo["filename"]) for photo in dive["photos"]],
+        "species": [species["common_name"] for species in dive["species"]],
+        "comments": [dict(comment) for comment in dive["comments"]],
+    }
+
+
+def site_payload(row):
+    max_depth_ft = None
+    if row["max_depth_m"] is not None:
+        max_depth_ft = min(140, round(float(row["max_depth_m"]) * 3.28084))
+    return {
+        "id": row["id"],
+        "name": row["name"],
+        "country_or_area": row["country_or_area"],
+        "country_code": row["country_code"],
+        "latitude": row["latitude"],
+        "longitude": row["longitude"],
+        "max_depth_ft": max_depth_ft,
+    }
+
+
+def clamp_int(value, minimum, maximum):
+    try:
+        parsed = int(round(float(value)))
+    except (TypeError, ValueError):
+        parsed = minimum
+    return max(minimum, min(maximum, parsed))
+
+
+def maybe_float(value):
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def maybe_int(value):
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def dedupe_species(values):
+    seen = set()
+    clean = []
+    for value in values:
+        name = str(value).strip()
+        key = name.lower()
+        if name and key not in seen:
+            seen.add(key)
+            clean.append(name[:100])
+    return clean[:40]
+
+
+def _allowed_file(filename):
+    return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
+
+
+def _save_upload(file_storage, folder):
+    suffix = secure_filename(file_storage.filename).rsplit(".", 1)[-1].lower()
+    filename = f"{folder}/{uuid.uuid4().hex}.{suffix}"
+    target = Path(current_app.config["UPLOAD_FOLDER"], filename)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    file_storage.save(target)
+    return f"uploads/{filename}"

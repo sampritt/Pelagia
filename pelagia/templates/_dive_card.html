@@ -1,0 +1,63 @@
+{% set has_coords = dive.latitude is not none and dive.longitude is not none %}
+{% set pin_x = (((dive.longitude + 180) / 360) * 100) if has_coords else 50 %}
+{% set pin_y = (((90 - dive.latitude) / 180) * 100) if has_coords else 50 %}
+<article class="dive-card" data-dive-card data-dive-id="{{ dive.id }}" tabindex="0">
+    <div class="dive-card-head">
+        <div class="mini-avatar">
+            {% if dive.profile_photo %}
+                <img src="{{ url_for('static', filename=dive.profile_photo) }}" alt="">
+            {% else %}
+                <span>{{ dive.username[:1]|upper }}</span>
+            {% endif %}
+        </div>
+        <div>
+            <strong>{{ dive.username }}</strong>
+            <p>{{ dive.date }} &middot; {{ dive.site_name }}{% if dive.country_or_area %}, {{ dive.country_or_area }}{% endif %}</p>
+        </div>
+    </div>
+
+    {% if dive.photos %}
+        <div class="photo-strip">
+            {% for photo in dive.photos[:3] %}
+                <img src="{{ url_for('static', filename=photo.filename) }}" alt="">
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    <div class="dive-card-grid">
+        <div class="mini-map" style="--pin-x: {{ pin_x|round(2) }}%; --pin-y: {{ pin_y|round(2) }}%;">
+            <span class="map-pin"></span>
+            <span class="coordinate-label">
+                {% if has_coords %}
+                    {{ "%.3f"|format(dive.latitude) }}, {{ "%.3f"|format(dive.longitude) }}
+                {% else %}
+                    Coordinates pending
+                {% endif %}
+            </span>
+        </div>
+        <div class="stat-stack">
+            <div><span>{{ dive.depth_ft }}</span><small>ft</small></div>
+            <div><span>{{ dive.duration_min }}</span><small>min</small></div>
+            <div><span>{{ dive.exposure }}</span><small>exposure</small></div>
+        </div>
+    </div>
+
+    {% if dive.species %}
+        <div class="species-row">
+            {% for species in dive.species[:5] %}
+                <span>{{ species.common_name }}</span>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    <div class="dive-actions">
+        <button class="chip-button like-button {{ 'liked' if dive.liked_by_me else '' }}" type="button" data-like data-dive-id="{{ dive.id }}">
+            <span class="heart-icon"></span>
+            <span data-like-count>{{ dive.like_count }}</span>
+        </button>
+        <button class="chip-button" type="button" data-open-dive="{{ dive.id }}">
+            <span class="comment-icon"></span>
+            <span>{{ dive.comment_count }}</span>
+        </button>
+    </div>
+</article>
