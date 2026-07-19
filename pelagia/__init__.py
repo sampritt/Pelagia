@@ -20,6 +20,7 @@ from flask import (
 )
 from werkzeug.security import check_password_hash, generate_password_hash
 from werkzeug.utils import secure_filename
+from PIL import Image, ImageOps, UnidentifiedImageError
 
 from . import db as database
 from .importer import import_reference_data
@@ -27,6 +28,8 @@ from .importer import import_reference_data
 
 EXPOSURES = ("swimsuit", "shorty", "2mm", "3mm", "4mm", "5mm", "6mm", "7mm", "dry suit")
 ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "gif", "webp"}
+UPLOAD_IMAGE_MAX_DIMENSION = 1600
+UPLOAD_IMAGE_JPEG_QUALITY = 82
 
 
 def create_app(test_config=None):
@@ -573,9 +576,31 @@ def _allowed_file(filename):
 
 
 def _save_upload(file_storage, folder):
-    suffix = secure_filename(file_storage.filename).rsplit(".", 1)[-1].lower()
-    filename = f"{folder}/{uuid.uuid4().hex}.{suffix}"
+    safe_name = secure_filename(file_storage.filename)
+    suffix = safe_name.rsplit(".", 1)[-1].lower()
+    upload_id = uuid.uuid4().hex
+    filename = f"{folder}/{upload_id}.jpg"
     target = Path(current_app.config["UPLOAD_FOLDER"], filename)
     target.parent.mkdir(parents=True, exist_ok=True)
-    file_storage.save(target)
+    try:
+        _save_resized_image(file_storage, target)
+    except (OSError, UnidentifiedImageError):
+        filename = f"{folder}/{upload_id}.{suffix}"
+        target = Path(current_app.config["UPLOAD_FOLDER"], filename)
+        file_storage.stream.seek(0)
+        file_storage.save(target)
     return f"uploads/{filename}"
+
+
+def _save_resized_image(file_storage, target):
+    file_storage.stream.seek(0)
+    with Image.open(file_storage.stream) as image:
+        image = ImageOps.exif_transpose(image)
+        image.thumbnail((UPLOAD_IMAGE_MAX_DIMENSION, UPLOAD_IMAGE_MAX_DIMENSION), Image.Resampling.LANCZOS)
+        if image.mode in ("RGBA", "LA", "P"):
+            background = Image.new("RGB", image.size, "#0b1118")
+            background.paste(image.convert("RGBA"), mask=image.convert("RGBA").getchannel("A"))
+            image = background
+        elif image.mode != "RGB":
+            image = image.convert("RGB")
+        image.save(target, "JPEG", quality=UPLOAD_IMAGE_JPEG_QUALITY, optimize=True, progressive=True)

@@ -516,6 +516,7 @@ p {
 label {
     display: grid;
     gap: 8px;
+    min-width: 0;
     color: var(--muted-strong);
     font-size: 0.82rem;
     font-weight: 670;
@@ -525,7 +526,9 @@ input,
 select,
 textarea {
     width: 100%;
+    max-width: 100%;
     min-height: 42px;
+    min-width: 0;
     border: 1px solid var(--line-strong);
     border-radius: 8px;
     padding: 10px 12px;
@@ -827,11 +830,11 @@ textarea:focus {
 }
 
 .photo-strip {
-    display: grid;
-    grid-template-columns: 1.2fr 0.8fr;
-    grid-auto-rows: minmax(96px, 1fr);
-    gap: 6px;
+    overflow: hidden;
     min-height: 198px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: #0b1219;
 }
 
 .photo-strip img {
@@ -839,12 +842,6 @@ textarea:focus {
     height: 100%;
     min-height: 96px;
     object-fit: cover;
-    border-radius: 8px;
-    border: 1px solid var(--line);
-}
-
-.photo-strip img:first-child {
-    grid-row: span 2;
 }
 
 .dive-card-grid {
@@ -1131,17 +1128,20 @@ textarea:focus {
 
 .log-layout {
     max-width: 980px;
+    min-width: 0;
 }
 
 .dive-form {
     display: grid;
     gap: 18px;
+    min-width: 0;
     padding: 20px;
 }
 
 .form-section {
     display: grid;
     gap: 12px;
+    min-width: 0;
 }
 
 .form-section-title {
@@ -1167,6 +1167,7 @@ textarea:focus {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 12px;
+    min-width: 0;
 }
 
 .form-grid .wide {
@@ -1175,6 +1176,7 @@ textarea:focus {
 
 .autocomplete-field {
     position: relative;
+    min-width: 0;
 }
 
 .autocomplete-menu {
@@ -1185,6 +1187,7 @@ textarea:focus {
     right: 0;
     overflow: hidden;
     max-height: 280px;
+    max-width: 100%;
     border: 1px solid var(--line-strong);
     border-radius: 8px;
     background: #0c1219;
@@ -1216,6 +1219,7 @@ textarea:focus {
 .species-panel {
     display: grid;
     gap: 12px;
+    min-width: 0;
     padding: 14px;
     border: 1px solid var(--line);
     border-radius: 8px;
@@ -1231,6 +1235,7 @@ textarea:focus {
     grid-template-columns: minmax(0, 1fr) 86px;
     gap: 10px;
     align-items: center;
+    min-width: 0;
 }
 
 .range-control > div {
@@ -1251,6 +1256,8 @@ textarea:focus {
 }
 
 input[type="range"] {
+    width: 100%;
+    min-width: 0;
     height: 36px;
     padding: 0;
     accent-color: var(--accent);
@@ -1260,6 +1267,7 @@ input[type="range"] {
 }
 
 .upload-box {
+    min-width: 0;
     padding: 14px;
     border: 1px dashed var(--accent-line);
     border-radius: 8px;
@@ -1604,13 +1612,16 @@ input[type="range"] {
 
 .modal-photo-grid {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
     gap: 8px;
+    max-height: min(34vh, 300px);
+    overflow: auto;
+    padding: 2px;
 }
 
 .modal-photo-grid img {
     width: 100%;
-    aspect-ratio: 4 / 3;
+    aspect-ratio: 1;
     border: 1px solid var(--line);
     border-radius: 8px;
     object-fit: cover;
@@ -1779,6 +1790,10 @@ input[type="range"] {
         align-items: start;
     }
 
+    .log-layout {
+        width: 100%;
+    }
+
     .activity-media,
     .dive-card-grid,
     .form-grid,
@@ -1829,19 +1844,26 @@ input[type="range"] {
 
     .section-head {
         display: grid;
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .section-head .primary-button {
+        width: 100%;
+    }
+
+    .dive-form {
+        gap: 16px;
+        padding: 14px;
+    }
+
+    .control-panel,
+    .species-panel,
+    .upload-box {
+        padding: 12px;
     }
 
     .landing-copy h1 {
         font-size: 3.15rem;
-    }
-
-    .photo-strip,
-    .modal-photo-grid {
-        grid-template-columns: 1fr;
-    }
-
-    .photo-strip img:first-child {
-        grid-row: auto;
     }
 
     .stat-stack {
@@ -1849,7 +1871,7 @@ input[type="range"] {
     }
 
     .range-control {
-        grid-template-columns: 1fr 78px;
+        grid-template-columns: minmax(0, 1fr) 76px;
     }
 
     .comment-form {
@@ -1864,5 +1886,23 @@ input[type="range"] {
     .stat-stack {
         margin-left: 14px;
         margin-right: 14px;
+    }
+}
+
+@media (max-width: 380px) {
+    .page-shell {
+        width: calc(100% - 16px);
+    }
+
+    .dive-form {
+        padding: 12px;
+    }
+
+    .range-control {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .range-control input[type="number"] {
+        max-width: 9rem;
     }
 }

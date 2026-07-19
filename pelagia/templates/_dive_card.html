@@ -22,9 +22,7 @@
     <div class="activity-media {{ 'no-photos' if not dive.photos else '' }}">
         {% if dive.photos %}
             <div class="photo-strip">
-                {% for photo in dive.photos[:3] %}
-                    <img src="{{ url_for('static', filename=photo.filename) }}" alt="">
-                {% endfor %}
+                <img src="{{ url_for('static', filename=dive.photos[0].filename) }}" alt="">
             </div>
         {% endif %}
         <div class="mini-map {{ 'map-pending' if not has_coords else '' }}" {% if has_coords %}data-static-map data-map-lat="{{ dive.latitude }}" data-map-lng="{{ dive.longitude }}" data-map-zoom="10"{% endif %}>
