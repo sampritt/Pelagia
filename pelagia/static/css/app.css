@@ -1194,7 +1194,7 @@ textarea:focus {
     min-width: 0;
 }
 
-.form-grid > label {
+.form-grid > label:not(.autocomplete-field) {
     max-width: 100%;
     overflow: hidden;
 }
