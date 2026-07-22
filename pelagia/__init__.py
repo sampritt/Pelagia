@@ -290,51 +290,9 @@ def register_routes(app):
         site_id = request.args.get("site_id", type=int)
         country = request.args.get("country", "").strip()
         if site_id:
-            rows = database.get_db().execute(
-                """
-                WITH selected_site AS (
-                    SELECT name, country_or_area
-                    FROM dive_sites
-                    WHERE id = ?
-                ),
-                candidates AS (
-                    SELECT
-                        ss.common_name,
-                        CASE
-                            WHEN lower(ss.dive_site_name) = lower(selected_site.name) THEN 0
-                            ELSE 1
-                        END AS match_priority,
-                        ss.id AS source_order
-                    FROM selected_site
-                    JOIN site_species ss ON 1 = 1
-                    JOIN dive_sites species_site ON lower(species_site.name) = lower(ss.dive_site_name)
-                    WHERE lower(ss.dive_site_name) = lower(selected_site.name)
-                        OR (
-                            selected_site.country_or_area IS NOT NULL
-                            AND trim(selected_site.country_or_area) != ''
-                            AND lower(species_site.country_or_area) = lower(selected_site.country_or_area)
-                        )
-                )
-                SELECT common_name
-                FROM candidates
-                GROUP BY common_name
-                ORDER BY MIN(match_priority), MIN(source_order)
-                LIMIT 5
-                """,
-                (site_id,),
-            ).fetchall()
+            rows = species_suggestions_for_site(site_id)
         elif country:
-            rows = database.get_db().execute(
-                """
-                SELECT DISTINCT ss.common_name
-                FROM site_species ss
-                JOIN dive_sites ds ON lower(ds.name) = lower(ss.dive_site_name)
-                WHERE lower(ds.country_or_area) = lower(?)
-                ORDER BY ss.id
-                LIMIT 5
-                """,
-                (country,),
-            ).fetchall()
+            rows = species_suggestions_for_country(country)
         else:
             rows = []
         return jsonify([row["common_name"] for row in rows])
@@ -510,6 +468,75 @@ def create_dive_from_request(user_id, form_request):
 
     db.commit()
     return dive_id
+
+
+def species_suggestions_for_site(site_id, limit=5):
+    db = database.get_db()
+    site = db.execute("SELECT name, country_or_area FROM dive_sites WHERE id = ?", (site_id,)).fetchone()
+    if site is None:
+        return []
+
+    selected = []
+    seen = set()
+    rows = db.execute(
+        """
+        SELECT common_name
+        FROM site_species
+        WHERE dive_site_name = ?
+        ORDER BY id
+        LIMIT ?
+        """,
+        (site["name"], limit),
+    ).fetchall()
+    for row in rows:
+        key = row["common_name"].lower()
+        if key not in seen:
+            selected.append({"common_name": row["common_name"]})
+            seen.add(key)
+
+    if len(selected) < limit and site["country_or_area"]:
+        selected.extend(
+            species_suggestions_for_country(
+                site["country_or_area"],
+                limit=limit - len(selected),
+                excluded=seen,
+            )
+        )
+    return selected[:limit]
+
+
+def species_suggestions_for_country(country, limit=5, excluded=None):
+    excluded = excluded or set()
+    db = database.get_db()
+    site_rows = db.execute(
+        """
+        SELECT name
+        FROM dive_sites
+        WHERE lower(country_or_area) = lower(?)
+        """,
+        (country,),
+    ).fetchall()
+    site_names = {row["name"].lower() for row in site_rows}
+    if not site_names:
+        return []
+
+    selected = []
+    seen = set(excluded)
+    rows = db.execute(
+        """
+        SELECT dive_site_name, common_name
+        FROM site_species
+        ORDER BY id
+        """
+    ).fetchall()
+    for row in rows:
+        key = row["common_name"].lower()
+        if row["dive_site_name"].lower() in site_names and key not in seen:
+            selected.append({"common_name": row["common_name"]})
+            seen.add(key)
+            if len(selected) >= limit:
+                break
+    return selected
 
 
 def fetch_dives(scope, user_id, limit=80, center_id=None):
