@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% block title %}{{ center.name }} - Pelagia{% endblock %}
+
+{% block content %}
+{% set has_coords = center.latitude is not none and center.longitude is not none %}
+<section class="profile-layout">
+    <div class="profile-hero center-profile-hero">
+        <div class="center-avatar">
+            <span>{{ center.name[:1]|upper }}</span>
+        </div>
+        <div>
+            <h1>{{ center.name }}</h1>
+            <p class="profile-meta">{{ center.location or "Location pending" }}</p>
+            <div class="profile-actions">
+                <button class="chip-button like-button {{ 'liked' if center.liked_by_me else '' }}" type="button" data-center-like data-center-id="{{ center.id }}">
+                    <span class="heart-icon"></span>
+                    <span data-center-like-count>{{ center.like_count }}</span>
+                </button>
+                {% if center.website %}
+                    <a class="ghost-button" href="{{ center.website }}" target="_blank" rel="noopener">Website</a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="center-info-grid">
+        <div>
+            <small>Address</small>
+            <span>{{ center.physical_address or "Not listed" }}</span>
+        </div>
+        <div>
+            <small>Location</small>
+            <span>{{ center.location or "Not listed" }}</span>
+        </div>
+        <div>
+            <small>Website</small>
+            {% if center.website %}
+                <a href="{{ center.website }}" target="_blank" rel="noopener">{{ center.website }}</a>
+            {% else %}
+                <span>Not listed</span>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="mini-map center-map {{ 'map-pending' if not has_coords else '' }}" data-center-map data-geocode-location="{{ (center.physical_address or center.location or center.name)|e }}" {% if has_coords %}data-static-map data-map-lat="{{ center.latitude }}" data-map-lng="{{ center.longitude }}" data-map-zoom="11"{% endif %}>
+        <span class="map-pin"></span>
+        <span class="coordinate-label">
+            {% if has_coords %}
+                {{ "%.3f"|format(center.latitude) }}, {{ "%.3f"|format(center.longitude) }}
+            {% else %}
+                {{ center.location or "Location listed without coordinates" }}
+            {% endif %}
+        </span>
+    </div>
+
+    <div class="comments-block" data-center-comments>
+        {% if center.comments %}
+            {% for comment in center.comments %}
+                <div class="comment">
+                    <strong>{{ comment.username }}</strong>
+                    <p>{{ comment.body }}</p>
+                </div>
+            {% endfor %}
+        {% else %}
+            <p class="muted">No comments yet.</p>
+        {% endif %}
+    </div>
+    <form class="comment-form" data-center-comment-form data-center-id="{{ center.id }}">
+        <input name="body" maxlength="600" autocomplete="off" placeholder="Add a comment">
+        <button class="primary-button compact" type="submit">Post</button>
+    </form>
+
+    <div class="feed-toolbar">
+        <span>{{ recent_dives|length }} recent {{ 'dive' if recent_dives|length == 1 else 'dives' }}</span>
+    </div>
+    {% if recent_dives %}
+        <div class="feed-list compact-list">
+            {% for dive in recent_dives %}
+                {% include "_dive_card.html" %}
+            {% endfor %}
+        </div>
+    {% endif %}
+</section>
+{% endblock %}
