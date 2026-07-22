@@ -729,9 +729,10 @@ function initSpeciesPicker(form, getCountry) {
     input.addEventListener("keydown", (event) => {
         if (event.key === "Enter" && input.value.trim()) {
             event.preventDefault();
-            addSpecies(input.value.trim());
-            input.value = "";
-            hideMenu(results);
+            const firstResult = results.hidden ? null : results.querySelector("button");
+            if (firstResult) {
+                firstResult.click();
+            }
         }
     });
 

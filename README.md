@@ -17,7 +17,7 @@ Open `http://127.0.0.1:8010`.
 Local paths live in `app_config.json`.
 
 - `data_sources.dive_sites_csv`: dive-site master CSV path
-- `data_sources.species_csv`: species CSV path
+- `data_sources.species_csv`: dive-site marine-life matches CSV path
 - `database_path`: SQLite database path
 - `upload_folder`: local photo upload directory
 

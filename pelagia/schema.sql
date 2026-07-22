@@ -32,6 +32,16 @@ CREATE TABLE IF NOT EXISTS species (
 CREATE INDEX IF NOT EXISTS idx_species_country ON species(country_or_area);
 CREATE INDEX IF NOT EXISTS idx_species_common_name ON species(common_name);
 
+CREATE TABLE IF NOT EXISTS site_species (
+    id INTEGER PRIMARY KEY,
+    dive_site_name TEXT NOT NULL,
+    common_name TEXT NOT NULL,
+    UNIQUE(dive_site_name, common_name)
+);
+
+CREATE INDEX IF NOT EXISTS idx_site_species_site ON site_species(dive_site_name);
+CREATE INDEX IF NOT EXISTS idx_site_species_common_name ON site_species(common_name);
+
 CREATE TABLE IF NOT EXISTS dive_centers (
     id INTEGER PRIMARY KEY,
     name TEXT NOT NULL,

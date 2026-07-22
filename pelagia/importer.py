@@ -40,7 +40,7 @@ def import_reference_data(db_path, config, config_path):
     if missing_sites:
         raise ValueError(f"Dive-site CSV is missing columns: {sorted(missing_sites)}")
 
-    missing_species = {"country_or_area", "common_name"} - set(species_raw.columns)
+    missing_species = {"dive_site_name", "species_name"} - set(species_raw.columns)
     if missing_species:
         raise ValueError(f"Species CSV is missing columns: {sorted(missing_species)}")
     missing_centers = {"name", "physical_address", "location", "website"} - set(centers_raw.columns)
@@ -65,11 +65,16 @@ def import_reference_data(db_path, config, config_path):
         ]
     ]
 
-    species = species_raw[["country_or_area", "common_name"]].dropna().copy()
-    species["country_or_area"] = species["country_or_area"].astype(str).str.strip()
-    species["common_name"] = species["common_name"].astype(str).str.strip()
-    species = species[(species["country_or_area"] != "") & (species["common_name"] != "")]
-    species = species.drop_duplicates(["country_or_area", "common_name"]).copy()
+    site_species = species_raw[["dive_site_name", "species_name"]].dropna().copy()
+    site_species["dive_site_name"] = site_species["dive_site_name"].astype(str).str.strip()
+    site_species["common_name"] = site_species["species_name"].astype(str).str.strip()
+    site_species = site_species[(site_species["dive_site_name"] != "") & (site_species["common_name"] != "")]
+    site_species = site_species.drop_duplicates(["dive_site_name", "common_name"]).copy()
+    site_species["id"] = range(1, len(site_species) + 1)
+    site_species = site_species[["id", "dive_site_name", "common_name"]]
+
+    species = site_species[["common_name"]].drop_duplicates().copy()
+    species["country_or_area"] = "Global"
     species["id"] = range(1, len(species) + 1)
     species = species[["id", "country_or_area", "common_name"]]
 
@@ -88,13 +93,13 @@ def import_reference_data(db_path, config, config_path):
         conn.execute("PRAGMA foreign_keys = ON")
         sites.to_sql("_import_dive_sites", conn, if_exists="replace", index=False)
         species.to_sql("_import_species", conn, if_exists="replace", index=False)
+        site_species.to_sql("_import_site_species", conn, if_exists="replace", index=False)
         centers.to_sql("_import_dive_centers", conn, if_exists="replace", index=False)
-        conn.execute("DELETE FROM dive_sites")
         conn.execute("DELETE FROM species")
-        conn.execute("DELETE FROM dive_centers")
+        conn.execute("DELETE FROM site_species")
         conn.execute(
             """
-            INSERT INTO dive_sites (
+            INSERT OR IGNORE INTO dive_sites (
                 id, master_site_id, name, country_or_area, country_code,
                 latitude, longitude, max_depth_m
             )
@@ -106,6 +111,20 @@ def import_reference_data(db_path, config, config_path):
         )
         conn.execute(
             """
+            UPDATE dive_sites
+            SET
+                master_site_id = (SELECT master_site_id FROM _import_dive_sites WHERE _import_dive_sites.id = dive_sites.id),
+                name = (SELECT name FROM _import_dive_sites WHERE _import_dive_sites.id = dive_sites.id),
+                country_or_area = (SELECT country_or_area FROM _import_dive_sites WHERE _import_dive_sites.id = dive_sites.id),
+                country_code = (SELECT country_code FROM _import_dive_sites WHERE _import_dive_sites.id = dive_sites.id),
+                latitude = (SELECT latitude FROM _import_dive_sites WHERE _import_dive_sites.id = dive_sites.id),
+                longitude = (SELECT longitude FROM _import_dive_sites WHERE _import_dive_sites.id = dive_sites.id),
+                max_depth_m = (SELECT max_depth_m FROM _import_dive_sites WHERE _import_dive_sites.id = dive_sites.id)
+            WHERE id IN (SELECT id FROM _import_dive_sites)
+            """
+        )
+        conn.execute(
+            """
             INSERT INTO species (id, country_or_area, common_name)
             SELECT id, country_or_area, common_name
             FROM _import_species
@@ -113,14 +132,37 @@ def import_reference_data(db_path, config, config_path):
         )
         conn.execute(
             """
-            INSERT INTO dive_centers (id, name, physical_address, location, website, latitude, longitude)
+            INSERT INTO site_species (id, dive_site_name, common_name)
+            SELECT id, dive_site_name, common_name
+            FROM _import_site_species
+            """
+        )
+        conn.execute(
+            """
+            INSERT OR IGNORE INTO dive_centers (id, name, physical_address, location, website, latitude, longitude)
             SELECT id, name, physical_address, location, website, latitude, longitude
             FROM _import_dive_centers
             """
         )
+        conn.execute(
+            """
+            UPDATE dive_centers
+            SET
+                name = (SELECT name FROM _import_dive_centers WHERE _import_dive_centers.id = dive_centers.id),
+                physical_address = (
+                    SELECT physical_address FROM _import_dive_centers WHERE _import_dive_centers.id = dive_centers.id
+                ),
+                location = (SELECT location FROM _import_dive_centers WHERE _import_dive_centers.id = dive_centers.id),
+                website = (SELECT website FROM _import_dive_centers WHERE _import_dive_centers.id = dive_centers.id),
+                latitude = (SELECT latitude FROM _import_dive_centers WHERE _import_dive_centers.id = dive_centers.id),
+                longitude = (SELECT longitude FROM _import_dive_centers WHERE _import_dive_centers.id = dive_centers.id)
+            WHERE id IN (SELECT id FROM _import_dive_centers)
+            """
+        )
         conn.execute("DROP TABLE _import_dive_sites")
         conn.execute("DROP TABLE _import_species")
+        conn.execute("DROP TABLE _import_site_species")
         conn.execute("DROP TABLE _import_dive_centers")
         conn.commit()
 
-    return {"dive_sites": len(sites), "species": len(species), "dive_centers": len(centers)}
+    return {"dive_sites": len(sites), "species": len(species), "site_species": len(site_species), "dive_centers": len(centers)}

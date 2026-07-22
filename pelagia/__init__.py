@@ -74,7 +74,12 @@ def _resolve_path(config_path, value):
 
 
 def _ensure_reference_data(app):
-    if database.table_count("dive_sites") and database.table_count("species") and database.table_count("dive_centers"):
+    if (
+        database.table_count("dive_sites")
+        and database.table_count("species")
+        and database.table_count("site_species")
+        and database.table_count("dive_centers")
+    ):
         return
     import_reference_data(
         app.config["DATABASE"],
@@ -234,20 +239,19 @@ def register_routes(app):
         if country:
             rows = database.get_db().execute(
                 """
-                SELECT common_name, MIN(country_or_area) AS country_or_area,
-                       MIN(CASE WHEN lower(country_or_area) = lower(?) THEN 0 ELSE 1 END) AS country_rank
+                SELECT common_name, '' AS country_or_area
                 FROM species
                 WHERE lower(common_name) LIKE ?
                 GROUP BY lower(common_name)
-                ORDER BY country_rank, common_name
+                ORDER BY common_name
                 LIMIT 14
                 """,
-                (country, like),
+                (like,),
             ).fetchall()
         else:
             rows = database.get_db().execute(
                 """
-                SELECT common_name, MIN(country_or_area) AS country_or_area
+                SELECT common_name, '' AS country_or_area
                 FROM species
                 WHERE lower(common_name) LIKE ?
                 GROUP BY lower(common_name)
@@ -288,11 +292,11 @@ def register_routes(app):
         if site_id:
             rows = database.get_db().execute(
                 """
-                SELECT DISTINCT s.common_name
+                SELECT DISTINCT ss.common_name
                 FROM dive_sites ds
-                JOIN species s ON lower(s.country_or_area) = lower(ds.country_or_area)
+                JOIN site_species ss ON lower(ss.dive_site_name) = lower(ds.name)
                 WHERE ds.id = ?
-                ORDER BY s.id
+                ORDER BY ss.id
                 LIMIT 5
                 """,
                 (site_id,),
@@ -300,10 +304,11 @@ def register_routes(app):
         elif country:
             rows = database.get_db().execute(
                 """
-                SELECT DISTINCT common_name
-                FROM species
-                WHERE lower(country_or_area) = lower(?)
-                ORDER BY id
+                SELECT DISTINCT ss.common_name
+                FROM site_species ss
+                JOIN dive_sites ds ON lower(ds.name) = lower(ss.dive_site_name)
+                WHERE lower(ds.country_or_area) = lower(?)
+                ORDER BY ss.id
                 LIMIT 5
                 """,
                 (country,),
@@ -470,7 +475,7 @@ def create_dive_from_request(user_id, form_request):
         species_names = json.loads(form.get("species_json", "[]"))
     except json.JSONDecodeError:
         species_names = []
-    for common_name in dedupe_species(species_names):
+    for common_name in valid_species_names(dedupe_species(species_names), db):
         db.execute(
             "INSERT INTO dive_species (dive_id, common_name) VALUES (?, ?)",
             (dive_id, common_name),
@@ -711,6 +716,24 @@ def dedupe_species(values):
             seen.add(key)
             clean.append(name[:100])
     return clean[:40]
+
+
+def valid_species_names(values, db):
+    valid = []
+    for value in values:
+        row = db.execute(
+            """
+            SELECT common_name
+            FROM species
+            WHERE lower(common_name) = lower(?)
+            ORDER BY id
+            LIMIT 1
+            """,
+            (value,),
+        ).fetchone()
+        if row:
+            valid.append(row["common_name"])
+    return valid
 
 
 def _allowed_file(filename):
