@@ -292,11 +292,33 @@ def register_routes(app):
         if site_id:
             rows = database.get_db().execute(
                 """
-                SELECT DISTINCT ss.common_name
-                FROM dive_sites ds
-                JOIN site_species ss ON lower(ss.dive_site_name) = lower(ds.name)
-                WHERE ds.id = ?
-                ORDER BY ss.id
+                WITH selected_site AS (
+                    SELECT name, country_or_area
+                    FROM dive_sites
+                    WHERE id = ?
+                ),
+                candidates AS (
+                    SELECT
+                        ss.common_name,
+                        CASE
+                            WHEN lower(ss.dive_site_name) = lower(selected_site.name) THEN 0
+                            ELSE 1
+                        END AS match_priority,
+                        ss.id AS source_order
+                    FROM selected_site
+                    JOIN site_species ss ON 1 = 1
+                    JOIN dive_sites species_site ON lower(species_site.name) = lower(ss.dive_site_name)
+                    WHERE lower(ss.dive_site_name) = lower(selected_site.name)
+                        OR (
+                            selected_site.country_or_area IS NOT NULL
+                            AND trim(selected_site.country_or_area) != ''
+                            AND lower(species_site.country_or_area) = lower(selected_site.country_or_area)
+                        )
+                )
+                SELECT common_name
+                FROM candidates
+                GROUP BY common_name
+                ORDER BY MIN(match_priority), MIN(source_order)
                 LIMIT 5
                 """,
                 (site_id,),
