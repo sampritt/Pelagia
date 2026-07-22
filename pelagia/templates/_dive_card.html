@@ -20,6 +20,7 @@
         {% set center_name = dive.linked_dive_center_name or dive.dive_center_name %}
         {% if center_name %}
             <p class="dive-center-line">
+                with
                 {% if dive.dive_center_id %}
                     <a href="{{ url_for('dive_center_profile', center_id=dive.dive_center_id) }}">{{ center_name }}</a>
                 {% else %}

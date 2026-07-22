@@ -411,7 +411,7 @@ function renderDiveModal(dive) {
         ? `<div class="notes-block"><p>${escapeHtml(dive.notes)}</p></div>`
         : "";
     const center = dive.dive_center_name
-        ? `<p class="modal-center">${dive.dive_center_id ? `<a href="/dive-centers/${escapeHtml(dive.dive_center_id)}">${escapeHtml(dive.dive_center_name)}</a>` : escapeHtml(dive.dive_center_name)}</p>`
+        ? `<p class="modal-center">with ${dive.dive_center_id ? `<a href="/dive-centers/${escapeHtml(dive.dive_center_id)}">${escapeHtml(dive.dive_center_name)}</a>` : escapeHtml(dive.dive_center_name)}</p>`
         : "";
     return `
         <div class="modal-content">
