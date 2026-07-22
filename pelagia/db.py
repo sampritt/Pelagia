@@ -26,7 +26,15 @@ def init_db():
     db = get_db()
     schema = Path(current_app.root_path, "schema.sql").read_text()
     db.executescript(schema)
+    _ensure_column(db, "dives", "dive_center_id", "INTEGER")
+    _ensure_column(db, "dives", "dive_center_name", "TEXT")
     db.commit()
+
+
+def _ensure_column(db, table_name, column_name, column_type):
+    columns = {row["name"] for row in db.execute(f"PRAGMA table_info({table_name})").fetchall()}
+    if column_name not in columns:
+        db.execute(f"ALTER TABLE {table_name} ADD COLUMN {column_name} {column_type}")
 
 
 def table_count(table_name):

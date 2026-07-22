@@ -74,7 +74,7 @@ def _resolve_path(config_path, value):
 
 
 def _ensure_reference_data(app):
-    if database.table_count("dive_sites") and database.table_count("species"):
+    if database.table_count("dive_sites") and database.table_count("species") and database.table_count("dive_centers"):
         return
     import_reference_data(
         app.config["DATABASE"],
@@ -258,6 +258,28 @@ def register_routes(app):
             ).fetchall()
         return jsonify([dict(row) for row in rows])
 
+    @app.get("/api/dive-centers")
+    @login_required
+    def api_dive_centers():
+        query = request.args.get("q", "").strip()
+        if not query:
+            return jsonify([])
+        like = f"%{query.lower()}%"
+        prefix = f"{query.lower()}%"
+        rows = database.get_db().execute(
+            """
+            SELECT id, name, physical_address, location, website, latitude, longitude
+            FROM dive_centers
+            WHERE lower(name) LIKE ? OR lower(location) LIKE ? OR lower(physical_address) LIKE ?
+            ORDER BY
+                CASE WHEN lower(name) LIKE ? THEN 0 ELSE 1 END,
+                name
+            LIMIT 14
+            """,
+            (like, like, like, prefix),
+        ).fetchall()
+        return jsonify([center_payload(row) for row in rows])
+
     @app.get("/api/species-suggestions")
     @login_required
     def api_species_suggestions():
@@ -336,6 +358,61 @@ def register_routes(app):
         dive = fetch_dive(dive_id, session["user_id"])
         return jsonify({"comments": [dict(comment) for comment in dive["comments"]]})
 
+    @app.route("/dive-centers/<int:center_id>")
+    @login_required
+    def dive_center_profile(center_id):
+        center = fetch_dive_center(center_id, session["user_id"])
+        if center is None:
+            abort(404)
+        recent_dives = fetch_dives(scope="center", user_id=session["user_id"], center_id=center_id, limit=6)
+        return render_template("dive_center_profile.html", center=center, recent_dives=recent_dives)
+
+    @app.post("/api/dive-centers/<int:center_id>/like")
+    @login_required
+    def api_dive_center_like(center_id):
+        db = database.get_db()
+        if db.execute("SELECT 1 FROM dive_centers WHERE id = ?", (center_id,)).fetchone() is None:
+            abort(404)
+        exists = db.execute(
+            "SELECT 1 FROM dive_center_likes WHERE dive_center_id = ? AND user_id = ?",
+            (center_id, session["user_id"]),
+        ).fetchone()
+        if exists:
+            db.execute(
+                "DELETE FROM dive_center_likes WHERE dive_center_id = ? AND user_id = ?",
+                (center_id, session["user_id"]),
+            )
+            liked = False
+        else:
+            db.execute(
+                "INSERT OR IGNORE INTO dive_center_likes (dive_center_id, user_id) VALUES (?, ?)",
+                (center_id, session["user_id"]),
+            )
+            liked = True
+        db.commit()
+        count = db.execute(
+            "SELECT COUNT(*) AS count FROM dive_center_likes WHERE dive_center_id = ?",
+            (center_id,),
+        ).fetchone()["count"]
+        return jsonify({"liked": liked, "count": count})
+
+    @app.post("/api/dive-centers/<int:center_id>/comments")
+    @login_required
+    def api_dive_center_comment(center_id):
+        body = request.form.get("body", "").strip()
+        if not body:
+            return jsonify({"error": "Comment cannot be empty."}), 400
+        db = database.get_db()
+        if db.execute("SELECT 1 FROM dive_centers WHERE id = ?", (center_id,)).fetchone() is None:
+            abort(404)
+        db.execute(
+            "INSERT INTO dive_center_comments (dive_center_id, user_id, body) VALUES (?, ?, ?)",
+            (center_id, session["user_id"], body[:600]),
+        )
+        db.commit()
+        center = fetch_dive_center(center_id, session["user_id"])
+        return jsonify({"comments": [dict(comment) for comment in center["comments"]]})
+
 
 def create_dive_from_request(user_id, form_request):
     form = form_request.form
@@ -349,19 +426,31 @@ def create_dive_from_request(user_id, form_request):
     latitude = maybe_float(form.get("latitude"))
     longitude = maybe_float(form.get("longitude"))
     dive_site_id = maybe_int(form.get("dive_site_id"))
+    dive_center_id = maybe_int(form.get("dive_center_id"))
+    dive_center_name = form.get("dive_center_name", "").strip()
 
     db = database.get_db()
+    if dive_center_id:
+        center = db.execute("SELECT id, name FROM dive_centers WHERE id = ?", (dive_center_id,)).fetchone()
+        if center:
+            dive_center_name = center["name"]
+        else:
+            dive_center_id = None
+    if not dive_center_name:
+        dive_center_id = None
     cur = db.execute(
         """
         INSERT INTO dives (
-            user_id, dive_site_id, date, site_name, country_or_area, latitude, longitude,
+            user_id, dive_site_id, dive_center_id, dive_center_name, date, site_name, country_or_area, latitude, longitude,
             depth_ft, duration_min, weight_lbs, exposure, notes
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             user_id,
             dive_site_id,
+            dive_center_id,
+            dive_center_name[:160],
             date_value,
             site_name,
             country,
@@ -396,12 +485,15 @@ def create_dive_from_request(user_id, form_request):
     return dive_id
 
 
-def fetch_dives(scope, user_id, limit=80):
+def fetch_dives(scope, user_id, limit=80, center_id=None):
     where = ""
     params = []
     if scope == "mine":
         where = "WHERE d.user_id = ?"
         params.append(user_id)
+    elif scope == "center":
+        where = "WHERE d.dive_center_id = ?"
+        params.append(center_id)
     params.append(limit)
     rows = database.get_db().execute(
         f"""
@@ -409,11 +501,13 @@ def fetch_dives(scope, user_id, limit=80):
             d.*,
             u.username,
             u.profile_photo,
+            dc.name AS linked_dive_center_name,
             (SELECT COUNT(*) FROM likes WHERE dive_id = d.id) AS like_count,
             (SELECT COUNT(*) FROM comments WHERE dive_id = d.id) AS comment_count,
             EXISTS(SELECT 1 FROM likes WHERE dive_id = d.id AND user_id = ?) AS liked_by_me
         FROM dives d
         JOIN users u ON u.id = d.user_id
+        LEFT JOIN dive_centers dc ON dc.id = d.dive_center_id
         {where}
         ORDER BY d.date DESC, d.created_at DESC
         LIMIT ?
@@ -430,11 +524,13 @@ def fetch_dive(dive_id, viewer_user_id):
             d.*,
             u.username,
             u.profile_photo,
+            dc.name AS linked_dive_center_name,
             (SELECT COUNT(*) FROM likes WHERE dive_id = d.id) AS like_count,
             (SELECT COUNT(*) FROM comments WHERE dive_id = d.id) AS comment_count,
             EXISTS(SELECT 1 FROM likes WHERE dive_id = d.id AND user_id = ?) AS liked_by_me
         FROM dives d
         JOIN users u ON u.id = d.user_id
+        LEFT JOIN dive_centers dc ON dc.id = d.dive_center_id
         WHERE d.id = ?
         """,
         (viewer_user_id, dive_id),
@@ -499,12 +595,46 @@ def get_profile_stats(user_id):
     return {"summary": summary, "pins": [dict(pin) for pin in pins]}
 
 
+def fetch_dive_center(center_id, viewer_user_id):
+    row = database.get_db().execute(
+        """
+        SELECT
+            dc.*,
+            (SELECT COUNT(*) FROM dive_center_likes WHERE dive_center_id = dc.id) AS like_count,
+            (SELECT COUNT(*) FROM dive_center_comments WHERE dive_center_id = dc.id) AS comment_count,
+            EXISTS(
+                SELECT 1 FROM dive_center_likes
+                WHERE dive_center_id = dc.id AND user_id = ?
+            ) AS liked_by_me
+        FROM dive_centers dc
+        WHERE dc.id = ?
+        """,
+        (viewer_user_id, center_id),
+    ).fetchone()
+    if row is None:
+        return None
+    center = dict(row)
+    center["comments"] = database.get_db().execute(
+        """
+        SELECT c.id, c.body, c.created_at, u.username
+        FROM dive_center_comments c
+        JOIN users u ON u.id = c.user_id
+        WHERE c.dive_center_id = ?
+        ORDER BY c.created_at
+        """,
+        (center_id,),
+    ).fetchall()
+    return center
+
+
 def dive_to_json(dive):
     return {
         "id": dive["id"],
         "username": dive["username"],
         "date": dive["date"],
         "site_name": dive["site_name"],
+        "dive_center_id": dive["dive_center_id"],
+        "dive_center_name": dive["linked_dive_center_name"] or dive["dive_center_name"],
         "country_or_area": dive["country_or_area"],
         "latitude": dive["latitude"],
         "longitude": dive["longitude"],
@@ -534,6 +664,18 @@ def site_payload(row):
         "latitude": row["latitude"],
         "longitude": row["longitude"],
         "max_depth_ft": max_depth_ft,
+    }
+
+
+def center_payload(row):
+    return {
+        "id": row["id"],
+        "name": row["name"],
+        "physical_address": row["physical_address"],
+        "location": row["location"],
+        "website": row["website"],
+        "latitude": row["latitude"],
+        "longitude": row["longitude"],
     }
 
 

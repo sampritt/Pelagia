@@ -32,10 +32,25 @@ CREATE TABLE IF NOT EXISTS species (
 CREATE INDEX IF NOT EXISTS idx_species_country ON species(country_or_area);
 CREATE INDEX IF NOT EXISTS idx_species_common_name ON species(common_name);
 
+CREATE TABLE IF NOT EXISTS dive_centers (
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL,
+    physical_address TEXT,
+    location TEXT,
+    website TEXT,
+    latitude REAL,
+    longitude REAL
+);
+
+CREATE INDEX IF NOT EXISTS idx_dive_centers_name ON dive_centers(name);
+CREATE INDEX IF NOT EXISTS idx_dive_centers_location ON dive_centers(location);
+
 CREATE TABLE IF NOT EXISTS dives (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
     dive_site_id INTEGER,
+    dive_center_id INTEGER,
+    dive_center_name TEXT,
     date TEXT NOT NULL,
     site_name TEXT NOT NULL,
     country_or_area TEXT,
@@ -48,7 +63,8 @@ CREATE TABLE IF NOT EXISTS dives (
     notes TEXT,
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
-    FOREIGN KEY(dive_site_id) REFERENCES dive_sites(id) ON DELETE SET NULL
+    FOREIGN KEY(dive_site_id) REFERENCES dive_sites(id) ON DELETE SET NULL,
+    FOREIGN KEY(dive_center_id) REFERENCES dive_centers(id) ON DELETE SET NULL
 );
 
 CREATE INDEX IF NOT EXISTS idx_dives_user_created ON dives(user_id, created_at DESC);
@@ -89,3 +105,24 @@ CREATE TABLE IF NOT EXISTS comments (
 );
 
 CREATE INDEX IF NOT EXISTS idx_comments_dive ON comments(dive_id, created_at);
+
+CREATE TABLE IF NOT EXISTS dive_center_likes (
+    dive_center_id INTEGER NOT NULL,
+    user_id INTEGER NOT NULL,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY(dive_center_id, user_id),
+    FOREIGN KEY(dive_center_id) REFERENCES dive_centers(id) ON DELETE CASCADE,
+    FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS dive_center_comments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    dive_center_id INTEGER NOT NULL,
+    user_id INTEGER NOT NULL,
+    body TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY(dive_center_id) REFERENCES dive_centers(id) ON DELETE CASCADE,
+    FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_dive_center_comments_center ON dive_center_comments(dive_center_id, created_at);

@@ -842,6 +842,18 @@ textarea:focus {
     font-size: 0.88rem;
 }
 
+.dive-center-line a,
+.modal-center a,
+.center-info-grid a {
+    color: var(--accent);
+}
+
+.dive-center-line a:hover,
+.modal-center a:hover,
+.center-info-grid a:hover {
+    text-decoration: underline;
+}
+
 .activity-media {
     display: grid;
     grid-template-columns: minmax(0, 1fr) 212px;
@@ -1390,6 +1402,54 @@ input[type="range"] {
     display: none;
 }
 
+.center-avatar {
+    width: 106px;
+    height: 106px;
+    display: inline-grid;
+    place-items: center;
+    border: 3px solid rgba(239, 248, 255, 0.9);
+    border-radius: 8px;
+    color: #ffffff;
+    font-size: 2.3rem;
+    font-weight: 780;
+    background:
+        linear-gradient(145deg, rgba(11, 18, 25, 0.96), rgba(32, 45, 58, 0.92) 55%, var(--sea) 56%, #8debe5 100%);
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.26);
+}
+
+.center-info-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+    min-width: 0;
+}
+
+.center-info-grid > div {
+    display: grid;
+    gap: 6px;
+    min-width: 0;
+    padding: 14px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--panel-tint);
+}
+
+.center-info-grid small {
+    color: var(--muted);
+    font-size: 0.76rem;
+    font-weight: 720;
+    text-transform: uppercase;
+}
+
+.center-info-grid span,
+.center-info-grid a {
+    overflow-wrap: anywhere;
+}
+
+.center-map {
+    min-height: 300px;
+}
+
 .stats-grid {
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -1639,6 +1699,10 @@ input[type="range"] {
     font-size: 0.88rem;
 }
 
+.modal-title .modal-center {
+    color: var(--muted-strong);
+}
+
 .modal-photo-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
@@ -1848,9 +1912,14 @@ input[type="range"] {
         width: 100%;
     }
 
-    .profile-avatar {
+    .profile-avatar,
+    .center-avatar {
         width: 96px;
         height: 96px;
+    }
+
+    .center-info-grid {
+        grid-template-columns: minmax(0, 1fr);
     }
 
     .profile-map,

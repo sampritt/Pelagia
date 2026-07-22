@@ -251,6 +251,12 @@ function initDiveInteractions() {
         if (event.target.closest("[data-close-modal]")) {
             closeDiveModal();
         }
+
+        const centerLikeButton = event.target.closest("[data-center-like]");
+        if (centerLikeButton) {
+            event.preventDefault();
+            await toggleCenterLike(centerLikeButton.dataset.centerId);
+        }
     });
 
     document.addEventListener("keydown", (event) => {
@@ -265,13 +271,23 @@ function initDiveInteractions() {
 
     document.addEventListener("submit", async (event) => {
         const form = event.target.closest("[data-comment-form]");
-        if (!form) {
+        const centerForm = event.target.closest("[data-center-comment-form]");
+        if (!form && !centerForm) {
             return;
         }
         event.preventDefault();
-        const input = form.querySelector("input[name='body']");
+        const input = (form || centerForm).querySelector("input[name='body']");
         const body = input.value.trim();
         if (!body) {
+            return;
+        }
+        if (centerForm) {
+            const data = await fetchJson(`/api/dive-centers/${centerForm.dataset.centerId}/comments`, {
+                method: "POST",
+                body: new FormData(centerForm),
+            });
+            input.value = "";
+            renderComments(document.querySelector("[data-center-comments]"), data.comments);
             return;
         }
         const data = await fetchJson(`/api/dives/${form.dataset.diveId}/comments`, {
@@ -349,6 +365,17 @@ async function toggleLike(diveId) {
     });
 }
 
+async function toggleCenterLike(centerId) {
+    const data = await fetchJson(`/api/dive-centers/${centerId}/like`, { method: "POST" });
+    document.querySelectorAll(`[data-center-like][data-center-id='${centerId}']`).forEach((button) => {
+        button.classList.toggle("liked", data.liked);
+        const count = button.querySelector("[data-center-like-count]");
+        if (count) {
+            count.textContent = data.count;
+        }
+    });
+}
+
 async function openDive(diveId) {
     const modal = document.getElementById("diveModal");
     const body = document.getElementById("diveModalBody");
@@ -383,11 +410,15 @@ function renderDiveModal(dive) {
     const notes = dive.notes
         ? `<div class="notes-block"><p>${escapeHtml(dive.notes)}</p></div>`
         : "";
+    const center = dive.dive_center_name
+        ? `<p class="modal-center">${dive.dive_center_id ? `<a href="/dive-centers/${escapeHtml(dive.dive_center_id)}">${escapeHtml(dive.dive_center_name)}</a>` : escapeHtml(dive.dive_center_name)}</p>`
+        : "";
     return `
         <div class="modal-content">
             <div class="modal-title">
                 <h2>${escapeHtml(dive.site_name)}</h2>
                 <p>${escapeHtml(dive.date)} | ${escapeHtml(dive.username)} | ${escapeHtml(dive.country_or_area || "")}</p>
+                ${center}
             </div>
             ${photos}
             <div class="modal-stats">
@@ -448,7 +479,10 @@ function initDiveForm() {
 
     const siteInput = form.querySelector("[data-site-input]");
     const siteResults = form.querySelector("[data-site-results]");
+    const centerInput = form.querySelector("[data-center-input]");
+    const centerResults = form.querySelector("[data-center-results]");
     const siteId = document.getElementById("diveSiteId");
+    const centerId = document.getElementById("diveCenterId");
     const country = document.getElementById("country");
     const latitude = document.getElementById("latitude");
     const longitude = document.getElementById("longitude");
@@ -544,6 +578,20 @@ function initDiveForm() {
         }, 160),
     );
 
+    centerInput.addEventListener(
+        "input",
+        debounce(async () => {
+            centerId.value = "";
+            const query = centerInput.value.trim();
+            if (query.length < 2) {
+                hideMenu(centerResults);
+                return;
+            }
+            const centers = await fetchJson(`/api/dive-centers?q=${encodeURIComponent(query)}`);
+            renderCenterResults(centers);
+        }, 160),
+    );
+
     country.addEventListener(
         "input",
         debounce(() => loadSpeciesSuggestions({ country: country.value.trim() }), 260),
@@ -577,6 +625,28 @@ function initDiveForm() {
         }
         hideMenu(siteResults);
         loadSpeciesSuggestions({ siteId: site.id, country: site.country_or_area });
+    }
+
+    function renderCenterResults(centers) {
+        if (!centers.length) {
+            hideMenu(centerResults);
+            return;
+        }
+        centerResults.innerHTML = "";
+        centers.forEach((center) => {
+            const button = document.createElement("button");
+            button.type = "button";
+            button.innerHTML = `<strong>${escapeHtml(center.name)}</strong><small>${escapeHtml(center.location || center.physical_address || "")}</small>`;
+            button.addEventListener("click", () => selectCenter(center));
+            centerResults.appendChild(button);
+        });
+        centerResults.hidden = false;
+    }
+
+    function selectCenter(center) {
+        centerInput.value = center.name;
+        centerId.value = center.id;
+        hideMenu(centerResults);
     }
 
     initSpeciesPicker(form, () => country.value.trim());
@@ -951,12 +1021,62 @@ function initProfileMap() {
     }
 }
 
+async function initCenterMaps() {
+    const maps = Array.from(document.querySelectorAll("[data-center-map]"));
+    for (const map of maps) {
+        if (map.dataset.staticMap) {
+            continue;
+        }
+        const query = (map.dataset.geocodeLocation || "").trim();
+        if (!query) {
+            continue;
+        }
+        const cacheKey = `pelagia:center-geocode:${query.toLowerCase()}`;
+        let coords = null;
+        try {
+            coords = JSON.parse(window.localStorage.getItem(cacheKey) || "null");
+        } catch (_error) {
+            coords = null;
+        }
+        if (!coords) {
+            try {
+                const params = new URLSearchParams({ q: query, format: "jsonv2", limit: "1" });
+                const response = await fetch(`https://nominatim.openstreetmap.org/search?${params.toString()}`);
+                if (!response.ok) {
+                    throw new Error(`Geocode failed: ${response.status}`);
+                }
+                const results = await response.json();
+                const first = Array.isArray(results) ? results[0] : null;
+                if (first) {
+                    coords = { latitude: Number(first.lat), longitude: Number(first.lon) };
+                    window.localStorage.setItem(cacheKey, JSON.stringify(coords));
+                }
+            } catch (_error) {
+                coords = null;
+            }
+        }
+        if (coords && isValidLatLng(coords.latitude, coords.longitude)) {
+            map.dataset.staticMap = "true";
+            map.dataset.mapLat = coords.latitude;
+            map.dataset.mapLng = coords.longitude;
+            map.dataset.mapZoom = "11";
+            map.classList.remove("map-pending");
+            const label = map.querySelector(".coordinate-label");
+            if (label) {
+                label.textContent = `${Number(coords.latitude).toFixed(3)}, ${Number(coords.longitude).toFixed(3)}`;
+            }
+            renderMiniTileMap(map);
+        }
+    }
+}
+
 document.addEventListener("DOMContentLoaded", () => {
     initAuthToggle();
     initDiveInteractions();
     initDiveForm();
     initStaticMaps(document);
     initProfileMap();
+    initCenterMaps();
 });
 
 window.openDive = openDive;

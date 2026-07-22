@@ -4,6 +4,7 @@
   "secret_key": "change-this-local-dev-secret",
   "data_sources": {
     "dive_sites_csv": "data/global_dive_sites_master.csv",
-    "species_csv": "data/marine_species_top50_country_or_area_common_name.csv"
+    "species_csv": "data/marine_species_top50_country_or_area_common_name.csv",
+    "dive_centers_csv": "data/padi_dive_centers.csv"
   }
 }

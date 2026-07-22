@@ -17,6 +17,16 @@
     <div class="dive-card-title">
         <h2>{{ dive.site_name }}</h2>
         <p>{% if dive.country_or_area %}{{ dive.country_or_area }}{% else %}Coordinates pending{% endif %}</p>
+        {% set center_name = dive.linked_dive_center_name or dive.dive_center_name %}
+        {% if center_name %}
+            <p class="dive-center-line">
+                {% if dive.dive_center_id %}
+                    <a href="{{ url_for('dive_center_profile', center_id=dive.dive_center_id) }}">{{ center_name }}</a>
+                {% else %}
+                    {{ center_name }}
+                {% endif %}
+            </p>
+        {% endif %}
     </div>
 
     <div class="activity-media {{ 'no-photos' if not dive.photos else '' }}">
