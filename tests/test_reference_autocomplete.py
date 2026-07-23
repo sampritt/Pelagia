@@ -124,10 +124,13 @@ Kelp House,2 Harbor Way,Alaska,https://kelp.example.test
             self.assertIn(b'<option value="shore dive" >Shore Dive</option>', new_response.data)
             self.assertIn(b'<option value="none" selected>None</option>', new_response.data)
             self.assertIn(b"Current type", new_response.data)
+            self.assertIn(b'<option value="slack" >Slack</option>', new_response.data)
+            self.assertIn(b'<option value="tidal" >Tidal</option>', new_response.data)
+            self.assertIn(b'<option value="rip" >Rip</option>', new_response.data)
+            self.assertIn(b'<option value="vertical" >Vertical</option>', new_response.data)
             self.assertIn(b"Current strength", new_response.data)
             self.assertIn(b'<input name="current_strength" type="hidden" value="none"', new_response.data)
             self.assertIn(b"Very Strong", new_response.data)
-            self.assertNotIn(b"Slack", new_response.data)
 
             client.post(
                 "/dive/new",
@@ -148,7 +151,7 @@ Kelp House,2 Harbor Way,Alaska,https://kelp.example.test
                     "air_temp_degrees": "83",
                     "water_temp_degrees": "74",
                     "dive_type": "shore dive",
-                    "current": "drift",
+                    "current": "tidal",
                     "current_strength": "moderate",
                     "notes": "Clear water.",
                     "species_json": json.dumps(["Coral", "Reef Fish"]),
@@ -160,7 +163,7 @@ Kelp House,2 Harbor Way,Alaska,https://kelp.example.test
             self.assertEqual(logged["air_temp_degrees"], 83)
             self.assertEqual(logged["water_temp_degrees"], 74)
             self.assertEqual(logged["dive_type"], "shore dive")
-            self.assertEqual(logged["current"], "drift")
+            self.assertEqual(logged["current"], "tidal")
             self.assertEqual(logged["current_strength"], "moderate")
 
             edit_response = client.get(f"/dive/{dive_id}/edit")
@@ -198,7 +201,7 @@ Kelp House,2 Harbor Way,Alaska,https://kelp.example.test
                     "air_temp_degrees": "88",
                     "water_temp_degrees": "81",
                     "dive_type": "wreck",
-                    "current": "surge",
+                    "current": "rip",
                     "current_strength": "very strong",
                     "notes": "Updated notes.",
                     "species_json": json.dumps(["Turtle"]),
@@ -214,7 +217,7 @@ Kelp House,2 Harbor Way,Alaska,https://kelp.example.test
             self.assertEqual(updated["air_temp_degrees"], 88)
             self.assertEqual(updated["water_temp_degrees"], 81)
             self.assertEqual(updated["dive_type"], "wreck")
-            self.assertEqual(updated["current"], "surge")
+            self.assertEqual(updated["current"], "rip")
             self.assertEqual(updated["current_strength"], "very strong")
             self.assertEqual(updated["species"], ["Turtle"])
 

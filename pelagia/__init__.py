@@ -29,7 +29,7 @@ from .importer import import_reference_data
 
 EXPOSURES = ("swimsuit", "shorty", "2mm", "3mm", "4mm", "5mm", "6mm", "7mm", "dry suit")
 DIVE_TYPES = ("open water", "shore dive", "reef", "wall", "deep", "night", "wreck", "cavern", "cave")
-CURRENT_TYPES = ("none", "current", "drift", "surge")
+CURRENT_TYPES = ("none", "slack", "tidal", "surge", "drift", "rip", "vertical")
 CURRENT_STRENGTHS = ("none", "light", "moderate", "strong", "very strong")
 DIVE_TYPE_LABELS = {value: value.title() for value in DIVE_TYPES}
 CURRENT_TYPE_LABELS = {value: value.title() for value in CURRENT_TYPES}
