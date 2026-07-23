@@ -898,14 +898,25 @@ textarea:focus {
     font-size: 0.88rem;
 }
 
-.dive-center-line a,
+.dive-location-line a,
 .center-info-grid a {
     color: var(--accent);
 }
 
-.dive-center-line a:hover,
+.dive-location-line a:hover,
 .center-info-grid a:hover {
     text-decoration: underline;
+}
+
+.dive-location-line {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0;
+}
+
+.metadata-divider {
+    white-space: pre;
 }
 
 .activity-media {
@@ -920,18 +931,29 @@ textarea:focus {
 }
 
 .photo-strip {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: 100%;
+    gap: 8px;
     overflow: hidden;
     min-height: 198px;
+    max-height: 198px;
+    min-width: 0;
     border: 1px solid var(--line);
     border-radius: 8px;
     background: #0b1219;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scroll-snap-type: x mandatory;
+    scrollbar-color: var(--accent-line) transparent;
 }
 
 .photo-strip img {
     width: 100%;
     height: 100%;
-    min-height: 96px;
+    min-height: 0;
     object-fit: cover;
+    scroll-snap-align: start;
 }
 
 .dive-card-grid {

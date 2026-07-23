@@ -23,24 +23,26 @@
 
     <div class="dive-card-title">
         <h2>{{ dive.site_name }}</h2>
-        <p>{% if dive.country_or_area %}{{ dive.country_or_area }}{% else %}Coordinates pending{% endif %}</p>
         {% set center_name = dive.linked_dive_center_name or dive.dive_center_name %}
-        {% if center_name %}
-            <p class="dive-center-line">
-                with
+        <p class="dive-location-line">
+            <span>{% if dive.country_or_area %}{{ dive.country_or_area }}{% else %}Coordinates pending{% endif %}</span>
+            {% if center_name %}
+                <span class="metadata-divider" aria-hidden="true"> - </span>
                 {% if dive.dive_center_id %}
                     <a href="{{ url_for('dive_center_profile', center_id=dive.dive_center_id) }}">{{ center_name }}</a>
                 {% else %}
-                    {{ center_name }}
+                    <span>{{ center_name }}</span>
                 {% endif %}
-            </p>
-        {% endif %}
+            {% endif %}
+        </p>
     </div>
 
     <div class="activity-media {{ 'no-photos' if not dive.photos else '' }}">
         {% if dive.photos %}
-            <div class="photo-strip">
-                <img src="{{ url_for('static', filename=dive.photos[0].filename) }}" alt="">
+            <div class="photo-strip" aria-label="Dive photos">
+                {% for photo in dive.photos %}
+                    <img src="{{ url_for('static', filename=photo.filename) }}" alt="">
+                {% endfor %}
             </div>
         {% endif %}
         <div class="mini-map {{ 'map-pending' if not has_coords else '' }}" {% if has_coords %}data-static-map data-map-lat="{{ dive.latitude }}" data-map-lng="{{ dive.longitude }}" data-map-zoom="10"{% endif %}>

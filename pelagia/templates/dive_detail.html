@@ -38,16 +38,15 @@
 
     <div class="dive-detail-title">
         <h1>{{ dive.site_name }}</h1>
-        <p>
-            {% if dive.country_or_area %}{{ dive.country_or_area }}{% else %}Coordinates pending{% endif %}
+        <p class="dive-location-line">
+            <span>{% if dive.country_or_area %}{{ dive.country_or_area }}{% else %}Coordinates pending{% endif %}</span>
             {% if center_name %}
-                <span>- with
-                    {% if dive.dive_center_id %}
-                        <a href="{{ url_for('dive_center_profile', center_id=dive.dive_center_id) }}">{{ center_name }}</a>
-                    {% else %}
-                        {{ center_name }}
-                    {% endif %}
-                </span>
+                <span class="metadata-divider" aria-hidden="true"> - </span>
+                {% if dive.dive_center_id %}
+                    <a href="{{ url_for('dive_center_profile', center_id=dive.dive_center_id) }}">{{ center_name }}</a>
+                {% else %}
+                    <span>{{ center_name }}</span>
+                {% endif %}
             {% endif %}
         </p>
     </div>

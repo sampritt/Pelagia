@@ -244,8 +244,9 @@ Kelp House,2 Harbor Way,Alaska,https://kelp.example.test
             self.assertIn(b"detail-headline-stats", detail_response.data)
             self.assertIn(b"detail-lower-grid", detail_response.data)
             self.assertIn(b"Alaska", detail_response.data)
-            self.assertIn(b"<span>- with", detail_response.data)
+            self.assertIn(b'<span class="metadata-divider" aria-hidden="true"> - </span>', detail_response.data)
             self.assertIn(b"Kelp House", detail_response.data)
+            self.assertNotIn(b"- with", detail_response.data)
             self.assertNotIn(b"<h2>Conditions</h2>", detail_response.data)
 
             edit_response = client.get(f"/dive/{dive_id}/edit")
@@ -364,6 +365,16 @@ Kelp House,2 Harbor Way,Alaska,https://kelp.example.test
             self.assertIn(b"detail-photo-carousel", detail_response.data)
             self.assertEqual(detail_response.data.count(b"class=\"detail-photo-slide\""), 3)
             self.assertNotIn(b"detail-photo-grid", detail_response.data)
+
+            home_response = client.get("/home")
+            self.assertEqual(home_response.status_code, 200)
+            self.assertIn(b'class="photo-strip" aria-label="Dive photos"', home_response.data)
+            self.assertEqual(home_response.data.count(b"uploads/dives/"), 3)
+
+            profile_response = client.get("/you")
+            self.assertEqual(profile_response.status_code, 200)
+            self.assertIn(b'class="photo-strip" aria-label="Dive photos"', profile_response.data)
+            self.assertEqual(profile_response.data.count(b"uploads/dives/"), 3)
 
             edit_response = client.get(f"/dive/{dive_id}/edit")
             self.assertEqual(edit_response.status_code, 200)
