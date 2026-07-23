@@ -31,8 +31,8 @@ def init_db():
     _ensure_column(db, "dives", "visibility_ft", "INTEGER NOT NULL DEFAULT 0")
     _ensure_column(db, "dives", "air_temp_degrees", "INTEGER NOT NULL DEFAULT 0")
     _ensure_column(db, "dives", "water_temp_degrees", "INTEGER NOT NULL DEFAULT 0")
-    _ensure_column(db, "dives", "dive_type", "TEXT NOT NULL DEFAULT 'reef'")
-    _ensure_column(db, "dives", "current", "TEXT NOT NULL DEFAULT 'slack'")
+    _ensure_column(db, "dives", "dive_type", "TEXT NOT NULL DEFAULT 'open water'")
+    _ensure_column(db, "dives", "current", "TEXT NOT NULL DEFAULT 'none'")
     _ensure_column(db, "dives", "is_deleted", "INTEGER NOT NULL DEFAULT 0")
     db.commit()
 

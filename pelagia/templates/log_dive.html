@@ -134,7 +134,7 @@
                     Dive type
                     <select name="dive_type">
                         {% for dive_type in dive_types %}
-                            <option value="{{ dive_type }}" {{ 'selected' if dive_type == (dive.dive_type if is_edit else 'reef') else '' }}>{{ dive_type }}</option>
+                            <option value="{{ dive_type }}" {{ 'selected' if dive_type == (dive.dive_type if is_edit else 'open water') else '' }}>{{ dive_type_labels[dive_type] }}</option>
                         {% endfor %}
                     </select>
                 </label>
@@ -142,7 +142,7 @@
                     Current
                     <select name="current">
                         {% for current in currents %}
-                            <option value="{{ current }}" {{ 'selected' if current == (dive.current if is_edit else 'slack') else '' }}>{{ current }}</option>
+                            <option value="{{ current }}" {{ 'selected' if current == (dive.current if is_edit else 'none') else '' }}>{{ current_labels[current] }}</option>
                         {% endfor %}
                     </select>
                 </label>

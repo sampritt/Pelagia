@@ -28,8 +28,10 @@ from .importer import import_reference_data
 
 
 EXPOSURES = ("swimsuit", "shorty", "2mm", "3mm", "4mm", "5mm", "6mm", "7mm", "dry suit")
-DIVE_TYPES = ("reef", "wall", "deep", "night", "wreck", "cavern", "cave")
-CURRENTS = ("slack", "current", "drift", "surge")
+DIVE_TYPES = ("open water", "shore dive", "reef", "wall", "deep", "night", "wreck", "cavern", "cave")
+CURRENTS = ("none", "slack", "current", "drift", "surge")
+DIVE_TYPE_LABELS = {value: value.title() for value in DIVE_TYPES}
+CURRENT_LABELS = {value: value.title() for value in CURRENTS}
 ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "gif", "webp"}
 UPLOAD_IMAGE_MAX_DIMENSION = 1600
 UPLOAD_IMAGE_JPEG_QUALITY = 82
@@ -117,6 +119,8 @@ def current_user():
 
 def register_routes(app):
     app.jinja_env.globals["current_user"] = current_user
+    app.jinja_env.globals["dive_type_label"] = dive_type_label
+    app.jinja_env.globals["current_label"] = current_label
 
     @app.route("/")
     def landing():
@@ -186,7 +190,9 @@ def register_routes(app):
             "log_dive.html",
             exposures=EXPOSURES,
             dive_types=DIVE_TYPES,
+            dive_type_labels=DIVE_TYPE_LABELS,
             currents=CURRENTS,
+            current_labels=CURRENT_LABELS,
             today=date.today().isoformat(),
             dive=None,
             is_edit=False,
@@ -207,7 +213,9 @@ def register_routes(app):
             "log_dive.html",
             exposures=EXPOSURES,
             dive_types=DIVE_TYPES,
+            dive_type_labels=DIVE_TYPE_LABELS,
             currents=CURRENTS,
+            current_labels=CURRENT_LABELS,
             today=date.today().isoformat(),
             dive=dive,
             is_edit=True,
@@ -554,8 +562,8 @@ def dive_values_from_request(form_request):
     visibility = clamp_int(form.get("visibility_ft"), 0, 100)
     air_temp = clamp_int(form.get("air_temp_degrees"), 0, 100)
     water_temp = clamp_int(form.get("water_temp_degrees"), 0, 100)
-    dive_type = form.get("dive_type") if form.get("dive_type") in DIVE_TYPES else "reef"
-    current = form.get("current") if form.get("current") in CURRENTS else "slack"
+    dive_type = form.get("dive_type") if form.get("dive_type") in DIVE_TYPES else "open water"
+    current = form.get("current") if form.get("current") in CURRENTS else "none"
     date_value = form.get("date") or date.today().isoformat()
     site_name = form.get("site_name", "").strip() or "Unlisted site"
     country = form.get("country_or_area", "").strip()
@@ -935,6 +943,14 @@ def maybe_int(value):
         return int(value)
     except (TypeError, ValueError):
         return None
+
+
+def dive_type_label(value):
+    return DIVE_TYPE_LABELS.get(value, DIVE_TYPE_LABELS["open water"])
+
+
+def current_label(value):
+    return CURRENT_LABELS.get(value, CURRENT_LABELS["none"])
 
 
 def _safe_next_url(value):

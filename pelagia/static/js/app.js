@@ -8,6 +8,13 @@ const escapeHtml = (value) =>
         .replaceAll('"', "&quot;")
         .replaceAll("'", "&#039;");
 
+const titleCaseChoice = (value) =>
+    String(value || "")
+        .split(/\s+/)
+        .filter(Boolean)
+        .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+        .join(" ");
+
 const coordinateToPoint = (lat, lon) => ({
     x: clamp(((Number(lon) + 180) / 360) * 100, 0, 100),
     y: clamp(((90 - Number(lat)) / 180) * 100, 0, 100),
@@ -413,8 +420,8 @@ function renderDiveModal(dive) {
     const center = dive.dive_center_name
         ? `<p class="modal-center">with ${dive.dive_center_id ? `<a href="/dive-centers/${escapeHtml(dive.dive_center_id)}">${escapeHtml(dive.dive_center_name)}</a>` : escapeHtml(dive.dive_center_name)}</p>`
         : "";
-    const diveType = dive.dive_type || "reef";
-    const current = dive.current || "slack";
+    const diveType = titleCaseChoice(dive.dive_type || "open water");
+    const current = titleCaseChoice(dive.current || "none");
     const detailRows = [
         ["Weight", `${dive.weight_lbs} lb`],
         ["Exposure", dive.exposure],

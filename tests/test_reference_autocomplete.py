@@ -119,6 +119,11 @@ Kelp House,2 Harbor Way,Alaska,https://kelp.example.test
             client = app.test_client()
             self.signup(client)
 
+            new_response = client.get("/dive/new")
+            self.assertIn(b'<option value="open water" selected>Open Water</option>', new_response.data)
+            self.assertIn(b'<option value="shore dive" >Shore Dive</option>', new_response.data)
+            self.assertIn(b'<option value="none" selected>None</option>', new_response.data)
+
             client.post(
                 "/dive/new",
                 data={
@@ -137,8 +142,8 @@ Kelp House,2 Harbor Way,Alaska,https://kelp.example.test
                     "visibility_ft": "55",
                     "air_temp_degrees": "83",
                     "water_temp_degrees": "74",
-                    "dive_type": "wall",
-                    "current": "drift",
+                    "dive_type": "shore dive",
+                    "current": "none",
                     "notes": "Clear water.",
                     "species_json": json.dumps(["Coral", "Reef Fish"]),
                 },
@@ -148,8 +153,8 @@ Kelp House,2 Harbor Way,Alaska,https://kelp.example.test
             self.assertEqual(logged["visibility_ft"], 55)
             self.assertEqual(logged["air_temp_degrees"], 83)
             self.assertEqual(logged["water_temp_degrees"], 74)
-            self.assertEqual(logged["dive_type"], "wall")
-            self.assertEqual(logged["current"], "drift")
+            self.assertEqual(logged["dive_type"], "shore dive")
+            self.assertEqual(logged["current"], "none")
 
             edit_response = client.get(f"/dive/{dive_id}/edit")
             self.assertEqual(edit_response.status_code, 200)
