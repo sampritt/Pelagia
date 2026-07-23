@@ -739,6 +739,7 @@ function suggestedDuration(depthFt) {
 }
 
 function initCurrentStrengthSlider(form) {
+    const currentType = form.querySelector("[data-current-type-select]");
     const range = form.querySelector("[data-current-strength-range]");
     const hidden = form.querySelector("[data-current-strength-value]");
     const output = document.getElementById("currentStrengthOutput");
@@ -754,10 +755,24 @@ function initCurrentStrengthSlider(form) {
         hidden.value = strength.value;
         output.textContent = strength.label;
     };
+    const setAvailability = () => {
+        const isNone = currentType?.value === "none";
+        if (isNone) {
+            setStrength(0);
+        }
+        range.disabled = isNone;
+        range.closest(".current-strength-control")?.classList.toggle("is-disabled", isNone);
+    };
 
     const initialIndex = indexForValue(hidden.value);
     setStrength(initialIndex >= 0 ? initialIndex : range.value);
-    range.addEventListener("input", () => setStrength(range.value));
+    setAvailability();
+    currentType?.addEventListener("change", setAvailability);
+    range.addEventListener("input", () => {
+        if (!range.disabled) {
+            setStrength(range.value);
+        }
+    });
 }
 
 function hideMenu(menu) {

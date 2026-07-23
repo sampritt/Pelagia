@@ -1388,6 +1388,20 @@ textarea:focus {
     grid-template-columns: repeat(5, minmax(0, 1fr));
 }
 
+.current-strength-control.is-disabled input[type="range"] {
+    accent-color: var(--muted);
+    cursor: not-allowed;
+    opacity: 0.42;
+}
+
+.current-strength-control.is-disabled .current-strength-ticks {
+    opacity: 0.48;
+}
+
+.current-strength-control.is-disabled output {
+    color: var(--muted);
+}
+
 input[type="range"] {
     width: 100%;
     min-width: 0;

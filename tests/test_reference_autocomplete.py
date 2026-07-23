@@ -129,6 +129,9 @@ Kelp House,2 Harbor Way,Alaska,https://kelp.example.test
             self.assertIn(b'<option value="rip" >Rip</option>', new_response.data)
             self.assertIn(b'<option value="vertical" >Vertical</option>', new_response.data)
             self.assertIn(b"Current strength", new_response.data)
+            self.assertIn(b"current-strength-control is-disabled", new_response.data)
+            self.assertIn(b"data-current-type-select", new_response.data)
+            self.assertIn(b"data-current-strength-range disabled", new_response.data)
             self.assertIn(b'<input name="current_strength" type="hidden" value="none"', new_response.data)
             self.assertIn(b"Very Strong", new_response.data)
 
@@ -151,7 +154,7 @@ Kelp House,2 Harbor Way,Alaska,https://kelp.example.test
                     "air_temp_degrees": "83",
                     "water_temp_degrees": "74",
                     "dive_type": "shore dive",
-                    "current": "tidal",
+                    "current": "none",
                     "current_strength": "moderate",
                     "notes": "Clear water.",
                     "species_json": json.dumps(["Coral", "Reef Fish"]),
@@ -163,8 +166,8 @@ Kelp House,2 Harbor Way,Alaska,https://kelp.example.test
             self.assertEqual(logged["air_temp_degrees"], 83)
             self.assertEqual(logged["water_temp_degrees"], 74)
             self.assertEqual(logged["dive_type"], "shore dive")
-            self.assertEqual(logged["current"], "tidal")
-            self.assertEqual(logged["current_strength"], "moderate")
+            self.assertEqual(logged["current"], "none")
+            self.assertEqual(logged["current_strength"], "none")
 
             edit_response = client.get(f"/dive/{dive_id}/edit")
             self.assertEqual(edit_response.status_code, 200)

@@ -578,6 +578,8 @@ def dive_values_from_request(form_request):
     dive_type = form.get("dive_type") if form.get("dive_type") in DIVE_TYPES else "open water"
     current = form.get("current") if form.get("current") in CURRENT_TYPES else "none"
     current_strength = form.get("current_strength") if form.get("current_strength") in CURRENT_STRENGTHS else "none"
+    if current == "none":
+        current_strength = "none"
     date_value = form.get("date") or date.today().isoformat()
     site_name = form.get("site_name", "").strip() or "Unlisted site"
     country = form.get("country_or_area", "").strip()

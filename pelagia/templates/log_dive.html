@@ -138,21 +138,22 @@
                         {% endfor %}
                     </select>
                 </label>
+                {% set selected_current_type = dive.current if is_edit and dive.current in current_types else 'none' %}
                 <label>
                     Current type
-                    <select name="current">
+                    <select name="current" data-current-type-select>
                         {% for current in current_types %}
-                            <option value="{{ current }}" {{ 'selected' if current == (dive.current if is_edit else 'none') else '' }}>{{ current_type_labels[current] }}</option>
+                            <option value="{{ current }}" {{ 'selected' if current == selected_current_type else '' }}>{{ current_type_labels[current] }}</option>
                         {% endfor %}
                     </select>
                 </label>
-                {% set selected_current_strength = dive.current_strength if is_edit and dive.current_strength in current_strengths else 'none' %}
-                <div class="range-control discrete-range-control current-strength-control">
+                {% set selected_current_strength = dive.current_strength if selected_current_type != 'none' and is_edit and dive.current_strength in current_strengths else 'none' %}
+                <div class="range-control discrete-range-control current-strength-control {{ 'is-disabled' if selected_current_type == 'none' else '' }}">
                     <div>
                         <label for="currentStrengthRange">Current strength</label>
                         <output id="currentStrengthOutput">{{ current_strength_labels[selected_current_strength] }}</output>
                     </div>
-                    <input id="currentStrengthRange" type="range" min="0" max="4" step="1" value="{{ current_strength_indexes[selected_current_strength] }}" data-current-strength-range>
+                    <input id="currentStrengthRange" type="range" min="0" max="4" step="1" value="{{ current_strength_indexes[selected_current_strength] }}" data-current-strength-range {{ 'disabled' if selected_current_type == 'none' else '' }}>
                     <input name="current_strength" type="hidden" value="{{ selected_current_strength }}" data-current-strength-value>
                     <div class="range-ticks current-strength-ticks" aria-hidden="true">
                         {% for strength in current_strengths %}
