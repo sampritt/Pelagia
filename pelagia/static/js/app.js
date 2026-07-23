@@ -413,12 +413,26 @@ function renderDiveModal(dive) {
     const center = dive.dive_center_name
         ? `<p class="modal-center">with ${dive.dive_center_id ? `<a href="/dive-centers/${escapeHtml(dive.dive_center_id)}">${escapeHtml(dive.dive_center_name)}</a>` : escapeHtml(dive.dive_center_name)}</p>`
         : "";
+    const nextUrl = `${window.location.pathname}${window.location.search}`;
+    const editButton = dive.is_owner
+        ? `
+            <a class="icon-button modal-edit" href="/dive/${encodeURIComponent(dive.id)}/edit?next=${encodeURIComponent(nextUrl)}" aria-label="Edit dive" title="Edit dive">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M12 20h9"></path>
+                    <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"></path>
+                </svg>
+            </a>
+        `
+        : "";
     return `
         <div class="modal-content">
-            <div class="modal-title">
-                <h2>${escapeHtml(dive.site_name)}</h2>
-                <p>${escapeHtml(dive.date)} | ${escapeHtml(dive.username)} | ${escapeHtml(dive.country_or_area || "")}</p>
-                ${center}
+            <div class="modal-title-row">
+                <div class="modal-title">
+                    <h2>${escapeHtml(dive.site_name)}</h2>
+                    <p>${escapeHtml(dive.date)} | ${escapeHtml(dive.username)} | ${escapeHtml(dive.country_or_area || "")}</p>
+                    ${center}
+                </div>
+                ${editButton}
             </div>
             ${photos}
             <div class="modal-stats">
@@ -426,6 +440,11 @@ function renderDiveModal(dive) {
                 <div><span>${escapeHtml(dive.duration_min)}</span><small>minutes</small></div>
                 <div><span>${escapeHtml(dive.weight_lbs)}</span><small>pounds</small></div>
                 <div><span>${escapeHtml(dive.exposure)}</span><small>exposure</small></div>
+                <div><span>${escapeHtml(dive.visibility_ft)}</span><small>visibility ft</small></div>
+                <div><span>${escapeHtml(dive.air_temp_degrees)}</span><small>air degrees</small></div>
+                <div><span>${escapeHtml(dive.water_temp_degrees)}</span><small>water degrees</small></div>
+                <div><span>${escapeHtml(dive.dive_type)}</span><small>dive type</small></div>
+                <div><span>${escapeHtml(dive.current)}</span><small>current</small></div>
             </div>
             <div class="mini-map ${dive.latitude === null || dive.longitude === null ? "map-pending" : ""}" ${dive.latitude === null || dive.longitude === null ? "" : `data-static-map data-map-lat="${escapeHtml(dive.latitude)}" data-map-lng="${escapeHtml(dive.longitude)}" data-map-zoom="10"`}>
                 <span class="map-pin"></span>
@@ -515,6 +534,33 @@ function initDiveForm() {
             max: 20,
             step: 1,
             unit: "lb",
+        },
+        visibility: {
+            range: form.querySelector("[data-range='visibility']"),
+            number: form.querySelector("[data-number='visibility']"),
+            output: document.getElementById("visibilityOutput"),
+            min: 0,
+            max: 100,
+            step: 5,
+            unit: "ft",
+        },
+        airTemp: {
+            range: form.querySelector("[data-range='airTemp']"),
+            number: form.querySelector("[data-number='airTemp']"),
+            output: document.getElementById("airTempOutput"),
+            min: 0,
+            max: 100,
+            step: 1,
+            unit: "degrees",
+        },
+        waterTemp: {
+            range: form.querySelector("[data-range='waterTemp']"),
+            number: form.querySelector("[data-number='waterTemp']"),
+            output: document.getElementById("waterTempOutput"),
+            min: 0,
+            max: 100,
+            step: 1,
+            unit: "degrees",
         },
     };
 
@@ -669,7 +715,13 @@ function initSpeciesPicker(form, getCountry) {
     const suggestions = form.querySelector("[data-species-suggestions]");
     const tags = form.querySelector("[data-species-tags]");
     const hidden = document.getElementById("speciesJson");
-    const selected = [];
+    let selected = [];
+    try {
+        const preloaded = JSON.parse(hidden.value || "[]");
+        selected = Array.isArray(preloaded) ? preloaded.map((name) => String(name).trim()).filter(Boolean) : [];
+    } catch (_error) {
+        selected = [];
+    }
 
     window.loadSpeciesSuggestions = async ({ siteId, country }) => {
         const params = new URLSearchParams();
@@ -759,6 +811,12 @@ function initSpeciesPicker(form, getCountry) {
         });
         hidden.value = JSON.stringify(selected);
     }
+
+    renderTags();
+    window.loadSpeciesSuggestions({
+        siteId: document.getElementById("diveSiteId")?.value,
+        country: getCountry(),
+    });
 }
 
 function initPhotoPreview(form) {

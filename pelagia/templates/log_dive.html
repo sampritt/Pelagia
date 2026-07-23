@@ -4,11 +4,25 @@
 {% block content %}
 <section class="log-layout">
     <form class="dive-form keyboard-flow" method="post" enctype="multipart/form-data" data-dive-form>
+        <input type="hidden" name="next" value="{{ next_url }}">
         <div class="section-head">
             <div>
-                <h1>New dive</h1>
+                <h1>{{ 'Edit dive' if is_edit else 'New dive' }}</h1>
             </div>
-            <button class="primary-button compact" type="submit">Save dive</button>
+            <div class="form-actions">
+                {% if is_edit %}
+                    <button class="icon-button danger-button" type="submit" formmethod="post" formaction="{{ url_for('delete_dive', dive_id=dive.id) }}" formnovalidate aria-label="Delete dive" title="Delete dive">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M3 6h18"></path>
+                            <path d="M8 6V4h8v2"></path>
+                            <path d="M19 6l-1 14H6L5 6"></path>
+                            <path d="M10 11v5"></path>
+                            <path d="M14 11v5"></path>
+                        </svg>
+                    </button>
+                {% endif %}
+                <button class="primary-button compact" type="submit">{{ 'Save changes' if is_edit else 'Save dive' }}</button>
+            </div>
         </div>
 
         <div class="form-section">
@@ -18,31 +32,31 @@
             <div class="form-grid">
                 <label>
                     Date
-                    <input type="date" name="date" value="{{ today }}" required>
+                    <input type="date" name="date" value="{{ dive.date if is_edit else today }}" required>
                 </label>
                 <label class="autocomplete-field wide">
                     Dive site
-                    <input name="site_name" id="siteName" type="text" autocomplete="off" data-site-input required>
-                    <input name="dive_site_id" id="diveSiteId" type="hidden">
+                    <input name="site_name" id="siteName" type="text" autocomplete="off" data-site-input value="{{ dive.site_name if is_edit else '' }}" required>
+                    <input name="dive_site_id" id="diveSiteId" type="hidden" value="{{ dive.dive_site_id if is_edit and dive.dive_site_id else '' }}">
                     <div class="autocomplete-menu" data-site-results hidden></div>
                 </label>
                 <label class="autocomplete-field wide">
                     Dive center
-                    <input name="dive_center_name" id="diveCenterName" type="text" autocomplete="off" data-center-input>
-                    <input name="dive_center_id" id="diveCenterId" type="hidden">
+                    <input name="dive_center_name" id="diveCenterName" type="text" autocomplete="off" data-center-input value="{{ (dive.linked_dive_center_name or dive.dive_center_name) if is_edit else '' }}">
+                    <input name="dive_center_id" id="diveCenterId" type="hidden" value="{{ dive.dive_center_id if is_edit and dive.dive_center_id else '' }}">
                     <div class="autocomplete-menu" data-center-results hidden></div>
                 </label>
                 <label>
                     Country
-                    <input name="country_or_area" id="country" data-country-input>
+                    <input name="country_or_area" id="country" data-country-input value="{{ dive.country_or_area if is_edit and dive.country_or_area else '' }}">
                 </label>
                 <label>
                     Latitude
-                    <input name="latitude" id="latitude" inputmode="decimal">
+                    <input name="latitude" id="latitude" inputmode="decimal" value="{{ dive.latitude if is_edit and dive.latitude is not none else '' }}">
                 </label>
                 <label>
                     Longitude
-                    <input name="longitude" id="longitude" inputmode="decimal">
+                    <input name="longitude" id="longitude" inputmode="decimal" value="{{ dive.longitude if is_edit and dive.longitude is not none else '' }}">
                 </label>
             </div>
         </div>
@@ -55,32 +69,80 @@
                 <div class="range-control">
                     <div>
                         <label for="depthFt">Depth</label>
-                        <output id="depthOutput">40 ft</output>
+                        <output id="depthOutput">{{ dive.depth_ft if is_edit else 40 }} ft</output>
                     </div>
-                    <input type="range" min="0" max="140" step="5" value="40" data-range="depth">
-                    <input id="depthFt" name="depth_ft" type="number" min="0" max="140" step="any" value="40" data-number="depth">
+                    <input type="range" min="0" max="140" step="5" value="{{ dive.depth_ft if is_edit else 40 }}" data-range="depth">
+                    <input id="depthFt" name="depth_ft" type="number" min="0" max="140" step="any" value="{{ dive.depth_ft if is_edit else 40 }}" data-number="depth">
                 </div>
                 <div class="range-control">
                     <div>
                         <label for="durationMin">Time</label>
-                        <output id="durationOutput">80 min</output>
+                        <output id="durationOutput">{{ dive.duration_min if is_edit else 80 }} min</output>
                     </div>
-                    <input type="range" min="0" max="120" step="5" value="80" data-range="duration">
-                    <input id="durationMin" name="duration_min" type="number" min="0" max="120" step="any" value="80" data-number="duration">
+                    <input type="range" min="0" max="120" step="5" value="{{ dive.duration_min if is_edit else 80 }}" data-range="duration">
+                    <input id="durationMin" name="duration_min" type="number" min="0" max="120" step="any" value="{{ dive.duration_min if is_edit else 80 }}" data-number="duration">
                 </div>
                 <div class="range-control">
                     <div>
                         <label for="weightLbs">Weight</label>
-                        <output id="weightOutput">0 lb</output>
+                        <output id="weightOutput">{{ dive.weight_lbs if is_edit else 0 }} lb</output>
                     </div>
-                    <input type="range" min="0" max="20" step="1" value="0" data-range="weight">
-                    <input id="weightLbs" name="weight_lbs" type="number" min="0" max="20" step="1" value="0" data-number="weight">
+                    <input type="range" min="0" max="20" step="1" value="{{ dive.weight_lbs if is_edit else 0 }}" data-range="weight">
+                    <input id="weightLbs" name="weight_lbs" type="number" min="0" max="20" step="1" value="{{ dive.weight_lbs if is_edit else 0 }}" data-number="weight">
                 </div>
                 <label>
                     Exposure
                     <select name="exposure">
                         {% for exposure in exposures %}
-                            <option value="{{ exposure }}" {{ 'selected' if exposure == '3mm' else '' }}>{{ exposure }}</option>
+                            <option value="{{ exposure }}" {{ 'selected' if exposure == (dive.exposure if is_edit else '3mm') else '' }}>{{ exposure }}</option>
+                        {% endfor %}
+                    </select>
+                </label>
+            </div>
+        </div>
+
+        <div class="form-section">
+            <div class="form-section-title">
+                <h2>Conditions</h2>
+            </div>
+            <div class="control-panel">
+                <div class="range-control">
+                    <div>
+                        <label for="visibilityFt">Visibility</label>
+                        <output id="visibilityOutput">{{ dive.visibility_ft if is_edit and dive.visibility_ft is not none else 60 }} ft</output>
+                    </div>
+                    <input type="range" min="0" max="100" step="5" value="{{ dive.visibility_ft if is_edit and dive.visibility_ft is not none else 60 }}" data-range="visibility">
+                    <input id="visibilityFt" name="visibility_ft" type="number" min="0" max="100" step="any" value="{{ dive.visibility_ft if is_edit and dive.visibility_ft is not none else 60 }}" data-number="visibility">
+                </div>
+                <div class="range-control">
+                    <div>
+                        <label for="airTempDegrees">Air temperature</label>
+                        <output id="airTempOutput">{{ dive.air_temp_degrees if is_edit and dive.air_temp_degrees is not none else 80 }} degrees</output>
+                    </div>
+                    <input type="range" min="0" max="100" step="1" value="{{ dive.air_temp_degrees if is_edit and dive.air_temp_degrees is not none else 80 }}" data-range="airTemp">
+                    <input id="airTempDegrees" name="air_temp_degrees" type="number" min="0" max="100" step="any" value="{{ dive.air_temp_degrees if is_edit and dive.air_temp_degrees is not none else 80 }}" data-number="airTemp">
+                </div>
+                <div class="range-control">
+                    <div>
+                        <label for="waterTempDegrees">Water temperature</label>
+                        <output id="waterTempOutput">{{ dive.water_temp_degrees if is_edit and dive.water_temp_degrees is not none else 78 }} degrees</output>
+                    </div>
+                    <input type="range" min="0" max="100" step="1" value="{{ dive.water_temp_degrees if is_edit and dive.water_temp_degrees is not none else 78 }}" data-range="waterTemp">
+                    <input id="waterTempDegrees" name="water_temp_degrees" type="number" min="0" max="100" step="any" value="{{ dive.water_temp_degrees if is_edit and dive.water_temp_degrees is not none else 78 }}" data-number="waterTemp">
+                </div>
+                <label>
+                    Dive type
+                    <select name="dive_type">
+                        {% for dive_type in dive_types %}
+                            <option value="{{ dive_type }}" {{ 'selected' if dive_type == (dive.dive_type if is_edit else 'reef') else '' }}>{{ dive_type }}</option>
+                        {% endfor %}
+                    </select>
+                </label>
+                <label>
+                    Current
+                    <select name="current">
+                        {% for current in currents %}
+                            <option value="{{ current }}" {{ 'selected' if current == (dive.current if is_edit else 'slack') else '' }}>{{ current }}</option>
                         {% endfor %}
                     </select>
                 </label>
@@ -97,7 +159,7 @@
                     <input id="speciesInput" type="text" autocomplete="off" data-species-input>
                     <div class="autocomplete-menu" data-species-results hidden></div>
                 </label>
-                <input type="hidden" name="species_json" id="speciesJson" value="[]">
+                <input type="hidden" name="species_json" id="speciesJson" value="{{ dive.species|map(attribute='common_name')|list|tojson if is_edit else '[]' }}">
                 <div class="tag-row" data-species-tags></div>
                 <div class="suggestion-row" data-species-suggestions></div>
             </div>
@@ -109,7 +171,7 @@
             </div>
             <label>
                 Notes
-                <textarea name="notes" rows="5"></textarea>
+                <textarea name="notes" rows="5">{{ dive.notes if is_edit and dive.notes else '' }}</textarea>
             </label>
         </div>
 
@@ -120,8 +182,30 @@
             <label class="upload-box">
                 <span>Photos</span>
                 <input type="file" name="photos" accept="image/*" multiple data-photo-input>
+                {% if is_edit and dive.photos %}
+                    <div class="preview-row existing-photo-row">
+                        {% for photo in dive.photos %}
+                            <img src="{{ url_for('static', filename=photo.filename) }}" alt="">
+                        {% endfor %}
+                    </div>
+                {% endif %}
                 <div class="preview-row" data-photo-preview></div>
             </label>
+        </div>
+
+        <div class="form-footer">
+            {% if is_edit %}
+                <button class="icon-button danger-button" type="submit" formmethod="post" formaction="{{ url_for('delete_dive', dive_id=dive.id) }}" formnovalidate aria-label="Delete dive" title="Delete dive">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M3 6h18"></path>
+                        <path d="M8 6V4h8v2"></path>
+                        <path d="M19 6l-1 14H6L5 6"></path>
+                        <path d="M10 11v5"></path>
+                        <path d="M14 11v5"></path>
+                    </svg>
+                </button>
+            {% endif %}
+            <button class="primary-button" type="submit">{{ 'Save changes' if is_edit else 'Save dive' }}</button>
         </div>
     </form>
 </section>

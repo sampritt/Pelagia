@@ -1174,6 +1174,18 @@ textarea:focus {
     padding: 20px;
 }
 
+.form-actions,
+.form-footer {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+.form-footer {
+    padding-top: 2px;
+}
+
 .form-section {
     display: grid;
     gap: 12px;
@@ -1562,6 +1574,26 @@ input[type="range"] {
     background: rgba(72, 166, 255, 0.12);
 }
 
+.icon-button svg {
+    width: 18px;
+    height: 18px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.danger-button {
+    color: var(--danger);
+}
+
+.danger-button:hover {
+    color: #ffffff;
+    border-color: rgba(255, 107, 138, 0.42);
+    background: rgba(255, 107, 138, 0.14);
+}
+
 .ocean-map {
     position: absolute;
     inset: 0;
@@ -1691,6 +1723,18 @@ input[type="range"] {
 .modal-title {
     display: grid;
     gap: 5px;
+    min-width: 0;
+}
+
+.modal-title-row {
+    display: flex;
+    align-items: start;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.modal-edit {
+    flex: 0 0 auto;
 }
 
 .modal-title p {
@@ -1718,6 +1762,10 @@ input[type="range"] {
     border: 1px solid var(--line);
     border-radius: 8px;
     object-fit: cover;
+}
+
+.existing-photo-row {
+    padding-bottom: 8px;
 }
 
 .modal-stats {
@@ -1945,8 +1993,15 @@ input[type="range"] {
         grid-template-columns: minmax(0, 1fr);
     }
 
-    .section-head .primary-button {
+    .section-head .primary-button,
+    .form-actions,
+    .form-footer .primary-button {
         width: 100%;
+    }
+
+    .form-actions,
+    .form-footer {
+        justify-content: stretch;
     }
 
     .dive-form {

@@ -5,6 +5,7 @@ from datetime import date
 from functools import wraps
 from pathlib import Path
 from sqlite3 import IntegrityError
+from urllib.parse import parse_qs, urlencode, urlsplit
 
 from flask import (
     Flask,
@@ -27,6 +28,8 @@ from .importer import import_reference_data
 
 
 EXPOSURES = ("swimsuit", "shorty", "2mm", "3mm", "4mm", "5mm", "6mm", "7mm", "dry suit")
+DIVE_TYPES = ("reef", "wall", "deep", "night", "wreck", "cavern", "cave")
+CURRENTS = ("slack", "current", "drift", "surge")
 ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "gif", "webp"}
 UPLOAD_IMAGE_MAX_DIMENSION = 1600
 UPLOAD_IMAGE_JPEG_QUALITY = 82
@@ -121,7 +124,7 @@ def register_routes(app):
             return redirect(url_for("home"))
         return render_template("landing.html")
 
-    @app.post("/signup")
+    @app.route("/signup", methods=("POST",))
     def signup():
         username = request.form.get("username", "").strip()
         password = request.form.get("password", "")
@@ -141,7 +144,7 @@ def register_routes(app):
         session["user_id"] = cur.lastrowid
         return redirect(url_for("home"))
 
-    @app.post("/login")
+    @app.route("/login", methods=("POST",))
     def login():
         username = request.form.get("username", "").strip()
         password = request.form.get("password", "")
@@ -153,7 +156,7 @@ def register_routes(app):
         session["user_id"] = user["id"]
         return redirect(url_for("home"))
 
-    @app.post("/logout")
+    @app.route("/logout", methods=("POST",))
     def logout():
         session.clear()
         return redirect(url_for("landing"))
@@ -179,7 +182,50 @@ def register_routes(app):
             create_dive_from_request(session["user_id"], request)
             flash("Dive logged.")
             return redirect(url_for("home"))
-        return render_template("log_dive.html", exposures=EXPOSURES, today=date.today().isoformat())
+        return render_template(
+            "log_dive.html",
+            exposures=EXPOSURES,
+            dive_types=DIVE_TYPES,
+            currents=CURRENTS,
+            today=date.today().isoformat(),
+            dive=None,
+            is_edit=False,
+            next_url="",
+        )
+
+    @app.route("/dive/<int:dive_id>/edit", methods=("GET", "POST"))
+    @login_required
+    def edit_dive(dive_id):
+        dive = fetch_owned_dive(dive_id, session["user_id"])
+        if dive is None:
+            abort(404)
+        if request.method == "POST":
+            update_dive_from_request(dive_id, session["user_id"], request)
+            flash("Dive updated.")
+            return redirect(_url_with_open(_safe_next_url(request.form.get("next")), dive_id))
+        return render_template(
+            "log_dive.html",
+            exposures=EXPOSURES,
+            dive_types=DIVE_TYPES,
+            currents=CURRENTS,
+            today=date.today().isoformat(),
+            dive=dive,
+            is_edit=True,
+            next_url=_safe_next_url(request.args.get("next") or request.referrer),
+        )
+
+    @app.route("/dive/<int:dive_id>/delete", methods=("POST",))
+    @login_required
+    def delete_dive(dive_id):
+        if fetch_owned_dive(dive_id, session["user_id"]) is None:
+            abort(404)
+        database.get_db().execute(
+            "UPDATE dives SET is_deleted = 1 WHERE id = ? AND user_id = ?",
+            (dive_id, session["user_id"]),
+        )
+        database.get_db().commit()
+        flash("Dive deleted.")
+        return redirect(_url_without_open(_safe_next_url(request.form.get("next"))))
 
     @app.route("/you", methods=("GET", "POST"))
     @login_required
@@ -206,7 +252,7 @@ def register_routes(app):
     def map_view():
         return render_template("map.html")
 
-    @app.get("/api/sites")
+    @app.route("/api/sites", methods=("GET",))
     @login_required
     def api_sites():
         query = request.args.get("q", "").strip()
@@ -228,7 +274,7 @@ def register_routes(app):
         ).fetchall()
         return jsonify([site_payload(row) for row in rows])
 
-    @app.get("/api/species")
+    @app.route("/api/species", methods=("GET",))
     @login_required
     def api_species():
         query = request.args.get("q", "").strip()
@@ -262,7 +308,7 @@ def register_routes(app):
             ).fetchall()
         return jsonify([dict(row) for row in rows])
 
-    @app.get("/api/dive-centers")
+    @app.route("/api/dive-centers", methods=("GET",))
     @login_required
     def api_dive_centers():
         query = request.args.get("q", "").strip()
@@ -284,7 +330,7 @@ def register_routes(app):
         ).fetchall()
         return jsonify([center_payload(row) for row in rows])
 
-    @app.get("/api/species-suggestions")
+    @app.route("/api/species-suggestions", methods=("GET",))
     @login_required
     def api_species_suggestions():
         site_id = request.args.get("site_id", type=int)
@@ -297,12 +343,12 @@ def register_routes(app):
             rows = []
         return jsonify([row["common_name"] for row in rows])
 
-    @app.get("/api/dives/mine")
+    @app.route("/api/dives/mine", methods=("GET",))
     @login_required
     def api_my_dives():
         return jsonify([dive_to_json(dive) for dive in fetch_dives(scope="mine", user_id=session["user_id"], limit=500)])
 
-    @app.get("/api/dives/<int:dive_id>")
+    @app.route("/api/dives/<int:dive_id>", methods=("GET",))
     @login_required
     def api_dive(dive_id):
         dive = fetch_dive(dive_id, session["user_id"])
@@ -310,10 +356,12 @@ def register_routes(app):
             abort(404)
         return jsonify(dive_to_json(dive))
 
-    @app.post("/api/dives/<int:dive_id>/like")
+    @app.route("/api/dives/<int:dive_id>/like", methods=("POST",))
     @login_required
     def api_like(dive_id):
         db = database.get_db()
+        if fetch_dive(dive_id, session["user_id"]) is None:
+            abort(404)
         exists = db.execute(
             "SELECT 1 FROM likes WHERE dive_id = ? AND user_id = ?",
             (dive_id, session["user_id"]),
@@ -328,13 +376,15 @@ def register_routes(app):
         count = db.execute("SELECT COUNT(*) AS count FROM likes WHERE dive_id = ?", (dive_id,)).fetchone()["count"]
         return jsonify({"liked": liked, "count": count})
 
-    @app.post("/api/dives/<int:dive_id>/comments")
+    @app.route("/api/dives/<int:dive_id>/comments", methods=("POST",))
     @login_required
     def api_comment(dive_id):
         body = request.form.get("body", "").strip()
         if not body:
             return jsonify({"error": "Comment cannot be empty."}), 400
         db = database.get_db()
+        if fetch_dive(dive_id, session["user_id"]) is None:
+            abort(404)
         db.execute(
             "INSERT INTO comments (dive_id, user_id, body) VALUES (?, ?, ?)",
             (dive_id, session["user_id"], body[:600]),
@@ -352,7 +402,7 @@ def register_routes(app):
         recent_dives = fetch_dives(scope="center", user_id=session["user_id"], center_id=center_id, limit=6)
         return render_template("dive_center_profile.html", center=center, recent_dives=recent_dives)
 
-    @app.post("/api/dive-centers/<int:center_id>/like")
+    @app.route("/api/dive-centers/<int:center_id>/like", methods=("POST",))
     @login_required
     def api_dive_center_like(center_id):
         db = database.get_db()
@@ -381,7 +431,7 @@ def register_routes(app):
         ).fetchone()["count"]
         return jsonify({"liked": liked, "count": count})
 
-    @app.post("/api/dive-centers/<int:center_id>/comments")
+    @app.route("/api/dive-centers/<int:center_id>/comments", methods=("POST",))
     @login_required
     def api_dive_center_comment(center_id):
         body = request.form.get("body", "").strip()
@@ -400,11 +450,112 @@ def register_routes(app):
 
 
 def create_dive_from_request(user_id, form_request):
+    values = dive_values_from_request(form_request)
+    db = database.get_db()
+    cur = db.execute(
+        """
+        INSERT INTO dives (
+            user_id, dive_site_id, dive_center_id, dive_center_name, date, site_name, country_or_area, latitude, longitude,
+            depth_ft, duration_min, weight_lbs, exposure, visibility_ft, air_temp_degrees, water_temp_degrees,
+            dive_type, current, notes
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            user_id,
+            values["dive_site_id"],
+            values["dive_center_id"],
+            values["dive_center_name"][:160],
+            values["date"],
+            values["site_name"],
+            values["country_or_area"],
+            values["latitude"],
+            values["longitude"],
+            values["depth_ft"],
+            values["duration_min"],
+            values["weight_lbs"],
+            values["exposure"],
+            values["visibility_ft"],
+            values["air_temp_degrees"],
+            values["water_temp_degrees"],
+            values["dive_type"],
+            values["current"],
+            values["notes"],
+        ),
+    )
+    dive_id = cur.lastrowid
+    replace_dive_species(dive_id, values["species_names"], db)
+    save_dive_photos(dive_id, form_request, db)
+    db.commit()
+    return dive_id
+
+
+def update_dive_from_request(dive_id, user_id, form_request):
+    values = dive_values_from_request(form_request)
+    db = database.get_db()
+    db.execute(
+        """
+        UPDATE dives
+        SET dive_site_id = ?,
+            dive_center_id = ?,
+            dive_center_name = ?,
+            date = ?,
+            site_name = ?,
+            country_or_area = ?,
+            latitude = ?,
+            longitude = ?,
+            depth_ft = ?,
+            duration_min = ?,
+            weight_lbs = ?,
+            exposure = ?,
+            visibility_ft = ?,
+            air_temp_degrees = ?,
+            water_temp_degrees = ?,
+            dive_type = ?,
+            current = ?,
+            notes = ?
+        WHERE id = ? AND user_id = ? AND COALESCE(is_deleted, 0) = 0
+        """,
+        (
+            values["dive_site_id"],
+            values["dive_center_id"],
+            values["dive_center_name"][:160],
+            values["date"],
+            values["site_name"],
+            values["country_or_area"],
+            values["latitude"],
+            values["longitude"],
+            values["depth_ft"],
+            values["duration_min"],
+            values["weight_lbs"],
+            values["exposure"],
+            values["visibility_ft"],
+            values["air_temp_degrees"],
+            values["water_temp_degrees"],
+            values["dive_type"],
+            values["current"],
+            values["notes"],
+            dive_id,
+            user_id,
+        ),
+    )
+    replace_dive_species(dive_id, values["species_names"], db)
+    save_dive_photos(dive_id, form_request, db)
+    db.commit()
+    return dive_id
+
+
+def dive_values_from_request(form_request):
     form = form_request.form
     depth = clamp_int(form.get("depth_ft"), 0, 140)
     duration = clamp_int(form.get("duration_min"), 0, 120)
     weight = clamp_int(form.get("weight_lbs"), 0, 20)
     exposure = form.get("exposure") if form.get("exposure") in EXPOSURES else "3mm"
+    visibility = clamp_int(form.get("visibility_ft"), 0, 100)
+    air_temp = clamp_int(form.get("air_temp_degrees"), 0, 100)
+    water_temp = clamp_int(form.get("water_temp_degrees"), 0, 100)
+    dive_type = form.get("dive_type") if form.get("dive_type") in DIVE_TYPES else "reef"
+    current = form.get("current") if form.get("current") in CURRENTS else "slack"
     date_value = form.get("date") or date.today().isoformat()
     site_name = form.get("site_name", "").strip() or "Unlisted site"
     country = form.get("country_or_area", "").strip()
@@ -423,51 +574,49 @@ def create_dive_from_request(user_id, form_request):
             dive_center_id = None
     if not dive_center_name:
         dive_center_id = None
-    cur = db.execute(
-        """
-        INSERT INTO dives (
-            user_id, dive_site_id, dive_center_id, dive_center_name, date, site_name, country_or_area, latitude, longitude,
-            depth_ft, duration_min, weight_lbs, exposure, notes
-        )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """,
-        (
-            user_id,
-            dive_site_id,
-            dive_center_id,
-            dive_center_name[:160],
-            date_value,
-            site_name,
-            country,
-            latitude,
-            longitude,
-            depth,
-            duration,
-            weight,
-            exposure,
-            form.get("notes", "").strip(),
-        ),
-    )
-    dive_id = cur.lastrowid
 
     species_names = []
     try:
         species_names = json.loads(form.get("species_json", "[]"))
     except json.JSONDecodeError:
         species_names = []
+    return {
+        "dive_site_id": dive_site_id,
+        "dive_center_id": dive_center_id,
+        "dive_center_name": dive_center_name,
+        "date": date_value,
+        "site_name": site_name,
+        "country_or_area": country,
+        "latitude": latitude,
+        "longitude": longitude,
+        "depth_ft": depth,
+        "duration_min": duration,
+        "weight_lbs": weight,
+        "exposure": exposure,
+        "visibility_ft": visibility,
+        "air_temp_degrees": air_temp,
+        "water_temp_degrees": water_temp,
+        "dive_type": dive_type,
+        "current": current,
+        "notes": form.get("notes", "").strip(),
+        "species_names": species_names,
+    }
+
+
+def replace_dive_species(dive_id, species_names, db):
+    db.execute("DELETE FROM dive_species WHERE dive_id = ?", (dive_id,))
     for common_name in valid_species_names(dedupe_species(species_names), db):
         db.execute(
             "INSERT INTO dive_species (dive_id, common_name) VALUES (?, ?)",
             (dive_id, common_name),
         )
 
+
+def save_dive_photos(dive_id, form_request, db):
     for photo in form_request.files.getlist("photos"):
         if photo and photo.filename and _allowed_file(photo.filename):
             filename = _save_upload(photo, "dives")
             db.execute("INSERT INTO photos (dive_id, filename) VALUES (?, ?)", (dive_id, filename))
-
-    db.commit()
-    return dive_id
 
 
 def species_suggestions_for_site(site_id, limit=5):
@@ -540,14 +689,15 @@ def species_suggestions_for_country(country, limit=5, excluded=None):
 
 
 def fetch_dives(scope, user_id, limit=80, center_id=None):
-    where = ""
+    clauses = ["COALESCE(d.is_deleted, 0) = 0"]
     params = []
     if scope == "mine":
-        where = "WHERE d.user_id = ?"
+        clauses.append("d.user_id = ?")
         params.append(user_id)
     elif scope == "center":
-        where = "WHERE d.dive_center_id = ?"
+        clauses.append("d.dive_center_id = ?")
         params.append(center_id)
+    where = "WHERE " + " AND ".join(clauses)
     params.append(limit)
     rows = database.get_db().execute(
         f"""
@@ -586,8 +736,34 @@ def fetch_dive(dive_id, viewer_user_id):
         JOIN users u ON u.id = d.user_id
         LEFT JOIN dive_centers dc ON dc.id = d.dive_center_id
         WHERE d.id = ?
+            AND COALESCE(d.is_deleted, 0) = 0
         """,
         (viewer_user_id, dive_id),
+    ).fetchone()
+    if row is None:
+        return None
+    return hydrate_dive(row)
+
+
+def fetch_owned_dive(dive_id, user_id):
+    row = database.get_db().execute(
+        """
+        SELECT
+            d.*,
+            u.username,
+            u.profile_photo,
+            dc.name AS linked_dive_center_name,
+            (SELECT COUNT(*) FROM likes WHERE dive_id = d.id) AS like_count,
+            (SELECT COUNT(*) FROM comments WHERE dive_id = d.id) AS comment_count,
+            EXISTS(SELECT 1 FROM likes WHERE dive_id = d.id AND user_id = ?) AS liked_by_me
+        FROM dives d
+        JOIN users u ON u.id = d.user_id
+        LEFT JOIN dive_centers dc ON dc.id = d.dive_center_id
+        WHERE d.id = ?
+            AND d.user_id = ?
+            AND COALESCE(d.is_deleted, 0) = 0
+        """,
+        (user_id, dive_id, user_id),
     ).fetchone()
     if row is None:
         return None
@@ -626,7 +802,7 @@ def get_profile_stats(user_id):
             COUNT(DISTINCT site_name || '|' || COALESCE(country_or_area, '')) AS location_count,
             MIN(date) AS first_dive
         FROM dives
-        WHERE user_id = ?
+        WHERE user_id = ? AND COALESCE(is_deleted, 0) = 0
         """,
         (user_id,),
     ).fetchone()
@@ -634,7 +810,7 @@ def get_profile_stats(user_id):
         """
         SELECT id, site_name, latitude, longitude, date
         FROM dives
-        WHERE user_id = ? AND latitude IS NOT NULL AND longitude IS NOT NULL
+        WHERE user_id = ? AND COALESCE(is_deleted, 0) = 0 AND latitude IS NOT NULL AND longitude IS NOT NULL
         ORDER BY date DESC
         LIMIT 200
         """,
@@ -696,10 +872,16 @@ def dive_to_json(dive):
         "duration_min": dive["duration_min"],
         "weight_lbs": dive["weight_lbs"],
         "exposure": dive["exposure"],
+        "visibility_ft": dive["visibility_ft"],
+        "air_temp_degrees": dive["air_temp_degrees"],
+        "water_temp_degrees": dive["water_temp_degrees"],
+        "dive_type": dive["dive_type"],
+        "current": dive["current"],
         "notes": dive["notes"],
         "like_count": dive["like_count"],
         "comment_count": dive["comment_count"],
         "liked_by_me": bool(dive["liked_by_me"]),
+        "is_owner": dive["user_id"] == session.get("user_id"),
         "photos": [url_for("static", filename=photo["filename"]) for photo in dive["photos"]],
         "species": [species["common_name"] for species in dive["species"]],
         "comments": [dict(comment) for comment in dive["comments"]],
@@ -753,6 +935,40 @@ def maybe_int(value):
         return int(value)
     except (TypeError, ValueError):
         return None
+
+
+def _safe_next_url(value):
+    if not value:
+        return url_for("home")
+    try:
+        parsed = urlsplit(value)
+    except ValueError:
+        return url_for("home")
+    if parsed.scheme or parsed.netloc:
+        if parsed.netloc != request.host:
+            return url_for("home")
+    elif not value.startswith("/") or value.startswith("//"):
+        return url_for("home")
+    path = parsed.path or url_for("home")
+    query = f"?{parsed.query}" if parsed.query else ""
+    return f"{path}{query}"
+
+
+def _url_with_open(value, dive_id):
+    base = _safe_next_url(value)
+    path, _, query = base.partition("?")
+    params = parse_qs(query, keep_blank_values=True)
+    params["open"] = [str(dive_id)]
+    return f"{path}?{urlencode(params, doseq=True)}"
+
+
+def _url_without_open(value):
+    base = _safe_next_url(value)
+    path, _, query = base.partition("?")
+    params = parse_qs(query, keep_blank_values=True)
+    params.pop("open", None)
+    encoded = urlencode(params, doseq=True)
+    return f"{path}?{encoded}" if encoded else path
 
 
 def dedupe_species(values):

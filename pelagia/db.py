@@ -28,13 +28,23 @@ def init_db():
     db.executescript(schema)
     _ensure_column(db, "dives", "dive_center_id", "INTEGER")
     _ensure_column(db, "dives", "dive_center_name", "TEXT")
+    _ensure_column(db, "dives", "visibility_ft", "INTEGER NOT NULL DEFAULT 0")
+    _ensure_column(db, "dives", "air_temp_degrees", "INTEGER NOT NULL DEFAULT 0")
+    _ensure_column(db, "dives", "water_temp_degrees", "INTEGER NOT NULL DEFAULT 0")
+    _ensure_column(db, "dives", "dive_type", "TEXT NOT NULL DEFAULT 'reef'")
+    _ensure_column(db, "dives", "current", "TEXT NOT NULL DEFAULT 'slack'")
+    _ensure_column(db, "dives", "is_deleted", "INTEGER NOT NULL DEFAULT 0")
     db.commit()
 
 
 def _ensure_column(db, table_name, column_name, column_type):
     columns = {row["name"] for row in db.execute(f"PRAGMA table_info({table_name})").fetchall()}
     if column_name not in columns:
-        db.execute(f"ALTER TABLE {table_name} ADD COLUMN {column_name} {column_type}")
+        try:
+            db.execute(f"ALTER TABLE {table_name} ADD COLUMN {column_name} {column_type}")
+        except sqlite3.OperationalError as error:
+            if "duplicate column name" not in str(error).lower():
+                raise
 
 
 def table_count(table_name):
