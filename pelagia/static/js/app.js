@@ -621,6 +621,7 @@ function initDiveForm() {
 
     initSpeciesPicker(form, () => country.value.trim());
     initPhotoPreview(form);
+    initPhotoRemoval(form);
     initArrowNavigation(form);
 }
 
@@ -793,6 +794,24 @@ function initPhotoPreview(form) {
             img.src = URL.createObjectURL(file);
             img.alt = "";
             preview.appendChild(img);
+        });
+    });
+}
+
+function initPhotoRemoval(form) {
+    form.querySelectorAll("[data-remove-photo-id]").forEach((button) => {
+        button.addEventListener("click", () => {
+            const photoId = button.dataset.removePhotoId;
+            const alreadyRemoved = Array.from(form.querySelectorAll("input[name='remove_photo_ids']")).some((input) => input.value === photoId);
+            if (!photoId || alreadyRemoved) {
+                return;
+            }
+            const hidden = document.createElement("input");
+            hidden.type = "hidden";
+            hidden.name = "remove_photo_ids";
+            hidden.value = photoId;
+            form.appendChild(hidden);
+            button.closest("[data-existing-photo]")?.remove();
         });
     });
 }

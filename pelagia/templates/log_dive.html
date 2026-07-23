@@ -196,16 +196,19 @@
             <div class="form-section-title">
                 <h2>Photos</h2>
             </div>
+            {% if is_edit and dive.photos %}
+                <div class="preview-row existing-photo-row" aria-label="Existing dive photos">
+                    {% for photo in dive.photos %}
+                        <div class="editable-photo" data-existing-photo>
+                            <img src="{{ url_for('static', filename=photo.filename) }}" alt="">
+                            <button class="photo-remove-button" type="button" data-remove-photo-id="{{ photo.id }}" aria-label="Remove photo" title="Remove photo">&times;</button>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
             <label class="upload-box">
                 <span>Photos</span>
                 <input type="file" name="photos" accept="image/*" multiple data-photo-input>
-                {% if is_edit and dive.photos %}
-                    <div class="preview-row existing-photo-row">
-                        {% for photo in dive.photos %}
-                            <img src="{{ url_for('static', filename=photo.filename) }}" alt="">
-                        {% endfor %}
-                    </div>
-                {% endif %}
                 <div class="preview-row" data-photo-preview></div>
             </label>
         </div>

@@ -1,3 +1,4 @@
+import io
 import json
 import os
 import sqlite3
@@ -7,12 +8,21 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+from PIL import Image
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from pelagia import create_app
 
 
 def write_csv(path, content):
     path.write_text(content.strip() + "\n")
+
+
+def image_upload(name, color):
+    stream = io.BytesIO()
+    Image.new("RGB", (160, 110), color).save(stream, "JPEG")
+    stream.seek(0)
+    return stream, name
 
 
 class ReferenceAutocompleteTest(unittest.TestCase):
@@ -309,6 +319,97 @@ Kelp House,2 Harbor Way,Alaska,https://kelp.example.test
             with sqlite3.connect(db_path) as conn:
                 is_deleted = conn.execute("SELECT is_deleted FROM dives WHERE id = ?", (dive_id,)).fetchone()[0]
             self.assertEqual(is_deleted, 1)
+
+    def test_multiple_dive_photos_render_and_individual_photos_can_be_removed(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            app, db_path, _config_path = self.make_app(Path(tmp_dir))
+            client = app.test_client()
+            self.signup(client)
+
+            client.post(
+                "/dive/new",
+                data={
+                    "date": "2026-07-22",
+                    "site_name": "Alert Rock",
+                    "dive_site_id": "1",
+                    "dive_center_name": "",
+                    "dive_center_id": "",
+                    "country_or_area": "Alaska",
+                    "latitude": "54.1",
+                    "longitude": "-132.9",
+                    "depth_ft": "40",
+                    "duration_min": "70",
+                    "weight_lbs": "",
+                    "exposure": "",
+                    "visibility_ft": "",
+                    "air_temp_degrees": "",
+                    "water_temp_degrees": "",
+                    "dive_type": "shore dive",
+                    "current": "none",
+                    "current_strength": "none",
+                    "notes": "Photos from the dive.",
+                    "species_json": json.dumps([]),
+                    "photos": [
+                        image_upload("reef-one.jpg", "navy"),
+                        image_upload("reef-two.jpg", "teal"),
+                        image_upload("reef-three.jpg", "orange"),
+                    ],
+                },
+                content_type="multipart/form-data",
+            )
+            dive_id = client.get("/api/dives/mine").get_json()[0]["id"]
+
+            detail_response = client.get(f"/dive/{dive_id}")
+            self.assertEqual(detail_response.status_code, 200)
+            self.assertIn(b"detail-photo-carousel", detail_response.data)
+            self.assertEqual(detail_response.data.count(b"class=\"detail-photo-slide\""), 3)
+            self.assertNotIn(b"detail-photo-grid", detail_response.data)
+
+            edit_response = client.get(f"/dive/{dive_id}/edit")
+            self.assertEqual(edit_response.status_code, 200)
+            self.assertEqual(edit_response.data.count(b"data-remove-photo-id="), 3)
+            self.assertIn(b"photo-remove-button", edit_response.data)
+
+            with sqlite3.connect(db_path) as conn:
+                rows = conn.execute("SELECT id, filename FROM photos WHERE dive_id = ? ORDER BY id", (dive_id,)).fetchall()
+            self.assertEqual(len(rows), 3)
+            removed_id, removed_filename = rows[1]
+            removed_file = Path(app.config["UPLOAD_FOLDER"], removed_filename.removeprefix("uploads/"))
+            self.assertTrue(removed_file.exists())
+
+            update_response = client.post(
+                f"/dive/{dive_id}/edit",
+                data={
+                    "date": "2026-07-23",
+                    "site_name": "Alert Rock",
+                    "dive_site_id": "1",
+                    "dive_center_name": "",
+                    "dive_center_id": "",
+                    "country_or_area": "Alaska",
+                    "latitude": "54.1",
+                    "longitude": "-132.9",
+                    "depth_ft": "42",
+                    "duration_min": "68",
+                    "weight_lbs": "",
+                    "exposure": "",
+                    "visibility_ft": "",
+                    "air_temp_degrees": "",
+                    "water_temp_degrees": "",
+                    "dive_type": "shore dive",
+                    "current": "none",
+                    "current_strength": "none",
+                    "notes": "Kept the best photos.",
+                    "species_json": json.dumps([]),
+                    "remove_photo_ids": str(removed_id),
+                },
+            )
+            self.assertEqual(update_response.status_code, 302)
+
+            with sqlite3.connect(db_path) as conn:
+                remaining = conn.execute("SELECT id FROM photos WHERE dive_id = ? ORDER BY id", (dive_id,)).fetchall()
+            self.assertEqual([row[0] for row in remaining], [rows[0][0], rows[2][0]])
+            self.assertFalse(removed_file.exists())
+            self.assertEqual(len(client.get(f"/api/dives/{dive_id}").get_json()["photos"]), 2)
 
 
 if __name__ == "__main__":

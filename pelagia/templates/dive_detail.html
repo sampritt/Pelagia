@@ -64,9 +64,11 @@
             </span>
         </div>
         {% if dive.photos %}
-            <div class="detail-photo-grid">
+            <div class="detail-photo-carousel" aria-label="Dive photos">
                 {% for photo in dive.photos %}
-                    <img src="{{ url_for('static', filename=photo.filename) }}" alt="">
+                    <figure class="detail-photo-slide">
+                        <img src="{{ url_for('static', filename=photo.filename) }}" alt="">
+                    </figure>
                 {% endfor %}
             </div>
         {% endif %}

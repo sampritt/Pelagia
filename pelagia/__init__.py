@@ -573,6 +573,7 @@ def update_dive_from_request(dive_id, user_id, form_request):
         ),
     )
     replace_dive_species(dive_id, values["species_names"], db)
+    remove_dive_photos(dive_id, form_request, db)
     save_dive_photos(dive_id, form_request, db)
     db.commit()
     return dive_id
@@ -654,6 +655,33 @@ def save_dive_photos(dive_id, form_request, db):
         if photo and photo.filename and _allowed_file(photo.filename):
             filename = _save_upload(photo, "dives")
             db.execute("INSERT INTO photos (dive_id, filename) VALUES (?, ?)", (dive_id, filename))
+
+
+def remove_dive_photos(dive_id, form_request, db):
+    photo_ids = []
+    seen = set()
+    for value in form_request.form.getlist("remove_photo_ids"):
+        photo_id = maybe_int(value)
+        if photo_id is not None and photo_id not in seen:
+            photo_ids.append(photo_id)
+            seen.add(photo_id)
+    if not photo_ids:
+        return
+
+    placeholders = ",".join("?" for _ in photo_ids)
+    rows = db.execute(
+        f"SELECT id, filename FROM photos WHERE dive_id = ? AND id IN ({placeholders})",
+        [dive_id] + photo_ids,
+    ).fetchall()
+    if not rows:
+        return
+
+    db.execute(
+        f"DELETE FROM photos WHERE dive_id = ? AND id IN ({placeholders})",
+        [dive_id] + photo_ids,
+    )
+    for row in rows:
+        _delete_uploaded_file(row["filename"])
 
 
 def species_suggestions_for_site(site_id, limit=5):
@@ -810,7 +838,7 @@ def fetch_owned_dive(dive_id, user_id):
 def hydrate_dive(row):
     db = database.get_db()
     dive = dict(row)
-    dive["photos"] = db.execute("SELECT filename FROM photos WHERE dive_id = ?", (row["id"],)).fetchall()
+    dive["photos"] = db.execute("SELECT id, filename FROM photos WHERE dive_id = ? ORDER BY id", (row["id"],)).fetchall()
     dive["species"] = db.execute(
         "SELECT common_name FROM dive_species WHERE dive_id = ? ORDER BY common_name",
         (row["id"],),
@@ -1076,11 +1104,27 @@ def _save_upload(file_storage, folder):
     return f"uploads/{filename}"
 
 
+def _delete_uploaded_file(filename):
+    if not filename.startswith("uploads/"):
+        return
+    upload_root = Path(current_app.config["UPLOAD_FOLDER"]).resolve()
+    target = (upload_root / filename.removeprefix("uploads/")).resolve()
+    try:
+        target.relative_to(upload_root)
+    except ValueError:
+        return
+    try:
+        target.unlink()
+    except FileNotFoundError:
+        pass
+
+
 def _save_resized_image(file_storage, target):
     file_storage.stream.seek(0)
     with Image.open(file_storage.stream) as image:
         image = ImageOps.exif_transpose(image)
-        image.thumbnail((UPLOAD_IMAGE_MAX_DIMENSION, UPLOAD_IMAGE_MAX_DIMENSION), Image.Resampling.LANCZOS)
+        resampling = getattr(Image, "Resampling", Image)
+        image.thumbnail((UPLOAD_IMAGE_MAX_DIMENSION, UPLOAD_IMAGE_MAX_DIMENSION), resampling.LANCZOS)
         if image.mode in ("RGBA", "LA", "P"):
             background = Image.new("RGB", image.size, "#0b1118")
             background.paste(image.convert("RGBA"), mask=image.convert("RGBA").getchannel("A"))
