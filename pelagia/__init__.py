@@ -125,6 +125,7 @@ def register_routes(app):
     app.jinja_env.globals["dive_type_label"] = dive_type_label
     app.jinja_env.globals["current_label"] = current_label
     app.jinja_env.globals["current_strength_label"] = current_strength_label
+    app.jinja_env.globals["optional_metric"] = optional_metric
 
     @app.route("/")
     def landing():
@@ -581,11 +582,11 @@ def dive_values_from_request(form_request):
     form = form_request.form
     depth = clamp_int(form.get("depth_ft"), 0, 140)
     duration = clamp_int(form.get("duration_min"), 0, 120)
-    weight = clamp_int(form.get("weight_lbs"), 0, 20)
-    exposure = form.get("exposure") if form.get("exposure") in EXPOSURES else "3mm"
+    weight = maybe_clamped_int(form.get("weight_lbs"), 0, 20)
+    exposure = form.get("exposure") if form.get("exposure") in EXPOSURES else None
     visibility = clamp_int(form.get("visibility_ft"), 0, 100)
-    air_temp = clamp_int(form.get("air_temp_degrees"), 0, 100)
-    water_temp = clamp_int(form.get("water_temp_degrees"), 0, 100)
+    air_temp = maybe_clamped_int(form.get("air_temp_degrees"), 0, 100)
+    water_temp = maybe_clamped_int(form.get("water_temp_degrees"), 0, 100)
     dive_type = form.get("dive_type") if form.get("dive_type") in DIVE_TYPES else "open water"
     current = form.get("current") if form.get("current") in CURRENT_TYPES else "none"
     current_strength = form.get("current_strength") if form.get("current_strength") in CURRENT_STRENGTHS else "none"
@@ -960,6 +961,12 @@ def clamp_int(value, minimum, maximum):
     return max(minimum, min(maximum, parsed))
 
 
+def maybe_clamped_int(value, minimum, maximum):
+    if value is None or str(value).strip() == "":
+        return None
+    return clamp_int(value, minimum, maximum)
+
+
 def maybe_float(value):
     try:
         return float(value)
@@ -984,6 +991,12 @@ def current_label(value):
 
 def current_strength_label(value):
     return CURRENT_STRENGTH_LABELS.get(value, CURRENT_STRENGTH_LABELS["none"])
+
+
+def optional_metric(value, suffix=""):
+    if value is None or value == "":
+        return "-"
+    return f"{value}{suffix}"
 
 
 def _safe_next_url(value):

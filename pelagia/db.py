@@ -28,13 +28,16 @@ def init_db():
     db.executescript(schema)
     _ensure_column(db, "dives", "dive_center_id", "INTEGER")
     _ensure_column(db, "dives", "dive_center_name", "TEXT")
+    _ensure_column(db, "dives", "weight_lbs", "INTEGER")
+    _ensure_column(db, "dives", "exposure", "TEXT")
     _ensure_column(db, "dives", "visibility_ft", "INTEGER NOT NULL DEFAULT 0")
-    _ensure_column(db, "dives", "air_temp_degrees", "INTEGER NOT NULL DEFAULT 0")
-    _ensure_column(db, "dives", "water_temp_degrees", "INTEGER NOT NULL DEFAULT 0")
+    _ensure_column(db, "dives", "air_temp_degrees", "INTEGER")
+    _ensure_column(db, "dives", "water_temp_degrees", "INTEGER")
     _ensure_column(db, "dives", "dive_type", "TEXT NOT NULL DEFAULT 'open water'")
     _ensure_column(db, "dives", "current", "TEXT NOT NULL DEFAULT 'none'")
     _ensure_column(db, "dives", "current_strength", "TEXT NOT NULL DEFAULT 'none'")
     _ensure_column(db, "dives", "is_deleted", "INTEGER NOT NULL DEFAULT 0")
+    _ensure_nullable_dive_metadata(db)
     _normalize_current_values(db)
     db.commit()
 
@@ -55,6 +58,81 @@ def _normalize_current_values(db):
         "UPDATE dives SET current_strength = 'none' "
         "WHERE current_strength NOT IN ('none', 'light', 'moderate', 'strong', 'very strong')"
     )
+    db.execute(
+        """
+        UPDATE dives
+        SET exposure = NULL
+        WHERE exposure IS NOT NULL
+            AND exposure NOT IN ('swimsuit', 'shorty', '2mm', '3mm', '4mm', '5mm', '6mm', '7mm', 'dry suit')
+        """
+    )
+
+
+def _ensure_nullable_dive_metadata(db):
+    columns = {
+        row["name"]: row
+        for row in db.execute("PRAGMA table_info(dives)").fetchall()
+    }
+    optional_columns = ("weight_lbs", "exposure", "air_temp_degrees", "water_temp_degrees")
+    if all(column in columns and columns[column]["notnull"] == 0 for column in optional_columns):
+        return
+
+    db.commit()
+    db.execute("PRAGMA foreign_keys = OFF")
+    try:
+        db.executescript(
+            """
+            CREATE TABLE dives_rebuild (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                dive_site_id INTEGER,
+                dive_center_id INTEGER,
+                dive_center_name TEXT,
+                date TEXT NOT NULL,
+                site_name TEXT NOT NULL,
+                country_or_area TEXT,
+                latitude REAL,
+                longitude REAL,
+                depth_ft INTEGER NOT NULL DEFAULT 0,
+                duration_min INTEGER NOT NULL DEFAULT 0,
+                weight_lbs INTEGER,
+                exposure TEXT,
+                visibility_ft INTEGER NOT NULL DEFAULT 0,
+                air_temp_degrees INTEGER,
+                water_temp_degrees INTEGER,
+                dive_type TEXT NOT NULL DEFAULT 'open water',
+                current TEXT NOT NULL DEFAULT 'none',
+                current_strength TEXT NOT NULL DEFAULT 'none',
+                notes TEXT,
+                is_deleted INTEGER NOT NULL DEFAULT 0,
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
+                FOREIGN KEY(dive_site_id) REFERENCES dive_sites(id) ON DELETE SET NULL,
+                FOREIGN KEY(dive_center_id) REFERENCES dive_centers(id) ON DELETE SET NULL
+            );
+
+            INSERT INTO dives_rebuild (
+                id, user_id, dive_site_id, dive_center_id, dive_center_name, date, site_name,
+                country_or_area, latitude, longitude, depth_ft, duration_min, weight_lbs,
+                exposure, visibility_ft, air_temp_degrees, water_temp_degrees, dive_type,
+                current, current_strength, notes, is_deleted, created_at
+            )
+            SELECT
+                id, user_id, dive_site_id, dive_center_id, dive_center_name, date, site_name,
+                country_or_area, latitude, longitude, depth_ft, duration_min, weight_lbs,
+                exposure, visibility_ft, air_temp_degrees, water_temp_degrees, dive_type,
+                current, current_strength, notes, is_deleted, created_at
+            FROM dives;
+
+            DROP TABLE dives;
+            ALTER TABLE dives_rebuild RENAME TO dives;
+            CREATE INDEX IF NOT EXISTS idx_dives_user_created ON dives(user_id, created_at DESC);
+            CREATE INDEX IF NOT EXISTS idx_dives_created ON dives(created_at DESC);
+            """
+        )
+        db.commit()
+    finally:
+        db.execute("PRAGMA foreign_keys = ON")
 
 
 def table_count(table_name):

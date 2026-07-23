@@ -448,6 +448,7 @@ function initDiveForm() {
             max: 20,
             step: 1,
             unit: "lb",
+            optional: true,
         },
         visibility: {
             range: form.querySelector("[data-range='visibility']"),
@@ -466,6 +467,7 @@ function initDiveForm() {
             max: 100,
             step: 1,
             unit: "degrees",
+            optional: true,
         },
         waterTemp: {
             range: form.querySelector("[data-range='waterTemp']"),
@@ -475,6 +477,7 @@ function initDiveForm() {
             max: 100,
             step: 1,
             unit: "degrees",
+            optional: true,
         },
     };
 
@@ -490,6 +493,11 @@ function initDiveForm() {
         const source = options.source || "auto";
         const commit = Boolean(options.commit);
         const rawValue = String(value ?? "").trim();
+        if (!rawValue && pair.optional) {
+            pair.number.value = "";
+            pair.output.textContent = "-";
+            return null;
+        }
         const parsed = Number(rawValue);
         if (!Number.isFinite(parsed)) {
             if (commit) {

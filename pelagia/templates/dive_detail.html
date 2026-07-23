@@ -93,19 +93,19 @@
                 </div>
                 <div>
                     <dt>Weight</dt>
-                    <dd>{{ dive.weight_lbs }} lb</dd>
+                    <dd>{{ optional_metric(dive.weight_lbs, ' lb') }}</dd>
                 </div>
                 <div>
                     <dt>Exposure</dt>
-                    <dd>{{ dive.exposure }}</dd>
+                    <dd>{{ dive.exposure or '-' }}</dd>
                 </div>
                 <div>
                     <dt>Air</dt>
-                    <dd>{{ dive.air_temp_degrees }} degrees</dd>
+                    <dd>{{ optional_metric(dive.air_temp_degrees, ' degrees') }}</dd>
                 </div>
                 <div>
                     <dt>Water</dt>
-                    <dd>{{ dive.water_temp_degrees }} degrees</dd>
+                    <dd>{{ optional_metric(dive.water_temp_degrees, ' degrees') }}</dd>
                 </div>
                 <div>
                     <dt>Current</dt>

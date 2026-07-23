@@ -113,6 +113,58 @@ Kelp House,2 Harbor Way,Alaska,https://kelp.example.test
                 ).fetchall()
             self.assertEqual(staging_tables, [])
 
+    def test_optional_dive_metadata_defaults_to_unset(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            app, db_path, _config_path = self.make_app(Path(tmp_dir))
+            client = app.test_client()
+            self.signup(client)
+
+            new_response = client.get("/dive/new")
+            self.assertIn(b'<output id="weightOutput">-</output>', new_response.data)
+            self.assertIn(b'<output id="airTempOutput">-</output>', new_response.data)
+            self.assertIn(b'<output id="waterTempOutput">-</output>', new_response.data)
+            self.assertIn(b'value="" disabled selected', new_response.data)
+
+            client.post(
+                "/dive/new",
+                data={
+                    "date": "2026-07-22",
+                    "site_name": "Alert Rock",
+                    "dive_site_id": "1",
+                    "country_or_area": "Alaska",
+                    "latitude": "54.1",
+                    "longitude": "-132.9",
+                    "depth_ft": "40",
+                    "duration_min": "70",
+                    "weight_lbs": "",
+                    "exposure": "",
+                    "visibility_ft": "55",
+                    "air_temp_degrees": "",
+                    "water_temp_degrees": "",
+                    "dive_type": "shore dive",
+                    "current": "none",
+                    "current_strength": "none",
+                    "species_json": json.dumps([]),
+                },
+            )
+            dive_id = client.get("/api/dives/mine").get_json()[0]["id"]
+            logged = client.get(f"/api/dives/{dive_id}").get_json()
+            self.assertIsNone(logged["weight_lbs"])
+            self.assertIsNone(logged["exposure"])
+            self.assertIsNone(logged["air_temp_degrees"])
+            self.assertIsNone(logged["water_temp_degrees"])
+
+            detail_response = client.get(f"/dive/{dive_id}")
+            self.assertGreaterEqual(detail_response.data.count(b"<dd>-</dd>"), 4)
+
+            with sqlite3.connect(db_path) as conn:
+                columns = {
+                    row[1]: row
+                    for row in conn.execute("PRAGMA table_info(dives)").fetchall()
+                }
+            for column in ("weight_lbs", "exposure", "air_temp_degrees", "water_temp_degrees"):
+                self.assertEqual(columns[column][3], 0)
+
     def test_owned_dive_can_be_edited_and_soft_deleted(self):
         with tempfile.TemporaryDirectory() as tmp_dir:
             app, db_path, _config_path = self.make_app(Path(tmp_dir))
