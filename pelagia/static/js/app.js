@@ -413,6 +413,16 @@ function renderDiveModal(dive) {
     const center = dive.dive_center_name
         ? `<p class="modal-center">with ${dive.dive_center_id ? `<a href="/dive-centers/${escapeHtml(dive.dive_center_id)}">${escapeHtml(dive.dive_center_name)}</a>` : escapeHtml(dive.dive_center_name)}</p>`
         : "";
+    const diveType = dive.dive_type || "reef";
+    const current = dive.current || "slack";
+    const detailRows = [
+        ["Weight", `${dive.weight_lbs} lb`],
+        ["Exposure", dive.exposure],
+        ["Air", `${dive.air_temp_degrees} degrees`],
+        ["Water", `${dive.water_temp_degrees} degrees`],
+        ["Type", diveType],
+        ["Current", current],
+    ];
     const nextUrl = `${window.location.pathname}${window.location.search}`;
     const editButton = dive.is_owner
         ? `
@@ -435,17 +445,23 @@ function renderDiveModal(dive) {
                 ${editButton}
             </div>
             ${photos}
-            <div class="modal-stats">
-                <div><span>${escapeHtml(dive.depth_ft)}</span><small>feet</small></div>
-                <div><span>${escapeHtml(dive.duration_min)}</span><small>minutes</small></div>
-                <div><span>${escapeHtml(dive.weight_lbs)}</span><small>pounds</small></div>
-                <div><span>${escapeHtml(dive.exposure)}</span><small>exposure</small></div>
-                <div><span>${escapeHtml(dive.visibility_ft)}</span><small>visibility ft</small></div>
-                <div><span>${escapeHtml(dive.air_temp_degrees)}</span><small>air degrees</small></div>
-                <div><span>${escapeHtml(dive.water_temp_degrees)}</span><small>water degrees</small></div>
-                <div><span>${escapeHtml(dive.dive_type)}</span><small>dive type</small></div>
-                <div><span>${escapeHtml(dive.current)}</span><small>current</small></div>
+            <div class="modal-primary-stats">
+                <div><small>Elapsed Time</small><span>${escapeHtml(dive.duration_min)} min</span></div>
+                <div><small>Depth</small><span>${escapeHtml(dive.depth_ft)} ft</span></div>
+                <div><small>Visibility</small><span>${escapeHtml(dive.visibility_ft)} ft</span></div>
             </div>
+            <dl class="modal-detail-list">
+                ${detailRows
+                    .map(
+                        ([label, value]) => `
+                            <div>
+                                <dt>${escapeHtml(label)}</dt>
+                                <dd>${escapeHtml(value)}</dd>
+                            </div>
+                        `,
+                    )
+                    .join("")}
+            </dl>
             <div class="mini-map ${dive.latitude === null || dive.longitude === null ? "map-pending" : ""}" ${dive.latitude === null || dive.longitude === null ? "" : `data-static-map data-map-lat="${escapeHtml(dive.latitude)}" data-map-lng="${escapeHtml(dive.longitude)}" data-map-zoom="10"`}>
                 <span class="map-pin"></span>
                 <span class="coordinate-label">${escapeHtml(coords)}</span>

@@ -814,6 +814,13 @@ textarea:focus {
     font-size: 0.84rem;
 }
 
+.dive-card-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 5px 8px;
+}
+
 .dive-card-head strong {
     color: var(--ink);
     font-size: 0.94rem;
@@ -824,6 +831,55 @@ textarea:focus {
 .dive-card-head strong,
 .profile-hero h1 {
     overflow-wrap: anywhere;
+}
+
+.dive-type-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    color: var(--muted-strong);
+    font-size: 0.76rem;
+    font-weight: 680;
+    line-height: 1;
+    text-transform: uppercase;
+}
+
+.dive-type-label::before {
+    content: "";
+    width: 3px;
+    height: 3px;
+    border-radius: 50%;
+    background: currentColor;
+    opacity: 0.58;
+}
+
+.dive-type-icon {
+    position: relative;
+    width: 15px;
+    height: 15px;
+    border: 1.7px solid currentColor;
+    border-radius: 50%;
+    opacity: 0.86;
+}
+
+.dive-type-icon::before,
+.dive-type-icon::after {
+    content: "";
+    position: absolute;
+    left: 3px;
+    right: 3px;
+    height: 1.7px;
+    border-radius: 999px;
+    background: currentColor;
+}
+
+.dive-type-icon::before {
+    top: 5px;
+}
+
+.dive-type-icon::after {
+    top: 8px;
+    opacity: 0.62;
 }
 
 .dive-card-title {
@@ -998,8 +1054,7 @@ textarea:focus {
 }
 
 .stat-stack > div,
-.stats-grid > div,
-.modal-stats div {
+.stats-grid > div {
     display: grid;
     align-content: center;
     min-height: 70px;
@@ -1010,8 +1065,7 @@ textarea:focus {
 }
 
 .stat-stack span,
-.stats-grid span,
-.modal-stats span {
+.stats-grid span {
     display: block;
     color: var(--ink);
     font-size: 1.32rem;
@@ -1020,8 +1074,7 @@ textarea:focus {
 }
 
 .stat-stack small,
-.stats-grid small,
-.modal-stats small {
+.stats-grid small {
     margin-top: 6px;
     color: var(--muted);
     font-size: 0.72rem;
@@ -1304,8 +1357,16 @@ textarea:focus {
 }
 
 .range-control output {
-    color: var(--accent);
-    font-weight: 760;
+    color: var(--muted-strong);
+    font-size: 0.84rem;
+    font-weight: 620;
+    line-height: 1.2;
+}
+
+.range-control input[type="number"] {
+    color: var(--muted-strong);
+    font-size: 0.9rem;
+    font-weight: 610;
 }
 
 input[type="range"] {
@@ -1768,10 +1829,62 @@ input[type="range"] {
     padding-bottom: 8px;
 }
 
-.modal-stats {
+.modal-primary-stats {
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 8px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 18px 24px;
+    padding: 8px 4px 2px;
+}
+
+.modal-primary-stats div {
+    display: grid;
+    gap: 6px;
+    min-width: 0;
+}
+
+.modal-primary-stats small {
+    color: var(--muted);
+    font-size: 0.84rem;
+    font-weight: 540;
+}
+
+.modal-primary-stats span {
+    color: var(--ink);
+    font-size: 1.68rem;
+    font-weight: 690;
+    line-height: 1.05;
+}
+
+.modal-detail-list {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 9px 20px;
+    padding: 10px 4px 2px;
+    border-top: 1px solid var(--line);
+}
+
+.modal-detail-list div {
+    min-width: 0;
+}
+
+.modal-detail-list dt,
+.modal-detail-list dd {
+    margin: 0;
+}
+
+.modal-detail-list dt {
+    color: var(--muted);
+    font-size: 0.72rem;
+    font-weight: 650;
+    text-transform: uppercase;
+}
+
+.modal-detail-list dd {
+    margin-top: 3px;
+    color: var(--muted-strong);
+    font-size: 0.92rem;
+    font-weight: 540;
+    overflow-wrap: anywhere;
 }
 
 .notes-block,
@@ -1941,7 +2054,8 @@ input[type="range"] {
     .control-panel,
     .compact-list,
     .stats-grid,
-    .modal-stats {
+    .modal-primary-stats,
+    .modal-detail-list {
         grid-template-columns: 1fr;
     }
 

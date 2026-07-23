@@ -10,7 +10,14 @@
         </div>
         <div>
             <strong>{{ dive.username }}</strong>
-            <p>{{ dive.date }} &middot; logged a dive</p>
+            <p class="dive-card-meta">
+                <span>{{ dive.date }}</span>
+                {% set dive_type = dive.dive_type or 'reef' %}
+                <span class="dive-type-label" title="{{ dive_type|capitalize }} dive">
+                    <span class="dive-type-icon" aria-hidden="true"></span>
+                    {{ dive_type|capitalize }}
+                </span>
+            </p>
         </div>
     </div>
 
