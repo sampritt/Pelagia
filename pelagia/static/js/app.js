@@ -458,6 +458,7 @@ function initDiveForm() {
             max: 100,
             step: 5,
             unit: "ft",
+            optional: true,
         },
         airTemp: {
             range: form.querySelector("[data-range='airTemp']"),

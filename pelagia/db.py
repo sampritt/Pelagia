@@ -30,7 +30,7 @@ def init_db():
     _ensure_column(db, "dives", "dive_center_name", "TEXT")
     _ensure_column(db, "dives", "weight_lbs", "INTEGER")
     _ensure_column(db, "dives", "exposure", "TEXT")
-    _ensure_column(db, "dives", "visibility_ft", "INTEGER NOT NULL DEFAULT 0")
+    _ensure_column(db, "dives", "visibility_ft", "INTEGER")
     _ensure_column(db, "dives", "air_temp_degrees", "INTEGER")
     _ensure_column(db, "dives", "water_temp_degrees", "INTEGER")
     _ensure_column(db, "dives", "dive_type", "TEXT NOT NULL DEFAULT 'open water'")
@@ -73,7 +73,7 @@ def _ensure_nullable_dive_metadata(db):
         row["name"]: row
         for row in db.execute("PRAGMA table_info(dives)").fetchall()
     }
-    optional_columns = ("weight_lbs", "exposure", "air_temp_degrees", "water_temp_degrees")
+    optional_columns = ("weight_lbs", "exposure", "visibility_ft", "air_temp_degrees", "water_temp_degrees")
     if all(column in columns and columns[column]["notnull"] == 0 for column in optional_columns):
         return
 
@@ -97,7 +97,7 @@ def _ensure_nullable_dive_metadata(db):
                 duration_min INTEGER NOT NULL DEFAULT 0,
                 weight_lbs INTEGER,
                 exposure TEXT,
-                visibility_ft INTEGER NOT NULL DEFAULT 0,
+                visibility_ft INTEGER,
                 air_temp_degrees INTEGER,
                 water_temp_degrees INTEGER,
                 dive_type TEXT NOT NULL DEFAULT 'open water',

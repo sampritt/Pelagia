@@ -41,7 +41,7 @@
         <p>
             {% if dive.country_or_area %}{{ dive.country_or_area }}{% else %}Coordinates pending{% endif %}
             {% if center_name %}
-                <span>with
+                <span>- with
                     {% if dive.dive_center_id %}
                         <a href="{{ url_for('dive_center_profile', center_id=dive.dive_center_id) }}">{{ center_name }}</a>
                     {% else %}
@@ -89,7 +89,7 @@
             <dl class="detail-metric-list">
                 <div>
                     <dt>Visibility</dt>
-                    <dd>{{ dive.visibility_ft }} ft</dd>
+                    <dd>{{ optional_metric(dive.visibility_ft, ' ft') }}</dd>
                 </div>
                 <div>
                     <dt>Weight</dt>
@@ -104,7 +104,7 @@
                     <dd>{{ optional_metric(dive.air_temp_degrees, ' degrees') }}</dd>
                 </div>
                 <div>
-                    <dt>Water</dt>
+                    <dt>Sea</dt>
                     <dd>{{ optional_metric(dive.water_temp_degrees, ' degrees') }}</dd>
                 </div>
                 <div>
@@ -119,37 +119,6 @@
             </dl>
         </div>
 
-        <div class="detail-panel">
-            <h2>Conditions</h2>
-            <dl class="detail-metric-list">
-                <div>
-                    <dt>Dive Type</dt>
-                    <dd>{{ dive_type_label(dive.dive_type or "open water") }}</dd>
-                </div>
-                <div>
-                    <dt>Date</dt>
-                    <dd>{{ dive.date }}</dd>
-                </div>
-                <div>
-                    <dt>Dive Center</dt>
-                    <dd>
-                        {% if center_name %}
-                            {% if dive.dive_center_id %}
-                                <a href="{{ url_for('dive_center_profile', center_id=dive.dive_center_id) }}">{{ center_name }}</a>
-                            {% else %}
-                                {{ center_name }}
-                            {% endif %}
-                        {% else %}
-                            -
-                        {% endif %}
-                    </dd>
-                </div>
-                <div>
-                    <dt>Location</dt>
-                    <dd>{% if dive.country_or_area %}{{ dive.country_or_area }}{% else %}-{% endif %}</dd>
-                </div>
-            </dl>
-        </div>
     </div>
 
     {% if dive.species %}

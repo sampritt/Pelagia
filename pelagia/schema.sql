@@ -70,7 +70,7 @@ CREATE TABLE IF NOT EXISTS dives (
     duration_min INTEGER NOT NULL DEFAULT 0,
     weight_lbs INTEGER,
     exposure TEXT,
-    visibility_ft INTEGER NOT NULL DEFAULT 0,
+    visibility_ft INTEGER,
     air_temp_degrees INTEGER,
     water_temp_degrees INTEGER,
     dive_type TEXT NOT NULL DEFAULT 'open water',

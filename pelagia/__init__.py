@@ -584,7 +584,7 @@ def dive_values_from_request(form_request):
     duration = clamp_int(form.get("duration_min"), 0, 120)
     weight = maybe_clamped_int(form.get("weight_lbs"), 0, 20)
     exposure = form.get("exposure") if form.get("exposure") in EXPOSURES else None
-    visibility = clamp_int(form.get("visibility_ft"), 0, 100)
+    visibility = maybe_clamped_int(form.get("visibility_ft"), 0, 100)
     air_temp = maybe_clamped_int(form.get("air_temp_degrees"), 0, 100)
     water_temp = maybe_clamped_int(form.get("water_temp_degrees"), 0, 100)
     dive_type = form.get("dive_type") if form.get("dive_type") in DIVE_TYPES else "open water"

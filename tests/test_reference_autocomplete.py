@@ -121,8 +121,12 @@ Kelp House,2 Harbor Way,Alaska,https://kelp.example.test
 
             new_response = client.get("/dive/new")
             self.assertIn(b'<output id="weightOutput">-</output>', new_response.data)
+            self.assertIn(b'<output id="visibilityOutput">-</output>', new_response.data)
             self.assertIn(b'<output id="airTempOutput">-</output>', new_response.data)
             self.assertIn(b'<output id="waterTempOutput">-</output>', new_response.data)
+            self.assertIn(b'value="0" data-range="visibility"', new_response.data)
+            self.assertIn(b'value="0" data-range="airTemp"', new_response.data)
+            self.assertIn(b'value="0" data-range="waterTemp"', new_response.data)
             self.assertIn(b'value="" disabled selected', new_response.data)
 
             client.post(
@@ -138,7 +142,7 @@ Kelp House,2 Harbor Way,Alaska,https://kelp.example.test
                     "duration_min": "70",
                     "weight_lbs": "",
                     "exposure": "",
-                    "visibility_ft": "55",
+                    "visibility_ft": "",
                     "air_temp_degrees": "",
                     "water_temp_degrees": "",
                     "dive_type": "shore dive",
@@ -151,18 +155,19 @@ Kelp House,2 Harbor Way,Alaska,https://kelp.example.test
             logged = client.get(f"/api/dives/{dive_id}").get_json()
             self.assertIsNone(logged["weight_lbs"])
             self.assertIsNone(logged["exposure"])
+            self.assertIsNone(logged["visibility_ft"])
             self.assertIsNone(logged["air_temp_degrees"])
             self.assertIsNone(logged["water_temp_degrees"])
 
             detail_response = client.get(f"/dive/{dive_id}")
-            self.assertGreaterEqual(detail_response.data.count(b"<dd>-</dd>"), 4)
+            self.assertGreaterEqual(detail_response.data.count(b"<dd>-</dd>"), 5)
 
             with sqlite3.connect(db_path) as conn:
                 columns = {
                     row[1]: row
                     for row in conn.execute("PRAGMA table_info(dives)").fetchall()
                 }
-            for column in ("weight_lbs", "exposure", "air_temp_degrees", "water_temp_degrees"):
+            for column in ("weight_lbs", "exposure", "visibility_ft", "air_temp_degrees", "water_temp_degrees"):
                 self.assertEqual(columns[column][3], 0)
 
     def test_owned_dive_can_be_edited_and_soft_deleted(self):
@@ -228,6 +233,10 @@ Kelp House,2 Harbor Way,Alaska,https://kelp.example.test
             self.assertIn(b"Shore Dive", detail_response.data)
             self.assertIn(b"detail-headline-stats", detail_response.data)
             self.assertIn(b"detail-lower-grid", detail_response.data)
+            self.assertIn(b"Alaska", detail_response.data)
+            self.assertIn(b"<span>- with", detail_response.data)
+            self.assertIn(b"Kelp House", detail_response.data)
+            self.assertNotIn(b"<h2>Conditions</h2>", detail_response.data)
 
             edit_response = client.get(f"/dive/{dive_id}/edit")
             self.assertEqual(edit_response.status_code, 200)
