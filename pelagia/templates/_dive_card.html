@@ -73,9 +73,9 @@
             <span class="heart-icon"></span>
             <span data-like-count>{{ dive.like_count }}</span>
         </button>
-        <button class="chip-button" type="button" data-open-dive="{{ dive.id }}">
+        <a class="chip-button" href="{{ url_for('dive_detail', dive_id=dive.id) }}" data-open-dive="{{ dive.id }}">
             <span class="comment-icon"></span>
-            <span>{{ dive.comment_count }}</span>
-        </button>
+            <span data-comment-count>{{ dive.comment_count }}</span>
+        </a>
     </div>
 </article>

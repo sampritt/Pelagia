@@ -17,7 +17,7 @@
             <span>Pelagia</span>
         </a>
         <nav class="desktop-nav" aria-label="Primary">
-            <a class="{{ 'active' if request.endpoint == 'home' else '' }}" href="{{ url_for('home') }}">Feed</a>
+            <a class="{{ 'active' if request.endpoint in ('home', 'dive_detail') else '' }}" href="{{ url_for('home') }}">Feed</a>
             <a class="{{ 'active' if request.endpoint == 'map_view' else '' }}" href="{{ url_for('map_view') }}">Map</a>
             <a class="{{ 'active' if request.endpoint == 'profile' else '' }}" href="{{ url_for('profile') }}">Profile</a>
             <a class="nav-cta {{ 'active' if request.endpoint == 'log_dive' else '' }}" href="{{ url_for('log_dive') }}"><span aria-hidden="true">+</span> Log dive</a>
@@ -53,20 +53,12 @@
 
     {% if me %}
     <nav class="mobile-nav" aria-label="Primary mobile">
-        <a class="{{ 'active' if request.endpoint == 'home' else '' }}" href="{{ url_for('home') }}">Feed</a>
+        <a class="{{ 'active' if request.endpoint in ('home', 'dive_detail') else '' }}" href="{{ url_for('home') }}">Feed</a>
         <a class="{{ 'active' if request.endpoint == 'map_view' else '' }}" href="{{ url_for('map_view') }}">Map</a>
         <a class="mobile-log {{ 'active' if request.endpoint == 'log_dive' else '' }}" href="{{ url_for('log_dive') }}" aria-label="Log dive">+</a>
         <a class="{{ 'active' if request.endpoint == 'profile' else '' }}" href="{{ url_for('profile') }}">Profile</a>
     </nav>
     {% endif %}
-
-    <div class="dive-modal" id="diveModal" hidden>
-        <button class="modal-backdrop" type="button" data-close-modal aria-label="Close dive log"></button>
-        <article class="modal-panel" role="dialog" aria-modal="true" aria-label="Dive log">
-            <button class="icon-button modal-close" type="button" data-close-modal aria-label="Close">&times;</button>
-            <div id="diveModalBody"></div>
-        </article>
-    </div>
 
     {% block scripts %}{% endblock %}
 </body>

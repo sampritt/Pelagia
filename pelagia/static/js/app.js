@@ -8,13 +8,6 @@ const escapeHtml = (value) =>
         .replaceAll('"', "&quot;")
         .replaceAll("'", "&#039;");
 
-const titleCaseChoice = (value) =>
-    String(value || "")
-        .split(/\s+/)
-        .filter(Boolean)
-        .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-        .join(" ");
-
 const CURRENT_STRENGTHS = [
     { value: "none", label: "None" },
     { value: "light", label: "Light" },
@@ -263,10 +256,6 @@ function initDiveInteractions() {
             openDive(card.dataset.diveId);
         }
 
-        if (event.target.closest("[data-close-modal]")) {
-            closeDiveModal();
-        }
-
         const centerLikeButton = event.target.closest("[data-center-like]");
         if (centerLikeButton) {
             event.preventDefault();
@@ -275,9 +264,6 @@ function initDiveInteractions() {
     });
 
     document.addEventListener("keydown", (event) => {
-        if (event.key === "Escape") {
-            closeDiveModal();
-        }
         if ((event.key === "Enter" || event.key === " ") && event.target.matches("[data-dive-card]")) {
             event.preventDefault();
             openDive(event.target.dataset.diveId);
@@ -310,8 +296,9 @@ function initDiveInteractions() {
             body: new FormData(form),
         });
         input.value = "";
-        renderComments(form.closest(".modal-content").querySelector("[data-comments]"), data.comments);
-        document.querySelectorAll(`[data-open-dive='${form.dataset.diveId}'] span:last-child`).forEach((span) => {
+        const commentsContainer = form.closest("[data-dive-detail]")?.querySelector("[data-comments]");
+        renderComments(commentsContainer, data.comments);
+        document.querySelectorAll(`[data-open-dive='${form.dataset.diveId}'] [data-comment-count], [data-dive-detail] [data-comment-count]`).forEach((span) => {
             span.textContent = data.comments.length;
         });
     });
@@ -392,113 +379,7 @@ async function toggleCenterLike(centerId) {
 }
 
 async function openDive(diveId) {
-    const modal = document.getElementById("diveModal");
-    const body = document.getElementById("diveModalBody");
-    if (!modal || !body) {
-        return;
-    }
-    body.innerHTML = '<div class="modal-content"><p>Loading...</p></div>';
-    modal.hidden = false;
-    const dive = await fetchJson(`/api/dives/${diveId}`);
-    body.innerHTML = renderDiveModal(dive);
-    initStaticMaps(body);
-}
-
-function closeDiveModal() {
-    const modal = document.getElementById("diveModal");
-    if (modal) {
-        modal.hidden = true;
-    }
-}
-
-function renderDiveModal(dive) {
-    const photos = dive.photos.length
-        ? `<div class="modal-photo-grid">${dive.photos.map((src) => `<img src="${escapeHtml(src)}" alt="">`).join("")}</div>`
-        : "";
-    const species = dive.species.length
-        ? `<div class="species-row">${dive.species.map((name) => `<span>${escapeHtml(name)}</span>`).join("")}</div>`
-        : "";
-    const coords =
-        dive.latitude !== null && dive.longitude !== null
-            ? `${Number(dive.latitude).toFixed(4)}, ${Number(dive.longitude).toFixed(4)}`
-            : "Coordinates pending";
-    const notes = dive.notes
-        ? `<div class="notes-block"><p>${escapeHtml(dive.notes)}</p></div>`
-        : "";
-    const center = dive.dive_center_name
-        ? `<p class="modal-center">with ${dive.dive_center_id ? `<a href="/dive-centers/${escapeHtml(dive.dive_center_id)}">${escapeHtml(dive.dive_center_name)}</a>` : escapeHtml(dive.dive_center_name)}</p>`
-        : "";
-    const diveType = titleCaseChoice(dive.dive_type || "open water");
-    const current = titleCaseChoice(dive.current || "none");
-    const currentStrength = titleCaseChoice(dive.current_strength || "none");
-    const detailRows = [
-        ["Weight", `${dive.weight_lbs} lb`],
-        ["Exposure", dive.exposure],
-        ["Air", `${dive.air_temp_degrees} degrees`],
-        ["Water", `${dive.water_temp_degrees} degrees`],
-        ["Type", diveType],
-        ["Current Type", current],
-        ["Current Strength", currentStrength],
-    ];
-    const nextUrl = `${window.location.pathname}${window.location.search}`;
-    const editButton = dive.is_owner
-        ? `
-            <a class="icon-button modal-edit" href="/dive/${encodeURIComponent(dive.id)}/edit?next=${encodeURIComponent(nextUrl)}" aria-label="Edit dive" title="Edit dive">
-                <svg viewBox="0 0 24 24" aria-hidden="true">
-                    <path d="M12 20h9"></path>
-                    <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"></path>
-                </svg>
-            </a>
-        `
-        : "";
-    return `
-        <div class="modal-content">
-            <div class="modal-title-row">
-                <div class="modal-title">
-                    <h2>${escapeHtml(dive.site_name)}</h2>
-                    <p>${escapeHtml(dive.date)} | ${escapeHtml(dive.username)} | ${escapeHtml(dive.country_or_area || "")}</p>
-                    ${center}
-                </div>
-                ${editButton}
-            </div>
-            ${photos}
-            <div class="modal-primary-stats">
-                <div><small>Elapsed Time</small><span>${escapeHtml(dive.duration_min)} min</span></div>
-                <div><small>Depth</small><span>${escapeHtml(dive.depth_ft)} ft</span></div>
-                <div><small>Visibility</small><span>${escapeHtml(dive.visibility_ft)} ft</span></div>
-            </div>
-            <dl class="modal-detail-list">
-                ${detailRows
-                    .map(
-                        ([label, value]) => `
-                            <div>
-                                <dt>${escapeHtml(label)}</dt>
-                                <dd>${escapeHtml(value)}</dd>
-                            </div>
-                        `,
-                    )
-                    .join("")}
-            </dl>
-            <div class="mini-map ${dive.latitude === null || dive.longitude === null ? "map-pending" : ""}" ${dive.latitude === null || dive.longitude === null ? "" : `data-static-map data-map-lat="${escapeHtml(dive.latitude)}" data-map-lng="${escapeHtml(dive.longitude)}" data-map-zoom="10"`}>
-                <span class="map-pin"></span>
-                <span class="coordinate-label">${escapeHtml(coords)}</span>
-            </div>
-            ${species}
-            ${notes}
-            <div class="dive-actions">
-                <button class="chip-button like-button ${dive.liked_by_me ? "liked" : ""}" type="button" data-like data-dive-id="${dive.id}">
-                    <span class="heart-icon"></span>
-                    <span data-like-count>${dive.like_count}</span>
-                </button>
-                <span class="chip-button">${dive.comment_count} comments</span>
-            </div>
-            <div class="comments-block" data-comments>${commentsMarkup(dive.comments)}</div>
-            <form class="comment-form" data-comment-form data-dive-id="${dive.id}">
-                <input name="body" maxlength="600" autocomplete="off" placeholder="Add a comment">
-                <button class="primary-button compact" type="submit">Post</button>
-            </form>
-        </div>
-    `;
+    window.location.assign(`/dive/${encodeURIComponent(diveId)}`);
 }
 
 function commentsMarkup(comments) {

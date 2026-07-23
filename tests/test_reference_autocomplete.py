@@ -169,6 +169,14 @@ Kelp House,2 Harbor Way,Alaska,https://kelp.example.test
             self.assertEqual(logged["current"], "none")
             self.assertEqual(logged["current_strength"], "none")
 
+            detail_response = client.get(f"/dive/{dive_id}")
+            self.assertEqual(detail_response.status_code, 200)
+            self.assertIn(b"Alert Rock", detail_response.data)
+            self.assertIn(b"tester", detail_response.data)
+            self.assertIn(b"Shore Dive", detail_response.data)
+            self.assertIn(b"detail-headline-stats", detail_response.data)
+            self.assertIn(b"detail-lower-grid", detail_response.data)
+
             edit_response = client.get(f"/dive/{dive_id}/edit")
             self.assertEqual(edit_response.status_code, 200)
             self.assertIn(b"Edit dive", edit_response.data)
@@ -211,7 +219,7 @@ Kelp House,2 Harbor Way,Alaska,https://kelp.example.test
                 },
             )
             self.assertEqual(update_response.status_code, 302)
-            self.assertTrue(update_response.headers["Location"].endswith("/you?open=%s" % dive_id))
+            self.assertTrue(update_response.headers["Location"].endswith("/dive/%s" % dive_id))
             updated = client.get(f"/api/dives/{dive_id}").get_json()
             self.assertTrue(updated["is_owner"])
             self.assertEqual(updated["site_name"], "Blue Wall")
@@ -223,6 +231,12 @@ Kelp House,2 Harbor Way,Alaska,https://kelp.example.test
             self.assertEqual(updated["current"], "rip")
             self.assertEqual(updated["current_strength"], "very strong")
             self.assertEqual(updated["species"], ["Turtle"])
+            updated_detail = client.get(f"/dive/{dive_id}")
+            self.assertIn(b"Blue Wall", updated_detail.data)
+            self.assertIn(b"Wreck", updated_detail.data)
+            self.assertIn(b"62<em>ft</em>", updated_detail.data)
+            self.assertIn(b"55<em>min</em>", updated_detail.data)
+            self.assertIn(b"Very Strong", updated_detail.data)
 
             delete_response = client.post(f"/dive/{dive_id}/delete", data={"next": "/home?open=%s" % dive_id})
             self.assertEqual(delete_response.status_code, 302)

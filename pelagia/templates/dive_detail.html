@@ -1,0 +1,198 @@
+{% extends "base.html" %}
+{% block title %}{{ dive.site_name }} - Pelagia{% endblock %}
+
+{% block content %}
+{% set has_coords = dive.latitude is not none and dive.longitude is not none %}
+{% set center_name = dive.linked_dive_center_name or dive.dive_center_name %}
+<section class="dive-detail" data-dive-detail>
+    <div class="dive-detail-head">
+        <div class="dive-detail-author">
+            <div class="mini-avatar">
+                {% if dive.profile_photo %}
+                    <img src="{{ url_for('static', filename=dive.profile_photo) }}" alt="">
+                {% else %}
+                    <span>{{ dive.username[:1]|upper }}</span>
+                {% endif %}
+            </div>
+            <div>
+                <strong>{{ dive.username }}</strong>
+                <p>
+                    <span>{{ dive.date }}</span>
+                    {% set dive_type = dive.dive_type or 'open water' %}
+                    <span class="dive-type-label" title="{{ dive_type_label(dive_type) }} dive">
+                        <span class="dive-type-icon" aria-hidden="true"></span>
+                        {{ dive_type_label(dive_type) }}
+                    </span>
+                </p>
+            </div>
+        </div>
+        {% if dive.user_id == session.get("user_id") %}
+            <a class="icon-button" href="{{ url_for('edit_dive', dive_id=dive.id, next=url_for('dive_detail', dive_id=dive.id)) }}" aria-label="Edit dive" title="Edit dive">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M12 20h9"></path>
+                    <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"></path>
+                </svg>
+            </a>
+        {% endif %}
+    </div>
+
+    <div class="dive-detail-title">
+        <h1>{{ dive.site_name }}</h1>
+        <p>
+            {% if dive.country_or_area %}{{ dive.country_or_area }}{% else %}Coordinates pending{% endif %}
+            {% if center_name %}
+                <span>with
+                    {% if dive.dive_center_id %}
+                        <a href="{{ url_for('dive_center_profile', center_id=dive.dive_center_id) }}">{{ center_name }}</a>
+                    {% else %}
+                        {{ center_name }}
+                    {% endif %}
+                </span>
+            {% endif %}
+        </p>
+    </div>
+
+    <div class="dive-detail-media {{ 'no-photos' if not dive.photos else '' }}">
+        <div class="mini-map detail-map {{ 'map-pending' if not has_coords else '' }}" {% if has_coords %}data-static-map data-map-lat="{{ dive.latitude }}" data-map-lng="{{ dive.longitude }}" data-map-zoom="10"{% endif %}>
+            <span class="map-pin"></span>
+            <span class="coordinate-label">
+                {% if has_coords %}
+                    {{ "%.4f"|format(dive.latitude) }}, {{ "%.4f"|format(dive.longitude) }}
+                {% else %}
+                    Coordinates pending
+                {% endif %}
+            </span>
+        </div>
+        {% if dive.photos %}
+            <div class="detail-photo-grid">
+                {% for photo in dive.photos %}
+                    <img src="{{ url_for('static', filename=photo.filename) }}" alt="">
+                {% endfor %}
+            </div>
+        {% endif %}
+    </div>
+
+    <div class="detail-headline-stats" aria-label="Dive stats">
+        <div>
+            <small>Depth</small>
+            <span>{{ dive.depth_ft }}<em>ft</em></span>
+        </div>
+        <div>
+            <small>Time</small>
+            <span>{{ dive.duration_min }}<em>min</em></span>
+        </div>
+    </div>
+
+    <div class="detail-lower-grid">
+        <div class="detail-panel">
+            <h2>Metrics</h2>
+            <dl class="detail-metric-list">
+                <div>
+                    <dt>Visibility</dt>
+                    <dd>{{ dive.visibility_ft }} ft</dd>
+                </div>
+                <div>
+                    <dt>Weight</dt>
+                    <dd>{{ dive.weight_lbs }} lb</dd>
+                </div>
+                <div>
+                    <dt>Exposure</dt>
+                    <dd>{{ dive.exposure }}</dd>
+                </div>
+                <div>
+                    <dt>Air</dt>
+                    <dd>{{ dive.air_temp_degrees }} degrees</dd>
+                </div>
+                <div>
+                    <dt>Water</dt>
+                    <dd>{{ dive.water_temp_degrees }} degrees</dd>
+                </div>
+                <div>
+                    <dt>Current</dt>
+                    <dd>
+                        {{ current_label(dive.current) }}
+                        {% if dive.current and dive.current != "none" and dive.current_strength != "none" %}
+                            - {{ current_strength_label(dive.current_strength) }}
+                        {% endif %}
+                    </dd>
+                </div>
+            </dl>
+        </div>
+
+        <div class="detail-panel">
+            <h2>Conditions</h2>
+            <dl class="detail-metric-list">
+                <div>
+                    <dt>Dive Type</dt>
+                    <dd>{{ dive_type_label(dive.dive_type or "open water") }}</dd>
+                </div>
+                <div>
+                    <dt>Date</dt>
+                    <dd>{{ dive.date }}</dd>
+                </div>
+                <div>
+                    <dt>Dive Center</dt>
+                    <dd>
+                        {% if center_name %}
+                            {% if dive.dive_center_id %}
+                                <a href="{{ url_for('dive_center_profile', center_id=dive.dive_center_id) }}">{{ center_name }}</a>
+                            {% else %}
+                                {{ center_name }}
+                            {% endif %}
+                        {% else %}
+                            -
+                        {% endif %}
+                    </dd>
+                </div>
+                <div>
+                    <dt>Location</dt>
+                    <dd>{% if dive.country_or_area %}{{ dive.country_or_area }}{% else %}-{% endif %}</dd>
+                </div>
+            </dl>
+        </div>
+    </div>
+
+    {% if dive.species %}
+        <div class="detail-panel">
+            <h2>Marine Life</h2>
+            <div class="species-row detail-species">
+                {% for species in dive.species %}
+                    <span>{{ species.common_name }}</span>
+                {% endfor %}
+            </div>
+        </div>
+    {% endif %}
+
+    {% if dive.notes %}
+        <div class="notes-block">
+            <p>{{ dive.notes }}</p>
+        </div>
+    {% endif %}
+
+    <div class="detail-social">
+        <div class="dive-actions">
+            <button class="chip-button like-button {{ 'liked' if dive.liked_by_me else '' }}" type="button" data-like data-dive-id="{{ dive.id }}">
+                <span class="heart-icon"></span>
+                <span data-like-count>{{ dive.like_count }}</span>
+            </button>
+            <span class="chip-button"><span data-comment-count>{{ dive.comment_count }}</span> comments</span>
+        </div>
+        <div class="comments-block" data-comments>
+            {% if dive.comments %}
+                {% for comment in dive.comments %}
+                    <div class="comment">
+                        <strong>{{ comment.username }}</strong>
+                        <p>{{ comment.body }}</p>
+                    </div>
+                {% endfor %}
+            {% else %}
+                <p class="muted">No comments yet.</p>
+            {% endif %}
+        </div>
+        <form class="comment-form" data-comment-form data-dive-id="{{ dive.id }}">
+            <input name="body" maxlength="600" autocomplete="off" placeholder="Add a comment">
+            <button class="primary-button compact" type="submit">Post</button>
+        </form>
+    </div>
+</section>
+{% endblock %}

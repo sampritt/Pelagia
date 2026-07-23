@@ -206,6 +206,14 @@ def register_routes(app):
             next_url="",
         )
 
+    @app.route("/dive/<int:dive_id>")
+    @login_required
+    def dive_detail(dive_id):
+        dive = fetch_dive(dive_id, session["user_id"])
+        if dive is None:
+            abort(404)
+        return render_template("dive_detail.html", dive=dive)
+
     @app.route("/dive/<int:dive_id>/edit", methods=("GET", "POST"))
     @login_required
     def edit_dive(dive_id):
@@ -215,7 +223,7 @@ def register_routes(app):
         if request.method == "POST":
             update_dive_from_request(dive_id, session["user_id"], request)
             flash("Dive updated.")
-            return redirect(_url_with_open(_safe_next_url(request.form.get("next")), dive_id))
+            return redirect(url_for("dive_detail", dive_id=dive_id))
         return render_template(
             "log_dive.html",
             exposures=EXPOSURES,
@@ -243,7 +251,10 @@ def register_routes(app):
         )
         database.get_db().commit()
         flash("Dive deleted.")
-        return redirect(_url_without_open(_safe_next_url(request.form.get("next"))))
+        next_url = _url_without_open(_safe_next_url(request.form.get("next")))
+        if next_url == url_for("dive_detail", dive_id=dive_id):
+            next_url = url_for("home")
+        return redirect(next_url)
 
     @app.route("/you", methods=("GET", "POST"))
     @login_required
@@ -990,14 +1001,6 @@ def _safe_next_url(value):
     path = parsed.path or url_for("home")
     query = f"?{parsed.query}" if parsed.query else ""
     return f"{path}{query}"
-
-
-def _url_with_open(value, dive_id):
-    base = _safe_next_url(value)
-    path, _, query = base.partition("?")
-    params = parse_qs(query, keep_blank_values=True)
-    params["open"] = [str(dive_id)]
-    return f"{path}?{urlencode(params, doseq=True)}"
 
 
 def _url_without_open(value):
