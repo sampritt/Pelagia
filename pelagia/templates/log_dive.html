@@ -126,7 +126,7 @@
                 </div>
                 <div class="range-control">
                     <div>
-                        <label for="waterTempDegrees">Sea temperature</label>
+                        <label for="waterTempDegrees">Water temperature</label>
                         <output id="waterTempOutput">{{ optional_metric(dive.water_temp_degrees, ' degrees') if is_edit else '-' }}</output>
                     </div>
                     <input type="range" min="0" max="100" step="1" value="{{ dive.water_temp_degrees if is_edit and dive.water_temp_degrees is not none else 0 }}" data-range="waterTemp">
