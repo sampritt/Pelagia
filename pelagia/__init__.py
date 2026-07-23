@@ -29,9 +29,12 @@ from .importer import import_reference_data
 
 EXPOSURES = ("swimsuit", "shorty", "2mm", "3mm", "4mm", "5mm", "6mm", "7mm", "dry suit")
 DIVE_TYPES = ("open water", "shore dive", "reef", "wall", "deep", "night", "wreck", "cavern", "cave")
-CURRENTS = ("none", "slack", "current", "drift", "surge")
+CURRENT_TYPES = ("none", "current", "drift", "surge")
+CURRENT_STRENGTHS = ("none", "light", "moderate", "strong", "very strong")
 DIVE_TYPE_LABELS = {value: value.title() for value in DIVE_TYPES}
-CURRENT_LABELS = {value: value.title() for value in CURRENTS}
+CURRENT_TYPE_LABELS = {value: value.title() for value in CURRENT_TYPES}
+CURRENT_STRENGTH_LABELS = {value: value.title() for value in CURRENT_STRENGTHS}
+CURRENT_STRENGTH_INDEXES = {value: index for index, value in enumerate(CURRENT_STRENGTHS)}
 ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "gif", "webp"}
 UPLOAD_IMAGE_MAX_DIMENSION = 1600
 UPLOAD_IMAGE_JPEG_QUALITY = 82
@@ -121,6 +124,7 @@ def register_routes(app):
     app.jinja_env.globals["current_user"] = current_user
     app.jinja_env.globals["dive_type_label"] = dive_type_label
     app.jinja_env.globals["current_label"] = current_label
+    app.jinja_env.globals["current_strength_label"] = current_strength_label
 
     @app.route("/")
     def landing():
@@ -191,8 +195,11 @@ def register_routes(app):
             exposures=EXPOSURES,
             dive_types=DIVE_TYPES,
             dive_type_labels=DIVE_TYPE_LABELS,
-            currents=CURRENTS,
-            current_labels=CURRENT_LABELS,
+            current_types=CURRENT_TYPES,
+            current_type_labels=CURRENT_TYPE_LABELS,
+            current_strengths=CURRENT_STRENGTHS,
+            current_strength_labels=CURRENT_STRENGTH_LABELS,
+            current_strength_indexes=CURRENT_STRENGTH_INDEXES,
             today=date.today().isoformat(),
             dive=None,
             is_edit=False,
@@ -214,8 +221,11 @@ def register_routes(app):
             exposures=EXPOSURES,
             dive_types=DIVE_TYPES,
             dive_type_labels=DIVE_TYPE_LABELS,
-            currents=CURRENTS,
-            current_labels=CURRENT_LABELS,
+            current_types=CURRENT_TYPES,
+            current_type_labels=CURRENT_TYPE_LABELS,
+            current_strengths=CURRENT_STRENGTHS,
+            current_strength_labels=CURRENT_STRENGTH_LABELS,
+            current_strength_indexes=CURRENT_STRENGTH_INDEXES,
             today=date.today().isoformat(),
             dive=dive,
             is_edit=True,
@@ -465,9 +475,9 @@ def create_dive_from_request(user_id, form_request):
         INSERT INTO dives (
             user_id, dive_site_id, dive_center_id, dive_center_name, date, site_name, country_or_area, latitude, longitude,
             depth_ft, duration_min, weight_lbs, exposure, visibility_ft, air_temp_degrees, water_temp_degrees,
-            dive_type, current, notes
+            dive_type, current, current_strength, notes
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             user_id,
@@ -488,6 +498,7 @@ def create_dive_from_request(user_id, form_request):
             values["water_temp_degrees"],
             values["dive_type"],
             values["current"],
+            values["current_strength"],
             values["notes"],
         ),
     )
@@ -521,6 +532,7 @@ def update_dive_from_request(dive_id, user_id, form_request):
             water_temp_degrees = ?,
             dive_type = ?,
             current = ?,
+            current_strength = ?,
             notes = ?
         WHERE id = ? AND user_id = ? AND COALESCE(is_deleted, 0) = 0
         """,
@@ -542,6 +554,7 @@ def update_dive_from_request(dive_id, user_id, form_request):
             values["water_temp_degrees"],
             values["dive_type"],
             values["current"],
+            values["current_strength"],
             values["notes"],
             dive_id,
             user_id,
@@ -563,7 +576,8 @@ def dive_values_from_request(form_request):
     air_temp = clamp_int(form.get("air_temp_degrees"), 0, 100)
     water_temp = clamp_int(form.get("water_temp_degrees"), 0, 100)
     dive_type = form.get("dive_type") if form.get("dive_type") in DIVE_TYPES else "open water"
-    current = form.get("current") if form.get("current") in CURRENTS else "none"
+    current = form.get("current") if form.get("current") in CURRENT_TYPES else "none"
+    current_strength = form.get("current_strength") if form.get("current_strength") in CURRENT_STRENGTHS else "none"
     date_value = form.get("date") or date.today().isoformat()
     site_name = form.get("site_name", "").strip() or "Unlisted site"
     country = form.get("country_or_area", "").strip()
@@ -606,6 +620,7 @@ def dive_values_from_request(form_request):
         "water_temp_degrees": water_temp,
         "dive_type": dive_type,
         "current": current,
+        "current_strength": current_strength,
         "notes": form.get("notes", "").strip(),
         "species_names": species_names,
     }
@@ -885,6 +900,7 @@ def dive_to_json(dive):
         "water_temp_degrees": dive["water_temp_degrees"],
         "dive_type": dive["dive_type"],
         "current": dive["current"],
+        "current_strength": dive["current_strength"],
         "notes": dive["notes"],
         "like_count": dive["like_count"],
         "comment_count": dive["comment_count"],
@@ -950,7 +966,11 @@ def dive_type_label(value):
 
 
 def current_label(value):
-    return CURRENT_LABELS.get(value, CURRENT_LABELS["none"])
+    return CURRENT_TYPE_LABELS.get(value, CURRENT_TYPE_LABELS["none"])
+
+
+def current_strength_label(value):
+    return CURRENT_STRENGTH_LABELS.get(value, CURRENT_STRENGTH_LABELS["none"])
 
 
 def _safe_next_url(value):

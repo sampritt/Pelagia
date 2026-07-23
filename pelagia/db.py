@@ -33,7 +33,9 @@ def init_db():
     _ensure_column(db, "dives", "water_temp_degrees", "INTEGER NOT NULL DEFAULT 0")
     _ensure_column(db, "dives", "dive_type", "TEXT NOT NULL DEFAULT 'open water'")
     _ensure_column(db, "dives", "current", "TEXT NOT NULL DEFAULT 'none'")
+    _ensure_column(db, "dives", "current_strength", "TEXT NOT NULL DEFAULT 'none'")
     _ensure_column(db, "dives", "is_deleted", "INTEGER NOT NULL DEFAULT 0")
+    _normalize_current_values(db)
     db.commit()
 
 
@@ -45,6 +47,14 @@ def _ensure_column(db, table_name, column_name, column_type):
         except sqlite3.OperationalError as error:
             if "duplicate column name" not in str(error).lower():
                 raise
+
+
+def _normalize_current_values(db):
+    db.execute("UPDATE dives SET current = 'none' WHERE current NOT IN ('none', 'current', 'drift', 'surge')")
+    db.execute(
+        "UPDATE dives SET current_strength = 'none' "
+        "WHERE current_strength NOT IN ('none', 'light', 'moderate', 'strong', 'very strong')"
+    )
 
 
 def table_count(table_name):

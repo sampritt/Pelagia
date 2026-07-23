@@ -139,13 +139,27 @@
                     </select>
                 </label>
                 <label>
-                    Current
+                    Current type
                     <select name="current">
-                        {% for current in currents %}
-                            <option value="{{ current }}" {{ 'selected' if current == (dive.current if is_edit else 'none') else '' }}>{{ current_labels[current] }}</option>
+                        {% for current in current_types %}
+                            <option value="{{ current }}" {{ 'selected' if current == (dive.current if is_edit else 'none') else '' }}>{{ current_type_labels[current] }}</option>
                         {% endfor %}
                     </select>
                 </label>
+                {% set selected_current_strength = dive.current_strength if is_edit and dive.current_strength in current_strengths else 'none' %}
+                <div class="range-control discrete-range-control current-strength-control">
+                    <div>
+                        <label for="currentStrengthRange">Current strength</label>
+                        <output id="currentStrengthOutput">{{ current_strength_labels[selected_current_strength] }}</output>
+                    </div>
+                    <input id="currentStrengthRange" type="range" min="0" max="4" step="1" value="{{ current_strength_indexes[selected_current_strength] }}" data-current-strength-range>
+                    <input name="current_strength" type="hidden" value="{{ selected_current_strength }}" data-current-strength-value>
+                    <div class="range-ticks current-strength-ticks" aria-hidden="true">
+                        {% for strength in current_strengths %}
+                            <span>{{ current_strength_labels[strength] }}</span>
+                        {% endfor %}
+                    </div>
+                </div>
             </div>
         </div>
 

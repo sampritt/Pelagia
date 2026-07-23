@@ -75,6 +75,7 @@ CREATE TABLE IF NOT EXISTS dives (
     water_temp_degrees INTEGER NOT NULL DEFAULT 0,
     dive_type TEXT NOT NULL DEFAULT 'open water',
     current TEXT NOT NULL DEFAULT 'none',
+    current_strength TEXT NOT NULL DEFAULT 'none',
     notes TEXT,
     is_deleted INTEGER NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,

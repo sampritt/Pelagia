@@ -15,6 +15,14 @@ const titleCaseChoice = (value) =>
         .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
         .join(" ");
 
+const CURRENT_STRENGTHS = [
+    { value: "none", label: "None" },
+    { value: "light", label: "Light" },
+    { value: "moderate", label: "Moderate" },
+    { value: "strong", label: "Strong" },
+    { value: "very strong", label: "Very Strong" },
+];
+
 const coordinateToPoint = (lat, lon) => ({
     x: clamp(((Number(lon) + 180) / 360) * 100, 0, 100),
     y: clamp(((90 - Number(lat)) / 180) * 100, 0, 100),
@@ -422,13 +430,15 @@ function renderDiveModal(dive) {
         : "";
     const diveType = titleCaseChoice(dive.dive_type || "open water");
     const current = titleCaseChoice(dive.current || "none");
+    const currentStrength = titleCaseChoice(dive.current_strength || "none");
     const detailRows = [
         ["Weight", `${dive.weight_lbs} lb`],
         ["Exposure", dive.exposure],
         ["Air", `${dive.air_temp_degrees} degrees`],
         ["Water", `${dive.water_temp_degrees} degrees`],
         ["Type", diveType],
-        ["Current", current],
+        ["Current Type", current],
+        ["Current Strength", currentStrength],
     ];
     const nextUrl = `${window.location.pathname}${window.location.search}`;
     const editButton = dive.is_owner
@@ -632,6 +642,7 @@ function initDiveForm() {
         pair.number.addEventListener("blur", () => setPair(name, pair.number.value, true, { source: "number", commit: true }));
         setPair(name, pair.number.value, false, { commit: true });
     });
+    initCurrentStrengthSlider(form);
 
     siteInput.addEventListener(
         "input",
@@ -725,6 +736,28 @@ function initDiveForm() {
 
 function suggestedDuration(depthFt) {
     return clamp(Math.round((120 - Number(depthFt)) / 5) * 5, 0, 120);
+}
+
+function initCurrentStrengthSlider(form) {
+    const range = form.querySelector("[data-current-strength-range]");
+    const hidden = form.querySelector("[data-current-strength-value]");
+    const output = document.getElementById("currentStrengthOutput");
+    if (!range || !hidden || !output) {
+        return;
+    }
+
+    const indexForValue = (value) => CURRENT_STRENGTHS.findIndex((item) => item.value === value);
+    const setStrength = (rawIndex) => {
+        const index = clamp(Math.round(Number(rawIndex)), 0, CURRENT_STRENGTHS.length - 1);
+        const strength = CURRENT_STRENGTHS[index];
+        range.value = index;
+        hidden.value = strength.value;
+        output.textContent = strength.label;
+    };
+
+    const initialIndex = indexForValue(hidden.value);
+    setStrength(initialIndex >= 0 ? initialIndex : range.value);
+    range.addEventListener("input", () => setStrength(range.value));
 }
 
 function hideMenu(menu) {

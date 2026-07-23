@@ -1369,6 +1369,25 @@ textarea:focus {
     font-weight: 610;
 }
 
+.discrete-range-control {
+    grid-template-columns: minmax(0, 1fr);
+}
+
+.range-ticks {
+    grid-column: 1 / -1;
+    display: grid;
+    gap: 6px;
+    color: var(--muted);
+    font-size: 0.66rem;
+    font-weight: 620;
+    line-height: 1.15;
+    text-align: center;
+}
+
+.current-strength-ticks {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
 input[type="range"] {
     width: 100%;
     min-width: 0;
