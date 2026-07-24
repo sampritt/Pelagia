@@ -912,11 +912,29 @@ textarea:focus {
     display: flex;
     flex-wrap: wrap;
     align-items: baseline;
-    gap: 0;
+    gap: 5px 8px;
 }
 
-.metadata-divider {
-    white-space: pre;
+.dive-center-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    max-width: 100%;
+    min-width: 0;
+    color: var(--muted);
+}
+
+.dive-center-chip::before {
+    content: "";
+    width: 4px;
+    height: 4px;
+    flex: 0 0 auto;
+    border-radius: 50%;
+    background: color-mix(in srgb, var(--muted) 58%, transparent);
+}
+
+.dive-location-line a.dive-center-chip {
+    color: var(--accent);
 }
 
 .activity-media {
