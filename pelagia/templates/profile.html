@@ -29,14 +29,16 @@
         <div><span>{{ stats.summary.max_depth_ft }}</span><small>max depth</small></div>
         <div><span>{{ stats.summary.longest_dive_minutes }}</span><small>longest dive</small></div>
         <div><span>{{ stats.summary.total_minutes }}</span><small>total minutes</small></div>
-        <div><span>{{ stats.summary.country_count }}</span><small>countries</small></div>
-        <div><span>{{ stats.summary.location_count }}</span><small>locations</small></div>
     </div>
 
     <button class="profile-map" type="button" data-profile-map data-pins='{{ stats.pins|tojson }}'>
         <span class="map-title">Dive map</span>
         <span class="profile-map-world"></span>
     </button>
+    <div class="profile-map-stats">
+        <div><span>{{ stats.summary.country_count }}</span><small>countries</small></div>
+        <div><span>{{ stats.summary.location_count }}</span><small>locations</small></div>
+    </div>
 
     <div class="feed-toolbar">
         <span>{{ recent_dives|length }} recent {{ 'activity' if recent_dives|length == 1 else 'activities' }}</span>

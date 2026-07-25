@@ -1079,7 +1079,8 @@ textarea:focus {
 }
 
 .stat-stack > div,
-.stats-grid > div {
+.stats-grid > div,
+.profile-map-stats > div {
     display: grid;
     align-content: center;
     min-height: 70px;
@@ -1090,7 +1091,8 @@ textarea:focus {
 }
 
 .stat-stack span,
-.stats-grid span {
+.stats-grid span,
+.profile-map-stats span {
     display: block;
     color: var(--ink);
     font-size: 1.32rem;
@@ -1099,7 +1101,8 @@ textarea:focus {
 }
 
 .stat-stack small,
-.stats-grid small {
+.stats-grid small,
+.profile-map-stats small {
     margin-top: 6px;
     color: var(--muted);
     font-size: 0.72rem;
@@ -1627,7 +1630,14 @@ input[type="range"] {
 
 .stats-grid {
     display: grid;
-    grid-template-columns: repeat(6, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    min-width: 0;
+}
+
+.profile-map-stats {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 10px;
     min-width: 0;
 }
@@ -2261,6 +2271,11 @@ input[type="range"] {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
+    .stats-grid,
+    .profile-map-stats {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
     .profile-hero {
         grid-template-columns: 1fr;
         align-items: end;
@@ -2292,7 +2307,8 @@ input[type="range"] {
     }
 
     .profile-map,
-    .stats-grid > div {
+    .stats-grid > div,
+    .profile-map-stats > div {
         width: 100%;
         min-width: 0;
     }
