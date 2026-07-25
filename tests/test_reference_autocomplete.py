@@ -181,6 +181,53 @@ Kelp House,2 Harbor Way,Alaska,https://kelp.example.test
             for column in ("weight_lbs", "exposure", "visibility_ft", "air_temp_degrees", "water_temp_degrees"):
                 self.assertEqual(columns[column][3], 0)
 
+    def test_typed_reference_names_resolve_to_linked_records(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            app, db_path, _config_path = self.make_app(Path(tmp_dir))
+            client = app.test_client()
+            self.signup(client)
+
+            client.post(
+                "/dive/new",
+                data={
+                    "date": "2026-07-22",
+                    "site_name": "alert rock",
+                    "dive_site_id": "",
+                    "dive_center_name": "shark bay dive center",
+                    "dive_center_id": "",
+                    "country_or_area": "",
+                    "latitude": "",
+                    "longitude": "",
+                    "depth_ft": "40",
+                    "duration_min": "70",
+                    "weight_lbs": "",
+                    "exposure": "",
+                    "visibility_ft": "",
+                    "air_temp_degrees": "",
+                    "water_temp_degrees": "",
+                    "dive_type": "shore dive",
+                    "current": "none",
+                    "current_strength": "none",
+                    "species_json": json.dumps([]),
+                },
+            )
+
+            with sqlite3.connect(db_path) as conn:
+                row = conn.execute(
+                    """
+                    SELECT dive_site_id, dive_center_id, site_name, dive_center_name,
+                        country_or_area, latitude, longitude
+                    FROM dives
+                    """
+                ).fetchone()
+            self.assertEqual(row[0], 1)
+            self.assertEqual(row[1], 1)
+            self.assertEqual(row[2], "Alert Rock")
+            self.assertEqual(row[3], "Shark Bay Dive Center")
+            self.assertEqual(row[4], "Alaska")
+            self.assertEqual(row[5], 54.1)
+            self.assertEqual(row[6], -132.9)
+
     def test_dive_site_profile_uses_median_daily_conditions(self):
         with tempfile.TemporaryDirectory() as tmp_dir:
             app, _db_path, _config_path = self.make_app(Path(tmp_dir))

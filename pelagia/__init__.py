@@ -757,12 +757,42 @@ def dive_values_from_request(form_request):
     dive_center_name = form.get("dive_center_name", "").strip()
 
     db = database.get_db()
+    if dive_site_id:
+        site = db.execute(
+            """
+            SELECT id, name, country_or_area, latitude, longitude
+            FROM dive_sites
+            WHERE id = ?
+            """,
+            (dive_site_id,),
+        ).fetchone()
+        if site:
+            site_name = site["name"]
+            country = country or site["country_or_area"] or ""
+            latitude = latitude if latitude is not None else site["latitude"]
+            longitude = longitude if longitude is not None else site["longitude"]
+        else:
+            dive_site_id = None
+    if not dive_site_id:
+        site = resolve_dive_site_by_name(site_name, country, db)
+        if site:
+            dive_site_id = site["id"]
+            site_name = site["name"]
+            country = country or site["country_or_area"] or ""
+            latitude = latitude if latitude is not None else site["latitude"]
+            longitude = longitude if longitude is not None else site["longitude"]
+
     if dive_center_id:
         center = db.execute("SELECT id, name FROM dive_centers WHERE id = ?", (dive_center_id,)).fetchone()
         if center:
             dive_center_name = center["name"]
         else:
             dive_center_id = None
+    if not dive_center_id and dive_center_name:
+        center = resolve_dive_center_by_name(dive_center_name, db)
+        if center:
+            dive_center_id = center["id"]
+            dive_center_name = center["name"]
     if not dive_center_name:
         dive_center_id = None
 
@@ -793,6 +823,40 @@ def dive_values_from_request(form_request):
         "notes": form.get("notes", "").strip(),
         "species_names": species_names,
     }
+
+
+def resolve_dive_site_by_name(site_name, country, db):
+    rows = db.execute(
+        """
+        SELECT id, name, country_or_area, latitude, longitude
+        FROM dive_sites
+        WHERE lower(name) = lower(?)
+        LIMIT 2
+        """,
+        (site_name,),
+    ).fetchall()
+    if len(rows) == 1:
+        return rows[0]
+    if country and rows:
+        country_matches = [row for row in rows if (row["country_or_area"] or "").lower() == country.lower()]
+        if len(country_matches) == 1:
+            return country_matches[0]
+    return None
+
+
+def resolve_dive_center_by_name(dive_center_name, db):
+    rows = db.execute(
+        """
+        SELECT id, name
+        FROM dive_centers
+        WHERE lower(name) = lower(?)
+        LIMIT 2
+        """,
+        (dive_center_name,),
+    ).fetchall()
+    if len(rows) == 1:
+        return rows[0]
+    return None
 
 
 def replace_dive_species(dive_id, species_names, db):
