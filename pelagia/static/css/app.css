@@ -899,42 +899,29 @@ textarea:focus {
 }
 
 .dive-location-line a,
+.dive-center-line a,
 .center-info-grid a {
     color: var(--accent);
 }
 
 .dive-location-line a:hover,
+.dive-center-line a:hover,
 .center-info-grid a:hover {
     text-decoration: underline;
 }
 
 .dive-location-line {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: baseline;
-    gap: 5px 8px;
+    margin: 0;
 }
 
-.dive-center-chip {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    max-width: 100%;
-    min-width: 0;
+.dive-center-line {
+    display: block;
+    margin: 1px 0 0;
     color: var(--muted);
 }
 
-.dive-center-chip::before {
-    content: "";
-    width: 4px;
-    height: 4px;
-    flex: 0 0 auto;
-    border-radius: 50%;
-    background: color-mix(in srgb, var(--muted) 58%, transparent);
-}
-
-.dive-location-line a.dive-center-chip {
-    color: var(--accent);
+.dive-center-line > span:first-child {
+    color: color-mix(in srgb, var(--muted) 72%, transparent);
 }
 
 .activity-media {

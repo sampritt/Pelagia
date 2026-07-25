@@ -244,9 +244,12 @@ Kelp House,2 Harbor Way,Alaska,https://kelp.example.test
             self.assertIn(b"detail-headline-stats", detail_response.data)
             self.assertIn(b"detail-lower-grid", detail_response.data)
             self.assertIn(b"Alaska", detail_response.data)
-            self.assertIn(b'<a class="dive-center-chip" href="/dive-centers/2">Kelp House</a>', detail_response.data)
+            self.assertIn(b'<p class="dive-center-line">', detail_response.data)
+            self.assertIn(b"<span>with</span>", detail_response.data)
+            self.assertIn(b'<a href="/dive-centers/2">Kelp House</a>', detail_response.data)
             self.assertIn(b"Kelp House", detail_response.data)
             self.assertNotIn(b"metadata-divider", detail_response.data)
+            self.assertNotIn(b"dive-center-chip", detail_response.data)
             self.assertNotIn(b"- with", detail_response.data)
             self.assertNotIn(b"<h2>Conditions</h2>", detail_response.data)
 
