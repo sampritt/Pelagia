@@ -154,7 +154,7 @@
                     Current type
                     <select name="current" data-current-type-select>
                         {% for current in current_types %}
-                            <option value="{{ current }}" {{ 'selected' if current == selected_current_type else '' }}>{{ current_type_labels[current] }}</option>
+                            <option value="{{ current }}" {{ 'selected' if current == selected_current_type else '' }}>{{ '-' if current == 'none' else current_type_labels[current] }}</option>
                         {% endfor %}
                     </select>
                 </label>

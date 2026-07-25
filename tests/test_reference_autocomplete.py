@@ -305,7 +305,7 @@ Kelp House,2 Harbor Way,Alaska,https://kelp.example.test
             new_response = client.get("/dive/new")
             self.assertIn(b'<option value="open water" selected>Open Water</option>', new_response.data)
             self.assertIn(b'<option value="shore dive" >Shore Dive</option>', new_response.data)
-            self.assertIn(b'<option value="none" selected>None</option>', new_response.data)
+            self.assertIn(b'<option value="none" selected>-</option>', new_response.data)
             self.assertIn(b"Current type", new_response.data)
             self.assertIn(b'<option value="slack" >Slack</option>', new_response.data)
             self.assertIn(b'<option value="tidal" >Tidal</option>', new_response.data)
