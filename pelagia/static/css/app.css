@@ -1546,6 +1546,9 @@ input[type="range"] {
 }
 
 .profile-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0 8px;
     margin: 6px 0 0;
     color: rgba(255, 255, 255, 0.78);
     font-size: 0.9rem;
@@ -1553,6 +1556,7 @@ input[type="range"] {
 
 .profile-actions {
     display: flex;
+    align-items: center;
     flex-wrap: wrap;
     gap: 10px;
     margin-top: 14px;
@@ -1626,6 +1630,45 @@ input[type="range"] {
 
 .center-map {
     min-height: 300px;
+}
+
+.profile-cert-button {
+    width: 36px;
+    height: 36px;
+    color: var(--muted-strong);
+    background: rgba(255, 255, 255, 0.026);
+    border-color: var(--line);
+}
+
+.profile-cert-button:hover {
+    color: var(--ink);
+    border-color: var(--line-strong);
+    background: var(--panel-tint);
+}
+
+.cert-badge {
+    width: 42px;
+    height: 42px;
+    display: inline-grid;
+    place-items: center;
+    border: 1px solid var(--accent-line);
+    border-radius: 8px;
+    color: var(--accent);
+    background: rgba(72, 166, 255, 0.1);
+}
+
+.cert-badge svg {
+    width: 23px;
+    height: 23px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.cert-card .detail-metric-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .stats-grid {

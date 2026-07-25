@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}Add a cert - Pelagia{% endblock %}
+
+{% block content %}
+<section class="log-layout">
+    <form class="dive-form keyboard-flow" method="post">
+        <div class="section-head">
+            <div>
+                <h1>{{ 'Edit cert' if is_edit else 'Add a cert' }}</h1>
+            </div>
+            <div class="form-actions">
+                <a class="ghost-button" href="{{ url_for('cert_detail') if is_edit else url_for('profile') }}">Cancel</a>
+                <button class="primary-button compact" type="submit">{{ 'Save changes' if is_edit else 'Save cert' }}</button>
+            </div>
+        </div>
+
+        <div class="form-section">
+            <div class="form-section-title">
+                <h2>Certification</h2>
+            </div>
+            <div class="form-grid">
+                <label>
+                    Agency
+                    <select name="agency" required>
+                        <option value="PADI" selected>PADI</option>
+                    </select>
+                </label>
+                <label>
+                    Level
+                    <input name="level" type="text" list="certLevels" autocomplete="off" value="{{ cert.level if is_edit else '' }}" required>
+                    <datalist id="certLevels">
+                        {% for level in cert_levels %}
+                            <option value="{{ level }}"></option>
+                        {% endfor %}
+                    </datalist>
+                </label>
+                <label>
+                    Cert No.
+                    <input name="cert_no" type="text" inputmode="text" pattern="[A-Za-z0-9]+" value="{{ cert.cert_no if is_edit else '' }}" required>
+                </label>
+                <label>
+                    Cert Date
+                    <input name="cert_date" type="date" value="{{ cert.cert_date if is_edit else today }}" required>
+                </label>
+            </div>
+        </div>
+
+        <div class="form-footer">
+            <button class="primary-button" type="submit">{{ 'Save changes' if is_edit else 'Save cert' }}</button>
+        </div>
+    </form>
+</section>
+{% endblock %}

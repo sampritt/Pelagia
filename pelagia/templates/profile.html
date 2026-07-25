@@ -16,10 +16,25 @@
         </form>
         <div>
             <h1>{{ user.username }}</h1>
-            <p class="profile-meta">{{ stats.summary.account_age_days }} days on Pelagia</p>
+            <p class="profile-meta">
+                {% if cert %}
+                    <span>{{ cert.level }}</span>
+                    <span aria-hidden="true">|</span>
+                {% endif %}
+                <span>{{ stats.summary.account_age_days }} days on Pelagia</span>
+            </p>
             <div class="profile-actions">
                 <a class="primary-button compact" href="{{ url_for('log_dive') }}"><span aria-hidden="true">+</span> Log dive</a>
                 <a class="ghost-button" href="{{ url_for('map_view') }}">View map</a>
+                <a class="icon-button profile-cert-button" href="{{ url_for('cert_detail') if cert else url_for('add_cert') }}" aria-label="{{ 'View certification card' if cert else 'Add certification card' }}" title="{{ 'View certification card' if cert else 'Add certification card' }}">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M3 5h18v14H3Z"></path>
+                        <path d="M7 9h5"></path>
+                        <path d="M7 13h4"></path>
+                        <path d="M15 10h3"></path>
+                        <path d="M15 14h3"></path>
+                    </svg>
+                </a>
             </div>
         </div>
     </div>
