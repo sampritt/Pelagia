@@ -1652,6 +1652,38 @@ input[type="range"] {
     background: var(--panel-tint);
 }
 
+.site-sightings-panel {
+    display: grid;
+    gap: 12px;
+    padding: 14px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--panel-tint);
+}
+
+.site-sightings-panel h2 {
+    color: var(--muted);
+    font-size: 0.76rem;
+    font-weight: 720;
+    text-transform: uppercase;
+}
+
+.site-sightings-panel p {
+    margin: 0;
+}
+
+.site-sightings-tags span {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.site-sightings-tags strong {
+    color: var(--ink);
+    font-size: 0.72rem;
+    font-weight: 760;
+}
+
 .site-conditions-panel {
     display: grid;
     gap: 14px;

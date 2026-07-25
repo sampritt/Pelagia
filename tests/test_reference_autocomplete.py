@@ -188,9 +188,9 @@ Kelp House,2 Harbor Way,Alaska,https://kelp.example.test
             self.signup(client)
             today = date.today().isoformat()
 
-            for visibility, strength, water, air in (
-                ("20", "light", "74", "80"),
-                ("80", "very strong", "78", "84"),
+            for visibility, strength, water, air, species in (
+                ("20", "light", "74", "80", ["Coral", "Reef Fish"]),
+                ("80", "very strong", "78", "84", ["Coral"]),
             ):
                 client.post(
                     "/dive/new",
@@ -211,7 +211,7 @@ Kelp House,2 Harbor Way,Alaska,https://kelp.example.test
                         "dive_type": "shore dive",
                         "current": "tidal",
                         "current_strength": strength,
-                        "species_json": json.dumps([]),
+                        "species_json": json.dumps(species),
                     },
                 )
 
@@ -234,6 +234,13 @@ Kelp House,2 Harbor Way,Alaska,https://kelp.example.test
             self.assertIn(b"Strong", profile_response.data)
             self.assertIn(b"76 degrees", profile_response.data)
             self.assertIn(b"82 degrees", profile_response.data)
+            self.assertNotIn(b"Trailing 2 weeks, feet by day", profile_response.data)
+            self.assertNotIn(b"Trailing 2 weeks by day", profile_response.data)
+            self.assertIn(b"SIGHTINGS", profile_response.data)
+            self.assertIn(b"Coral", profile_response.data)
+            self.assertIn(b"<strong>2</strong>", profile_response.data)
+            self.assertIn(b"Reef Fish", profile_response.data)
+            self.assertNotIn(b"<strong>1</strong>", profile_response.data)
 
             like_response = client.post("/api/dive-sites/1/like").get_json()
             self.assertEqual(like_response, {"liked": True, "count": 1})

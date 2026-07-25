@@ -525,11 +525,13 @@ def register_routes(app):
         recent_dives = fetch_dives(scope="site", user_id=session["user_id"], site_id=site_id, limit=8)
         conditions = dive_site_recent_conditions(site_id)
         visibility_series, current_series = dive_site_condition_series(site_id)
+        sightings = dive_site_species_sightings(site_id)
         return render_template(
             "dive_site_profile.html",
             site=site,
             recent_dives=recent_dives,
             conditions=conditions,
+            sightings=sightings,
             visibility_series=visibility_series,
             current_series=current_series,
             visibility_chart=line_chart_points(visibility_series, max_value=100),
@@ -1236,6 +1238,22 @@ def dive_site_condition_series(site_id):
         visibility_series.append({"date": key, "label": label, "value": visibility_value})
         current_series.append({"date": key, "label": label, "value": current_value})
     return visibility_series, current_series
+
+
+def dive_site_species_sightings(site_id, limit=10):
+    return database.get_db().execute(
+        """
+        SELECT ds.common_name, COUNT(DISTINCT ds.dive_id) AS dive_count
+        FROM dive_species ds
+        JOIN dives d ON d.id = ds.dive_id
+        WHERE d.dive_site_id = ?
+            AND COALESCE(d.is_deleted, 0) = 0
+        GROUP BY lower(ds.common_name), ds.common_name
+        ORDER BY dive_count DESC, ds.common_name
+        LIMIT ?
+        """,
+        (site_id, limit),
+    ).fetchall()
 
 
 def median_int(values):

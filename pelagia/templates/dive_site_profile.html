@@ -62,7 +62,6 @@
     <div class="site-chart-block">
         <div class="site-chart-head">
             <h2>Visibility</h2>
-            <span>Trailing 2 weeks, feet by day</span>
         </div>
         <svg class="site-line-chart" viewBox="0 0 {{ visibility_chart.width }} {{ visibility_chart.height }}" role="img" aria-label="Trailing two weeks visibility in feet by day">
             <line x1="{{ visibility_chart.padding }}" y1="{{ visibility_chart.height - visibility_chart.padding }}" x2="{{ visibility_chart.width - visibility_chart.padding }}" y2="{{ visibility_chart.height - visibility_chart.padding }}"></line>
@@ -87,7 +86,6 @@
     <div class="site-chart-block">
         <div class="site-chart-head">
             <h2>Current Strength</h2>
-            <span>Trailing 2 weeks by day</span>
         </div>
         <svg class="site-bar-chart" viewBox="0 0 {{ current_chart.width }} {{ current_chart.height }}" role="img" aria-label="Trailing two weeks current strength by day">
             <line x1="{{ current_chart.padding }}" y1="{{ current_chart.height - current_chart.padding }}" x2="{{ current_chart.width - current_chart.padding }}" y2="{{ current_chart.height - current_chart.padding }}"></line>
@@ -104,6 +102,24 @@
             <span>{{ current_series[6].label }}</span>
             <span>{{ current_series[-1].label }}</span>
         </div>
+    </div>
+
+    <div class="site-sightings-panel">
+        <h2>SIGHTINGS</h2>
+        {% if sightings %}
+            <div class="species-row site-sightings-tags">
+                {% for sighting in sightings %}
+                    <span>
+                        {{ sighting.common_name }}
+                        {% if sighting.dive_count > 1 %}
+                            <strong>{{ sighting.dive_count }}</strong>
+                        {% endif %}
+                    </span>
+                {% endfor %}
+            </div>
+        {% else %}
+            <p class="muted">No marine species observations yet.</p>
+        {% endif %}
     </div>
 
     <div class="comments-block" data-site-comments>
