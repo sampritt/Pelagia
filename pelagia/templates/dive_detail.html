@@ -108,6 +108,10 @@
                     <dd>{{ dive.exposure or '-' }}</dd>
                 </div>
                 <div>
+                    <dt>Gas mix</dt>
+                    <dd>{{ dive.gas_mix or 'Air' }}</dd>
+                </div>
+                <div>
                     <dt>Air</dt>
                     <dd>{{ optional_metric(dive.air_temp_degrees, ' degrees') }}</dd>
                 </div>
