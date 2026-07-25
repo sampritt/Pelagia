@@ -1643,10 +1643,6 @@ input[type="range"] {
         linear-gradient(145deg, rgba(11, 18, 25, 0.96), rgba(32, 45, 58, 0.92) 55%, var(--accent-deep) 56%, #8ccfff 100%);
 }
 
-.site-info-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
 .site-chart-block {
     display: grid;
     gap: 10px;
@@ -1654,6 +1650,45 @@ input[type="range"] {
     border: 1px solid var(--line);
     border-radius: 8px;
     background: var(--panel-tint);
+}
+
+.site-conditions-panel {
+    display: grid;
+    gap: 14px;
+    padding: 14px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--panel-tint);
+}
+
+.site-conditions-panel h2 {
+    color: var(--muted);
+    font-size: 0.76rem;
+    font-weight: 720;
+    text-transform: uppercase;
+}
+
+.site-conditions-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px 24px;
+}
+
+.site-conditions-grid > div {
+    display: grid;
+    gap: 6px;
+    min-width: 0;
+}
+
+.site-conditions-grid small {
+    color: var(--muted);
+    font-size: 0.76rem;
+    font-weight: 720;
+    text-transform: uppercase;
+}
+
+.site-conditions-grid span {
+    overflow-wrap: anywhere;
 }
 
 .site-chart-head {

@@ -20,36 +20,31 @@
         </div>
     </div>
 
-    <div class="center-info-grid site-info-grid">
-        <div>
-            <small>Latitude</small>
-            <span>{% if site.latitude is not none %}{{ "%.5f"|format(site.latitude) }}{% else %}-{% endif %}</span>
-        </div>
-        <div>
-            <small>Longitude</small>
-            <span>{% if site.longitude is not none %}{{ "%.5f"|format(site.longitude) }}{% else %}-{% endif %}</span>
-        </div>
-        <div>
-            <small>Recent Visibility</small>
-            <span>{{ optional_metric(conditions.visibility_ft, ' ft') }}</span>
-        </div>
-        <div>
-            <small>Recent Current</small>
-            <span>
-                {% if conditions.current %}
-                    {{ current_label(conditions.current) }}{% if conditions.current_strength and conditions.current_strength != "none" %}, {{ current_strength_label(conditions.current_strength) }}{% endif %}
-                {% else %}
-                    -
-                {% endif %}
-            </span>
-        </div>
-        <div>
-            <small>Recent Water</small>
-            <span>{{ optional_metric(conditions.water_temp_degrees, ' degrees') }}</span>
-        </div>
-        <div>
-            <small>Recent Air</small>
-            <span>{{ optional_metric(conditions.air_temp_degrees, ' degrees') }}</span>
+    <div class="site-conditions-panel">
+        <h2>RECENT CONDITIONS</h2>
+        <div class="site-conditions-grid">
+            <div>
+                <small>VISIBILITY</small>
+                <span>{{ optional_metric(conditions.visibility_ft, ' ft') }}</span>
+            </div>
+            <div>
+                <small>CURRENT</small>
+                <span>
+                    {% if conditions.current %}
+                        {{ current_label(conditions.current) }}{% if conditions.current_strength and conditions.current_strength != "none" %}, {{ current_strength_label(conditions.current_strength) }}{% endif %}
+                    {% else %}
+                        -
+                    {% endif %}
+                </span>
+            </div>
+            <div>
+                <small>WATER TEMP</small>
+                <span>{{ optional_metric(conditions.water_temp_degrees, ' degrees') }}</span>
+            </div>
+            <div>
+                <small>AIR TEMP</small>
+                <span>{{ optional_metric(conditions.air_temp_degrees, ' degrees') }}</span>
+            </div>
         </div>
     </div>
 
