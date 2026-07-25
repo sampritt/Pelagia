@@ -17,6 +17,9 @@
                     <span class="dive-type-icon" aria-hidden="true"></span>
                     {{ dive_type_label(dive_type) }}
                 </span>
+                {% if is_nitrox_gas_mix(dive.gas_mix) %}
+                    <span class="gas-mix-label">Nitrox</span>
+                {% endif %}
             </p>
         </div>
     </div>

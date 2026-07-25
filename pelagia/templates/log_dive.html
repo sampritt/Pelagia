@@ -100,6 +100,15 @@
                         {% endfor %}
                     </select>
                 </label>
+                <label>
+                    Gas mix
+                    {% set selected_gas_mix = dive.gas_mix if is_edit and dive.gas_mix in gas_mixes else 'Air' %}
+                    <select name="gas_mix">
+                        {% for gas_mix in gas_mixes %}
+                            <option value="{{ gas_mix }}" {{ 'selected' if gas_mix == selected_gas_mix else '' }}>{{ gas_mix }}</option>
+                        {% endfor %}
+                    </select>
+                </label>
             </div>
         </div>
 

@@ -139,6 +139,7 @@ Kelp House,2 Harbor Way,Alaska,https://kelp.example.test
             self.assertIn(b'value="0" data-range="airTemp"', new_response.data)
             self.assertIn(b'value="0" data-range="waterTemp"', new_response.data)
             self.assertIn(b'value="" disabled selected', new_response.data)
+            self.assertIn(b'<option value="Air" selected>Air</option>', new_response.data)
 
             client.post(
                 "/dive/new",
@@ -166,6 +167,7 @@ Kelp House,2 Harbor Way,Alaska,https://kelp.example.test
             logged = client.get(f"/api/dives/{dive_id}").get_json()
             self.assertIsNone(logged["weight_lbs"])
             self.assertIsNone(logged["exposure"])
+            self.assertEqual(logged["gas_mix"], "Air")
             self.assertIsNone(logged["visibility_ft"])
             self.assertIsNone(logged["air_temp_degrees"])
             self.assertIsNone(logged["water_temp_degrees"])
@@ -331,6 +333,7 @@ Kelp House,2 Harbor Way,Alaska,https://kelp.example.test
                     "duration_min": "70",
                     "weight_lbs": "4",
                     "exposure": "5mm",
+                    "gas_mix": "32%",
                     "visibility_ft": "55",
                     "air_temp_degrees": "83",
                     "water_temp_degrees": "74",
@@ -346,6 +349,7 @@ Kelp House,2 Harbor Way,Alaska,https://kelp.example.test
             self.assertEqual(logged["visibility_ft"], 55)
             self.assertEqual(logged["air_temp_degrees"], 83)
             self.assertEqual(logged["water_temp_degrees"], 74)
+            self.assertEqual(logged["gas_mix"], "32%")
             self.assertEqual(logged["dive_type"], "shore dive")
             self.assertEqual(logged["current"], "none")
             self.assertEqual(logged["current_strength"], "none")
@@ -366,6 +370,10 @@ Kelp House,2 Harbor Way,Alaska,https://kelp.example.test
             self.assertNotIn(b"dive-center-chip", detail_response.data)
             self.assertNotIn(b"- with", detail_response.data)
             self.assertNotIn(b"<h2>Conditions</h2>", detail_response.data)
+
+            home_response = client.get("/home")
+            self.assertIn(b"Shore Dive", home_response.data)
+            self.assertIn(b"Nitrox", home_response.data)
 
             edit_response = client.get(f"/dive/{dive_id}/edit")
             self.assertEqual(edit_response.status_code, 200)
@@ -398,6 +406,7 @@ Kelp House,2 Harbor Way,Alaska,https://kelp.example.test
                     "duration_min": "55",
                     "weight_lbs": "6",
                     "exposure": "3mm",
+                    "gas_mix": "Other",
                     "visibility_ft": "85",
                     "air_temp_degrees": "88",
                     "water_temp_degrees": "81",
@@ -417,6 +426,7 @@ Kelp House,2 Harbor Way,Alaska,https://kelp.example.test
             self.assertEqual(updated["visibility_ft"], 85)
             self.assertEqual(updated["air_temp_degrees"], 88)
             self.assertEqual(updated["water_temp_degrees"], 81)
+            self.assertEqual(updated["gas_mix"], "Other")
             self.assertEqual(updated["dive_type"], "wreck")
             self.assertEqual(updated["current"], "rip")
             self.assertEqual(updated["current_strength"], "very strong")
@@ -427,6 +437,9 @@ Kelp House,2 Harbor Way,Alaska,https://kelp.example.test
             self.assertIn(b"62<em>ft</em>", updated_detail.data)
             self.assertIn(b"55<em>min</em>", updated_detail.data)
             self.assertIn(b"Very Strong", updated_detail.data)
+            updated_home = client.get("/home")
+            self.assertIn(b"Wreck", updated_home.data)
+            self.assertNotIn(b"Nitrox", updated_home.data)
 
             delete_response = client.post(f"/dive/{dive_id}/delete", data={"next": "/home?open=%s" % dive_id})
             self.assertEqual(delete_response.status_code, 302)

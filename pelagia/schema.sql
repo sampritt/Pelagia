@@ -85,6 +85,7 @@ CREATE TABLE IF NOT EXISTS dives (
     visibility_ft INTEGER,
     air_temp_degrees INTEGER,
     water_temp_degrees INTEGER,
+    gas_mix TEXT NOT NULL DEFAULT 'Air',
     dive_type TEXT NOT NULL DEFAULT 'open water',
     current TEXT NOT NULL DEFAULT 'none',
     current_strength TEXT NOT NULL DEFAULT 'none',

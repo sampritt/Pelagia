@@ -33,6 +33,7 @@ def init_db():
     _ensure_column(db, "dives", "visibility_ft", "INTEGER")
     _ensure_column(db, "dives", "air_temp_degrees", "INTEGER")
     _ensure_column(db, "dives", "water_temp_degrees", "INTEGER")
+    _ensure_column(db, "dives", "gas_mix", "TEXT NOT NULL DEFAULT 'Air'")
     _ensure_column(db, "dives", "dive_type", "TEXT NOT NULL DEFAULT 'open water'")
     _ensure_column(db, "dives", "current", "TEXT NOT NULL DEFAULT 'none'")
     _ensure_column(db, "dives", "current_strength", "TEXT NOT NULL DEFAULT 'none'")
@@ -66,6 +67,7 @@ def _normalize_current_values(db):
             AND exposure NOT IN ('swimsuit', 'shorty', '2mm', '3mm', '4mm', '5mm', '6mm', '7mm', 'dry suit')
         """
     )
+    db.execute("UPDATE dives SET gas_mix = 'Air' WHERE gas_mix NOT IN ('Air', '30%', '32%', '34%', '36%', '38%', '40%', 'Other')")
 
 
 def _ensure_nullable_dive_metadata(db):
@@ -100,6 +102,7 @@ def _ensure_nullable_dive_metadata(db):
                 visibility_ft INTEGER,
                 air_temp_degrees INTEGER,
                 water_temp_degrees INTEGER,
+                gas_mix TEXT NOT NULL DEFAULT 'Air',
                 dive_type TEXT NOT NULL DEFAULT 'open water',
                 current TEXT NOT NULL DEFAULT 'none',
                 current_strength TEXT NOT NULL DEFAULT 'none',
@@ -114,13 +117,13 @@ def _ensure_nullable_dive_metadata(db):
             INSERT INTO dives_rebuild (
                 id, user_id, dive_site_id, dive_center_id, dive_center_name, date, site_name,
                 country_or_area, latitude, longitude, depth_ft, duration_min, weight_lbs,
-                exposure, visibility_ft, air_temp_degrees, water_temp_degrees, dive_type,
+                exposure, visibility_ft, air_temp_degrees, water_temp_degrees, gas_mix, dive_type,
                 current, current_strength, notes, is_deleted, created_at
             )
             SELECT
                 id, user_id, dive_site_id, dive_center_id, dive_center_name, date, site_name,
                 country_or_area, latitude, longitude, depth_ft, duration_min, weight_lbs,
-                exposure, visibility_ft, air_temp_degrees, water_temp_degrees, dive_type,
+                exposure, visibility_ft, air_temp_degrees, water_temp_degrees, gas_mix, dive_type,
                 current, current_strength, notes, is_deleted, created_at
             FROM dives;
 

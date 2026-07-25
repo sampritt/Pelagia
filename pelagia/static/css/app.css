@@ -853,6 +853,26 @@ textarea:focus {
     opacity: 0.58;
 }
 
+.dive-card-meta .gas-mix-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    color: var(--muted-strong);
+    font-size: 0.76rem;
+    font-weight: 680;
+    line-height: 1;
+    text-transform: uppercase;
+}
+
+.dive-card-meta .gas-mix-label::before {
+    content: "";
+    width: 3px;
+    height: 3px;
+    border-radius: 50%;
+    background: currentColor;
+    opacity: 0.58;
+}
+
 .dive-type-icon {
     position: relative;
     width: 15px;

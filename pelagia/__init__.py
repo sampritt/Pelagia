@@ -29,6 +29,8 @@ from .importer import import_reference_data
 
 
 EXPOSURES = ("swimsuit", "shorty", "2mm", "3mm", "4mm", "5mm", "6mm", "7mm", "dry suit")
+GAS_MIXES = ("Air", "30%", "32%", "34%", "36%", "38%", "40%", "Other")
+NITROX_GAS_MIXES = {"30%", "32%", "34%", "36%", "38%", "40%"}
 DIVE_TYPES = ("open water", "shore dive", "reef", "wall", "deep", "night", "wreck", "cavern", "cave")
 CURRENT_TYPES = ("none", "slack", "tidal", "surge", "drift", "rip", "vertical")
 CURRENT_STRENGTHS = ("none", "light", "moderate", "strong", "very strong")
@@ -133,6 +135,7 @@ def current_user():
 def register_routes(app):
     app.jinja_env.globals["current_user"] = current_user
     app.jinja_env.globals["dive_type_label"] = dive_type_label
+    app.jinja_env.globals["is_nitrox_gas_mix"] = is_nitrox_gas_mix
     app.jinja_env.globals["current_label"] = current_label
     app.jinja_env.globals["current_strength_label"] = current_strength_label
     app.jinja_env.globals["optional_metric"] = optional_metric
@@ -204,6 +207,7 @@ def register_routes(app):
         return render_template(
             "log_dive.html",
             exposures=EXPOSURES,
+            gas_mixes=GAS_MIXES,
             dive_types=DIVE_TYPES,
             dive_type_labels=DIVE_TYPE_LABELS,
             current_types=CURRENT_TYPES,
@@ -238,6 +242,7 @@ def register_routes(app):
         return render_template(
             "log_dive.html",
             exposures=EXPOSURES,
+            gas_mixes=GAS_MIXES,
             dive_types=DIVE_TYPES,
             dive_type_labels=DIVE_TYPE_LABELS,
             current_types=CURRENT_TYPES,
@@ -641,9 +646,9 @@ def create_dive_from_request(user_id, form_request):
         INSERT INTO dives (
             user_id, dive_site_id, dive_center_id, dive_center_name, date, site_name, country_or_area, latitude, longitude,
             depth_ft, duration_min, weight_lbs, exposure, visibility_ft, air_temp_degrees, water_temp_degrees,
-            dive_type, current, current_strength, notes
+            gas_mix, dive_type, current, current_strength, notes
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             user_id,
@@ -662,6 +667,7 @@ def create_dive_from_request(user_id, form_request):
             values["visibility_ft"],
             values["air_temp_degrees"],
             values["water_temp_degrees"],
+            values["gas_mix"],
             values["dive_type"],
             values["current"],
             values["current_strength"],
@@ -696,6 +702,7 @@ def update_dive_from_request(dive_id, user_id, form_request):
             visibility_ft = ?,
             air_temp_degrees = ?,
             water_temp_degrees = ?,
+            gas_mix = ?,
             dive_type = ?,
             current = ?,
             current_strength = ?,
@@ -718,6 +725,7 @@ def update_dive_from_request(dive_id, user_id, form_request):
             values["visibility_ft"],
             values["air_temp_degrees"],
             values["water_temp_degrees"],
+            values["gas_mix"],
             values["dive_type"],
             values["current"],
             values["current_strength"],
@@ -742,6 +750,7 @@ def dive_values_from_request(form_request):
     visibility = maybe_clamped_int(form.get("visibility_ft"), 0, 100)
     air_temp = maybe_clamped_int(form.get("air_temp_degrees"), 0, 100)
     water_temp = maybe_clamped_int(form.get("water_temp_degrees"), 0, 100)
+    gas_mix = form.get("gas_mix") if form.get("gas_mix") in GAS_MIXES else "Air"
     dive_type = form.get("dive_type") if form.get("dive_type") in DIVE_TYPES else "open water"
     current = form.get("current") if form.get("current") in CURRENT_TYPES else "none"
     current_strength = form.get("current_strength") if form.get("current_strength") in CURRENT_STRENGTHS else "none"
@@ -817,6 +826,7 @@ def dive_values_from_request(form_request):
         "visibility_ft": visibility,
         "air_temp_degrees": air_temp,
         "water_temp_degrees": water_temp,
+        "gas_mix": gas_mix,
         "dive_type": dive_type,
         "current": current,
         "current_strength": current_strength,
@@ -1405,6 +1415,7 @@ def dive_to_json(dive):
         "visibility_ft": dive["visibility_ft"],
         "air_temp_degrees": dive["air_temp_degrees"],
         "water_temp_degrees": dive["water_temp_degrees"],
+        "gas_mix": dive["gas_mix"],
         "dive_type": dive["dive_type"],
         "current": dive["current"],
         "current_strength": dive["current_strength"],
@@ -1476,6 +1487,10 @@ def maybe_int(value):
 
 def dive_type_label(value):
     return DIVE_TYPE_LABELS.get(value, DIVE_TYPE_LABELS["open water"])
+
+
+def is_nitrox_gas_mix(value):
+    return value in NITROX_GAS_MIXES
 
 
 def current_label(value):
