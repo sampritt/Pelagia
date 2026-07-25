@@ -340,7 +340,9 @@ Kelp House,2 Harbor Way,Alaska,https://kelp.example.test
             self.assertEqual(form_response.status_code, 200)
             self.assertIn(b"Add a cert", form_response.data)
             self.assertIn(b'<option value="PADI" selected>PADI</option>', form_response.data)
-            self.assertIn(b'<option value="Rescue Diver"></option>', form_response.data)
+            self.assertIn(b'<option value="" disabled selected>Select level</option>', form_response.data)
+            self.assertIn(b'<option value="Rescue Diver" >Rescue Diver</option>', form_response.data)
+            self.assertNotIn(b"datalist", form_response.data)
             self.assertIn(b'pattern="[A-Za-z0-9]+"', form_response.data)
 
             invalid_response = client.post(

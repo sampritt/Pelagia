@@ -27,12 +27,12 @@
                 </label>
                 <label>
                     Level
-                    <input name="level" type="text" list="certLevels" autocomplete="off" value="{{ cert.level if is_edit else '' }}" required>
-                    <datalist id="certLevels">
+                    <select name="level" required>
+                        <option value="" disabled {{ 'selected' if not is_edit else '' }}>Select level</option>
                         {% for level in cert_levels %}
-                            <option value="{{ level }}"></option>
+                            <option value="{{ level }}" {{ 'selected' if is_edit and cert.level == level else '' }}>{{ level }}</option>
                         {% endfor %}
-                    </datalist>
+                    </select>
                 </label>
                 <label>
                     Cert No.
