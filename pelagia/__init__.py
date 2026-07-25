@@ -862,6 +862,8 @@ def get_profile_stats(user_id):
         """
         SELECT
             COUNT(*) AS dive_count,
+            COALESCE(MAX(depth_ft), 0) AS max_depth_ft,
+            COALESCE(MAX(duration_min), 0) AS longest_dive_minutes,
             COALESCE(SUM(duration_min), 0) AS total_minutes,
             COUNT(DISTINCT NULLIF(country_or_area, '')) AS country_count,
             COUNT(DISTINCT site_name || '|' || COALESCE(country_or_area, '')) AS location_count,

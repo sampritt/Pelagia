@@ -377,6 +377,13 @@ Kelp House,2 Harbor Way,Alaska,https://kelp.example.test
 
             profile_response = client.get("/you")
             self.assertEqual(profile_response.status_code, 200)
+            profile_html = profile_response.data
+            self.assertLess(profile_html.index(b"<small>dives</small>"), profile_html.index(b"<small>max depth</small>"))
+            self.assertLess(profile_html.index(b"<small>max depth</small>"), profile_html.index(b"<small>longest dive</small>"))
+            self.assertLess(profile_html.index(b"<small>longest dive</small>"), profile_html.index(b"<small>total minutes</small>"))
+            self.assertIn(b"<span>40</span><small>max depth</small>", profile_html)
+            self.assertIn(b"<span>70</span><small>longest dive</small>", profile_html)
+            self.assertIn(b"<span>70</span><small>total minutes</small>", profile_html)
             self.assertIn(b'class="photo-strip" aria-label="Dive photos"', profile_response.data)
             self.assertEqual(profile_response.data.count(b"uploads/dives/"), 3)
 
