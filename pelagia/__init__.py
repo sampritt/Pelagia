@@ -1,7 +1,8 @@
 import json
 import os
+import statistics
 import uuid
-from datetime import date
+from datetime import date, timedelta
 from functools import wraps
 from pathlib import Path
 from sqlite3 import IntegrityError
@@ -515,6 +516,28 @@ def register_routes(app):
         recent_dives = fetch_dives(scope="center", user_id=session["user_id"], center_id=center_id, limit=6)
         return render_template("dive_center_profile.html", center=center, recent_dives=recent_dives)
 
+    @app.route("/dive-sites/<int:site_id>")
+    @login_required
+    def dive_site_profile(site_id):
+        site = fetch_dive_site(site_id, session["user_id"])
+        if site is None:
+            abort(404)
+        recent_dives = fetch_dives(scope="site", user_id=session["user_id"], site_id=site_id, limit=8)
+        conditions = dive_site_recent_conditions(site_id)
+        visibility_series, current_series = dive_site_condition_series(site_id)
+        return render_template(
+            "dive_site_profile.html",
+            site=site,
+            recent_dives=recent_dives,
+            conditions=conditions,
+            visibility_series=visibility_series,
+            current_series=current_series,
+            visibility_chart=line_chart_points(visibility_series, max_value=100),
+            current_chart=bar_chart_points(current_series, max_value=4),
+            current_strength_labels=CURRENT_STRENGTH_LABELS,
+            current_strength_index_labels={index: CURRENT_STRENGTH_LABELS[value] for value, index in CURRENT_STRENGTH_INDEXES.items()},
+        )
+
     @app.route("/api/dive-centers/<int:center_id>/like", methods=("POST",))
     @login_required
     def api_dive_center_like(center_id):
@@ -560,6 +583,52 @@ def register_routes(app):
         db.commit()
         center = fetch_dive_center(center_id, session["user_id"])
         return jsonify({"comments": [dict(comment) for comment in center["comments"]]})
+
+    @app.route("/api/dive-sites/<int:site_id>/like", methods=("POST",))
+    @login_required
+    def api_dive_site_like(site_id):
+        db = database.get_db()
+        if db.execute("SELECT 1 FROM dive_sites WHERE id = ?", (site_id,)).fetchone() is None:
+            abort(404)
+        exists = db.execute(
+            "SELECT 1 FROM dive_site_likes WHERE dive_site_id = ? AND user_id = ?",
+            (site_id, session["user_id"]),
+        ).fetchone()
+        if exists:
+            db.execute(
+                "DELETE FROM dive_site_likes WHERE dive_site_id = ? AND user_id = ?",
+                (site_id, session["user_id"]),
+            )
+            liked = False
+        else:
+            db.execute(
+                "INSERT OR IGNORE INTO dive_site_likes (dive_site_id, user_id) VALUES (?, ?)",
+                (site_id, session["user_id"]),
+            )
+            liked = True
+        db.commit()
+        count = db.execute(
+            "SELECT COUNT(*) AS count FROM dive_site_likes WHERE dive_site_id = ?",
+            (site_id,),
+        ).fetchone()["count"]
+        return jsonify({"liked": liked, "count": count})
+
+    @app.route("/api/dive-sites/<int:site_id>/comments", methods=("POST",))
+    @login_required
+    def api_dive_site_comment(site_id):
+        body = request.form.get("body", "").strip()
+        if not body:
+            return jsonify({"error": "Comment cannot be empty."}), 400
+        db = database.get_db()
+        if db.execute("SELECT 1 FROM dive_sites WHERE id = ?", (site_id,)).fetchone() is None:
+            abort(404)
+        db.execute(
+            "INSERT INTO dive_site_comments (dive_site_id, user_id, body) VALUES (?, ?, ?)",
+            (site_id, session["user_id"], body[:600]),
+        )
+        db.commit()
+        site = fetch_dive_site(site_id, session["user_id"])
+        return jsonify({"comments": [dict(comment) for comment in site["comments"]]})
 
 
 def create_dive_from_request(user_id, form_request):
@@ -836,7 +905,7 @@ def species_suggestions_for_country(country, limit=5, excluded=None):
     return selected
 
 
-def fetch_dives(scope, user_id, limit=80, center_id=None):
+def fetch_dives(scope, user_id, limit=80, center_id=None, site_id=None):
     clauses = ["COALESCE(d.is_deleted, 0) = 0"]
     params = []
     if scope == "mine":
@@ -845,6 +914,9 @@ def fetch_dives(scope, user_id, limit=80, center_id=None):
     elif scope == "center":
         clauses.append("d.dive_center_id = ?")
         params.append(center_id)
+    elif scope == "site":
+        clauses.append("d.dive_site_id = ?")
+        params.append(site_id)
     where = "WHERE " + " AND ".join(clauses)
     params.append(limit)
     rows = database.get_db().execute(
@@ -1038,6 +1110,199 @@ def fetch_dive_center(center_id, viewer_user_id):
         (center_id,),
     ).fetchall()
     return center
+
+
+def fetch_dive_site(site_id, viewer_user_id):
+    row = database.get_db().execute(
+        """
+        SELECT
+            ds.*,
+            (SELECT COUNT(*) FROM dive_site_likes WHERE dive_site_id = ds.id) AS like_count,
+            (SELECT COUNT(*) FROM dive_site_comments WHERE dive_site_id = ds.id) AS comment_count,
+            EXISTS(
+                SELECT 1 FROM dive_site_likes
+                WHERE dive_site_id = ds.id AND user_id = ?
+            ) AS liked_by_me
+        FROM dive_sites ds
+        WHERE ds.id = ?
+        """,
+        (viewer_user_id, site_id),
+    ).fetchone()
+    if row is None:
+        return None
+    site = dict(row)
+    site["comments"] = database.get_db().execute(
+        """
+        SELECT c.id, c.body, c.created_at, u.username
+        FROM dive_site_comments c
+        JOIN users u ON u.id = c.user_id
+        WHERE c.dive_site_id = ?
+        ORDER BY c.created_at
+        """,
+        (site_id,),
+    ).fetchall()
+    return site
+
+
+def dive_site_recent_conditions(site_id):
+    latest = database.get_db().execute(
+        """
+        SELECT MAX(date) AS date
+        FROM dives
+        WHERE dive_site_id = ?
+            AND COALESCE(is_deleted, 0) = 0
+        """,
+        (site_id,),
+    ).fetchone()
+    empty = {
+        "date": None,
+        "visibility_ft": None,
+        "current": None,
+        "current_strength": None,
+        "water_temp_degrees": None,
+        "air_temp_degrees": None,
+    }
+    if latest is None or not latest["date"]:
+        return empty
+    try:
+        dive_date = date.fromisoformat(latest["date"])
+    except ValueError:
+        return empty
+    today = date.today()
+    if dive_date < today - timedelta(days=7) or dive_date > today:
+        return empty
+    rows = database.get_db().execute(
+        """
+        SELECT visibility_ft, current, current_strength, water_temp_degrees, air_temp_degrees
+        FROM dives
+        WHERE dive_site_id = ?
+            AND COALESCE(is_deleted, 0) = 0
+            AND date = ?
+        """,
+        (site_id, latest["date"]),
+    ).fetchall()
+    current_strength = median_current_strength(rows)
+    current_type = dominant_current_type(rows)
+    if current_strength == "none":
+        current_type = "none"
+    return {
+        "date": latest["date"],
+        "visibility_ft": median_int(row["visibility_ft"] for row in rows),
+        "current": current_type,
+        "current_strength": current_strength,
+        "water_temp_degrees": median_int(row["water_temp_degrees"] for row in rows),
+        "air_temp_degrees": median_int(row["air_temp_degrees"] for row in rows),
+    }
+
+
+def dive_site_condition_series(site_id):
+    today = date.today()
+    start = today - timedelta(days=13)
+    rows = database.get_db().execute(
+        """
+        SELECT date, visibility_ft, current_strength
+        FROM dives
+        WHERE dive_site_id = ?
+            AND COALESCE(is_deleted, 0) = 0
+            AND date BETWEEN ? AND ?
+        """,
+        (site_id, start.isoformat(), today.isoformat()),
+    ).fetchall()
+    by_date = {}
+    for row in rows:
+        try:
+            day = date.fromisoformat(row["date"])
+        except ValueError:
+            continue
+        bucket = by_date.setdefault(day.isoformat(), {"visibility": [], "current": []})
+        if row["visibility_ft"] is not None:
+            bucket["visibility"].append(row["visibility_ft"])
+        if row["current_strength"] in CURRENT_STRENGTH_INDEXES:
+            bucket["current"].append(CURRENT_STRENGTH_INDEXES[row["current_strength"]])
+
+    visibility_series = []
+    current_series = []
+    for offset in range(14):
+        day = start + timedelta(days=offset)
+        key = day.isoformat()
+        bucket = by_date.get(key, {"visibility": [], "current": []})
+        visibility_value = None
+        current_value = None
+        if bucket["visibility"]:
+            visibility_value = round_half_up(statistics.median(bucket["visibility"]))
+        if bucket["current"]:
+            current_value = round_half_up(statistics.median(bucket["current"]))
+        label = day.strftime("%b %-d") if os.name != "nt" else day.strftime("%b %#d")
+        visibility_series.append({"date": key, "label": label, "value": visibility_value})
+        current_series.append({"date": key, "label": label, "value": current_value})
+    return visibility_series, current_series
+
+
+def median_int(values):
+    clean = [value for value in values if value is not None]
+    if not clean:
+        return None
+    return round_half_up(statistics.median(clean))
+
+
+def median_current_strength(rows):
+    values = [CURRENT_STRENGTH_INDEXES[row["current_strength"]] for row in rows if row["current_strength"] in CURRENT_STRENGTH_INDEXES]
+    if not values:
+        return None
+    index = round_half_up(statistics.median(values))
+    for strength, strength_index in CURRENT_STRENGTH_INDEXES.items():
+        if strength_index == index:
+            return strength
+    return None
+
+
+def round_half_up(value):
+    return int(float(value) + 0.5)
+
+
+def dominant_current_type(rows):
+    counts = {}
+    for row in rows:
+        if row["current"] in CURRENT_TYPES:
+            counts[row["current"]] = counts.get(row["current"], 0) + 1
+    if not counts:
+        return None
+    return max(counts.items(), key=lambda item: (item[1], -CURRENT_TYPES.index(item[0])))[0]
+
+
+def line_chart_points(series, max_value, width=640, height=160, padding=20):
+    step = (width - padding * 2) / max(len(series) - 1, 1)
+    points = []
+    for index, item in enumerate(series):
+        x = padding + step * index
+        value = item["value"]
+        y = None
+        if value is not None:
+            y = height - padding - (min(max(value, 0), max_value) / max_value) * (height - padding * 2)
+        points.append({**item, "x": round(x, 2), "y": round(y, 2) if y is not None else None})
+    polyline = " ".join(f"{point['x']},{point['y']}" for point in points if point["y"] is not None)
+    return {"width": width, "height": height, "padding": padding, "points": points, "polyline": polyline}
+
+
+def bar_chart_points(series, max_value, width=640, height=160, padding=20):
+    slot = (width - padding * 2) / max(len(series), 1)
+    bar_width = max(8, slot * 0.58)
+    points = []
+    for index, item in enumerate(series):
+        value = item["value"]
+        bar_height = 0
+        if value is not None:
+            bar_height = (min(max(value, 0), max_value) / max_value) * (height - padding * 2)
+        points.append(
+            {
+                **item,
+                "x": round(padding + slot * index + (slot - bar_width) / 2, 2),
+                "y": round(height - padding - bar_height, 2),
+                "width": round(bar_width, 2),
+                "height": round(bar_height, 2),
+            }
+        )
+    return {"width": width, "height": height, "padding": padding, "points": points}
 
 
 def dive_to_json(dive):

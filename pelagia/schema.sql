@@ -155,3 +155,24 @@ CREATE TABLE IF NOT EXISTS dive_center_comments (
 );
 
 CREATE INDEX IF NOT EXISTS idx_dive_center_comments_center ON dive_center_comments(dive_center_id, created_at);
+
+CREATE TABLE IF NOT EXISTS dive_site_likes (
+    dive_site_id INTEGER NOT NULL,
+    user_id INTEGER NOT NULL,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY(dive_site_id, user_id),
+    FOREIGN KEY(dive_site_id) REFERENCES dive_sites(id) ON DELETE CASCADE,
+    FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS dive_site_comments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    dive_site_id INTEGER NOT NULL,
+    user_id INTEGER NOT NULL,
+    body TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY(dive_site_id) REFERENCES dive_sites(id) ON DELETE CASCADE,
+    FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_dive_site_comments_site ON dive_site_comments(dive_site_id, created_at);

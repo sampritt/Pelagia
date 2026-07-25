@@ -5,6 +5,7 @@ import sqlite3
 import sys
 import tempfile
 import unittest
+from datetime import date
 from pathlib import Path
 from unittest.mock import patch
 
@@ -179,6 +180,58 @@ Kelp House,2 Harbor Way,Alaska,https://kelp.example.test
                 }
             for column in ("weight_lbs", "exposure", "visibility_ft", "air_temp_degrees", "water_temp_degrees"):
                 self.assertEqual(columns[column][3], 0)
+
+    def test_dive_site_profile_uses_median_daily_conditions(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            app, _db_path, _config_path = self.make_app(Path(tmp_dir))
+            client = app.test_client()
+            self.signup(client)
+            today = date.today().isoformat()
+
+            for visibility, strength, water, air in (
+                ("20", "light", "74", "80"),
+                ("80", "very strong", "78", "84"),
+            ):
+                client.post(
+                    "/dive/new",
+                    data={
+                        "date": today,
+                        "site_name": "Alert Rock",
+                        "dive_site_id": "1",
+                        "country_or_area": "Alaska",
+                        "latitude": "54.1",
+                        "longitude": "-132.9",
+                        "depth_ft": "40",
+                        "duration_min": "70",
+                        "weight_lbs": "",
+                        "exposure": "",
+                        "visibility_ft": visibility,
+                        "air_temp_degrees": air,
+                        "water_temp_degrees": water,
+                        "dive_type": "shore dive",
+                        "current": "tidal",
+                        "current_strength": strength,
+                        "species_json": json.dumps([]),
+                    },
+                )
+
+            home_response = client.get("/home")
+            self.assertIn(b'href="/dive-sites/1"', home_response.data)
+
+            profile_response = client.get("/dive-sites/1")
+            self.assertEqual(profile_response.status_code, 200)
+            self.assertIn(b"Alert Rock", profile_response.data)
+            self.assertIn(b"54.10000", profile_response.data)
+            self.assertIn(b"-132.90000", profile_response.data)
+            self.assertIn(b"50 ft", profile_response.data)
+            self.assertIn(b"Strong", profile_response.data)
+            self.assertIn(b"76 degrees", profile_response.data)
+            self.assertIn(b"82 degrees", profile_response.data)
+
+            like_response = client.post("/api/dive-sites/1/like").get_json()
+            self.assertEqual(like_response, {"liked": True, "count": 1})
+            comment_response = client.post("/api/dive-sites/1/comments", data={"body": "Great site"}).get_json()
+            self.assertEqual(comment_response["comments"][0]["body"], "Great site")
 
     def test_owned_dive_can_be_edited_and_soft_deleted(self):
         with tempfile.TemporaryDirectory() as tmp_dir:

@@ -1,0 +1,142 @@
+{% extends "base.html" %}
+{% block title %}{{ site.name }} - Pelagia{% endblock %}
+
+{% block content %}
+{% set has_coords = site.latitude is not none and site.longitude is not none %}
+<section class="profile-layout">
+    <div class="profile-hero center-profile-hero">
+        <div class="center-avatar site-avatar">
+            <span>{{ site.name[:1]|upper }}</span>
+        </div>
+        <div>
+            <h1>{{ site.name }}</h1>
+            <p class="profile-meta">{{ site.country_or_area or "Location pending" }}</p>
+            <div class="profile-actions">
+                <button class="chip-button like-button {{ 'liked' if site.liked_by_me else '' }}" type="button" data-site-like data-site-id="{{ site.id }}">
+                    <span class="heart-icon"></span>
+                    <span data-site-like-count>{{ site.like_count }}</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="center-info-grid site-info-grid">
+        <div>
+            <small>Latitude</small>
+            <span>{% if site.latitude is not none %}{{ "%.5f"|format(site.latitude) }}{% else %}-{% endif %}</span>
+        </div>
+        <div>
+            <small>Longitude</small>
+            <span>{% if site.longitude is not none %}{{ "%.5f"|format(site.longitude) }}{% else %}-{% endif %}</span>
+        </div>
+        <div>
+            <small>Recent Visibility</small>
+            <span>{{ optional_metric(conditions.visibility_ft, ' ft') }}</span>
+        </div>
+        <div>
+            <small>Recent Current</small>
+            <span>
+                {% if conditions.current %}
+                    {{ current_label(conditions.current) }}{% if conditions.current_strength and conditions.current_strength != "none" %}, {{ current_strength_label(conditions.current_strength) }}{% endif %}
+                {% else %}
+                    -
+                {% endif %}
+            </span>
+        </div>
+        <div>
+            <small>Recent Water</small>
+            <span>{{ optional_metric(conditions.water_temp_degrees, ' degrees') }}</span>
+        </div>
+        <div>
+            <small>Recent Air</small>
+            <span>{{ optional_metric(conditions.air_temp_degrees, ' degrees') }}</span>
+        </div>
+    </div>
+
+    <div class="mini-map center-map {{ 'map-pending' if not has_coords else '' }}" {% if has_coords %}data-static-map data-map-lat="{{ site.latitude }}" data-map-lng="{{ site.longitude }}" data-map-zoom="11"{% endif %}>
+        <span class="map-pin"></span>
+        <span class="coordinate-label">
+            {% if has_coords %}
+                {{ "%.5f"|format(site.latitude) }}, {{ "%.5f"|format(site.longitude) }}
+            {% else %}
+                Coordinates pending
+            {% endif %}
+        </span>
+    </div>
+
+    <div class="site-chart-block">
+        <div class="site-chart-head">
+            <h2>Visibility</h2>
+            <span>Trailing 2 weeks, feet by day</span>
+        </div>
+        <svg class="site-line-chart" viewBox="0 0 {{ visibility_chart.width }} {{ visibility_chart.height }}" role="img" aria-label="Trailing two weeks visibility in feet by day">
+            <line x1="{{ visibility_chart.padding }}" y1="{{ visibility_chart.height - visibility_chart.padding }}" x2="{{ visibility_chart.width - visibility_chart.padding }}" y2="{{ visibility_chart.height - visibility_chart.padding }}"></line>
+            {% if visibility_chart.polyline %}
+                <polyline points="{{ visibility_chart.polyline }}"></polyline>
+                {% for point in visibility_chart.points %}
+                    {% if point.y is not none %}
+                        <circle cx="{{ point.x }}" cy="{{ point.y }}" r="3">
+                            <title>{{ point.label }}: {{ point.value }} ft</title>
+                        </circle>
+                    {% endif %}
+                {% endfor %}
+            {% endif %}
+        </svg>
+        <div class="site-chart-labels" aria-hidden="true">
+            <span>{{ visibility_series[0].label }}</span>
+            <span>{{ visibility_series[6].label }}</span>
+            <span>{{ visibility_series[-1].label }}</span>
+        </div>
+    </div>
+
+    <div class="site-chart-block">
+        <div class="site-chart-head">
+            <h2>Current Strength</h2>
+            <span>Trailing 2 weeks by day</span>
+        </div>
+        <svg class="site-bar-chart" viewBox="0 0 {{ current_chart.width }} {{ current_chart.height }}" role="img" aria-label="Trailing two weeks current strength by day">
+            <line x1="{{ current_chart.padding }}" y1="{{ current_chart.height - current_chart.padding }}" x2="{{ current_chart.width - current_chart.padding }}" y2="{{ current_chart.height - current_chart.padding }}"></line>
+            {% for point in current_chart.points %}
+                {% if point.value is not none %}
+                    <rect x="{{ point.x }}" y="{{ point.y }}" width="{{ point.width }}" height="{{ point.height }}">
+                        <title>{{ point.label }}: {{ current_strength_index_labels[point.value] }}</title>
+                    </rect>
+                {% endif %}
+            {% endfor %}
+        </svg>
+        <div class="site-chart-labels" aria-hidden="true">
+            <span>{{ current_series[0].label }}</span>
+            <span>{{ current_series[6].label }}</span>
+            <span>{{ current_series[-1].label }}</span>
+        </div>
+    </div>
+
+    <div class="comments-block" data-site-comments>
+        {% if site.comments %}
+            {% for comment in site.comments %}
+                <div class="comment">
+                    <strong>{{ comment.username }}</strong>
+                    <p>{{ comment.body }}</p>
+                </div>
+            {% endfor %}
+        {% else %}
+            <p class="muted">No comments yet.</p>
+        {% endif %}
+    </div>
+    <form class="comment-form" data-site-comment-form data-site-id="{{ site.id }}">
+        <input name="body" maxlength="600" autocomplete="off" placeholder="Add a comment">
+        <button class="primary-button compact" type="submit">Post</button>
+    </form>
+
+    <div class="feed-toolbar">
+        <span>{{ recent_dives|length }} recent {{ 'dive' if recent_dives|length == 1 else 'dives' }}</span>
+    </div>
+    {% if recent_dives %}
+        <div class="feed-list compact-list">
+            {% for dive in recent_dives %}
+                {% include "_dive_card.html" %}
+            {% endfor %}
+        </div>
+    {% endif %}
+</section>
+{% endblock %}

@@ -260,6 +260,13 @@ function initDiveInteractions() {
         if (centerLikeButton) {
             event.preventDefault();
             await toggleCenterLike(centerLikeButton.dataset.centerId);
+            return;
+        }
+
+        const siteLikeButton = event.target.closest("[data-site-like]");
+        if (siteLikeButton) {
+            event.preventDefault();
+            await toggleSiteLike(siteLikeButton.dataset.siteId);
         }
     });
 
@@ -273,13 +280,23 @@ function initDiveInteractions() {
     document.addEventListener("submit", async (event) => {
         const form = event.target.closest("[data-comment-form]");
         const centerForm = event.target.closest("[data-center-comment-form]");
-        if (!form && !centerForm) {
+        const siteForm = event.target.closest("[data-site-comment-form]");
+        if (!form && !centerForm && !siteForm) {
             return;
         }
         event.preventDefault();
-        const input = (form || centerForm).querySelector("input[name='body']");
+        const input = (form || centerForm || siteForm).querySelector("input[name='body']");
         const body = input.value.trim();
         if (!body) {
+            return;
+        }
+        if (siteForm) {
+            const data = await fetchJson(`/api/dive-sites/${siteForm.dataset.siteId}/comments`, {
+                method: "POST",
+                body: new FormData(siteForm),
+            });
+            input.value = "";
+            renderComments(document.querySelector("[data-site-comments]"), data.comments);
             return;
         }
         if (centerForm) {
@@ -372,6 +389,17 @@ async function toggleCenterLike(centerId) {
     document.querySelectorAll(`[data-center-like][data-center-id='${centerId}']`).forEach((button) => {
         button.classList.toggle("liked", data.liked);
         const count = button.querySelector("[data-center-like-count]");
+        if (count) {
+            count.textContent = data.count;
+        }
+    });
+}
+
+async function toggleSiteLike(siteId) {
+    const data = await fetchJson(`/api/dive-sites/${siteId}/like`, { method: "POST" });
+    document.querySelectorAll(`[data-site-like][data-site-id='${siteId}']`).forEach((button) => {
+        button.classList.toggle("liked", data.liked);
+        const count = button.querySelector("[data-site-like-count]");
         if (count) {
             count.textContent = data.count;
         }

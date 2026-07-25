@@ -892,6 +892,12 @@ textarea:focus {
     line-height: 1.15;
 }
 
+.site-name-link {
+    color: inherit;
+    font: inherit;
+    text-decoration: inherit;
+}
+
 .dive-card-title p {
     margin: 0;
     color: var(--muted);
@@ -1630,6 +1636,77 @@ input[type="range"] {
 
 .center-map {
     min-height: 300px;
+}
+
+.site-avatar {
+    background:
+        linear-gradient(145deg, rgba(11, 18, 25, 0.96), rgba(32, 45, 58, 0.92) 55%, var(--accent-deep) 56%, #8ccfff 100%);
+}
+
+.site-info-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.site-chart-block {
+    display: grid;
+    gap: 10px;
+    padding: 14px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--panel-tint);
+}
+
+.site-chart-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.site-chart-head span {
+    color: var(--muted);
+    font-size: 0.82rem;
+    font-weight: 680;
+}
+
+.site-line-chart,
+.site-bar-chart {
+    width: 100%;
+    min-height: 180px;
+    overflow: visible;
+}
+
+.site-line-chart line,
+.site-bar-chart line {
+    stroke: var(--line-strong);
+    stroke-width: 1;
+}
+
+.site-line-chart polyline {
+    fill: none;
+    stroke: var(--accent);
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-width: 3;
+}
+
+.site-line-chart circle {
+    fill: var(--ink);
+    stroke: var(--accent);
+    stroke-width: 2;
+}
+
+.site-bar-chart rect {
+    fill: var(--sea);
+    rx: 3;
+}
+
+.site-chart-labels {
+    display: flex;
+    justify-content: space-between;
+    color: var(--muted);
+    font-size: 0.76rem;
+    font-weight: 680;
 }
 
 .profile-cert-button {

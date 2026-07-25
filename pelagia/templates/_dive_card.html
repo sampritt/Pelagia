@@ -22,7 +22,13 @@
     </div>
 
     <div class="dive-card-title">
-        <h2>{{ dive.site_name }}</h2>
+        <h2>
+            {% if dive.dive_site_id %}
+                <a class="site-name-link" href="{{ url_for('dive_site_profile', site_id=dive.dive_site_id) }}">{{ dive.site_name }}</a>
+            {% else %}
+                {{ dive.site_name }}
+            {% endif %}
+        </h2>
         {% set center_name = dive.linked_dive_center_name or dive.dive_center_name %}
         <p class="dive-location-line">
             <span>{% if dive.country_or_area %}{{ dive.country_or_area }}{% else %}Coordinates pending{% endif %}</span>
