@@ -863,6 +863,10 @@ textarea:focus {
     gap: 0 4px;
 }
 
+.dive-author-line > span {
+    font-weight: 400;
+}
+
 .username-link {
     color: inherit;
     font: inherit;
