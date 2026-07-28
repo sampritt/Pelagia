@@ -123,6 +123,7 @@ Kelp House,2 Harbor Way,Alaska,https://kelp.example.test
             users = client.get("/api/users?q=bud").get_json()
             self.assertEqual(users[0]["username"], "buddy")
             self.assertEqual(users[0]["url"], "/users/2")
+            self.assertEqual(client.get("/api/users?q=test").get_json(), [])
 
             search_user = client.get("/api/search?q=bud").get_json()
             self.assertEqual(search_user[0]["type"], "user")
@@ -137,31 +138,58 @@ Kelp House,2 Harbor Way,Alaska,https://kelp.example.test
             new_response = client.get("/dive/new")
             self.assertIn(b"Tag a Buddy", new_response.data)
             self.assertIn(b"data-buddy-input", new_response.data)
+            self.assertNotIn(b"Buddy username", new_response.data)
+
+            dive_data = {
+                "date": "2026-07-22",
+                "site_name": "Alert Rock",
+                "dive_site_id": "1",
+                "dive_center_name": "",
+                "dive_center_id": "",
+                "country_or_area": "Alaska",
+                "latitude": "54.1",
+                "longitude": "-132.9",
+                "depth_ft": "40",
+                "duration_min": "70",
+                "weight_lbs": "",
+                "exposure": "",
+                "visibility_ft": "",
+                "air_temp_degrees": "",
+                "water_temp_degrees": "",
+                "dive_type": "shore dive",
+                "current": "none",
+                "current_strength": "none",
+                "species_json": json.dumps([]),
+            }
+
+            invalid_response = client.post(
+                "/dive/new",
+                data={
+                    **dive_data,
+                    "buddy_username": "missingbuddy",
+                    "buddy_user_id": "",
+                },
+            )
+            self.assertEqual(invalid_response.status_code, 302)
+            self.assertEqual(client.get("/api/dives/mine").get_json(), [])
+
+            self_response = client.post(
+                "/dive/new",
+                data={
+                    **dive_data,
+                    "buddy_username": "tester",
+                    "buddy_user_id": "1",
+                },
+            )
+            self.assertEqual(self_response.status_code, 302)
+            self.assertEqual(client.get("/api/dives/mine").get_json(), [])
 
             client.post(
                 "/dive/new",
                 data={
-                    "date": "2026-07-22",
-                    "site_name": "Alert Rock",
-                    "dive_site_id": "1",
-                    "dive_center_name": "",
-                    "dive_center_id": "",
-                    "country_or_area": "Alaska",
-                    "latitude": "54.1",
-                    "longitude": "-132.9",
-                    "depth_ft": "40",
-                    "duration_min": "70",
-                    "weight_lbs": "",
-                    "exposure": "",
-                    "visibility_ft": "",
-                    "air_temp_degrees": "",
-                    "water_temp_degrees": "",
-                    "dive_type": "shore dive",
-                    "current": "none",
-                    "current_strength": "none",
+                    **dive_data,
                     "buddy_username": "buddy",
                     "buddy_user_id": "2",
-                    "species_json": json.dumps([]),
                 },
             )
             logged = client.get("/api/dives/mine").get_json()[0]
@@ -173,8 +201,11 @@ Kelp House,2 Harbor Way,Alaska,https://kelp.example.test
             self.assertIn(b'href="/users/1"', home_response.data)
             self.assertIn(b'href="/users/2"', home_response.data)
             self.assertIn(b'<span>with</span>', home_response.data)
-            self.assertLess(home_response.data.index(b"tester"), home_response.data.index(b"<span>with</span>"))
-            self.assertLess(home_response.data.index(b"<span>with</span>"), home_response.data.index(b"buddy"))
+            author_start = home_response.data.index(b'class="dive-author-line"')
+            author_end = home_response.data.index(b"</strong>", author_start)
+            author_line = home_response.data[author_start:author_end]
+            self.assertLess(author_line.index(b"tester"), author_line.index(b"<span>with</span>"))
+            self.assertLess(author_line.index(b"<span>with</span>"), author_line.index(b"buddy"))
             self.assertIn(b'<a class="mini-avatar" href="/users/1"', home_response.data)
 
             detail_response = client.get(f"/dive/{logged['id']}")

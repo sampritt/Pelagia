@@ -197,7 +197,11 @@ def register_routes(app):
     @login_required
     def log_dive():
         if request.method == "POST":
-            create_dive_from_request(session["user_id"], request)
+            try:
+                create_dive_from_request(session["user_id"], request)
+            except InvalidBuddyError as error:
+                flash(str(error))
+                return redirect(url_for("log_dive"))
             flash("Dive logged.")
             return redirect(url_for("home"))
         return render_template(
@@ -232,7 +236,11 @@ def register_routes(app):
         if dive is None:
             abort(404)
         if request.method == "POST":
-            update_dive_from_request(dive_id, session["user_id"], request)
+            try:
+                update_dive_from_request(dive_id, session["user_id"], request)
+            except InvalidBuddyError as error:
+                flash(str(error))
+                return redirect(url_for("edit_dive", dive_id=dive_id))
             flash("Dive updated.")
             return redirect(url_for("dive_detail", dive_id=dive_id))
         return render_template(
@@ -463,12 +471,13 @@ def register_routes(app):
             SELECT id, username, profile_photo
             FROM users
             WHERE lower(username) LIKE ?
+                AND id <> ?
             ORDER BY
                 CASE WHEN lower(username) LIKE ? THEN 0 ELSE 1 END,
                 username
             LIMIT 14
             """,
-            (like, prefix),
+            (like, session["user_id"], prefix),
         ).fetchall()
         return jsonify([user_payload(row) for row in rows])
 
@@ -713,6 +722,10 @@ def register_routes(app):
         return jsonify({"comments": [dict(comment) for comment in site["comments"]]})
 
 
+class InvalidBuddyError(ValueError):
+    pass
+
+
 def fetch_user(user_id):
     return (
         database.get_db()
@@ -741,7 +754,7 @@ def render_user_profile(user, is_owner):
 
 
 def create_dive_from_request(user_id, form_request):
-    values = dive_values_from_request(form_request)
+    values = dive_values_from_request(form_request, user_id)
     db = database.get_db()
     cur = db.execute(
         """
@@ -785,7 +798,7 @@ def create_dive_from_request(user_id, form_request):
 
 
 def update_dive_from_request(dive_id, user_id, form_request):
-    values = dive_values_from_request(form_request)
+    values = dive_values_from_request(form_request, user_id)
     db = database.get_db()
     db.execute(
         """
@@ -846,7 +859,7 @@ def update_dive_from_request(dive_id, user_id, form_request):
     return dive_id
 
 
-def dive_values_from_request(form_request):
+def dive_values_from_request(form_request, user_id):
     form = form_request.form
     depth = clamp_int(form.get("depth_ft"), 0, 140)
     duration = clamp_int(form.get("duration_min"), 0, 120)
@@ -872,6 +885,7 @@ def dive_values_from_request(form_request):
     buddy_user_id = resolve_buddy_user_id(
         maybe_int(form.get("buddy_user_id")),
         form.get("buddy_username", "").strip(),
+        user_id,
         database.get_db(),
     )
 
@@ -980,31 +994,20 @@ def resolve_dive_center_by_name(dive_center_name, db):
     return None
 
 
-def resolve_user_by_username(username, db):
-    if not username:
-        return None
-    return db.execute(
-        """
-        SELECT id, username, profile_photo, created_at
-        FROM users
-        WHERE lower(username) = lower(?)
-        """,
-        (username,),
-    ).fetchone()
-
-
-def resolve_buddy_user_id(buddy_user_id, buddy_username, db):
+def resolve_buddy_user_id(buddy_user_id, buddy_username, current_user_id, db):
     if not buddy_username:
         return None
-    if buddy_user_id:
-        user = db.execute(
-            "SELECT id, username FROM users WHERE id = ?",
-            (buddy_user_id,),
-        ).fetchone()
-        if user and user["username"].lower() == buddy_username.lower():
-            return user["id"]
-    user = resolve_user_by_username(buddy_username, db)
-    return user["id"] if user else None
+    if not buddy_user_id:
+        raise InvalidBuddyError("Choose a buddy from autocomplete.")
+    if buddy_user_id == current_user_id:
+        raise InvalidBuddyError("Choose another Pelagia user as your buddy.")
+    user = db.execute(
+        "SELECT id, username FROM users WHERE id = ?",
+        (buddy_user_id,),
+    ).fetchone()
+    if not user or user["username"].lower() != buddy_username.lower():
+        raise InvalidBuddyError("Choose a buddy from autocomplete.")
+    return user["id"]
 
 
 def replace_dive_species(dive_id, species_names, db):

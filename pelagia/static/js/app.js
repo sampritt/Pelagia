@@ -734,9 +734,21 @@ function initBuddyAutocomplete({ input, results, hidden }) {
         return;
     }
 
+    hidden.dataset.selectedUsername = hidden.value ? input.value.trim() : "";
+
+    const setValidity = () => {
+        const query = input.value.trim();
+        const selectedUsername = hidden.dataset.selectedUsername || "";
+        const valid = !query || (hidden.value && selectedUsername.toLowerCase() === query.toLowerCase());
+        input.setCustomValidity(valid ? "" : "Choose a buddy from autocomplete.");
+        return valid;
+    };
+
     const selectUser = (user) => {
         input.value = user.username;
         hidden.value = user.id;
+        hidden.dataset.selectedUsername = user.username;
+        setValidity();
         hideMenu(results);
     };
 
@@ -752,10 +764,15 @@ function initBuddyAutocomplete({ input, results, hidden }) {
         results.hidden = !users.length;
     };
 
+    input.addEventListener("input", () => {
+        hidden.value = "";
+        hidden.dataset.selectedUsername = "";
+        setValidity();
+    });
+
     input.addEventListener(
         "input",
         debounce(async () => {
-            hidden.value = "";
             const query = input.value.trim();
             if (query.length < 1) {
                 hideMenu(results);
@@ -764,6 +781,8 @@ function initBuddyAutocomplete({ input, results, hidden }) {
             renderUsers(await fetchJson(`/api/users?q=${encodeURIComponent(query)}`));
         }, 160),
     );
+
+    input.addEventListener("blur", setValidity);
 
     input.addEventListener("keydown", (event) => {
         if (event.key === "Enter" && input.value.trim()) {
@@ -777,11 +796,23 @@ function initBuddyAutocomplete({ input, results, hidden }) {
         }
     });
 
+    input.form?.addEventListener("submit", (event) => {
+        if (event.submitter?.formNoValidate) {
+            return;
+        }
+        if (!setValidity()) {
+            event.preventDefault();
+            input.reportValidity();
+        }
+    });
+
     document.addEventListener("click", (event) => {
         if (!input.closest(".autocomplete-field")?.contains(event.target)) {
             hideMenu(results);
         }
     });
+
+    setValidity();
 }
 
 function initCurrentStrengthSlider(form) {
