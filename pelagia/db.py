@@ -26,6 +26,7 @@ def init_db():
     db = get_db()
     schema = Path(current_app.root_path, "schema.sql").read_text()
     db.executescript(schema)
+    _ensure_column(db, "dives", "buddy_user_id", "INTEGER REFERENCES users(id) ON DELETE SET NULL")
     _ensure_column(db, "dives", "dive_center_id", "INTEGER")
     _ensure_column(db, "dives", "dive_center_name", "TEXT")
     _ensure_column(db, "dives", "weight_lbs", "INTEGER")
@@ -40,6 +41,7 @@ def init_db():
     _ensure_column(db, "dives", "is_deleted", "INTEGER NOT NULL DEFAULT 0")
     _ensure_nullable_dive_metadata(db)
     _normalize_current_values(db)
+    db.execute("CREATE INDEX IF NOT EXISTS idx_dives_buddy_user ON dives(buddy_user_id)")
     db.commit()
 
 
@@ -87,6 +89,7 @@ def _ensure_nullable_dive_metadata(db):
             CREATE TABLE dives_rebuild (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 user_id INTEGER NOT NULL,
+                buddy_user_id INTEGER,
                 dive_site_id INTEGER,
                 dive_center_id INTEGER,
                 dive_center_name TEXT,
@@ -110,18 +113,19 @@ def _ensure_nullable_dive_metadata(db):
                 is_deleted INTEGER NOT NULL DEFAULT 0,
                 created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
+                FOREIGN KEY(buddy_user_id) REFERENCES users(id) ON DELETE SET NULL,
                 FOREIGN KEY(dive_site_id) REFERENCES dive_sites(id) ON DELETE SET NULL,
                 FOREIGN KEY(dive_center_id) REFERENCES dive_centers(id) ON DELETE SET NULL
             );
 
             INSERT INTO dives_rebuild (
-                id, user_id, dive_site_id, dive_center_id, dive_center_name, date, site_name,
+                id, user_id, buddy_user_id, dive_site_id, dive_center_id, dive_center_name, date, site_name,
                 country_or_area, latitude, longitude, depth_ft, duration_min, weight_lbs,
                 exposure, visibility_ft, air_temp_degrees, water_temp_degrees, gas_mix, dive_type,
                 current, current_strength, notes, is_deleted, created_at
             )
             SELECT
-                id, user_id, dive_site_id, dive_center_id, dive_center_name, date, site_name,
+                id, user_id, buddy_user_id, dive_site_id, dive_center_id, dive_center_name, date, site_name,
                 country_or_area, latitude, longitude, depth_ft, duration_min, weight_lbs,
                 exposure, visibility_ft, air_temp_degrees, water_temp_degrees, gas_mix, dive_type,
                 current, current_strength, notes, is_deleted, created_at

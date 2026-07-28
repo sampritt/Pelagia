@@ -1,10 +1,11 @@
 {% extends "base.html" %}
-{% block title %}You - Pelagia{% endblock %}
+{% block title %}{{ user.username }} - Pelagia{% endblock %}
 
 {% block content %}
 <section class="profile-layout">
     <div class="profile-hero">
-        <form class="profile-photo-form" method="post" enctype="multipart/form-data">
+        {% if is_owner %}
+        <form class="profile-photo-form" method="post" action="{{ url_for('profile') }}" enctype="multipart/form-data">
             <label class="profile-avatar">
                 {% if user.profile_photo %}
                     <img src="{{ url_for('static', filename=user.profile_photo) }}" alt="">
@@ -14,6 +15,15 @@
                 <input type="file" name="profile_photo" accept="image/*" onchange="this.form.submit()">
             </label>
         </form>
+        {% else %}
+        <div class="profile-avatar static-avatar">
+            {% if user.profile_photo %}
+                <img src="{{ url_for('static', filename=user.profile_photo) }}" alt="">
+            {% else %}
+                <span>{{ user.username[:1]|upper }}</span>
+            {% endif %}
+        </div>
+        {% endif %}
         <div>
             <h1>{{ user.username }}</h1>
             <p class="profile-meta">
@@ -23,6 +33,7 @@
                 {% endif %}
                 <span>{{ stats.summary.account_age_days }} days on Pelagia</span>
             </p>
+            {% if is_owner %}
             <div class="profile-actions">
                 <a class="primary-button compact" href="{{ url_for('log_dive') }}"><span aria-hidden="true">+</span> Log dive</a>
                 <a class="ghost-button" href="{{ url_for('map_view') }}">View map</a>
@@ -36,6 +47,7 @@
                     </svg>
                 </a>
             </div>
+            {% endif %}
         </div>
     </div>
 
@@ -46,10 +58,17 @@
         <div><span>{{ stats.summary.total_minutes }}</span><small>total minutes</small></div>
     </div>
 
-    <button class="profile-map" type="button" data-profile-map data-pins='{{ stats.pins|tojson }}'>
+    {% if is_owner %}
+    <button class="profile-map" type="button" data-profile-map data-profile-map-link data-pins='{{ stats.pins|tojson }}'>
         <span class="map-title">Dive map</span>
         <span class="profile-map-world"></span>
     </button>
+    {% else %}
+    <div class="profile-map" data-profile-map data-pins='{{ stats.pins|tojson }}'>
+        <span class="map-title">Dive map</span>
+        <span class="profile-map-world"></span>
+    </div>
+    {% endif %}
     <div class="profile-map-stats">
         <div><span>{{ stats.summary.country_count }}</span><small>countries</small></div>
         <div><span>{{ stats.summary.location_count }}</span><small>locations</small></div>

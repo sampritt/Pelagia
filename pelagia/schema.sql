@@ -70,6 +70,7 @@ CREATE INDEX IF NOT EXISTS idx_dive_centers_location ON dive_centers(location);
 CREATE TABLE IF NOT EXISTS dives (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
+    buddy_user_id INTEGER,
     dive_site_id INTEGER,
     dive_center_id INTEGER,
     dive_center_name TEXT,
@@ -93,6 +94,7 @@ CREATE TABLE IF NOT EXISTS dives (
     is_deleted INTEGER NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY(buddy_user_id) REFERENCES users(id) ON DELETE SET NULL,
     FOREIGN KEY(dive_site_id) REFERENCES dive_sites(id) ON DELETE SET NULL,
     FOREIGN KEY(dive_center_id) REFERENCES dive_centers(id) ON DELETE SET NULL
 );

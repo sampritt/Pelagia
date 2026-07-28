@@ -1,15 +1,21 @@
 {% set has_coords = dive.latitude is not none and dive.longitude is not none %}
 <article class="dive-card" data-dive-card data-dive-id="{{ dive.id }}" tabindex="0">
     <div class="dive-card-head">
-        <div class="mini-avatar">
+        <a class="mini-avatar" href="{{ url_for('user_profile', user_id=dive.user_id) }}" aria-label="{{ dive.username }} profile">
             {% if dive.profile_photo %}
                 <img src="{{ url_for('static', filename=dive.profile_photo) }}" alt="">
             {% else %}
                 <span>{{ dive.username[:1]|upper }}</span>
             {% endif %}
-        </div>
+        </a>
         <div>
-            <strong>{{ dive.username }}</strong>
+            <strong class="dive-author-line">
+                <a class="username-link" href="{{ url_for('user_profile', user_id=dive.user_id) }}">{{ dive.username }}</a>
+                {% if dive.buddy_user_id and dive.buddy_username %}
+                    <span>with</span>
+                    <a class="username-link" href="{{ url_for('user_profile', user_id=dive.buddy_user_id) }}">{{ dive.buddy_username }}</a>
+                {% endif %}
+            </strong>
             <p class="dive-card-meta">
                 <span>{{ dive.date }}</span>
                 {% set dive_type = dive.dive_type or 'open water' %}

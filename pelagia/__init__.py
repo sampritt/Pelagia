@@ -125,11 +125,7 @@ def current_user():
     user_id = session.get("user_id")
     if not user_id:
         return None
-    return (
-        database.get_db()
-        .execute("SELECT id, username, profile_photo, created_at FROM users WHERE id = ?", (user_id,))
-        .fetchone()
-    )
+    return fetch_user(user_id)
 
 
 def register_routes(app):
@@ -288,10 +284,15 @@ def register_routes(app):
             return redirect(url_for("profile"))
 
         user = current_user()
-        stats = get_profile_stats(user["id"])
-        recent_dives = fetch_dives(scope="mine", user_id=user["id"], limit=6)
-        cert = fetch_user_cert(user["id"])
-        return render_template("profile.html", user=user, stats=stats, recent_dives=recent_dives, cert=cert)
+        return render_user_profile(user, is_owner=True)
+
+    @app.route("/users/<int:user_id>")
+    @login_required
+    def user_profile(user_id):
+        user = fetch_user(user_id)
+        if user is None:
+            abort(404)
+        return render_user_profile(user, is_owner=user["id"] == session.get("user_id"))
 
     @app.route("/cert/new", methods=("GET", "POST"))
     @login_required
@@ -448,6 +449,80 @@ def register_routes(app):
             (like, like, like, prefix),
         ).fetchall()
         return jsonify([center_payload(row) for row in rows])
+
+    @app.route("/api/users", methods=("GET",))
+    @login_required
+    def api_users():
+        query = request.args.get("q", "").strip()
+        if not query:
+            return jsonify([])
+        like = f"%{query.lower()}%"
+        prefix = f"{query.lower()}%"
+        rows = database.get_db().execute(
+            """
+            SELECT id, username, profile_photo
+            FROM users
+            WHERE lower(username) LIKE ?
+            ORDER BY
+                CASE WHEN lower(username) LIKE ? THEN 0 ELSE 1 END,
+                username
+            LIMIT 14
+            """,
+            (like, prefix),
+        ).fetchall()
+        return jsonify([user_payload(row) for row in rows])
+
+    @app.route("/api/search", methods=("GET",))
+    @login_required
+    def api_search():
+        query = request.args.get("q", "").strip()
+        if not query:
+            return jsonify([])
+
+        like = f"%{query.lower()}%"
+        prefix = f"{query.lower()}%"
+        db = database.get_db()
+        users = db.execute(
+            """
+            SELECT id, username, profile_photo
+            FROM users
+            WHERE lower(username) LIKE ?
+            ORDER BY
+                CASE WHEN lower(username) LIKE ? THEN 0 ELSE 1 END,
+                username
+            LIMIT 5
+            """,
+            (like, prefix),
+        ).fetchall()
+        sites = db.execute(
+            """
+            SELECT id, name, country_or_area
+            FROM dive_sites
+            WHERE lower(name) LIKE ? OR lower(country_or_area) LIKE ?
+            ORDER BY
+                CASE WHEN lower(name) LIKE ? THEN 0 ELSE 1 END,
+                name
+            LIMIT 5
+            """,
+            (like, like, prefix),
+        ).fetchall()
+        centers = db.execute(
+            """
+            SELECT id, name, location, physical_address
+            FROM dive_centers
+            WHERE lower(name) LIKE ? OR lower(location) LIKE ? OR lower(physical_address) LIKE ?
+            ORDER BY
+                CASE WHEN lower(name) LIKE ? THEN 0 ELSE 1 END,
+                name
+            LIMIT 5
+            """,
+            (like, like, like, prefix),
+        ).fetchall()
+        return jsonify(
+            [search_user_payload(row) for row in users]
+            + [search_site_payload(row) for row in sites]
+            + [search_center_payload(row) for row in centers]
+        )
 
     @app.route("/api/species-suggestions", methods=("GET",))
     @login_required
@@ -638,20 +713,48 @@ def register_routes(app):
         return jsonify({"comments": [dict(comment) for comment in site["comments"]]})
 
 
+def fetch_user(user_id):
+    return (
+        database.get_db()
+        .execute("SELECT id, username, profile_photo, created_at FROM users WHERE id = ?", (user_id,))
+        .fetchone()
+    )
+
+
+def render_user_profile(user, is_owner):
+    stats = get_profile_stats(user["id"])
+    recent_dives = fetch_dives(
+        scope="mine",
+        user_id=user["id"],
+        viewer_user_id=session["user_id"],
+        limit=6,
+    )
+    cert = fetch_user_cert(user["id"])
+    return render_template(
+        "profile.html",
+        user=user,
+        stats=stats,
+        recent_dives=recent_dives,
+        cert=cert,
+        is_owner=is_owner,
+    )
+
+
 def create_dive_from_request(user_id, form_request):
     values = dive_values_from_request(form_request)
     db = database.get_db()
     cur = db.execute(
         """
         INSERT INTO dives (
-            user_id, dive_site_id, dive_center_id, dive_center_name, date, site_name, country_or_area, latitude, longitude,
+            user_id, buddy_user_id, dive_site_id, dive_center_id, dive_center_name, date, site_name, country_or_area, latitude, longitude,
             depth_ft, duration_min, weight_lbs, exposure, visibility_ft, air_temp_degrees, water_temp_degrees,
             gas_mix, dive_type, current, current_strength, notes
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             user_id,
+            values["buddy_user_id"],
             values["dive_site_id"],
             values["dive_center_id"],
             values["dive_center_name"][:160],
@@ -687,7 +790,8 @@ def update_dive_from_request(dive_id, user_id, form_request):
     db.execute(
         """
         UPDATE dives
-        SET dive_site_id = ?,
+        SET buddy_user_id = ?,
+            dive_site_id = ?,
             dive_center_id = ?,
             dive_center_name = ?,
             date = ?,
@@ -710,6 +814,7 @@ def update_dive_from_request(dive_id, user_id, form_request):
         WHERE id = ? AND user_id = ? AND COALESCE(is_deleted, 0) = 0
         """,
         (
+            values["buddy_user_id"],
             values["dive_site_id"],
             values["dive_center_id"],
             values["dive_center_name"][:160],
@@ -764,6 +869,11 @@ def dive_values_from_request(form_request):
     dive_site_id = maybe_int(form.get("dive_site_id"))
     dive_center_id = maybe_int(form.get("dive_center_id"))
     dive_center_name = form.get("dive_center_name", "").strip()
+    buddy_user_id = resolve_buddy_user_id(
+        maybe_int(form.get("buddy_user_id")),
+        form.get("buddy_username", "").strip(),
+        database.get_db(),
+    )
 
     db = database.get_db()
     if dive_site_id:
@@ -813,6 +923,7 @@ def dive_values_from_request(form_request):
     return {
         "dive_site_id": dive_site_id,
         "dive_center_id": dive_center_id,
+        "buddy_user_id": buddy_user_id,
         "dive_center_name": dive_center_name,
         "date": date_value,
         "site_name": site_name,
@@ -867,6 +978,33 @@ def resolve_dive_center_by_name(dive_center_name, db):
     if len(rows) == 1:
         return rows[0]
     return None
+
+
+def resolve_user_by_username(username, db):
+    if not username:
+        return None
+    return db.execute(
+        """
+        SELECT id, username, profile_photo, created_at
+        FROM users
+        WHERE lower(username) = lower(?)
+        """,
+        (username,),
+    ).fetchone()
+
+
+def resolve_buddy_user_id(buddy_user_id, buddy_username, db):
+    if not buddy_username:
+        return None
+    if buddy_user_id:
+        user = db.execute(
+            "SELECT id, username FROM users WHERE id = ?",
+            (buddy_user_id,),
+        ).fetchone()
+        if user and user["username"].lower() == buddy_username.lower():
+            return user["id"]
+    user = resolve_user_by_username(buddy_username, db)
+    return user["id"] if user else None
 
 
 def replace_dive_species(dive_id, species_names, db):
@@ -981,7 +1119,8 @@ def species_suggestions_for_country(country, limit=5, excluded=None):
     return selected
 
 
-def fetch_dives(scope, user_id, limit=80, center_id=None, site_id=None):
+def fetch_dives(scope, user_id, limit=80, center_id=None, site_id=None, viewer_user_id=None):
+    viewer_user_id = user_id if viewer_user_id is None else viewer_user_id
     clauses = ["COALESCE(d.is_deleted, 0) = 0"]
     params = []
     if scope == "mine":
@@ -1001,18 +1140,20 @@ def fetch_dives(scope, user_id, limit=80, center_id=None, site_id=None):
             d.*,
             u.username,
             u.profile_photo,
+            buddy.username AS buddy_username,
             dc.name AS linked_dive_center_name,
             (SELECT COUNT(*) FROM likes WHERE dive_id = d.id) AS like_count,
             (SELECT COUNT(*) FROM comments WHERE dive_id = d.id) AS comment_count,
             EXISTS(SELECT 1 FROM likes WHERE dive_id = d.id AND user_id = ?) AS liked_by_me
         FROM dives d
         JOIN users u ON u.id = d.user_id
+        LEFT JOIN users buddy ON buddy.id = d.buddy_user_id
         LEFT JOIN dive_centers dc ON dc.id = d.dive_center_id
         {where}
         ORDER BY d.date DESC, d.created_at DESC
         LIMIT ?
         """,
-        [user_id] + params,
+        [viewer_user_id] + params,
     ).fetchall()
     return [hydrate_dive(row) for row in rows]
 
@@ -1024,12 +1165,14 @@ def fetch_dive(dive_id, viewer_user_id):
             d.*,
             u.username,
             u.profile_photo,
+            buddy.username AS buddy_username,
             dc.name AS linked_dive_center_name,
             (SELECT COUNT(*) FROM likes WHERE dive_id = d.id) AS like_count,
             (SELECT COUNT(*) FROM comments WHERE dive_id = d.id) AS comment_count,
             EXISTS(SELECT 1 FROM likes WHERE dive_id = d.id AND user_id = ?) AS liked_by_me
         FROM dives d
         JOIN users u ON u.id = d.user_id
+        LEFT JOIN users buddy ON buddy.id = d.buddy_user_id
         LEFT JOIN dive_centers dc ON dc.id = d.dive_center_id
         WHERE d.id = ?
             AND COALESCE(d.is_deleted, 0) = 0
@@ -1048,12 +1191,14 @@ def fetch_owned_dive(dive_id, user_id):
             d.*,
             u.username,
             u.profile_photo,
+            buddy.username AS buddy_username,
             dc.name AS linked_dive_center_name,
             (SELECT COUNT(*) FROM likes WHERE dive_id = d.id) AS like_count,
             (SELECT COUNT(*) FROM comments WHERE dive_id = d.id) AS comment_count,
             EXISTS(SELECT 1 FROM likes WHERE dive_id = d.id AND user_id = ?) AS liked_by_me
         FROM dives d
         JOIN users u ON u.id = d.user_id
+        LEFT JOIN users buddy ON buddy.id = d.buddy_user_id
         LEFT JOIN dive_centers dc ON dc.id = d.dive_center_id
         WHERE d.id = ?
             AND d.user_id = ?
@@ -1076,7 +1221,7 @@ def hydrate_dive(row):
     ).fetchall()
     dive["comments"] = db.execute(
         """
-        SELECT c.id, c.body, c.created_at, u.username
+        SELECT c.id, c.body, c.created_at, u.id AS user_id, u.username
         FROM comments c
         JOIN users u ON u.id = c.user_id
         WHERE c.dive_id = ?
@@ -1177,7 +1322,7 @@ def fetch_dive_center(center_id, viewer_user_id):
     center = dict(row)
     center["comments"] = database.get_db().execute(
         """
-        SELECT c.id, c.body, c.created_at, u.username
+        SELECT c.id, c.body, c.created_at, u.id AS user_id, u.username
         FROM dive_center_comments c
         JOIN users u ON u.id = c.user_id
         WHERE c.dive_center_id = ?
@@ -1209,7 +1354,7 @@ def fetch_dive_site(site_id, viewer_user_id):
     site = dict(row)
     site["comments"] = database.get_db().execute(
         """
-        SELECT c.id, c.body, c.created_at, u.username
+        SELECT c.id, c.body, c.created_at, u.id AS user_id, u.username
         FROM dive_site_comments c
         JOIN users u ON u.id = c.user_id
         WHERE c.dive_site_id = ?
@@ -1400,7 +1545,10 @@ def bar_chart_points(series, max_value, width=640, height=160, padding=20):
 def dive_to_json(dive):
     return {
         "id": dive["id"],
+        "user_id": dive["user_id"],
         "username": dive["username"],
+        "buddy_user_id": dive["buddy_user_id"],
+        "buddy_username": dive["buddy_username"],
         "date": dive["date"],
         "site_name": dive["site_name"],
         "dive_center_id": dive["dive_center_id"],
@@ -1454,6 +1602,45 @@ def center_payload(row):
         "website": row["website"],
         "latitude": row["latitude"],
         "longitude": row["longitude"],
+    }
+
+
+def user_payload(row):
+    return {
+        "id": row["id"],
+        "username": row["username"],
+        "profile_photo": row["profile_photo"],
+        "url": url_for("user_profile", user_id=row["id"]),
+    }
+
+
+def search_user_payload(row):
+    return {
+        "type": "user",
+        "label": row["username"],
+        "detail": "Account",
+        "url": url_for("user_profile", user_id=row["id"]),
+    }
+
+
+def search_site_payload(row):
+    detail = f"Dive site | {row['country_or_area']}" if row["country_or_area"] else "Dive site"
+    return {
+        "type": "site",
+        "label": row["name"],
+        "detail": detail,
+        "url": url_for("dive_site_profile", site_id=row["id"]),
+    }
+
+
+def search_center_payload(row):
+    place = row["location"] or row["physical_address"]
+    detail = f"Dive center | {place}" if place else "Dive center"
+    return {
+        "type": "center",
+        "label": row["name"],
+        "detail": detail,
+        "url": url_for("dive_center_profile", center_id=row["id"]),
     }
 
 

@@ -7,15 +7,21 @@
 <section class="dive-detail" data-dive-detail>
     <div class="dive-detail-head">
         <div class="dive-detail-author">
-            <div class="mini-avatar">
+            <a class="mini-avatar" href="{{ url_for('user_profile', user_id=dive.user_id) }}" aria-label="{{ dive.username }} profile">
                 {% if dive.profile_photo %}
                     <img src="{{ url_for('static', filename=dive.profile_photo) }}" alt="">
                 {% else %}
                     <span>{{ dive.username[:1]|upper }}</span>
                 {% endif %}
-            </div>
+            </a>
             <div>
-                <strong>{{ dive.username }}</strong>
+                <strong class="dive-author-line">
+                    <a class="username-link" href="{{ url_for('user_profile', user_id=dive.user_id) }}">{{ dive.username }}</a>
+                    {% if dive.buddy_user_id and dive.buddy_username %}
+                        <span>with</span>
+                        <a class="username-link" href="{{ url_for('user_profile', user_id=dive.buddy_user_id) }}">{{ dive.buddy_username }}</a>
+                    {% endif %}
+                </strong>
                 <p>
                     <span>{{ dive.date }}</span>
                     {% set dive_type = dive.dive_type or 'open water' %}
@@ -162,7 +168,7 @@
             {% if dive.comments %}
                 {% for comment in dive.comments %}
                     <div class="comment">
-                        <strong>{{ comment.username }}</strong>
+                        <strong><a class="username-link" href="{{ url_for('user_profile', user_id=comment.user_id) }}">{{ comment.username }}</a></strong>
                         <p>{{ comment.body }}</p>
                     </div>
                 {% endfor %}

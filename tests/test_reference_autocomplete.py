@@ -27,7 +27,7 @@ def image_upload(name, color):
 
 
 class ReferenceAutocompleteTest(unittest.TestCase):
-    def make_app(self, tmp_path):
+    def make_app(self, tmp_path, prepare_db=None):
         sites_csv = tmp_path / "sites.csv"
         species_csv = tmp_path / "species.csv"
         centers_csv = tmp_path / "centers.csv"
@@ -76,12 +76,14 @@ Kelp House,2 Harbor Way,Alaska,https://kelp.example.test
                 }
             )
         )
+        if prepare_db is not None:
+            prepare_db(db_path)
         with patch.dict(os.environ, {"PELAGIA_CONFIG": str(config_path)}):
             app = create_app({"TESTING": True})
         return app, db_path, config_path
 
-    def signup(self, client):
-        client.post("/signup", data={"username": "tester", "password": "password"})
+    def signup(self, client, username="tester"):
+        client.post("/signup", data={"username": username, "password": "password"})
 
     def test_reference_autocomplete_endpoints_return_imported_data(self):
         with tempfile.TemporaryDirectory() as tmp_dir:
@@ -98,6 +100,104 @@ Kelp House,2 Harbor Way,Alaska,https://kelp.example.test
             self.assertEqual(species[0]["common_name"], "Reef Fish")
             self.assertEqual(site_suggestions[:2], ["Coral", "Reef Fish"])
             self.assertIn("Harbor Seal", country_suggestions)
+
+    def test_user_search_buddy_tags_and_public_profiles(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            app, db_path, _config_path = self.make_app(Path(tmp_dir))
+            client = app.test_client()
+            self.signup(client)
+            client.post("/logout")
+            self.signup(client, "buddy")
+            client.post(
+                "/cert/new",
+                data={
+                    "agency": "PADI",
+                    "level": "Rescue Diver",
+                    "cert_no": "BUD123",
+                    "cert_date": "2026-07-20",
+                },
+            )
+            client.post("/logout")
+            client.post("/login", data={"username": "tester", "password": "password"})
+
+            users = client.get("/api/users?q=bud").get_json()
+            self.assertEqual(users[0]["username"], "buddy")
+            self.assertEqual(users[0]["url"], "/users/2")
+
+            search_user = client.get("/api/search?q=bud").get_json()
+            self.assertEqual(search_user[0]["type"], "user")
+            self.assertEqual(search_user[0]["url"], "/users/2")
+            search_site = client.get("/api/search?q=alert").get_json()
+            self.assertEqual(search_site[0]["type"], "site")
+            self.assertEqual(search_site[0]["url"], "/dive-sites/1")
+            search_center = client.get("/api/search?q=house").get_json()
+            self.assertEqual(search_center[0]["type"], "center")
+            self.assertEqual(search_center[0]["url"], "/dive-centers/2")
+
+            new_response = client.get("/dive/new")
+            self.assertIn(b"Tag a Buddy", new_response.data)
+            self.assertIn(b"data-buddy-input", new_response.data)
+
+            client.post(
+                "/dive/new",
+                data={
+                    "date": "2026-07-22",
+                    "site_name": "Alert Rock",
+                    "dive_site_id": "1",
+                    "dive_center_name": "",
+                    "dive_center_id": "",
+                    "country_or_area": "Alaska",
+                    "latitude": "54.1",
+                    "longitude": "-132.9",
+                    "depth_ft": "40",
+                    "duration_min": "70",
+                    "weight_lbs": "",
+                    "exposure": "",
+                    "visibility_ft": "",
+                    "air_temp_degrees": "",
+                    "water_temp_degrees": "",
+                    "dive_type": "shore dive",
+                    "current": "none",
+                    "current_strength": "none",
+                    "buddy_username": "buddy",
+                    "buddy_user_id": "2",
+                    "species_json": json.dumps([]),
+                },
+            )
+            logged = client.get("/api/dives/mine").get_json()[0]
+            self.assertEqual(logged["buddy_user_id"], 2)
+            self.assertEqual(logged["buddy_username"], "buddy")
+
+            home_response = client.get("/home")
+            self.assertIn(b'data-global-search', home_response.data)
+            self.assertIn(b'href="/users/1"', home_response.data)
+            self.assertIn(b'href="/users/2"', home_response.data)
+            self.assertIn(b'<span>with</span>', home_response.data)
+            self.assertLess(home_response.data.index(b"tester"), home_response.data.index(b"<span>with</span>"))
+            self.assertLess(home_response.data.index(b"<span>with</span>"), home_response.data.index(b"buddy"))
+            self.assertIn(b'<a class="mini-avatar" href="/users/1"', home_response.data)
+
+            detail_response = client.get(f"/dive/{logged['id']}")
+            self.assertIn(b'href="/users/1"', detail_response.data)
+            self.assertIn(b'href="/users/2"', detail_response.data)
+
+            public_profile = client.get("/users/2")
+            self.assertEqual(public_profile.status_code, 200)
+            self.assertIn(b"buddy", public_profile.data)
+            self.assertIn(b"Rescue Diver", public_profile.data)
+            self.assertNotIn(b"profile-cert-button", public_profile.data)
+            self.assertNotIn(b'href="/cert"', public_profile.data)
+            self.assertNotIn(b'type="file" name="profile_photo"', public_profile.data)
+            self.assertIn(b'class="profile-avatar static-avatar"', public_profile.data)
+
+            owner_profile = client.get("/users/1")
+            self.assertEqual(owner_profile.status_code, 200)
+            self.assertIn(b"profile-cert-button", owner_profile.data)
+            self.assertIn(b'href="/cert/new"', owner_profile.data)
+
+            with sqlite3.connect(db_path) as conn:
+                row = conn.execute("SELECT buddy_user_id FROM dives").fetchone()
+            self.assertEqual(row[0], 2)
 
     def test_reference_import_repairs_stale_partial_database(self):
         with tempfile.TemporaryDirectory() as tmp_dir:
@@ -123,6 +223,49 @@ Kelp House,2 Harbor Way,Alaska,https://kelp.example.test
                     "SELECT name FROM sqlite_master WHERE type = 'table' AND name LIKE '_import_%'"
                 ).fetchall()
             self.assertEqual(staging_tables, [])
+
+    def test_existing_database_without_buddy_column_migrates(self):
+        def prepare_legacy_db(db_path):
+            with sqlite3.connect(db_path) as conn:
+                conn.execute(
+                    """
+                    CREATE TABLE dives (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        user_id INTEGER NOT NULL,
+                        dive_site_id INTEGER,
+                        dive_center_id INTEGER,
+                        dive_center_name TEXT,
+                        date TEXT NOT NULL,
+                        site_name TEXT NOT NULL,
+                        country_or_area TEXT,
+                        latitude REAL,
+                        longitude REAL,
+                        depth_ft INTEGER NOT NULL DEFAULT 0,
+                        duration_min INTEGER NOT NULL DEFAULT 0,
+                        weight_lbs INTEGER,
+                        exposure TEXT,
+                        visibility_ft INTEGER,
+                        air_temp_degrees INTEGER,
+                        water_temp_degrees INTEGER,
+                        gas_mix TEXT NOT NULL DEFAULT 'Air',
+                        dive_type TEXT NOT NULL DEFAULT 'open water',
+                        current TEXT NOT NULL DEFAULT 'none',
+                        current_strength TEXT NOT NULL DEFAULT 'none',
+                        notes TEXT,
+                        is_deleted INTEGER NOT NULL DEFAULT 0,
+                        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+                    )
+                    """
+                )
+                conn.commit()
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            _app, db_path, _config_path = self.make_app(Path(tmp_dir), prepare_db=prepare_legacy_db)
+            with sqlite3.connect(db_path) as conn:
+                columns = {row[1] for row in conn.execute("PRAGMA table_info(dives)").fetchall()}
+                indexes = {row[1] for row in conn.execute("PRAGMA index_list(dives)").fetchall()}
+            self.assertIn("buddy_user_id", columns)
+            self.assertIn("idx_dives_buddy_user", indexes)
 
     def test_optional_dive_metadata_defaults_to_unset(self):
         with tempfile.TemporaryDirectory() as tmp_dir:

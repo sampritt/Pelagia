@@ -416,12 +416,18 @@ function commentsMarkup(comments) {
     }
     return comments
         .map(
-            (comment) => `
+            (comment) => {
+                const username = escapeHtml(comment.username);
+                const author = comment.user_id
+                    ? `<a class="username-link" href="/users/${encodeURIComponent(comment.user_id)}">${username}</a>`
+                    : username;
+                return `
                 <div class="comment">
-                    <strong>${escapeHtml(comment.username)}</strong>
+                    <strong>${author}</strong>
                     <p>${escapeHtml(comment.body)}</p>
                 </div>
-            `,
+            `;
+            },
         )
         .join("");
 }
@@ -430,6 +436,68 @@ function renderComments(container, comments) {
     if (container) {
         container.innerHTML = commentsMarkup(comments);
     }
+}
+
+function initGlobalSearch() {
+    const search = document.querySelector("[data-global-search]");
+    if (!search) {
+        return;
+    }
+    const input = search.querySelector("[data-global-search-input]");
+    const results = search.querySelector("[data-global-search-results]");
+    if (!input || !results) {
+        return;
+    }
+
+    const selectResult = (item) => {
+        if (item?.url) {
+            window.location.assign(item.url);
+        }
+    };
+
+    const renderResults = (items) => {
+        results.innerHTML = "";
+        items.forEach((item) => {
+            const button = document.createElement("button");
+            button.type = "button";
+            button.innerHTML = `<strong>${escapeHtml(item.label)}</strong><small>${escapeHtml(item.detail || item.type || "")}</small>`;
+            button.addEventListener("click", () => selectResult(item));
+            results.appendChild(button);
+        });
+        results.hidden = !items.length;
+    };
+
+    search.addEventListener("submit", (event) => {
+        event.preventDefault();
+        const firstResult = results.hidden ? null : results.querySelector("button");
+        if (firstResult) {
+            firstResult.click();
+        }
+    });
+
+    input.addEventListener(
+        "input",
+        debounce(async () => {
+            const query = input.value.trim();
+            if (query.length < 1) {
+                hideMenu(results);
+                return;
+            }
+            renderResults(await fetchJson(`/api/search?q=${encodeURIComponent(query)}`));
+        }, 160),
+    );
+
+    input.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") {
+            hideMenu(results);
+        }
+    });
+
+    document.addEventListener("click", (event) => {
+        if (!search.contains(event.target)) {
+            hideMenu(results);
+        }
+    });
 }
 
 function initDiveForm() {
@@ -442,8 +510,11 @@ function initDiveForm() {
     const siteResults = form.querySelector("[data-site-results]");
     const centerInput = form.querySelector("[data-center-input]");
     const centerResults = form.querySelector("[data-center-results]");
+    const buddyInput = form.querySelector("[data-buddy-input]");
+    const buddyResults = form.querySelector("[data-buddy-results]");
     const siteId = document.getElementById("diveSiteId");
     const centerId = document.getElementById("diveCenterId");
+    const buddyId = document.getElementById("buddyUserId");
     const country = document.getElementById("country");
     const latitude = document.getElementById("latitude");
     const longitude = document.getElementById("longitude");
@@ -648,6 +719,7 @@ function initDiveForm() {
     }
 
     initSpeciesPicker(form, () => country.value.trim());
+    initBuddyAutocomplete({ input: buddyInput, results: buddyResults, hidden: buddyId });
     initPhotoPreview(form);
     initPhotoRemoval(form);
     initArrowNavigation(form);
@@ -655,6 +727,61 @@ function initDiveForm() {
 
 function suggestedDuration(depthFt) {
     return clamp(Math.round((120 - Number(depthFt)) / 5) * 5, 0, 120);
+}
+
+function initBuddyAutocomplete({ input, results, hidden }) {
+    if (!input || !results || !hidden) {
+        return;
+    }
+
+    const selectUser = (user) => {
+        input.value = user.username;
+        hidden.value = user.id;
+        hideMenu(results);
+    };
+
+    const renderUsers = (users) => {
+        results.innerHTML = "";
+        users.forEach((user) => {
+            const button = document.createElement("button");
+            button.type = "button";
+            button.innerHTML = `<strong>${escapeHtml(user.username)}</strong><small>Account</small>`;
+            button.addEventListener("click", () => selectUser(user));
+            results.appendChild(button);
+        });
+        results.hidden = !users.length;
+    };
+
+    input.addEventListener(
+        "input",
+        debounce(async () => {
+            hidden.value = "";
+            const query = input.value.trim();
+            if (query.length < 1) {
+                hideMenu(results);
+                return;
+            }
+            renderUsers(await fetchJson(`/api/users?q=${encodeURIComponent(query)}`));
+        }, 160),
+    );
+
+    input.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" && input.value.trim()) {
+            const firstResult = results.hidden ? null : results.querySelector("button");
+            if (firstResult) {
+                event.preventDefault();
+                firstResult.click();
+            }
+        } else if (event.key === "Escape") {
+            hideMenu(results);
+        }
+    });
+
+    document.addEventListener("click", (event) => {
+        if (!input.closest(".autocomplete-field")?.contains(event.target)) {
+            hideMenu(results);
+        }
+    });
 }
 
 function initCurrentStrengthSlider(form) {
@@ -695,6 +822,9 @@ function initCurrentStrengthSlider(form) {
 }
 
 function hideMenu(menu) {
+    if (!menu) {
+        return;
+    }
     menu.hidden = true;
     menu.innerHTML = "";
 }
@@ -1081,9 +1211,11 @@ function initProfileMap() {
     }
     if (!map.dataset.profileMapBound) {
         window.addEventListener("resize", debounce(initProfileMap, 260));
-        map.addEventListener("click", () => {
-            window.location.href = "/map";
-        });
+        if (map.dataset.profileMapLink !== undefined) {
+            map.addEventListener("click", () => {
+                window.location.href = "/map";
+            });
+        }
         map.dataset.profileMapBound = "true";
     }
 }
@@ -1140,6 +1272,7 @@ async function initCenterMaps() {
 document.addEventListener("DOMContentLoaded", () => {
     initAuthToggle();
     initDiveInteractions();
+    initGlobalSearch();
     initDiveForm();
     initStaticMaps(document);
     initProfileMap();

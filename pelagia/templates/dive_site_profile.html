@@ -126,7 +126,7 @@
         {% if site.comments %}
             {% for comment in site.comments %}
                 <div class="comment">
-                    <strong>{{ comment.username }}</strong>
+                    <strong><a class="username-link" href="{{ url_for('user_profile', user_id=comment.user_id) }}">{{ comment.username }}</a></strong>
                     <p>{{ comment.body }}</p>
                 </div>
             {% endfor %}

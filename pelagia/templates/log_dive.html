@@ -193,6 +193,18 @@
 
         <div class="form-section">
             <div class="form-section-title">
+                <h2>Tag a Buddy</h2>
+            </div>
+            <label class="autocomplete-field buddy-field">
+                Buddy username
+                <input name="buddy_username" id="buddyUsername" type="text" autocomplete="off" data-buddy-input value="{{ dive.buddy_username if is_edit and dive.buddy_username else '' }}">
+                <input name="buddy_user_id" id="buddyUserId" type="hidden" value="{{ dive.buddy_user_id if is_edit and dive.buddy_user_id else '' }}">
+                <div class="autocomplete-menu" data-buddy-results hidden></div>
+            </label>
+        </div>
+
+        <div class="form-section">
+            <div class="form-section-title">
                 <h2>Notes</h2>
             </div>
             <label>

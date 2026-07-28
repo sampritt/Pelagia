@@ -11,15 +11,22 @@
 <body class="{% block body_class %}{% endblock %}">
     {% set me = current_user() %}
     {% if me %}
-    <header class="topbar">
+    <header class="topbar {{ 'feed-topbar' if request.endpoint == 'home' else '' }}">
         <a class="brand" href="{{ url_for('home') }}" aria-label="Pelagia Home">
             <span class="brand-mark"></span>
             <span>Pelagia</span>
         </a>
+        {% if request.endpoint == 'home' %}
+            <form class="topbar-search autocomplete-field" data-global-search role="search">
+                <label class="sr-only" for="globalSearch">Search</label>
+                <input id="globalSearch" type="text" autocomplete="off" placeholder="Search Pelagia" data-global-search-input>
+                <div class="autocomplete-menu topbar-search-menu" data-global-search-results hidden></div>
+            </form>
+        {% endif %}
         <nav class="desktop-nav" aria-label="Primary">
             <a class="{{ 'active' if request.endpoint in ('home', 'dive_detail') else '' }}" href="{{ url_for('home') }}">Feed</a>
             <a class="{{ 'active' if request.endpoint == 'map_view' else '' }}" href="{{ url_for('map_view') }}">Map</a>
-            <a class="{{ 'active' if request.endpoint == 'profile' else '' }}" href="{{ url_for('profile') }}">Profile</a>
+            <a class="{{ 'active' if request.endpoint in ('profile', 'user_profile') else '' }}" href="{{ url_for('profile') }}">Profile</a>
             <a class="nav-cta {{ 'active' if request.endpoint == 'log_dive' else '' }}" href="{{ url_for('log_dive') }}"><span aria-hidden="true">+</span> Log dive</a>
         </nav>
         <div class="user-corner">
@@ -56,7 +63,7 @@
         <a class="{{ 'active' if request.endpoint in ('home', 'dive_detail') else '' }}" href="{{ url_for('home') }}">Feed</a>
         <a class="{{ 'active' if request.endpoint == 'map_view' else '' }}" href="{{ url_for('map_view') }}">Map</a>
         <a class="mobile-log {{ 'active' if request.endpoint == 'log_dive' else '' }}" href="{{ url_for('log_dive') }}" aria-label="Log dive">+</a>
-        <a class="{{ 'active' if request.endpoint == 'profile' else '' }}" href="{{ url_for('profile') }}">Profile</a>
+        <a class="{{ 'active' if request.endpoint in ('profile', 'user_profile') else '' }}" href="{{ url_for('profile') }}">Profile</a>
     </nav>
     {% endif %}
 

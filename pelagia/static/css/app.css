@@ -75,6 +75,17 @@ img {
     max-width: 100%;
 }
 
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+    padding: 0;
+}
+
 h1,
 h2,
 h3,
@@ -186,6 +197,23 @@ p {
     width: 27px;
     height: 27px;
     border-width: 3px;
+}
+
+.topbar-search {
+    flex: 1 1 360px;
+    max-width: 460px;
+    min-width: 220px;
+}
+
+.topbar-search input {
+    min-height: 40px;
+    padding: 9px 12px;
+    border-color: rgba(216, 229, 240, 0.14);
+    background: rgba(11, 17, 24, 0.9);
+}
+
+.topbar-search-menu {
+    top: calc(100% + 8px);
 }
 
 .desktop-nav {
@@ -697,6 +725,7 @@ textarea:focus {
     font-size: 1.24rem;
     font-weight: 760;
     line-height: 1;
+    white-space: nowrap;
 }
 
 .rail-metric small {
@@ -825,6 +854,25 @@ textarea:focus {
     color: var(--ink);
     font-size: 0.94rem;
     font-weight: 720;
+}
+
+.dive-author-line {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0 4px;
+}
+
+.username-link {
+    color: inherit;
+    font: inherit;
+    text-decoration: inherit;
+}
+
+.username-link:hover,
+.username-link:focus-visible {
+    color: inherit;
+    text-decoration: inherit;
 }
 
 .dive-card-head p,
@@ -1610,6 +1658,10 @@ input[type="range"] {
     display: none;
 }
 
+.static-avatar {
+    cursor: default;
+}
+
 .center-avatar {
     width: 106px;
     height: 106px;
@@ -1918,6 +1970,13 @@ input[type="range"] {
     font-weight: 730;
     text-overflow: ellipsis;
     white-space: nowrap;
+}
+
+.dive-detail-author .dive-author-line {
+    display: flex;
+    flex-wrap: wrap;
+    white-space: normal;
+    text-overflow: clip;
 }
 
 .dive-detail-author p,
@@ -2383,6 +2442,16 @@ input[type="range"] {
         min-width: 0;
     }
 
+    .feed-topbar .brand {
+        flex: 0 0 auto;
+    }
+
+    .topbar-search {
+        flex: 1 1 auto;
+        min-width: 0;
+        max-width: none;
+    }
+
     .user-corner {
         min-width: 0;
     }
@@ -2555,6 +2624,15 @@ input[type="range"] {
 
     input[type="date"] {
         padding-right: 8px;
+    }
+
+    .feed-topbar .brand > span:last-child {
+        display: none;
+    }
+
+    .topbar-search input {
+        padding-left: 10px;
+        padding-right: 10px;
     }
 
     .control-panel,
