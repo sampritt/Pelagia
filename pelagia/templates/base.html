@@ -3,7 +3,9 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#062a46">
     <title>{% block title %}Pelagia{% endblock %}</title>
+    <link rel="icon" href="{{ url_for('static', filename='img/pelagia-mark.svg') }}" type="image/svg+xml">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
     <script defer src="{{ url_for('static', filename='js/app.js') }}"></script>
     {% block head %}{% endblock %}
@@ -13,7 +15,12 @@
     {% if me %}
     <header class="topbar {{ 'feed-topbar' if request.endpoint == 'home' else '' }}">
         <a class="brand" href="{{ url_for('home') }}" aria-label="Pelagia Home">
-            <span class="brand-mark"></span>
+            <span class="brand-mark" aria-hidden="true">
+                <svg viewBox="0 0 40 40" focusable="false">
+                    <path d="M4 15.5c4.4 0 4.4-4.5 8.8-4.5s4.4 4.5 8.8 4.5S26 11 30.4 11s4.4 4.5 8.8 4.5"></path>
+                    <path d="M4 24.5c4.4 0 4.4-4.5 8.8-4.5s4.4 4.5 8.8 4.5S26 20 30.4 20s4.4 4.5 8.8 4.5"></path>
+                </svg>
+            </span>
             <span>Pelagia</span>
         </a>
         {% if request.endpoint == 'home' %}
@@ -24,8 +31,14 @@
             </form>
         {% endif %}
         <nav class="desktop-nav" aria-label="Primary">
-            <a class="{{ 'active' if request.endpoint in ('home', 'dive_detail') else '' }}" href="{{ url_for('home') }}">Feed</a>
-            <a class="{{ 'active' if request.endpoint in ('profile', 'user_profile') else '' }}" href="{{ url_for('profile') }}">Profile</a>
+            <a class="{{ 'active' if request.endpoint in ('home', 'dive_detail') else '' }}" href="{{ url_for('home') }}">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 13.5 12 5l8 8.5"></path><path d="M6.5 11.5V20h11v-8.5"></path></svg>
+                Feed
+            </a>
+            <a class="{{ 'active' if request.endpoint in ('profile', 'user_profile') else '' }}" href="{{ url_for('profile') }}">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5"></circle><path d="M5 20c.7-4 3-6 7-6s6.3 2 7 6"></path></svg>
+                Profile
+            </a>
             <a class="nav-cta {{ 'active' if request.endpoint == 'log_dive' else '' }}" href="{{ url_for('log_dive') }}"><span aria-hidden="true">+</span> Log dive</a>
         </nav>
         <div class="user-corner">
@@ -59,9 +72,15 @@
 
     {% if me %}
     <nav class="mobile-nav" aria-label="Primary mobile">
-        <a class="{{ 'active' if request.endpoint in ('home', 'dive_detail') else '' }}" href="{{ url_for('home') }}">Feed</a>
+        <a class="{{ 'active' if request.endpoint in ('home', 'dive_detail') else '' }}" href="{{ url_for('home') }}">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 13.5 12 5l8 8.5"></path><path d="M6.5 11.5V20h11v-8.5"></path></svg>
+            <span>Feed</span>
+        </a>
         <a class="mobile-log {{ 'active' if request.endpoint == 'log_dive' else '' }}" href="{{ url_for('log_dive') }}" aria-label="Log dive">+</a>
-        <a class="{{ 'active' if request.endpoint in ('profile', 'user_profile') else '' }}" href="{{ url_for('profile') }}">Profile</a>
+        <a class="{{ 'active' if request.endpoint in ('profile', 'user_profile') else '' }}" href="{{ url_for('profile') }}">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5"></circle><path d="M5 20c.7-4 3-6 7-6s6.3 2 7 6"></path></svg>
+            <span>Profile</span>
+        </a>
     </nav>
     {% endif %}
 
