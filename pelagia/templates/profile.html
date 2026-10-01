@@ -58,22 +58,6 @@
         <div><span>{{ stats.summary.total_minutes }}</span><small>total minutes</small></div>
     </div>
 
-    {% if is_owner %}
-    <button class="profile-map" type="button" data-profile-map data-profile-map-link data-pins='{{ stats.pins|tojson }}'>
-        <span class="map-title">Dive map</span>
-        <span class="profile-map-world"></span>
-    </button>
-    {% else %}
-    <div class="profile-map" data-profile-map data-pins='{{ stats.pins|tojson }}'>
-        <span class="map-title">Dive map</span>
-        <span class="profile-map-world"></span>
-    </div>
-    {% endif %}
-    <div class="profile-map-stats">
-        <div><span>{{ stats.summary.country_count }}</span><small>countries</small></div>
-        <div><span>{{ stats.summary.location_count }}</span><small>locations</small></div>
-    </div>
-
     <div class="feed-toolbar">
         <span>{{ recent_dives|length }} recent {{ 'activity' if recent_dives|length == 1 else 'activities' }}</span>
     </div>

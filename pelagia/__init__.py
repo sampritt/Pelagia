@@ -1420,9 +1420,23 @@ def dive_site_recent_conditions(site_id):
 
 
 def dive_site_condition_series(site_id):
-    today = date.today()
-    start = today - timedelta(days=13)
-    rows = database.get_db().execute(
+    db = database.get_db()
+    latest_observation = db.execute(
+        """
+        SELECT MAX(date) AS date
+        FROM dives
+        WHERE dive_site_id = ?
+            AND COALESCE(is_deleted, 0) = 0
+            AND (visibility_ft IS NOT NULL OR current_strength != 'none')
+        """,
+        (site_id,),
+    ).fetchone()["date"]
+    try:
+        end = date.fromisoformat(latest_observation) if latest_observation else date.today()
+    except ValueError:
+        end = date.today()
+    start = end - timedelta(days=13)
+    rows = db.execute(
         """
         SELECT date, visibility_ft, current_strength
         FROM dives
@@ -1430,7 +1444,7 @@ def dive_site_condition_series(site_id):
             AND COALESCE(is_deleted, 0) = 0
             AND date BETWEEN ? AND ?
         """,
-        (site_id, start.isoformat(), today.isoformat()),
+        (site_id, start.isoformat(), end.isoformat()),
     ).fetchall()
     by_date = {}
     for row in rows:

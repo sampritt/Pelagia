@@ -5,7 +5,7 @@ import sqlite3
 import sys
 import tempfile
 import unittest
-from datetime import date
+from datetime import date, timedelta
 from pathlib import Path
 from unittest.mock import patch
 
@@ -446,11 +446,13 @@ Kelp House,2 Harbor Way,Alaska,https://kelp.example.test
             self.assertIn(b"Alert Rock", profile_response.data)
             self.assertIn(b"54.10000", profile_response.data)
             self.assertIn(b"-132.90000", profile_response.data)
-            self.assertIn(b"RECENT CONDITIONS", profile_response.data)
+            self.assertNotIn(b"RECENT CONDITIONS", profile_response.data)
             self.assertIn(b"VISIBILITY", profile_response.data)
             self.assertIn(b"CURRENT", profile_response.data)
             self.assertIn(b"WATER TEMP", profile_response.data)
             self.assertIn(b"AIR TEMP", profile_response.data)
+            self.assertIn(b"<h2>Currents</h2>", profile_response.data)
+            self.assertNotIn(b"<h2>Current Strength</h2>", profile_response.data)
             self.assertNotIn(b"<small>Latitude</small>", profile_response.data)
             self.assertNotIn(b"<small>Longitude</small>", profile_response.data)
             self.assertIn(b"50 ft", profile_response.data)
@@ -464,6 +466,42 @@ Kelp House,2 Harbor Way,Alaska,https://kelp.example.test
             self.assertIn(b"<strong>2</strong>", profile_response.data)
             self.assertIn(b"Reef Fish", profile_response.data)
             self.assertNotIn(b"<strong>1</strong>", profile_response.data)
+
+    def test_dive_site_condition_charts_end_at_latest_documented_observation(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            app, _db_path, _config_path = self.make_app(Path(tmp_dir))
+            client = app.test_client()
+            self.signup(client)
+            observation_day = date.today() - timedelta(days=20)
+            empty_day = date.today()
+
+            for day, visibility, current, strength in (
+                (observation_day, "40", "tidal", "moderate"),
+                (empty_day, "", "none", "none"),
+            ):
+                client.post(
+                    "/dive/new",
+                    data={
+                        "date": day.isoformat(),
+                        "site_name": "Alert Rock",
+                        "dive_site_id": "1",
+                        "country_or_area": "Alaska",
+                        "latitude": "54.1",
+                        "longitude": "-132.9",
+                        "depth_ft": "40",
+                        "duration_min": "70",
+                        "visibility_ft": visibility,
+                        "dive_type": "shore dive",
+                        "current": current,
+                        "current_strength": strength,
+                        "species_json": json.dumps([]),
+                    },
+                )
+
+            profile_response = client.get("/dive-sites/1")
+            self.assertEqual(profile_response.status_code, 200)
+            self.assertIn(f"{observation_day.strftime('%b')} {observation_day.day}: 40 ft".encode(), profile_response.data)
+            self.assertNotIn(empty_day.strftime("%b %-d").encode(), profile_response.data)
 
             like_response = client.post("/api/dive-sites/1/like").get_json()
             self.assertEqual(like_response, {"liked": True, "count": 1})
@@ -769,12 +807,13 @@ Kelp House,2 Harbor Way,Alaska,https://kelp.example.test
             self.assertLess(profile_html.index(b"<small>dives</small>"), profile_html.index(b"<small>max depth</small>"))
             self.assertLess(profile_html.index(b"<small>max depth</small>"), profile_html.index(b"<small>longest dive</small>"))
             self.assertLess(profile_html.index(b"<small>longest dive</small>"), profile_html.index(b"<small>total minutes</small>"))
-            self.assertLess(profile_html.index(b"profile-map"), profile_html.index(b"profile-map-stats"))
-            self.assertLess(profile_html.index(b"<small>countries</small>"), profile_html.index(b"<small>locations</small>"))
             self.assertIn(b"<span>40 ft</span><small>max depth</small>", profile_html)
             self.assertIn(b"<span>70 min</span><small>longest dive</small>", profile_html)
             self.assertIn(b"<span>70</span><small>total minutes</small>", profile_html)
-            self.assertIn(b"profile-map-stats", profile_html)
+            self.assertIn(b"View map", profile_html)
+            self.assertNotIn(b"profile-map", profile_html)
+            self.assertNotIn(b"<small>countries</small>", profile_html)
+            self.assertNotIn(b"<small>locations</small>", profile_html)
             self.assertIn(b'class="photo-strip" aria-label="Dive photos"', profile_response.data)
             self.assertEqual(profile_response.data.count(b"uploads/dives/"), 3)
 

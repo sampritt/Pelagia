@@ -21,7 +21,6 @@
     </div>
 
     <div class="site-conditions-panel">
-        <h2>RECENT CONDITIONS</h2>
         <div class="site-conditions-grid">
             <div>
                 <small>VISIBILITY</small>
@@ -63,7 +62,7 @@
         <div class="site-chart-head">
             <h2>Visibility</h2>
         </div>
-        <svg class="site-line-chart" viewBox="0 0 {{ visibility_chart.width }} {{ visibility_chart.height }}" role="img" aria-label="Trailing two weeks visibility in feet by day">
+        <svg class="site-line-chart" viewBox="0 0 {{ visibility_chart.width }} {{ visibility_chart.height }}" role="img" aria-label="Two weeks ending with the latest documented visibility or currents observation, visibility in feet by day">
             <line x1="{{ visibility_chart.padding }}" y1="{{ visibility_chart.height - visibility_chart.padding }}" x2="{{ visibility_chart.width - visibility_chart.padding }}" y2="{{ visibility_chart.height - visibility_chart.padding }}"></line>
             {% if visibility_chart.polyline %}
                 <polyline points="{{ visibility_chart.polyline }}"></polyline>
@@ -85,9 +84,9 @@
 
     <div class="site-chart-block">
         <div class="site-chart-head">
-            <h2>Current Strength</h2>
+            <h2>Currents</h2>
         </div>
-        <svg class="site-bar-chart" viewBox="0 0 {{ current_chart.width }} {{ current_chart.height }}" role="img" aria-label="Trailing two weeks current strength by day">
+        <svg class="site-bar-chart" viewBox="0 0 {{ current_chart.width }} {{ current_chart.height }}" role="img" aria-label="Two weeks ending with the latest documented visibility or currents observation, currents by day">
             <line x1="{{ current_chart.padding }}" y1="{{ current_chart.height - current_chart.padding }}" x2="{{ current_chart.width - current_chart.padding }}" y2="{{ current_chart.height - current_chart.padding }}"></line>
             {% for point in current_chart.points %}
                 {% if point.value is not none %}
