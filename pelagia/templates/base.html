@@ -32,7 +32,7 @@
         <div class="user-corner">
             <a class="mini-avatar" href="{{ url_for('profile') }}" aria-label="Profile">
                 {% if me.profile_photo %}
-                    <img src="{{ url_for('static', filename=me.profile_photo) }}" alt="">
+                    <img src="{{ uploaded_file_url(me.profile_photo) }}" alt="">
                 {% else %}
                     <span>{{ me.username[:1]|upper }}</span>
                 {% endif %}

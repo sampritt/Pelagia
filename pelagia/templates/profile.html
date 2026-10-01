@@ -8,7 +8,7 @@
         <form class="profile-photo-form" method="post" action="{{ url_for('profile') }}" enctype="multipart/form-data">
             <label class="profile-avatar">
                 {% if user.profile_photo %}
-                    <img src="{{ url_for('static', filename=user.profile_photo) }}" alt="">
+                    <img src="{{ uploaded_file_url(user.profile_photo) }}" alt="">
                 {% else %}
                     <span>{{ user.username[:1]|upper }}</span>
                 {% endif %}
@@ -18,7 +18,7 @@
         {% else %}
         <div class="profile-avatar static-avatar">
             {% if user.profile_photo %}
-                <img src="{{ url_for('static', filename=user.profile_photo) }}" alt="">
+                <img src="{{ uploaded_file_url(user.profile_photo) }}" alt="">
             {% else %}
                 <span>{{ user.username[:1]|upper }}</span>
             {% endif %}

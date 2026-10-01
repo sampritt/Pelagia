@@ -17,6 +17,7 @@ from flask import (
     redirect,
     render_template,
     request,
+    send_from_directory,
     session,
     url_for,
 )
@@ -58,9 +59,9 @@ def create_app(test_config=None):
     config = _load_json_config(config_path)
 
     app.config.from_mapping(
-        SECRET_KEY=config.get("secret_key", "pelagia-dev"),
-        DATABASE=str(_resolve_path(config_path, config.get("database_path", "instance/pelagia.sqlite3"))),
-        UPLOAD_FOLDER=str(_resolve_path(config_path, config.get("upload_folder", "pelagia/static/uploads"))),
+        SECRET_KEY=os.environ.get("SECRET_KEY") or config.get("secret_key", "pelagia-dev"),
+        DATABASE=os.environ.get("PELAGIA_DATABASE_PATH", "/var/data/pelagia.sqlite3"),
+        UPLOAD_FOLDER=os.environ.get("PELAGIA_UPLOAD_FOLDER", "/var/data/uploads"),
         MAX_CONTENT_LENGTH=24 * 1024 * 1024,
         PELAGIA_LOCAL_CONFIG=config,
         PELAGIA_CONFIG_PATH=str(config_path),
@@ -84,13 +85,6 @@ def _load_json_config(config_path):
     if not config_path.exists():
         raise FileNotFoundError(f"Missing Pelagia config file: {config_path}")
     return json.loads(config_path.read_text())
-
-
-def _resolve_path(config_path, value):
-    path = Path(value).expanduser()
-    if path.is_absolute():
-        return path
-    return config_path.parent / path
 
 
 def _ensure_reference_data(app):
@@ -135,6 +129,11 @@ def register_routes(app):
     app.jinja_env.globals["current_label"] = current_label
     app.jinja_env.globals["current_strength_label"] = current_strength_label
     app.jinja_env.globals["optional_metric"] = optional_metric
+    app.jinja_env.globals["uploaded_file_url"] = uploaded_file_url
+
+    @app.route("/uploads/<path:filename>")
+    def uploaded_file(filename):
+        return send_from_directory(current_app.config["UPLOAD_FOLDER"], filename)
 
     @app.route("/")
     def landing():
@@ -388,10 +387,11 @@ def register_routes(app):
         prefix = f"{query.lower()}%"
         rows = database.get_db().execute(
             """
-            SELECT id, name, country_or_area, country_code, latitude, longitude, max_depth_m
+            SELECT id, name, country_or_area, country_code, latitude, longitude, max_depth_m, logged_dive_count
             FROM dive_sites
             WHERE lower(name) LIKE ? OR lower(country_or_area) LIKE ?
             ORDER BY
+                logged_dive_count DESC,
                 CASE WHEN lower(name) LIKE ? THEN 0 ELSE 1 END,
                 name
             LIMIT 14
@@ -503,10 +503,11 @@ def register_routes(app):
         ).fetchall()
         sites = db.execute(
             """
-            SELECT id, name, country_or_area
+            SELECT id, name, country_or_area, logged_dive_count
             FROM dive_sites
             WHERE lower(name) LIKE ? OR lower(country_or_area) LIKE ?
             ORDER BY
+                logged_dive_count DESC,
                 CASE WHEN lower(name) LIKE ? THEN 0 ELSE 1 END,
                 name
             LIMIT 5
@@ -1577,7 +1578,7 @@ def dive_to_json(dive):
         "comment_count": dive["comment_count"],
         "liked_by_me": bool(dive["liked_by_me"]),
         "is_owner": dive["user_id"] == session.get("user_id"),
-        "photos": [url_for("static", filename=photo["filename"]) for photo in dive["photos"]],
+        "photos": [uploaded_file_url(photo["filename"]) for photo in dive["photos"]],
         "species": [species["common_name"] for species in dive["species"]],
         "comments": [dict(comment) for comment in dive["comments"]],
     }
@@ -1595,6 +1596,7 @@ def site_payload(row):
         "latitude": row["latitude"],
         "longitude": row["longitude"],
         "max_depth_ft": max_depth_ft,
+        "logged_dive_count": row["logged_dive_count"],
     }
 
 
@@ -1635,6 +1637,7 @@ def search_site_payload(row):
         "label": row["name"],
         "detail": detail,
         "url": url_for("dive_site_profile", site_id=row["id"]),
+        "logged_dive_count": row["logged_dive_count"],
     }
 
 
@@ -1757,6 +1760,10 @@ def valid_species_names(values, db):
 
 def _allowed_file(filename):
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
+
+
+def uploaded_file_url(filename):
+    return url_for("uploaded_file", filename=filename.removeprefix("uploads/"))
 
 
 def _save_upload(file_storage, folder):

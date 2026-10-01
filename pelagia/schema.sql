@@ -26,7 +26,8 @@ CREATE TABLE IF NOT EXISTS dive_sites (
     country_code TEXT,
     latitude REAL,
     longitude REAL,
-    max_depth_m REAL
+    max_depth_m REAL,
+    logged_dive_count INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE INDEX IF NOT EXISTS idx_dive_sites_name ON dive_sites(name);

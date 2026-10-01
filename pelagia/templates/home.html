@@ -24,7 +24,7 @@
             <a class="profile-rail-head" href="{{ url_for('profile') }}">
                 <span class="profile-rail-avatar">
                     {% if user.profile_photo %}
-                        <img src="{{ url_for('static', filename=user.profile_photo) }}" alt="">
+                        <img src="{{ uploaded_file_url(user.profile_photo) }}" alt="">
                     {% else %}
                         <span>{{ user.username[:1]|upper }}</span>
                     {% endif %}

@@ -3,6 +3,11 @@
 
 {% block content %}
 {% set has_coords = center.latitude is not none and center.longitude is not none %}
+{% set geocode_location = center.physical_address or '' %}
+{% if center.location %}
+    {% set geocode_location = (geocode_location ~ ', ' if geocode_location else '') ~ center.location %}
+{% endif %}
+{% set geocode_location = geocode_location or center.name %}
 <section class="profile-layout">
     <div class="profile-hero center-profile-hero">
         <div class="center-avatar">
@@ -42,15 +47,9 @@
         </div>
     </div>
 
-    <div class="mini-map center-map {{ 'map-pending' if not has_coords else '' }}" data-center-map data-geocode-location="{{ (center.physical_address or center.location or center.name)|e }}" {% if has_coords %}data-static-map data-map-lat="{{ center.latitude }}" data-map-lng="{{ center.longitude }}" data-map-zoom="11"{% endif %}>
+    <div class="mini-map center-map {{ 'map-pending' if not has_coords else '' }}" data-center-map data-geocode-location="{{ geocode_location|e }}" data-map-label="{{ geocode_location|e }}" {% if has_coords %}data-static-map data-map-lat="{{ center.latitude }}" data-map-lng="{{ center.longitude }}" data-map-zoom="16"{% endif %}>
         <span class="map-pin"></span>
-        <span class="coordinate-label">
-            {% if has_coords %}
-                {{ "%.3f"|format(center.latitude) }}, {{ "%.3f"|format(center.longitude) }}
-            {% else %}
-                {{ center.location or "Location listed without coordinates" }}
-            {% endif %}
-        </span>
+        <span class="coordinate-label">{{ geocode_location }}</span>
     </div>
 
     <div class="comments-block" data-center-comments>

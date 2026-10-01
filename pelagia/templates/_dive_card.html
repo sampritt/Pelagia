@@ -3,7 +3,7 @@
     <div class="dive-card-head">
         <a class="mini-avatar" href="{{ url_for('user_profile', user_id=dive.user_id) }}" aria-label="{{ dive.username }} profile">
             {% if dive.profile_photo %}
-                <img src="{{ url_for('static', filename=dive.profile_photo) }}" alt="">
+                <img src="{{ uploaded_file_url(dive.profile_photo) }}" alt="">
             {% else %}
                 <span>{{ dive.username[:1]|upper }}</span>
             {% endif %}
@@ -58,7 +58,7 @@
         {% if dive.photos %}
             <div class="photo-strip" aria-label="Dive photos">
                 {% for photo in dive.photos %}
-                    <img src="{{ url_for('static', filename=photo.filename) }}" alt="">
+                    <img src="{{ uploaded_file_url(photo.filename) }}" alt="">
                 {% endfor %}
             </div>
         {% endif %}

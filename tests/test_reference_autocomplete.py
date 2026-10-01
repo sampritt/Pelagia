@@ -65,8 +65,6 @@ Kelp House,2 Harbor Way,Alaska,https://kelp.example.test
         config_path.write_text(
             json.dumps(
                 {
-                    "database_path": str(db_path),
-                    "upload_folder": str(tmp_path / "uploads"),
                     "secret_key": "test-secret",
                     "data_sources": {
                         "dive_sites_csv": str(sites_csv),
@@ -78,7 +76,14 @@ Kelp House,2 Harbor Way,Alaska,https://kelp.example.test
         )
         if prepare_db is not None:
             prepare_db(db_path)
-        with patch.dict(os.environ, {"PELAGIA_CONFIG": str(config_path)}):
+        with patch.dict(
+            os.environ,
+            {
+                "PELAGIA_CONFIG": str(config_path),
+                "PELAGIA_DATABASE_PATH": str(db_path),
+                "PELAGIA_UPLOAD_FOLDER": str(tmp_path / "uploads"),
+            },
+        ):
             app = create_app({"TESTING": True})
         return app, db_path, config_path
 
@@ -100,6 +105,50 @@ Kelp House,2 Harbor Way,Alaska,https://kelp.example.test
             self.assertEqual(species[0]["common_name"], "Reef Fish")
             self.assertEqual(site_suggestions[:2], ["Coral", "Reef Fish"])
             self.assertIn("Harbor Seal", country_suggestions)
+
+    def test_dive_site_autocomplete_prioritizes_logged_dive_count(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            app, db_path, _config_path = self.make_app(Path(tmp_dir))
+            client = app.test_client()
+            self.signup(client)
+
+            with sqlite3.connect(db_path) as conn:
+                conn.executemany(
+                    """
+                    INSERT INTO dive_sites (id, master_site_id, name, country_or_area, country_code)
+                    VALUES (?, ?, ?, ?, ?)
+                    """,
+                    (
+                        (10, "DS10", "Gordon Rocks", "Galapagos", "EC"),
+                        (11, "DS11", "Gordon Rocks Dive Site", "Galapagos", "EC"),
+                    ),
+                )
+
+            for _index in range(2):
+                client.post(
+                    "/dive/new",
+                    data={
+                        "date": "2026-07-22",
+                        "site_name": "Gordon Rocks Dive Site",
+                        "dive_site_id": "11",
+                        "country_or_area": "Galapagos",
+                        "depth_ft": "40",
+                        "duration_min": "45",
+                        "dive_type": "reef",
+                        "current": "none",
+                        "current_strength": "none",
+                        "species_json": json.dumps([]),
+                    },
+                )
+
+            form_results = client.get("/api/sites?q=gordon").get_json()
+            self.assertEqual([result["id"] for result in form_results[:2]], [11, 10])
+            self.assertEqual([result["logged_dive_count"] for result in form_results[:2]], [2, 0])
+
+            feed_results = client.get("/api/search?q=gordon").get_json()
+            site_results = [result for result in feed_results if result["type"] == "site"]
+            self.assertEqual([result["label"] for result in site_results[:2]], ["Gordon Rocks Dive Site", "Gordon Rocks"])
+            self.assertEqual([result["logged_dive_count"] for result in site_results[:2]], [2, 0])
 
     def test_user_search_buddy_tags_and_public_profiles(self):
         with tempfile.TemporaryDirectory() as tmp_dir:
@@ -126,6 +175,12 @@ Kelp House,2 Harbor Way,Alaska,https://kelp.example.test
             search_user = client.get("/api/search?q=bud").get_json()
             self.assertEqual(search_user[0]["type"], "user")
             self.assertEqual(search_user[0]["url"], "/users/2")
+
+            center_profile = client.get("/dive-centers/2")
+            self.assertEqual(center_profile.status_code, 200)
+            self.assertIn(b'data-geocode-location="2 Harbor Way, Alaska"', center_profile.data)
+            self.assertIn(b'data-map-label="2 Harbor Way, Alaska"', center_profile.data)
+            self.assertIn(b'<span class="map-pin"></span>', center_profile.data)
             search_site = client.get("/api/search?q=alert").get_json()
             self.assertEqual(search_site[0]["type"], "site")
             self.assertEqual(search_site[0]["url"], "/dive-sites/1")

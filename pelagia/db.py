@@ -39,10 +39,13 @@ def init_db():
     _ensure_column(db, "dives", "current", "TEXT NOT NULL DEFAULT 'none'")
     _ensure_column(db, "dives", "current_strength", "TEXT NOT NULL DEFAULT 'none'")
     _ensure_column(db, "dives", "is_deleted", "INTEGER NOT NULL DEFAULT 0")
+    _ensure_column(db, "dive_sites", "logged_dive_count", "INTEGER NOT NULL DEFAULT 0")
     _ensure_user_certs_schema(db)
     _ensure_nullable_dive_metadata(db)
     _normalize_current_values(db)
+    _ensure_dive_site_counts(db)
     db.execute("CREATE INDEX IF NOT EXISTS idx_dives_buddy_user ON dives(buddy_user_id)")
+    db.execute("CREATE INDEX IF NOT EXISTS idx_dive_sites_logged_dive_count ON dive_sites(logged_dive_count DESC)")
     db.commit()
 
 
@@ -106,6 +109,57 @@ def _ensure_user_certs_schema(db):
         db.commit()
     finally:
         db.execute("PRAGMA foreign_keys = ON")
+
+
+def _ensure_dive_site_counts(db):
+    db.execute(
+        """
+        UPDATE dive_sites
+        SET logged_dive_count = (
+            SELECT COUNT(*)
+            FROM dives
+            WHERE dives.dive_site_id = dive_sites.id
+                AND COALESCE(dives.is_deleted, 0) = 0
+        )
+        """
+    )
+    db.executescript(
+        """
+        CREATE TRIGGER IF NOT EXISTS increment_dive_site_count_after_insert
+        AFTER INSERT ON dives
+        WHEN NEW.dive_site_id IS NOT NULL AND COALESCE(NEW.is_deleted, 0) = 0
+        BEGIN
+            UPDATE dive_sites
+            SET logged_dive_count = logged_dive_count + 1
+            WHERE id = NEW.dive_site_id;
+        END;
+
+        CREATE TRIGGER IF NOT EXISTS update_dive_site_count_after_update
+        AFTER UPDATE OF dive_site_id, is_deleted ON dives
+        BEGIN
+            UPDATE dive_sites
+            SET logged_dive_count = MAX(logged_dive_count - 1, 0)
+            WHERE id = OLD.dive_site_id
+                AND OLD.dive_site_id IS NOT NULL
+                AND COALESCE(OLD.is_deleted, 0) = 0;
+
+            UPDATE dive_sites
+            SET logged_dive_count = logged_dive_count + 1
+            WHERE id = NEW.dive_site_id
+                AND NEW.dive_site_id IS NOT NULL
+                AND COALESCE(NEW.is_deleted, 0) = 0;
+        END;
+
+        CREATE TRIGGER IF NOT EXISTS decrement_dive_site_count_after_delete
+        AFTER DELETE ON dives
+        WHEN OLD.dive_site_id IS NOT NULL AND COALESCE(OLD.is_deleted, 0) = 0
+        BEGIN
+            UPDATE dive_sites
+            SET logged_dive_count = MAX(logged_dive_count - 1, 0)
+            WHERE id = OLD.dive_site_id;
+        END;
+        """
+    )
 
 
 def _ensure_nullable_dive_metadata(db):

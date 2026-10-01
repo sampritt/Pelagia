@@ -1259,8 +1259,10 @@ async function initCenterMaps() {
         }
         if (!coords) {
             try {
-                const params = new URLSearchParams({ q: query, format: "jsonv2", limit: "1" });
-                const response = await fetch(`https://nominatim.openstreetmap.org/search?${params.toString()}`);
+                const params = new URLSearchParams({ q: query, format: "jsonv2", limit: "1", addressdetails: "1" });
+                const response = await fetch(`https://nominatim.openstreetmap.org/search?${params.toString()}`, {
+                    headers: { Accept: "application/json" },
+                });
                 if (!response.ok) {
                     throw new Error(`Geocode failed: ${response.status}`);
                 }
@@ -1278,11 +1280,11 @@ async function initCenterMaps() {
             map.dataset.staticMap = "true";
             map.dataset.mapLat = coords.latitude;
             map.dataset.mapLng = coords.longitude;
-            map.dataset.mapZoom = "11";
+            map.dataset.mapZoom = "16";
             map.classList.remove("map-pending");
             const label = map.querySelector(".coordinate-label");
             if (label) {
-                label.textContent = `${Number(coords.latitude).toFixed(3)}, ${Number(coords.longitude).toFixed(3)}`;
+                label.textContent = map.dataset.mapLabel || query;
             }
             renderMiniTileMap(map);
         }
