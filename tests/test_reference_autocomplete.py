@@ -178,9 +178,7 @@ Kelp House,2 Harbor Way,Alaska,https://kelp.example.test
 
             center_profile = client.get("/dive-centers/2")
             self.assertEqual(center_profile.status_code, 200)
-            self.assertIn(b'data-geocode-location="2 Harbor Way, Alaska"', center_profile.data)
-            self.assertIn(b'data-map-label="2 Harbor Way, Alaska"', center_profile.data)
-            self.assertIn(b'<span class="map-pin"></span>', center_profile.data)
+            self.assertNotIn(b"data-center-map", center_profile.data)
             search_site = client.get("/api/search?q=alert").get_json()
             self.assertEqual(search_site[0]["type"], "site")
             self.assertEqual(search_site[0]["url"], "/dive-sites/1")
@@ -847,10 +845,11 @@ Kelp House,2 Harbor Way,Alaska,https://kelp.example.test
             self.assertIn(b"<span>40 ft</span><small>max depth</small>", profile_html)
             self.assertIn(b"<span>70 min</span><small>longest dive</small>", profile_html)
             self.assertIn(b"<span>70</span><small>total minutes</small>", profile_html)
-            self.assertIn(b"View map", profile_html)
+            self.assertNotIn(b"View map", profile_html)
             self.assertNotIn(b"profile-map", profile_html)
             self.assertNotIn(b"<small>countries</small>", profile_html)
             self.assertNotIn(b"<small>locations</small>", profile_html)
+            self.assertEqual(client.get("/map").status_code, 404)
             self.assertIn(b'class="photo-strip" aria-label="Dive photos"', profile_response.data)
             self.assertEqual(profile_response.data.count(b"uploads/dives/"), 3)
 

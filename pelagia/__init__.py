@@ -372,11 +372,6 @@ def register_routes(app):
         flash("Certification deleted.")
         return redirect(url_for("profile"))
 
-    @app.route("/map")
-    @login_required
-    def map_view():
-        return render_template("map.html")
-
     @app.route("/api/sites", methods=("GET",))
     @login_required
     def api_sites():
