@@ -113,8 +113,6 @@ Kelp House,2 Harbor Way,Alaska,https://kelp.example.test
                 data={
                     "agency": "PADI",
                     "level": "Rescue Diver",
-                    "cert_no": "BUD123",
-                    "cert_date": "2026-07-20",
                 },
             )
             client.post("/logout")
@@ -684,28 +682,14 @@ Kelp House,2 Harbor Way,Alaska,https://kelp.example.test
             self.assertIn(b'<option value="" disabled selected>Select level</option>', form_response.data)
             self.assertIn(b'<option value="Rescue Diver" >Rescue Diver</option>', form_response.data)
             self.assertNotIn(b"datalist", form_response.data)
-            self.assertIn(b'pattern="[A-Za-z0-9]+"', form_response.data)
-
-            invalid_response = client.post(
-                "/cert/new",
-                data={
-                    "agency": "PADI",
-                    "level": "Rescue Diver",
-                    "cert_no": "AB-123",
-                    "cert_date": "2026-07-20",
-                },
-            )
-            self.assertEqual(invalid_response.status_code, 302)
-            with sqlite3.connect(db_path) as conn:
-                self.assertEqual(conn.execute("SELECT COUNT(*) FROM user_certs").fetchone()[0], 0)
+            self.assertNotIn(b"cert_no", form_response.data)
+            self.assertNotIn(b"cert_date", form_response.data)
 
             create_response = client.post(
                 "/cert/new",
                 data={
                     "agency": "PADI",
                     "level": "Rescue Diver",
-                    "cert_no": "AB123",
-                    "cert_date": "2026-07-20",
                 },
             )
             self.assertEqual(create_response.status_code, 302)
@@ -719,8 +703,8 @@ Kelp House,2 Harbor Way,Alaska,https://kelp.example.test
             detail_response = client.get("/cert")
             self.assertEqual(detail_response.status_code, 200)
             self.assertIn(b"PADI certification", detail_response.data)
-            self.assertIn(b"<dt>Cert No.</dt>", detail_response.data)
-            self.assertIn(b"<dd>AB123</dd>", detail_response.data)
+            self.assertNotIn(b"Cert No.", detail_response.data)
+            self.assertNotIn(b"Cert Date", detail_response.data)
             self.assertIn(b"Delete cert", detail_response.data)
             self.assertIn(b"Edit cert", detail_response.data)
 
@@ -729,20 +713,18 @@ Kelp House,2 Harbor Way,Alaska,https://kelp.example.test
                 data={
                     "agency": "PADI",
                     "level": "Divemaster",
-                    "cert_no": "DM789",
-                    "cert_date": "2026-07-21",
                 },
             )
             self.assertEqual(edit_response.status_code, 302)
             updated_detail = client.get("/cert")
             self.assertIn(b"Divemaster", updated_detail.data)
-            self.assertIn(b"DM789", updated_detail.data)
 
             with sqlite3.connect(db_path) as conn:
-                row = conn.execute(
-                    "SELECT agency, level, cert_no, cert_date FROM user_certs"
-                ).fetchone()
-            self.assertEqual(row, ("PADI", "Divemaster", "DM789", "2026-07-21"))
+                row = conn.execute("SELECT agency, level FROM user_certs").fetchone()
+                columns = {column[1] for column in conn.execute("PRAGMA table_info(user_certs)")}
+            self.assertEqual(row, ("PADI", "Divemaster"))
+            self.assertNotIn("cert_no", columns)
+            self.assertNotIn("cert_date", columns)
 
             delete_response = client.post("/cert/delete")
             self.assertEqual(delete_response.status_code, 302)

@@ -1080,6 +1080,7 @@ textarea:focus {
     height: 256px;
     max-width: none;
     user-select: none;
+    filter: brightness(0.62) saturate(0.72);
 }
 
 .mini-map::after {
@@ -1144,7 +1145,10 @@ textarea:focus {
     color: rgba(244, 248, 251, 0.76);
     background: rgba(5, 8, 12, 0.62);
     font-size: 0.66rem;
-    pointer-events: none;
+}
+
+.map-attribution a {
+    color: inherit;
 }
 
 .stat-stack {

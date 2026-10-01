@@ -39,6 +39,7 @@ def init_db():
     _ensure_column(db, "dives", "current", "TEXT NOT NULL DEFAULT 'none'")
     _ensure_column(db, "dives", "current_strength", "TEXT NOT NULL DEFAULT 'none'")
     _ensure_column(db, "dives", "is_deleted", "INTEGER NOT NULL DEFAULT 0")
+    _ensure_user_certs_schema(db)
     _ensure_nullable_dive_metadata(db)
     _normalize_current_values(db)
     db.execute("CREATE INDEX IF NOT EXISTS idx_dives_buddy_user ON dives(buddy_user_id)")
@@ -70,6 +71,41 @@ def _normalize_current_values(db):
         """
     )
     db.execute("UPDATE dives SET gas_mix = 'Air' WHERE gas_mix NOT IN ('Air', '30%', '32%', '34%', '36%', '38%', '40%', 'Other')")
+
+
+def _ensure_user_certs_schema(db):
+    columns = {row["name"] for row in db.execute("PRAGMA table_info(user_certs)").fetchall()}
+    if "cert_no" not in columns and "cert_date" not in columns:
+        return
+
+    db.commit()
+    db.execute("PRAGMA foreign_keys = OFF")
+    try:
+        db.executescript(
+            """
+            CREATE TABLE user_certs_rebuild (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL UNIQUE,
+                agency TEXT NOT NULL,
+                level TEXT NOT NULL,
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+            );
+
+            INSERT INTO user_certs_rebuild (
+                id, user_id, agency, level, created_at, updated_at
+            )
+            SELECT id, user_id, agency, level, created_at, updated_at
+            FROM user_certs;
+
+            DROP TABLE user_certs;
+            ALTER TABLE user_certs_rebuild RENAME TO user_certs;
+            """
+        )
+        db.commit()
+    finally:
+        db.execute("PRAGMA foreign_keys = ON")
 
 
 def _ensure_nullable_dive_metadata(db):

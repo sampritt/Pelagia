@@ -34,14 +34,6 @@
                         {% endfor %}
                     </select>
                 </label>
-                <label>
-                    Cert No.
-                    <input name="cert_no" type="text" inputmode="text" pattern="[A-Za-z0-9]+" value="{{ cert.cert_no if is_edit else '' }}" required>
-                </label>
-                <label>
-                    Cert Date
-                    <input name="cert_date" type="date" value="{{ cert.cert_date if is_edit else today }}" required>
-                </label>
             </div>
         </div>
 

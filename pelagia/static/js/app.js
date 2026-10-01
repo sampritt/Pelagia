@@ -25,7 +25,6 @@ const MAP_TILE_SIZE = 256;
 const MAP_MIN_ZOOM = 2;
 const MAP_MAX_ZOOM = 16;
 const MAP_STATIC_ZOOM = 10;
-const MAP_TILE_SUBDOMAINS = ["a", "b", "c", "d"];
 
 const isValidLatLng = (lat, lng) => {
     const nextLat = Number(lat);
@@ -71,11 +70,6 @@ function wrapTileX(tileX, zoom) {
 }
 
 function mapTileUrl(zoom, tileX, tileY) {
-    const subdomain = MAP_TILE_SUBDOMAINS[Math.abs(tileX + tileY) % MAP_TILE_SUBDOMAINS.length];
-    return `https://${subdomain}.basemaps.cartocdn.com/dark_all/${zoom}/${wrapTileX(tileX, zoom)}/${tileY}.png`;
-}
-
-function fallbackMapTileUrl(zoom, tileX, tileY) {
     return `https://tile.openstreetmap.org/${zoom}/${wrapTileX(tileX, zoom)}/${tileY}.png`;
 }
 
@@ -96,7 +90,7 @@ function ensureAttribution(container) {
     }
     const attribution = document.createElement("span");
     attribution.className = "map-attribution";
-    attribution.innerHTML = "&copy; OpenStreetMap &copy; CARTO";
+    attribution.innerHTML = '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap contributors</a>';
     container.appendChild(attribution);
 }
 
@@ -120,12 +114,7 @@ function renderTileGrid(layer, { centerPoint, zoom, width, height }) {
             img.loading = "lazy";
             img.src = mapTileUrl(zoom, tileX, tileY);
             img.addEventListener("error", () => {
-                if (img.dataset.fallbackTile) {
-                    img.classList.add("tile-error");
-                    return;
-                }
-                img.dataset.fallbackTile = "true";
-                img.src = fallbackMapTileUrl(zoom, tileX, tileY);
+                img.classList.add("tile-error");
             });
             img.style.left = `${Math.round(tileX * MAP_TILE_SIZE - originX)}px`;
             img.style.top = `${Math.round(tileY * MAP_TILE_SIZE - originY)}px`;

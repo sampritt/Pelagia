@@ -314,8 +314,8 @@ def register_routes(app):
                 return redirect(url_for("add_cert"))
             database.get_db().execute(
                 """
-                INSERT INTO user_certs (user_id, agency, level, cert_no, cert_date)
-                VALUES (?, ?, ?, ?, ?)
+                INSERT INTO user_certs (user_id, agency, level)
+                VALUES (?, ?, ?)
                 """,
                 (session["user_id"], *cert_data),
             )
@@ -326,7 +326,6 @@ def register_routes(app):
             "cert_form.html",
             cert=None,
             cert_levels=CERT_LEVELS,
-            today=date.today().isoformat(),
             is_edit=False,
         )
 
@@ -351,7 +350,7 @@ def register_routes(app):
             database.get_db().execute(
                 """
                 UPDATE user_certs
-                SET agency = ?, level = ?, cert_no = ?, cert_date = ?, updated_at = CURRENT_TIMESTAMP
+                SET agency = ?, level = ?, updated_at = CURRENT_TIMESTAMP
                 WHERE user_id = ?
                 """,
                 (*cert_data, session["user_id"]),
@@ -363,7 +362,6 @@ def register_routes(app):
             "cert_form.html",
             cert=cert,
             cert_levels=CERT_LEVELS,
-            today=date.today().isoformat(),
             is_edit=True,
         )
 
@@ -1238,7 +1236,7 @@ def hydrate_dive(row):
 def fetch_user_cert(user_id):
     return database.get_db().execute(
         """
-        SELECT id, user_id, agency, level, cert_no, cert_date, created_at, updated_at
+        SELECT id, user_id, agency, level, created_at, updated_at
         FROM user_certs
         WHERE user_id = ?
         """,
@@ -1249,23 +1247,13 @@ def fetch_user_cert(user_id):
 def cert_from_request(form_request):
     agency = form_request.form.get("agency", "").strip()
     level = form_request.form.get("level", "").strip()
-    cert_no = form_request.form.get("cert_no", "").strip()
-    cert_date = form_request.form.get("cert_date", "").strip()
     if agency not in CERT_AGENCIES:
         flash("Choose a supported agency.")
         return None
     if level not in CERT_LEVELS:
         flash("Choose a supported certification level.")
         return None
-    if not cert_no or not cert_no.isalnum():
-        flash("Use an alphanumeric certification number.")
-        return None
-    try:
-        date.fromisoformat(cert_date)
-    except ValueError:
-        flash("Use a valid certification date.")
-        return None
-    return agency, level, cert_no, cert_date
+    return agency, level
 
 
 def get_profile_stats(user_id):
