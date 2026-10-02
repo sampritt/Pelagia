@@ -201,7 +201,6 @@ def register_routes(app):
             except InvalidBuddyError as error:
                 flash(str(error))
                 return redirect(url_for("log_dive"))
-            flash("Dive logged.")
             return redirect(url_for("home"))
         return render_template(
             "log_dive.html",
@@ -240,7 +239,6 @@ def register_routes(app):
             except InvalidBuddyError as error:
                 flash(str(error))
                 return redirect(url_for("edit_dive", dive_id=dive_id))
-            flash("Dive updated.")
             return redirect(url_for("dive_detail", dive_id=dive_id))
         return render_template(
             "log_dive.html",
@@ -269,7 +267,6 @@ def register_routes(app):
             (dive_id, session["user_id"]),
         )
         database.get_db().commit()
-        flash("Dive deleted.")
         next_url = _url_without_open(_safe_next_url(request.form.get("next")))
         if next_url == url_for("dive_detail", dive_id=dive_id):
             next_url = url_for("home")
@@ -287,7 +284,6 @@ def register_routes(app):
                     (filename, session["user_id"]),
                 )
                 database.get_db().commit()
-                flash("Profile photo updated.")
             return redirect(url_for("profile"))
 
         user = current_user()
