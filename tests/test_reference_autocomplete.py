@@ -157,13 +157,6 @@ Kelp House,2 Harbor Way,Alaska,https://kelp.example.test
             self.signup(client)
             client.post("/logout")
             self.signup(client, "buddy")
-            client.post(
-                "/cert/new",
-                data={
-                    "agency": "PADI",
-                    "level": "Rescue Diver",
-                },
-            )
             client.post("/logout")
             client.post("/login", data={"username": "tester", "password": "password"})
 
@@ -266,16 +259,12 @@ Kelp House,2 Harbor Way,Alaska,https://kelp.example.test
             public_profile = client.get("/users/2")
             self.assertEqual(public_profile.status_code, 200)
             self.assertIn(b"buddy", public_profile.data)
-            self.assertIn(b"Rescue Diver", public_profile.data)
-            self.assertNotIn(b"profile-cert-button", public_profile.data)
-            self.assertNotIn(b'href="/cert"', public_profile.data)
             self.assertNotIn(b'type="file" name="profile_photo"', public_profile.data)
             self.assertIn(b'class="profile-avatar static-avatar"', public_profile.data)
 
             owner_profile = client.get("/users/1")
             self.assertEqual(owner_profile.status_code, 200)
-            self.assertIn(b"profile-cert-button", owner_profile.data)
-            self.assertIn(b'href="/cert/new"', owner_profile.data)
+            self.assertIn(b'type="file" name="profile_photo"', owner_profile.data)
 
             with sqlite3.connect(db_path) as conn:
                 row = conn.execute("SELECT buddy_user_id FROM dives").fetchone()
@@ -716,75 +705,6 @@ Kelp House,2 Harbor Way,Alaska,https://kelp.example.test
             with sqlite3.connect(db_path) as conn:
                 is_deleted = conn.execute("SELECT is_deleted FROM dives WHERE id = ?", (dive_id,)).fetchone()[0]
             self.assertEqual(is_deleted, 1)
-
-    def test_profile_cert_can_be_added_displayed_edited_and_deleted(self):
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            app, db_path, _config_path = self.make_app(Path(tmp_dir))
-            client = app.test_client()
-            self.signup(client)
-
-            profile_response = client.get("/you")
-            self.assertEqual(profile_response.status_code, 200)
-            self.assertIn(b'href="/cert/new"', profile_response.data)
-            self.assertNotIn(b"Rescue Diver", profile_response.data)
-
-            form_response = client.get("/cert/new")
-            self.assertEqual(form_response.status_code, 200)
-            self.assertIn(b"Add a cert", form_response.data)
-            self.assertIn(b'<option value="PADI" selected>PADI</option>', form_response.data)
-            self.assertIn(b'<option value="" disabled selected>Select level</option>', form_response.data)
-            self.assertIn(b'<option value="Rescue Diver" >Rescue Diver</option>', form_response.data)
-            self.assertNotIn(b"datalist", form_response.data)
-            self.assertNotIn(b"cert_no", form_response.data)
-            self.assertNotIn(b"cert_date", form_response.data)
-
-            create_response = client.post(
-                "/cert/new",
-                data={
-                    "agency": "PADI",
-                    "level": "Rescue Diver",
-                },
-            )
-            self.assertEqual(create_response.status_code, 302)
-            self.assertTrue(create_response.headers["Location"].endswith("/you"))
-
-            profile_response = client.get("/you")
-            self.assertIn(b"Rescue Diver", profile_response.data)
-            self.assertIn(b'<span aria-hidden="true">|</span>', profile_response.data)
-            self.assertIn(b'href="/cert"', profile_response.data)
-
-            detail_response = client.get("/cert")
-            self.assertEqual(detail_response.status_code, 200)
-            self.assertIn(b"PADI certification", detail_response.data)
-            self.assertNotIn(b"Cert No.", detail_response.data)
-            self.assertNotIn(b"Cert Date", detail_response.data)
-            self.assertIn(b"Delete cert", detail_response.data)
-            self.assertIn(b"Edit cert", detail_response.data)
-
-            edit_response = client.post(
-                "/cert/edit",
-                data={
-                    "agency": "PADI",
-                    "level": "Divemaster",
-                },
-            )
-            self.assertEqual(edit_response.status_code, 302)
-            updated_detail = client.get("/cert")
-            self.assertIn(b"Divemaster", updated_detail.data)
-
-            with sqlite3.connect(db_path) as conn:
-                row = conn.execute("SELECT agency, level FROM user_certs").fetchone()
-                columns = {column[1] for column in conn.execute("PRAGMA table_info(user_certs)")}
-            self.assertEqual(row, ("PADI", "Divemaster"))
-            self.assertNotIn("cert_no", columns)
-            self.assertNotIn("cert_date", columns)
-
-            delete_response = client.post("/cert/delete")
-            self.assertEqual(delete_response.status_code, 302)
-            self.assertTrue(delete_response.headers["Location"].endswith("/you"))
-            self.assertIn(b'href="/cert/new"', client.get("/you").data)
-            with sqlite3.connect(db_path) as conn:
-                self.assertEqual(conn.execute("SELECT COUNT(*) FROM user_certs").fetchone()[0], 0)
 
     def test_multiple_dive_photos_render_and_individual_photos_can_be_removed(self):
         with tempfile.TemporaryDirectory() as tmp_dir:

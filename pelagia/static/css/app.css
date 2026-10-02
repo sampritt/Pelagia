@@ -1840,45 +1840,6 @@ input[type="range"] {
     font-weight: 680;
 }
 
-.profile-cert-button {
-    width: 36px;
-    height: 36px;
-    color: var(--muted-strong);
-    background: rgba(255, 255, 255, 0.026);
-    border-color: var(--line);
-}
-
-.profile-cert-button:hover {
-    color: var(--ink);
-    border-color: var(--line-strong);
-    background: var(--panel-tint);
-}
-
-.cert-badge {
-    width: 42px;
-    height: 42px;
-    display: inline-grid;
-    place-items: center;
-    border: 1px solid var(--accent-line);
-    border-radius: 8px;
-    color: var(--accent);
-    background: rgba(72, 166, 255, 0.1);
-}
-
-.cert-badge svg {
-    width: 23px;
-    height: 23px;
-    fill: none;
-    stroke: currentColor;
-    stroke-width: 1.8;
-    stroke-linecap: round;
-    stroke-linejoin: round;
-}
-
-.cert-card .detail-metric-list {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
 .stats-grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -3391,20 +3352,8 @@ textarea:focus {
     background: linear-gradient(145deg, #073a62, #0867ae 52%, #18a9f5 52%);
 }
 
-.profile-actions .primary-button,
-.profile-actions .icon-button {
+.profile-actions .primary-button {
     border-color: rgba(255, 255, 255, 0.22);
-}
-
-.profile-cert-button {
-    color: #ffffff;
-    background: rgba(255, 255, 255, 0.13);
-}
-
-.profile-cert-button:hover {
-    color: #ffffff;
-    border-color: rgba(255, 255, 255, 0.4);
-    background: rgba(255, 255, 255, 0.2);
 }
 
 .stats-grid {
@@ -3572,15 +3521,6 @@ textarea:focus {
 
 .comment {
     border-bottom-color: var(--line);
-}
-
-.cert-badge {
-    width: 48px;
-    height: 48px;
-    border-color: var(--accent-line);
-    border-radius: 14px;
-    color: var(--accent);
-    background: var(--accent-soft);
 }
 
 /* Forms */

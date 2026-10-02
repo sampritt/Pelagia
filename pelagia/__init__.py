@@ -39,15 +39,6 @@ DIVE_TYPE_LABELS = {value: value.title() for value in DIVE_TYPES}
 CURRENT_TYPE_LABELS = {value: value.title() for value in CURRENT_TYPES}
 CURRENT_STRENGTH_LABELS = {value: value.title() for value in CURRENT_STRENGTHS}
 CURRENT_STRENGTH_INDEXES = {value: index for index, value in enumerate(CURRENT_STRENGTHS)}
-CERT_AGENCIES = ("PADI",)
-CERT_LEVELS = (
-    "Open Water Diver",
-    "Advanced Open Diver",
-    "Rescue Diver",
-    "Master Diver",
-    "Divemaster",
-    "Dive Instructor",
-)
 ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "gif", "webp"}
 UPLOAD_IMAGE_MAX_DIMENSION = 1600
 UPLOAD_IMAGE_JPEG_QUALITY = 82
@@ -296,77 +287,6 @@ def register_routes(app):
         if user is None:
             abort(404)
         return render_user_profile(user, is_owner=user["id"] == session.get("user_id"))
-
-    @app.route("/cert/new", methods=("GET", "POST"))
-    @login_required
-    def add_cert():
-        existing_cert = fetch_user_cert(session["user_id"])
-        if existing_cert is not None:
-            return redirect(url_for("cert_detail"))
-        if request.method == "POST":
-            cert_data = cert_from_request(request)
-            if cert_data is None:
-                return redirect(url_for("add_cert"))
-            database.get_db().execute(
-                """
-                INSERT INTO user_certs (user_id, agency, level)
-                VALUES (?, ?, ?)
-                """,
-                (session["user_id"], *cert_data),
-            )
-            database.get_db().commit()
-            flash("Certification saved.")
-            return redirect(url_for("profile"))
-        return render_template(
-            "cert_form.html",
-            cert=None,
-            cert_levels=CERT_LEVELS,
-            is_edit=False,
-        )
-
-    @app.route("/cert")
-    @login_required
-    def cert_detail():
-        cert = fetch_user_cert(session["user_id"])
-        if cert is None:
-            return redirect(url_for("add_cert"))
-        return render_template("cert_detail.html", cert=cert)
-
-    @app.route("/cert/edit", methods=("GET", "POST"))
-    @login_required
-    def edit_cert():
-        cert = fetch_user_cert(session["user_id"])
-        if cert is None:
-            return redirect(url_for("add_cert"))
-        if request.method == "POST":
-            cert_data = cert_from_request(request)
-            if cert_data is None:
-                return redirect(url_for("edit_cert"))
-            database.get_db().execute(
-                """
-                UPDATE user_certs
-                SET agency = ?, level = ?, updated_at = CURRENT_TIMESTAMP
-                WHERE user_id = ?
-                """,
-                (*cert_data, session["user_id"]),
-            )
-            database.get_db().commit()
-            flash("Certification updated.")
-            return redirect(url_for("cert_detail"))
-        return render_template(
-            "cert_form.html",
-            cert=cert,
-            cert_levels=CERT_LEVELS,
-            is_edit=True,
-        )
-
-    @app.route("/cert/delete", methods=("POST",))
-    @login_required
-    def delete_cert():
-        database.get_db().execute("DELETE FROM user_certs WHERE user_id = ?", (session["user_id"],))
-        database.get_db().commit()
-        flash("Certification deleted.")
-        return redirect(url_for("profile"))
 
     @app.route("/api/sites", methods=("GET",))
     @login_required
@@ -732,13 +652,11 @@ def render_user_profile(user, is_owner):
         viewer_user_id=session["user_id"],
         limit=6,
     )
-    cert = fetch_user_cert(user["id"])
     return render_template(
         "profile.html",
         user=user,
         stats=stats,
         recent_dives=recent_dives,
-        cert=cert,
         is_owner=is_owner,
     )
 
@@ -1223,29 +1141,6 @@ def hydrate_dive(row):
         (row["id"],),
     ).fetchall()
     return dive
-
-
-def fetch_user_cert(user_id):
-    return database.get_db().execute(
-        """
-        SELECT id, user_id, agency, level, created_at, updated_at
-        FROM user_certs
-        WHERE user_id = ?
-        """,
-        (user_id,),
-    ).fetchone()
-
-
-def cert_from_request(form_request):
-    agency = form_request.form.get("agency", "").strip()
-    level = form_request.form.get("level", "").strip()
-    if agency not in CERT_AGENCIES:
-        flash("Choose a supported agency.")
-        return None
-    if level not in CERT_LEVELS:
-        flash("Choose a supported certification level.")
-        return None
-    return agency, level
 
 
 def get_profile_stats(user_id):
