@@ -1,4 +1,5 @@
 import json
+import math
 import os
 import statistics
 import uuid
@@ -533,7 +534,7 @@ def register_routes(app):
             sightings=sightings,
             visibility_series=visibility_series,
             current_series=current_series,
-            visibility_chart=line_chart_points(visibility_series, max_value=100),
+            visibility_chart=line_chart_points(visibility_series, max_value=30),
             current_chart=bar_chart_points(current_series, max_value=4),
             current_strength_labels=CURRENT_STRENGTH_LABELS,
             current_strength_index_labels={index: CURRENT_STRENGTH_LABELS[value] for value, index in CURRENT_STRENGTH_INDEXES.items()},
@@ -668,7 +669,7 @@ def create_dive_from_request(user_id, form_request):
         """
         INSERT INTO dives (
             user_id, buddy_user_id, dive_site_id, dive_center_id, dive_center_name, date, site_name, country_or_area, latitude, longitude,
-            depth_ft, duration_min, weight_lbs, exposure, visibility_ft, air_temp_degrees, water_temp_degrees,
+            depth_m, duration_min, weight_kg, exposure, visibility_m, air_temp_c, water_temp_c,
             gas_mix, dive_type, current, current_strength, notes
         )
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -684,13 +685,13 @@ def create_dive_from_request(user_id, form_request):
             values["country_or_area"],
             values["latitude"],
             values["longitude"],
-            values["depth_ft"],
+            values["depth_m"],
             values["duration_min"],
-            values["weight_lbs"],
+            values["weight_kg"],
             values["exposure"],
-            values["visibility_ft"],
-            values["air_temp_degrees"],
-            values["water_temp_degrees"],
+            values["visibility_m"],
+            values["air_temp_c"],
+            values["water_temp_c"],
             values["gas_mix"],
             values["dive_type"],
             values["current"],
@@ -720,13 +721,13 @@ def update_dive_from_request(dive_id, user_id, form_request):
             country_or_area = ?,
             latitude = ?,
             longitude = ?,
-            depth_ft = ?,
+            depth_m = ?,
             duration_min = ?,
-            weight_lbs = ?,
+            weight_kg = ?,
             exposure = ?,
-            visibility_ft = ?,
-            air_temp_degrees = ?,
-            water_temp_degrees = ?,
+            visibility_m = ?,
+            air_temp_c = ?,
+            water_temp_c = ?,
             gas_mix = ?,
             dive_type = ?,
             current = ?,
@@ -744,13 +745,13 @@ def update_dive_from_request(dive_id, user_id, form_request):
             values["country_or_area"],
             values["latitude"],
             values["longitude"],
-            values["depth_ft"],
+            values["depth_m"],
             values["duration_min"],
-            values["weight_lbs"],
+            values["weight_kg"],
             values["exposure"],
-            values["visibility_ft"],
-            values["air_temp_degrees"],
-            values["water_temp_degrees"],
+            values["visibility_m"],
+            values["air_temp_c"],
+            values["water_temp_c"],
             values["gas_mix"],
             values["dive_type"],
             values["current"],
@@ -769,13 +770,13 @@ def update_dive_from_request(dive_id, user_id, form_request):
 
 def dive_values_from_request(form_request, user_id):
     form = form_request.form
-    depth = clamp_int(form.get("depth_ft"), 0, 140)
+    depth = clamp_int(form.get("depth_m"), 0, 45)
     duration = clamp_int(form.get("duration_min"), 0, 120)
-    weight = maybe_clamped_int(form.get("weight_lbs"), 0, 20)
+    weight = maybe_clamped_int(form.get("weight_kg"), 0, 10)
     exposure = form.get("exposure") if form.get("exposure") in EXPOSURES else None
-    visibility = maybe_clamped_int(form.get("visibility_ft"), 0, 100)
-    air_temp = maybe_clamped_int(form.get("air_temp_degrees"), 0, 100)
-    water_temp = maybe_clamped_int(form.get("water_temp_degrees"), 0, 100)
+    visibility = maybe_clamped_int(form.get("visibility_m"), 0, 30)
+    air_temp = maybe_clamped_int(form.get("air_temp_c"), -20, 40)
+    water_temp = maybe_clamped_int(form.get("water_temp_c"), -20, 40)
     gas_mix = form.get("gas_mix") if form.get("gas_mix") in GAS_MIXES else "Air"
     dive_type = form.get("dive_type") if form.get("dive_type") in DIVE_TYPES else "open water"
     current = form.get("current") if form.get("current") in CURRENT_TYPES else "none"
@@ -852,13 +853,13 @@ def dive_values_from_request(form_request, user_id):
         "country_or_area": country,
         "latitude": latitude,
         "longitude": longitude,
-        "depth_ft": depth,
+        "depth_m": depth,
         "duration_min": duration,
-        "weight_lbs": weight,
+        "weight_kg": weight,
         "exposure": exposure,
-        "visibility_ft": visibility,
-        "air_temp_degrees": air_temp,
-        "water_temp_degrees": water_temp,
+        "visibility_m": visibility,
+        "air_temp_c": air_temp,
+        "water_temp_c": water_temp,
         "gas_mix": gas_mix,
         "dive_type": dive_type,
         "current": current,
@@ -1149,7 +1150,7 @@ def get_profile_stats(user_id):
         """
         SELECT
             COUNT(*) AS dive_count,
-            COALESCE(MAX(depth_ft), 0) AS max_depth_ft,
+            COALESCE(MAX(depth_m), 0) AS max_depth_m,
             COALESCE(MAX(duration_min), 0) AS longest_dive_minutes,
             COALESCE(SUM(duration_min), 0) AS total_minutes,
             COUNT(DISTINCT NULLIF(country_or_area, '')) AS country_count,
@@ -1255,11 +1256,11 @@ def dive_site_recent_conditions(site_id):
     ).fetchone()
     empty = {
         "date": None,
-        "visibility_ft": None,
+        "visibility_m": None,
         "current": None,
         "current_strength": None,
-        "water_temp_degrees": None,
-        "air_temp_degrees": None,
+        "water_temp_c": None,
+        "air_temp_c": None,
     }
     if latest is None or not latest["date"]:
         return empty
@@ -1272,7 +1273,7 @@ def dive_site_recent_conditions(site_id):
         return empty
     rows = database.get_db().execute(
         """
-        SELECT visibility_ft, current, current_strength, water_temp_degrees, air_temp_degrees
+        SELECT visibility_m, current, current_strength, water_temp_c, air_temp_c
         FROM dives
         WHERE dive_site_id = ?
             AND COALESCE(is_deleted, 0) = 0
@@ -1286,11 +1287,11 @@ def dive_site_recent_conditions(site_id):
         current_type = "none"
     return {
         "date": latest["date"],
-        "visibility_ft": median_int(row["visibility_ft"] for row in rows),
+        "visibility_m": median_int(row["visibility_m"] for row in rows),
         "current": current_type,
         "current_strength": current_strength,
-        "water_temp_degrees": median_int(row["water_temp_degrees"] for row in rows),
-        "air_temp_degrees": median_int(row["air_temp_degrees"] for row in rows),
+        "water_temp_c": median_int(row["water_temp_c"] for row in rows),
+        "air_temp_c": median_int(row["air_temp_c"] for row in rows),
     }
 
 
@@ -1302,7 +1303,7 @@ def dive_site_condition_series(site_id):
         FROM dives
         WHERE dive_site_id = ?
             AND COALESCE(is_deleted, 0) = 0
-            AND (visibility_ft IS NOT NULL OR current_strength != 'none')
+            AND (visibility_m IS NOT NULL OR current_strength != 'none')
         """,
         (site_id,),
     ).fetchone()["date"]
@@ -1313,7 +1314,7 @@ def dive_site_condition_series(site_id):
     start = end - timedelta(days=13)
     rows = db.execute(
         """
-        SELECT date, visibility_ft, current_strength
+        SELECT date, visibility_m, current_strength
         FROM dives
         WHERE dive_site_id = ?
             AND COALESCE(is_deleted, 0) = 0
@@ -1328,8 +1329,8 @@ def dive_site_condition_series(site_id):
         except ValueError:
             continue
         bucket = by_date.setdefault(day.isoformat(), {"visibility": [], "current": []})
-        if row["visibility_ft"] is not None:
-            bucket["visibility"].append(row["visibility_ft"])
+        if row["visibility_m"] is not None:
+            bucket["visibility"].append(row["visibility_m"])
         if row["current_strength"] in CURRENT_STRENGTH_INDEXES:
             bucket["current"].append(CURRENT_STRENGTH_INDEXES[row["current_strength"]])
 
@@ -1386,7 +1387,7 @@ def median_current_strength(rows):
 
 
 def round_half_up(value):
-    return int(float(value) + 0.5)
+    return math.floor(float(value) + 0.5)
 
 
 def dominant_current_type(rows):
@@ -1448,13 +1449,13 @@ def dive_to_json(dive):
         "country_or_area": dive["country_or_area"],
         "latitude": dive["latitude"],
         "longitude": dive["longitude"],
-        "depth_ft": dive["depth_ft"],
+        "depth_m": dive["depth_m"],
         "duration_min": dive["duration_min"],
-        "weight_lbs": dive["weight_lbs"],
+        "weight_kg": dive["weight_kg"],
         "exposure": dive["exposure"],
-        "visibility_ft": dive["visibility_ft"],
-        "air_temp_degrees": dive["air_temp_degrees"],
-        "water_temp_degrees": dive["water_temp_degrees"],
+        "visibility_m": dive["visibility_m"],
+        "air_temp_c": dive["air_temp_c"],
+        "water_temp_c": dive["water_temp_c"],
         "gas_mix": dive["gas_mix"],
         "dive_type": dive["dive_type"],
         "current": dive["current"],
@@ -1471,9 +1472,9 @@ def dive_to_json(dive):
 
 
 def site_payload(row):
-    max_depth_ft = None
+    max_depth_m = None
     if row["max_depth_m"] is not None:
-        max_depth_ft = min(140, round(float(row["max_depth_m"]) * 3.28084))
+        max_depth_m = min(45, round(float(row["max_depth_m"])))
     return {
         "id": row["id"],
         "name": row["name"],
@@ -1481,7 +1482,7 @@ def site_payload(row):
         "country_code": row["country_code"],
         "latitude": row["latitude"],
         "longitude": row["longitude"],
-        "max_depth_ft": max_depth_ft,
+        "max_depth_m": max_depth_m,
         "logged_dive_count": row["logged_dive_count"],
     }
 
@@ -1540,7 +1541,7 @@ def search_center_payload(row):
 
 def clamp_int(value, minimum, maximum):
     try:
-        parsed = int(float(value) + 0.5)
+        parsed = round_half_up(value)
     except (TypeError, ValueError):
         parsed = minimum
     return max(minimum, min(maximum, parsed))

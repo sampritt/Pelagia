@@ -29,18 +29,14 @@ def init_db():
     _ensure_column(db, "dives", "buddy_user_id", "INTEGER REFERENCES users(id) ON DELETE SET NULL")
     _ensure_column(db, "dives", "dive_center_id", "INTEGER")
     _ensure_column(db, "dives", "dive_center_name", "TEXT")
-    _ensure_column(db, "dives", "weight_lbs", "INTEGER")
     _ensure_column(db, "dives", "exposure", "TEXT")
-    _ensure_column(db, "dives", "visibility_ft", "INTEGER")
-    _ensure_column(db, "dives", "air_temp_degrees", "INTEGER")
-    _ensure_column(db, "dives", "water_temp_degrees", "INTEGER")
     _ensure_column(db, "dives", "gas_mix", "TEXT NOT NULL DEFAULT 'Air'")
     _ensure_column(db, "dives", "dive_type", "TEXT NOT NULL DEFAULT 'open water'")
     _ensure_column(db, "dives", "current", "TEXT NOT NULL DEFAULT 'none'")
     _ensure_column(db, "dives", "current_strength", "TEXT NOT NULL DEFAULT 'none'")
     _ensure_column(db, "dives", "is_deleted", "INTEGER NOT NULL DEFAULT 0")
     _ensure_column(db, "dive_sites", "logged_dive_count", "INTEGER NOT NULL DEFAULT 0")
-    _ensure_nullable_dive_metadata(db)
+    _ensure_metric_dive_schema(db)
     _normalize_current_values(db)
     _ensure_dive_site_counts(db)
     db.execute("CREATE INDEX IF NOT EXISTS idx_dives_buddy_user ON dives(buddy_user_id)")
@@ -126,20 +122,57 @@ def _ensure_dive_site_counts(db):
     )
 
 
-def _ensure_nullable_dive_metadata(db):
+def _ensure_metric_dive_schema(db):
+    _ensure_column(db, "dives", "depth_m", "INTEGER NOT NULL DEFAULT 0")
+    _ensure_column(db, "dives", "weight_kg", "INTEGER")
+    _ensure_column(db, "dives", "visibility_m", "INTEGER")
+    _ensure_column(db, "dives", "air_temp_c", "INTEGER")
+    _ensure_column(db, "dives", "water_temp_c", "INTEGER")
     columns = {
         row["name"]: row
         for row in db.execute("PRAGMA table_info(dives)").fetchall()
     }
-    optional_columns = ("weight_lbs", "exposure", "visibility_ft", "air_temp_degrees", "water_temp_degrees")
-    if all(column in columns and columns[column]["notnull"] == 0 for column in optional_columns):
+    legacy_columns = {"depth_ft", "weight_lbs", "visibility_ft", "air_temp_degrees", "water_temp_degrees"}
+    optional_columns = ("weight_kg", "exposure", "visibility_m", "air_temp_c", "water_temp_c")
+    has_legacy_units = bool(legacy_columns.intersection(columns))
+    optional_columns_are_nullable = all(
+        column in columns and columns[column]["notnull"] == 0
+        for column in optional_columns
+    )
+    if not has_legacy_units and optional_columns_are_nullable:
         return
+
+    depth_expression = (
+        "CAST(ROUND(depth_ft * 0.3048) AS INTEGER)"
+        if "depth_ft" in columns
+        else "depth_m"
+    )
+    weight_expression = (
+        "CASE WHEN weight_lbs IS NULL THEN NULL ELSE CAST(ROUND(weight_lbs * 0.45359237) AS INTEGER) END"
+        if "weight_lbs" in columns
+        else "weight_kg"
+    )
+    visibility_expression = (
+        "CASE WHEN visibility_ft IS NULL THEN NULL ELSE CAST(ROUND(visibility_ft * 0.3048) AS INTEGER) END"
+        if "visibility_ft" in columns
+        else "visibility_m"
+    )
+    air_temp_expression = (
+        "CASE WHEN air_temp_degrees IS NULL THEN NULL ELSE CAST(ROUND((air_temp_degrees - 32) * 5.0 / 9.0) AS INTEGER) END"
+        if "air_temp_degrees" in columns
+        else "air_temp_c"
+    )
+    water_temp_expression = (
+        "CASE WHEN water_temp_degrees IS NULL THEN NULL ELSE CAST(ROUND((water_temp_degrees - 32) * 5.0 / 9.0) AS INTEGER) END"
+        if "water_temp_degrees" in columns
+        else "water_temp_c"
+    )
 
     db.commit()
     db.execute("PRAGMA foreign_keys = OFF")
     try:
         db.executescript(
-            """
+            f"""
             CREATE TABLE dives_rebuild (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 user_id INTEGER NOT NULL,
@@ -152,13 +185,13 @@ def _ensure_nullable_dive_metadata(db):
                 country_or_area TEXT,
                 latitude REAL,
                 longitude REAL,
-                depth_ft INTEGER NOT NULL DEFAULT 0,
+                depth_m INTEGER NOT NULL DEFAULT 0,
                 duration_min INTEGER NOT NULL DEFAULT 0,
-                weight_lbs INTEGER,
+                weight_kg INTEGER,
                 exposure TEXT,
-                visibility_ft INTEGER,
-                air_temp_degrees INTEGER,
-                water_temp_degrees INTEGER,
+                visibility_m INTEGER,
+                air_temp_c INTEGER,
+                water_temp_c INTEGER,
                 gas_mix TEXT NOT NULL DEFAULT 'Air',
                 dive_type TEXT NOT NULL DEFAULT 'open water',
                 current TEXT NOT NULL DEFAULT 'none',
@@ -174,14 +207,14 @@ def _ensure_nullable_dive_metadata(db):
 
             INSERT INTO dives_rebuild (
                 id, user_id, buddy_user_id, dive_site_id, dive_center_id, dive_center_name, date, site_name,
-                country_or_area, latitude, longitude, depth_ft, duration_min, weight_lbs,
-                exposure, visibility_ft, air_temp_degrees, water_temp_degrees, gas_mix, dive_type,
+                country_or_area, latitude, longitude, depth_m, duration_min, weight_kg,
+                exposure, visibility_m, air_temp_c, water_temp_c, gas_mix, dive_type,
                 current, current_strength, notes, is_deleted, created_at
             )
             SELECT
                 id, user_id, buddy_user_id, dive_site_id, dive_center_id, dive_center_name, date, site_name,
-                country_or_area, latitude, longitude, depth_ft, duration_min, weight_lbs,
-                exposure, visibility_ft, air_temp_degrees, water_temp_degrees, gas_mix, dive_type,
+                country_or_area, latitude, longitude, {depth_expression}, duration_min, {weight_expression},
+                exposure, {visibility_expression}, {air_temp_expression}, {water_temp_expression}, gas_mix, dive_type,
                 current, current_strength, notes, is_deleted, created_at
             FROM dives;
 

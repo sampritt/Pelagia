@@ -24,7 +24,7 @@
         <div class="site-conditions-grid">
             <div>
                 <small>VISIBILITY</small>
-                <span>{{ optional_metric(conditions.visibility_ft, ' ft') }}</span>
+                <span>{{ optional_metric(conditions.visibility_m, ' m') }}</span>
             </div>
             <div>
                 <small>CURRENT</small>
@@ -38,11 +38,11 @@
             </div>
             <div>
                 <small>WATER TEMP</small>
-                <span>{{ optional_metric(conditions.water_temp_degrees, ' degrees') }}</span>
+                <span>{{ optional_metric(conditions.water_temp_c, '°C') }}</span>
             </div>
             <div>
                 <small>AIR TEMP</small>
-                <span>{{ optional_metric(conditions.air_temp_degrees, ' degrees') }}</span>
+                <span>{{ optional_metric(conditions.air_temp_c, '°C') }}</span>
             </div>
         </div>
     </div>
@@ -62,14 +62,14 @@
         <div class="site-chart-head">
             <h2>Visibility</h2>
         </div>
-        <svg class="site-line-chart" viewBox="0 0 {{ visibility_chart.width }} {{ visibility_chart.height }}" role="img" aria-label="Two weeks ending with the latest documented visibility or currents observation, visibility in feet by day">
+        <svg class="site-line-chart" viewBox="0 0 {{ visibility_chart.width }} {{ visibility_chart.height }}" role="img" aria-label="Two weeks ending with the latest documented visibility or currents observation, visibility in meters by day">
             <line x1="{{ visibility_chart.padding }}" y1="{{ visibility_chart.height - visibility_chart.padding }}" x2="{{ visibility_chart.width - visibility_chart.padding }}" y2="{{ visibility_chart.height - visibility_chart.padding }}"></line>
             {% if visibility_chart.polyline %}
                 <polyline points="{{ visibility_chart.polyline }}"></polyline>
                 {% for point in visibility_chart.points %}
                     {% if point.y is not none %}
                         <circle cx="{{ point.x }}" cy="{{ point.y }}" r="3">
-                            <title>{{ point.label }}: {{ point.value }} ft</title>
+                            <title>{{ point.label }}: {{ point.value }} m</title>
                         </circle>
                     {% endif %}
                 {% endfor %}

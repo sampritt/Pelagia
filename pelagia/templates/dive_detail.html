@@ -90,7 +90,7 @@
     <div class="detail-headline-stats" aria-label="Dive stats">
         <div>
             <small>Depth</small>
-            <span>{{ dive.depth_ft }}<em>ft</em></span>
+            <span>{{ dive.depth_m }}<em>m</em></span>
         </div>
         <div>
             <small>Time</small>
@@ -103,11 +103,11 @@
             <dl class="detail-metric-list">
                 <div>
                     <dt>Visibility</dt>
-                    <dd>{{ optional_metric(dive.visibility_ft, ' ft') }}</dd>
+                    <dd>{{ optional_metric(dive.visibility_m, ' m') }}</dd>
                 </div>
                 <div>
                     <dt>Weight</dt>
-                    <dd>{{ optional_metric(dive.weight_lbs, ' lb') }}</dd>
+                    <dd>{{ optional_metric(dive.weight_kg, ' kg') }}</dd>
                 </div>
                 <div>
                     <dt>Exposure</dt>
@@ -119,11 +119,11 @@
                 </div>
                 <div>
                     <dt>Air</dt>
-                    <dd>{{ optional_metric(dive.air_temp_degrees, ' degrees') }}</dd>
+                    <dd>{{ optional_metric(dive.air_temp_c, '°C') }}</dd>
                 </div>
                 <div>
                     <dt>Water</dt>
-                    <dd>{{ optional_metric(dive.water_temp_degrees, ' degrees') }}</dd>
+                    <dd>{{ optional_metric(dive.water_temp_c, '°C') }}</dd>
                 </div>
                 <div>
                     <dt>Current</dt>

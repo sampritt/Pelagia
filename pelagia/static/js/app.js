@@ -458,9 +458,9 @@ function initDiveForm() {
             number: form.querySelector("[data-number='depth']"),
             output: document.getElementById("depthOutput"),
             min: 0,
-            max: 140,
-            step: 5,
-            unit: "ft",
+            max: 45,
+            step: 1,
+            unit: "m",
         },
         duration: {
             range: form.querySelector("[data-range='duration']"),
@@ -476,9 +476,9 @@ function initDiveForm() {
             number: form.querySelector("[data-number='weight']"),
             output: document.getElementById("weightOutput"),
             min: 0,
-            max: 20,
+            max: 10,
             step: 1,
-            unit: "lb",
+            unit: "kg",
             optional: true,
         },
         visibility: {
@@ -486,29 +486,31 @@ function initDiveForm() {
             number: form.querySelector("[data-number='visibility']"),
             output: document.getElementById("visibilityOutput"),
             min: 0,
-            max: 100,
-            step: 5,
-            unit: "ft",
+            max: 30,
+            step: 1,
+            unit: "m",
             optional: true,
         },
         airTemp: {
             range: form.querySelector("[data-range='airTemp']"),
             number: form.querySelector("[data-number='airTemp']"),
             output: document.getElementById("airTempOutput"),
-            min: 0,
-            max: 100,
+            min: -20,
+            max: 40,
             step: 1,
-            unit: "degrees",
+            unit: "°C",
+            compactUnit: true,
             optional: true,
         },
         waterTemp: {
             range: form.querySelector("[data-range='waterTemp']"),
             number: form.querySelector("[data-number='waterTemp']"),
             output: document.getElementById("waterTempOutput"),
-            min: 0,
-            max: 100,
+            min: -20,
+            max: 40,
             step: 1,
-            unit: "degrees",
+            unit: "°C",
+            compactUnit: true,
             optional: true,
         },
     };
@@ -517,6 +519,8 @@ function initDiveForm() {
         const rounded = Math.round(Number(value) * 100) / 100;
         return Number.isInteger(rounded) ? String(rounded) : String(rounded);
     };
+
+    const formatPairOutput = (value, pair) => `${formatMetricValue(value)}${pair.compactUnit ? "" : " "}${pair.unit}`;
 
     const snapToStep = (value, pair) => clamp(Math.round(Number(value) / pair.step) * pair.step, pair.min, pair.max);
 
@@ -535,7 +539,7 @@ function initDiveForm() {
             if (commit) {
                 const fallback = clamp(pair.range.value, pair.min, pair.max);
                 pair.number.value = formatMetricValue(fallback);
-                pair.output.textContent = `${formatMetricValue(fallback)} ${pair.unit}`;
+                pair.output.textContent = formatPairOutput(fallback, pair);
             }
             return null;
         }
@@ -547,7 +551,7 @@ function initDiveForm() {
         if (source !== "number" || commit || exact !== parsed) {
             pair.number.value = formatMetricValue(displayValue);
         }
-        pair.output.textContent = `${formatMetricValue(displayValue)} ${pair.unit}`;
+        pair.output.textContent = formatPairOutput(displayValue, pair);
         if (name === "duration" && fromUser) {
             durationTouched = true;
         }
@@ -620,9 +624,9 @@ function initDiveForm() {
         country.value = site.country_or_area || "";
         latitude.value = site.latitude ?? "";
         longitude.value = site.longitude ?? "";
-        if (site.max_depth_ft !== null && site.max_depth_ft !== undefined) {
-            setPair("depth", site.max_depth_ft, false);
-            setPair("duration", suggestedDuration(site.max_depth_ft), false);
+        if (site.max_depth_m !== null && site.max_depth_m !== undefined) {
+            setPair("depth", site.max_depth_m, false);
+            setPair("duration", suggestedDuration(site.max_depth_m), false);
         }
         hideMenu(siteResults);
         loadSpeciesSuggestions({ siteId: site.id, country: site.country_or_area });
@@ -657,8 +661,8 @@ function initDiveForm() {
     initArrowNavigation(form);
 }
 
-function suggestedDuration(depthFt) {
-    return clamp(Math.round((120 - Number(depthFt)) / 5) * 5, 0, 120);
+function suggestedDuration(depthM) {
+    return clamp(Math.round((120 - Number(depthM) * 3.28084) / 5) * 5, 0, 120);
 }
 
 function initBuddyAutocomplete({ input, results, hidden }) {

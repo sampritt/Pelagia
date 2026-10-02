@@ -68,11 +68,11 @@
             <div class="control-panel">
                 <div class="range-control">
                     <div>
-                        <label for="depthFt">Depth</label>
-                        <output id="depthOutput">{{ dive.depth_ft if is_edit else 40 }} ft</output>
+                        <label for="depthM">Depth (m)</label>
+                        <output id="depthOutput">{{ dive.depth_m if is_edit else 12 }} m</output>
                     </div>
-                    <input type="range" min="0" max="140" step="5" value="{{ dive.depth_ft if is_edit else 40 }}" data-range="depth">
-                    <input id="depthFt" name="depth_ft" type="number" min="0" max="140" step="any" value="{{ dive.depth_ft if is_edit else 40 }}" data-number="depth">
+                    <input type="range" min="0" max="45" step="1" value="{{ dive.depth_m if is_edit else 12 }}" data-range="depth">
+                    <input id="depthM" name="depth_m" type="number" min="0" max="45" step="1" value="{{ dive.depth_m if is_edit else 12 }}" data-number="depth">
                 </div>
                 <div class="range-control">
                     <div>
@@ -84,11 +84,11 @@
                 </div>
                 <div class="range-control">
                     <div>
-                        <label for="weightLbs">Weight</label>
-                        <output id="weightOutput">{{ optional_metric(dive.weight_lbs, ' lb') if is_edit else '-' }}</output>
+                        <label for="weightKg">Weight (kg)</label>
+                        <output id="weightOutput">{{ optional_metric(dive.weight_kg, ' kg') if is_edit else '-' }}</output>
                     </div>
-                    <input type="range" min="0" max="20" step="1" value="{{ dive.weight_lbs if is_edit and dive.weight_lbs is not none else 0 }}" data-range="weight">
-                    <input id="weightLbs" name="weight_lbs" type="number" min="0" max="20" step="1" value="{{ dive.weight_lbs if is_edit and dive.weight_lbs is not none else '' }}" data-number="weight">
+                    <input type="range" min="0" max="10" step="1" value="{{ dive.weight_kg if is_edit and dive.weight_kg is not none else 0 }}" data-range="weight">
+                    <input id="weightKg" name="weight_kg" type="number" min="0" max="10" step="1" value="{{ dive.weight_kg if is_edit and dive.weight_kg is not none else '' }}" data-number="weight">
                 </div>
                 <label>
                     Exposure
@@ -119,27 +119,27 @@
             <div class="control-panel">
                 <div class="range-control">
                     <div>
-                        <label for="visibilityFt">Visibility</label>
-                        <output id="visibilityOutput">{{ optional_metric(dive.visibility_ft, ' ft') if is_edit else '-' }}</output>
+                        <label for="visibilityM">Visibility (m)</label>
+                        <output id="visibilityOutput">{{ optional_metric(dive.visibility_m, ' m') if is_edit else '-' }}</output>
                     </div>
-                    <input type="range" min="0" max="100" step="5" value="{{ dive.visibility_ft if is_edit and dive.visibility_ft is not none else 0 }}" data-range="visibility">
-                    <input id="visibilityFt" name="visibility_ft" type="number" min="0" max="100" step="any" value="{{ dive.visibility_ft if is_edit and dive.visibility_ft is not none else '' }}" data-number="visibility">
+                    <input type="range" min="0" max="30" step="1" value="{{ dive.visibility_m if is_edit and dive.visibility_m is not none else 0 }}" data-range="visibility">
+                    <input id="visibilityM" name="visibility_m" type="number" min="0" max="30" step="1" value="{{ dive.visibility_m if is_edit and dive.visibility_m is not none else '' }}" data-number="visibility">
                 </div>
                 <div class="range-control">
                     <div>
-                        <label for="airTempDegrees">Air temperature</label>
-                        <output id="airTempOutput">{{ optional_metric(dive.air_temp_degrees, ' degrees') if is_edit else '-' }}</output>
+                        <label for="airTempC">Air temperature (°C)</label>
+                        <output id="airTempOutput">{{ optional_metric(dive.air_temp_c, '°C') if is_edit else '-' }}</output>
                     </div>
-                    <input type="range" min="0" max="100" step="1" value="{{ dive.air_temp_degrees if is_edit and dive.air_temp_degrees is not none else 0 }}" data-range="airTemp">
-                    <input id="airTempDegrees" name="air_temp_degrees" type="number" min="0" max="100" step="any" value="{{ dive.air_temp_degrees if is_edit and dive.air_temp_degrees is not none else '' }}" data-number="airTemp">
+                    <input type="range" min="-20" max="40" step="1" value="{{ dive.air_temp_c if is_edit and dive.air_temp_c is not none else 20 }}" data-range="airTemp">
+                    <input id="airTempC" name="air_temp_c" type="number" min="-20" max="40" step="1" value="{{ dive.air_temp_c if is_edit and dive.air_temp_c is not none else '' }}" data-number="airTemp">
                 </div>
                 <div class="range-control">
                     <div>
-                        <label for="waterTempDegrees">Water temperature</label>
-                        <output id="waterTempOutput">{{ optional_metric(dive.water_temp_degrees, ' degrees') if is_edit else '-' }}</output>
+                        <label for="waterTempC">Water temperature (°C)</label>
+                        <output id="waterTempOutput">{{ optional_metric(dive.water_temp_c, '°C') if is_edit else '-' }}</output>
                     </div>
-                    <input type="range" min="0" max="100" step="1" value="{{ dive.water_temp_degrees if is_edit and dive.water_temp_degrees is not none else 0 }}" data-range="waterTemp">
-                    <input id="waterTempDegrees" name="water_temp_degrees" type="number" min="0" max="100" step="any" value="{{ dive.water_temp_degrees if is_edit and dive.water_temp_degrees is not none else '' }}" data-number="waterTemp">
+                    <input type="range" min="-20" max="40" step="1" value="{{ dive.water_temp_c if is_edit and dive.water_temp_c is not none else 20 }}" data-range="waterTemp">
+                    <input id="waterTempC" name="water_temp_c" type="number" min="-20" max="40" step="1" value="{{ dive.water_temp_c if is_edit and dive.water_temp_c is not none else '' }}" data-number="waterTemp">
                 </div>
                 <label>
                     Dive type

@@ -132,7 +132,7 @@ Kelp House,2 Harbor Way,Alaska,https://kelp.example.test
                         "site_name": "Gordon Rocks Dive Site",
                         "dive_site_id": "11",
                         "country_or_area": "Galapagos",
-                        "depth_ft": "40",
+                        "depth_m": "12",
                         "duration_min": "45",
                         "dive_type": "reef",
                         "current": "none",
@@ -193,13 +193,13 @@ Kelp House,2 Harbor Way,Alaska,https://kelp.example.test
                 "country_or_area": "Alaska",
                 "latitude": "54.1",
                 "longitude": "-132.9",
-                "depth_ft": "40",
+                "depth_m": "12",
                 "duration_min": "70",
-                "weight_lbs": "",
+                "weight_kg": "",
                 "exposure": "",
-                "visibility_ft": "",
-                "air_temp_degrees": "",
-                "water_temp_degrees": "",
+                "visibility_m": "",
+                "air_temp_c": "",
+                "water_temp_c": "",
                 "dive_type": "shore dive",
                 "current": "none",
                 "current_strength": "none",
@@ -280,7 +280,14 @@ Kelp House,2 Harbor Way,Alaska,https://kelp.example.test
                 conn.execute("DELETE FROM site_species")
                 conn.commit()
 
-            with patch.dict(os.environ, {"PELAGIA_CONFIG": str(config_path)}):
+            with patch.dict(
+                os.environ,
+                {
+                    "PELAGIA_CONFIG": str(config_path),
+                    "PELAGIA_DATABASE_PATH": str(db_path),
+                    "PELAGIA_UPLOAD_FOLDER": str(Path(tmp_dir) / "uploads"),
+                },
+            ):
                 app = create_app({"TESTING": True})
             client = app.test_client()
             self.signup(client)
@@ -295,9 +302,21 @@ Kelp House,2 Harbor Way,Alaska,https://kelp.example.test
                 ).fetchall()
             self.assertEqual(staging_tables, [])
 
-    def test_existing_database_without_buddy_column_migrates(self):
+    def test_existing_imperial_database_migrates_values_and_schema(self):
         def prepare_legacy_db(db_path):
             with sqlite3.connect(db_path) as conn:
+                conn.execute(
+                    """
+                    CREATE TABLE users (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        username TEXT NOT NULL UNIQUE COLLATE NOCASE,
+                        password_hash TEXT NOT NULL,
+                        profile_photo TEXT,
+                        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+                    )
+                    """
+                )
+                conn.execute("INSERT INTO users (id, username, password_hash) VALUES (1, 'legacy', 'unused')")
                 conn.execute(
                     """
                     CREATE TABLE dives (
@@ -328,6 +347,15 @@ Kelp House,2 Harbor Way,Alaska,https://kelp.example.test
                     )
                     """
                 )
+                conn.execute(
+                    """
+                    INSERT INTO dives (
+                        user_id, date, site_name, depth_ft, duration_min, weight_lbs,
+                        visibility_ft, air_temp_degrees, water_temp_degrees
+                    )
+                    VALUES (1, '2026-07-01', 'Legacy Reef', 62, 45, 10, 66, 86, 77)
+                    """
+                )
                 conn.commit()
 
         with tempfile.TemporaryDirectory() as tmp_dir:
@@ -335,8 +363,15 @@ Kelp House,2 Harbor Way,Alaska,https://kelp.example.test
             with sqlite3.connect(db_path) as conn:
                 columns = {row[1] for row in conn.execute("PRAGMA table_info(dives)").fetchall()}
                 indexes = {row[1] for row in conn.execute("PRAGMA index_list(dives)").fetchall()}
+                migrated = conn.execute(
+                    "SELECT depth_m, weight_kg, visibility_m, air_temp_c, water_temp_c FROM dives"
+                ).fetchone()
+                foreign_key_errors = conn.execute("PRAGMA foreign_key_check").fetchall()
             self.assertIn("buddy_user_id", columns)
             self.assertIn("idx_dives_buddy_user", indexes)
+            self.assertNotIn("depth_ft", columns)
+            self.assertEqual(migrated, (19, 5, 20, 30, 25))
+            self.assertEqual(foreign_key_errors, [])
 
     def test_optional_dive_metadata_defaults_to_unset(self):
         with tempfile.TemporaryDirectory() as tmp_dir:
@@ -350,8 +385,14 @@ Kelp House,2 Harbor Way,Alaska,https://kelp.example.test
             self.assertIn(b'<output id="airTempOutput">-</output>', new_response.data)
             self.assertIn(b'<output id="waterTempOutput">-</output>', new_response.data)
             self.assertIn(b'value="0" data-range="visibility"', new_response.data)
-            self.assertIn(b'value="0" data-range="airTemp"', new_response.data)
-            self.assertIn(b'value="0" data-range="waterTemp"', new_response.data)
+            self.assertIn(b'value="20" data-range="airTemp"', new_response.data)
+            self.assertIn(b'value="20" data-range="waterTemp"', new_response.data)
+            self.assertIn("Depth (m)".encode(), new_response.data)
+            self.assertIn("Weight (kg)".encode(), new_response.data)
+            self.assertIn("Air temperature (°C)".encode(), new_response.data)
+            self.assertIn(b'name="depth_m" type="number" min="0" max="45"', new_response.data)
+            self.assertIn(b'name="visibility_m" type="number" min="0" max="30"', new_response.data)
+            self.assertIn(b'name="air_temp_c" type="number" min="-20" max="40"', new_response.data)
             self.assertIn(b'value="" disabled selected', new_response.data)
             self.assertIn(b'<option value="Air" selected>Air</option>', new_response.data)
 
@@ -364,13 +405,13 @@ Kelp House,2 Harbor Way,Alaska,https://kelp.example.test
                     "country_or_area": "Alaska",
                     "latitude": "54.1",
                     "longitude": "-132.9",
-                    "depth_ft": "40",
+                    "depth_m": "12",
                     "duration_min": "70",
-                    "weight_lbs": "",
+                    "weight_kg": "",
                     "exposure": "",
-                    "visibility_ft": "",
-                    "air_temp_degrees": "",
-                    "water_temp_degrees": "",
+                    "visibility_m": "",
+                    "air_temp_c": "",
+                    "water_temp_c": "",
                     "dive_type": "shore dive",
                     "current": "none",
                     "current_strength": "none",
@@ -379,12 +420,12 @@ Kelp House,2 Harbor Way,Alaska,https://kelp.example.test
             )
             dive_id = client.get("/api/dives/mine").get_json()[0]["id"]
             logged = client.get(f"/api/dives/{dive_id}").get_json()
-            self.assertIsNone(logged["weight_lbs"])
+            self.assertIsNone(logged["weight_kg"])
             self.assertIsNone(logged["exposure"])
             self.assertEqual(logged["gas_mix"], "Air")
-            self.assertIsNone(logged["visibility_ft"])
-            self.assertIsNone(logged["air_temp_degrees"])
-            self.assertIsNone(logged["water_temp_degrees"])
+            self.assertIsNone(logged["visibility_m"])
+            self.assertIsNone(logged["air_temp_c"])
+            self.assertIsNone(logged["water_temp_c"])
 
             detail_response = client.get(f"/dive/{dive_id}")
             self.assertGreaterEqual(detail_response.data.count(b"<dd>-</dd>"), 5)
@@ -394,8 +435,47 @@ Kelp House,2 Harbor Way,Alaska,https://kelp.example.test
                     row[1]: row
                     for row in conn.execute("PRAGMA table_info(dives)").fetchall()
                 }
-            for column in ("weight_lbs", "exposure", "visibility_ft", "air_temp_degrees", "water_temp_degrees"):
+            for column in ("weight_kg", "exposure", "visibility_m", "air_temp_c", "water_temp_c"):
                 self.assertEqual(columns[column][3], 0)
+
+    def test_metric_dive_values_use_metric_ranges(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            app, _db_path, _config_path = self.make_app(Path(tmp_dir))
+            client = app.test_client()
+            self.signup(client)
+
+            client.post(
+                "/dive/new",
+                data={
+                    "date": "2026-07-22",
+                    "site_name": "Alert Rock",
+                    "dive_site_id": "1",
+                    "depth_m": "100",
+                    "duration_min": "70",
+                    "weight_kg": "20",
+                    "visibility_m": "100",
+                    "air_temp_c": "-5",
+                    "water_temp_c": "45",
+                    "dive_type": "shore dive",
+                    "current": "none",
+                    "current_strength": "none",
+                    "species_json": json.dumps([]),
+                },
+            )
+
+            logged = client.get("/api/dives/mine").get_json()[0]
+            self.assertEqual(logged["depth_m"], 45)
+            self.assertEqual(logged["weight_kg"], 10)
+            self.assertEqual(logged["visibility_m"], 30)
+            self.assertEqual(logged["air_temp_c"], -5)
+            self.assertEqual(logged["water_temp_c"], 40)
+
+            detail_response = client.get(f"/dive/{logged['id']}")
+            self.assertIn(b"45<em>m</em>", detail_response.data)
+            self.assertIn(b"30 m", detail_response.data)
+            self.assertIn(b"10 kg", detail_response.data)
+            self.assertIn("-5°C".encode(), detail_response.data)
+            self.assertIn("40°C".encode(), detail_response.data)
 
     def test_typed_reference_names_resolve_to_linked_records(self):
         with tempfile.TemporaryDirectory() as tmp_dir:
@@ -414,13 +494,13 @@ Kelp House,2 Harbor Way,Alaska,https://kelp.example.test
                     "country_or_area": "",
                     "latitude": "",
                     "longitude": "",
-                    "depth_ft": "40",
+                    "depth_m": "12",
                     "duration_min": "70",
-                    "weight_lbs": "",
+                    "weight_kg": "",
                     "exposure": "",
-                    "visibility_ft": "",
-                    "air_temp_degrees": "",
-                    "water_temp_degrees": "",
+                    "visibility_m": "",
+                    "air_temp_c": "",
+                    "water_temp_c": "",
                     "dive_type": "shore dive",
                     "current": "none",
                     "current_strength": "none",
@@ -452,8 +532,8 @@ Kelp House,2 Harbor Way,Alaska,https://kelp.example.test
             today = date.today().isoformat()
 
             for visibility, strength, water, air, species in (
-                ("20", "light", "74", "80", ["Coral", "Reef Fish"]),
-                ("80", "very strong", "78", "84", ["Coral"]),
+                ("10", "light", "22", "25", ["Coral", "Reef Fish"]),
+                ("20", "very strong", "26", "29", ["Coral"]),
             ):
                 client.post(
                     "/dive/new",
@@ -464,13 +544,13 @@ Kelp House,2 Harbor Way,Alaska,https://kelp.example.test
                         "country_or_area": "Alaska",
                         "latitude": "54.1",
                         "longitude": "-132.9",
-                        "depth_ft": "40",
+                        "depth_m": "12",
                         "duration_min": "70",
-                        "weight_lbs": "",
+                        "weight_kg": "",
                         "exposure": "",
-                        "visibility_ft": visibility,
-                        "air_temp_degrees": air,
-                        "water_temp_degrees": water,
+                        "visibility_m": visibility,
+                        "air_temp_c": air,
+                        "water_temp_c": water,
                         "dive_type": "shore dive",
                         "current": "tidal",
                         "current_strength": strength,
@@ -495,10 +575,10 @@ Kelp House,2 Harbor Way,Alaska,https://kelp.example.test
             self.assertNotIn(b"<h2>Current Strength</h2>", profile_response.data)
             self.assertNotIn(b"<small>Latitude</small>", profile_response.data)
             self.assertNotIn(b"<small>Longitude</small>", profile_response.data)
-            self.assertIn(b"50 ft", profile_response.data)
+            self.assertIn(b"15 m", profile_response.data)
             self.assertIn(b"Strong", profile_response.data)
-            self.assertIn(b"76 degrees", profile_response.data)
-            self.assertIn(b"82 degrees", profile_response.data)
+            self.assertIn("24°C".encode(), profile_response.data)
+            self.assertIn("27°C".encode(), profile_response.data)
             self.assertNotIn(b"Trailing 2 weeks, feet by day", profile_response.data)
             self.assertNotIn(b"Trailing 2 weeks by day", profile_response.data)
             self.assertIn(b"SIGHTINGS", profile_response.data)
@@ -516,7 +596,7 @@ Kelp House,2 Harbor Way,Alaska,https://kelp.example.test
             empty_day = date.today()
 
             for day, visibility, current, strength in (
-                (observation_day, "40", "tidal", "moderate"),
+                (observation_day, "12", "tidal", "moderate"),
                 (empty_day, "", "none", "none"),
             ):
                 client.post(
@@ -528,9 +608,9 @@ Kelp House,2 Harbor Way,Alaska,https://kelp.example.test
                         "country_or_area": "Alaska",
                         "latitude": "54.1",
                         "longitude": "-132.9",
-                        "depth_ft": "40",
+                        "depth_m": "12",
                         "duration_min": "70",
-                        "visibility_ft": visibility,
+                        "visibility_m": visibility,
                         "dive_type": "shore dive",
                         "current": current,
                         "current_strength": strength,
@@ -540,7 +620,7 @@ Kelp House,2 Harbor Way,Alaska,https://kelp.example.test
 
             profile_response = client.get("/dive-sites/1")
             self.assertEqual(profile_response.status_code, 200)
-            self.assertIn(f"{observation_day.strftime('%b')} {observation_day.day}: 40 ft".encode(), profile_response.data)
+            self.assertIn(f"{observation_day.strftime('%b')} {observation_day.day}: 12 m".encode(), profile_response.data)
             self.assertNotIn(empty_day.strftime("%b %-d").encode(), profile_response.data)
 
             like_response = client.post("/api/dive-sites/1/like").get_json()
@@ -581,14 +661,14 @@ Kelp House,2 Harbor Way,Alaska,https://kelp.example.test
                     "country_or_area": "Alaska",
                     "latitude": "54.1",
                     "longitude": "-132.9",
-                    "depth_ft": "40",
+                    "depth_m": "12",
                     "duration_min": "70",
-                    "weight_lbs": "4",
+                    "weight_kg": "4",
                     "exposure": "5mm",
                     "gas_mix": "32%",
-                    "visibility_ft": "55",
-                    "air_temp_degrees": "83",
-                    "water_temp_degrees": "74",
+                    "visibility_m": "17",
+                    "air_temp_c": "28",
+                    "water_temp_c": "23",
                     "dive_type": "shore dive",
                     "current": "none",
                     "current_strength": "moderate",
@@ -598,9 +678,9 @@ Kelp House,2 Harbor Way,Alaska,https://kelp.example.test
             )
             dive_id = client.get("/api/dives/mine").get_json()[0]["id"]
             logged = client.get(f"/api/dives/{dive_id}").get_json()
-            self.assertEqual(logged["visibility_ft"], 55)
-            self.assertEqual(logged["air_temp_degrees"], 83)
-            self.assertEqual(logged["water_temp_degrees"], 74)
+            self.assertEqual(logged["visibility_m"], 17)
+            self.assertEqual(logged["air_temp_c"], 28)
+            self.assertEqual(logged["water_temp_c"], 23)
             self.assertEqual(logged["gas_mix"], "32%")
             self.assertEqual(logged["dive_type"], "shore dive")
             self.assertEqual(logged["current"], "none")
@@ -656,14 +736,14 @@ Kelp House,2 Harbor Way,Alaska,https://kelp.example.test
                     "country_or_area": "Bonaire",
                     "latitude": "12.1",
                     "longitude": "-68.2",
-                    "depth_ft": "62",
+                    "depth_m": "19",
                     "duration_min": "55",
-                    "weight_lbs": "6",
+                    "weight_kg": "6",
                     "exposure": "3mm",
                     "gas_mix": "Other",
-                    "visibility_ft": "85",
-                    "air_temp_degrees": "88",
-                    "water_temp_degrees": "81",
+                    "visibility_m": "26",
+                    "air_temp_c": "31",
+                    "water_temp_c": "27",
                     "dive_type": "wreck",
                     "current": "rip",
                     "current_strength": "very strong",
@@ -676,10 +756,10 @@ Kelp House,2 Harbor Way,Alaska,https://kelp.example.test
             updated = client.get(f"/api/dives/{dive_id}").get_json()
             self.assertTrue(updated["is_owner"])
             self.assertEqual(updated["site_name"], "Blue Wall")
-            self.assertEqual(updated["depth_ft"], 62)
-            self.assertEqual(updated["visibility_ft"], 85)
-            self.assertEqual(updated["air_temp_degrees"], 88)
-            self.assertEqual(updated["water_temp_degrees"], 81)
+            self.assertEqual(updated["depth_m"], 19)
+            self.assertEqual(updated["visibility_m"], 26)
+            self.assertEqual(updated["air_temp_c"], 31)
+            self.assertEqual(updated["water_temp_c"], 27)
             self.assertEqual(updated["gas_mix"], "Other")
             self.assertEqual(updated["dive_type"], "wreck")
             self.assertEqual(updated["current"], "rip")
@@ -688,7 +768,7 @@ Kelp House,2 Harbor Way,Alaska,https://kelp.example.test
             updated_detail = client.get(f"/dive/{dive_id}")
             self.assertIn(b"Blue Wall", updated_detail.data)
             self.assertIn(b"Wreck", updated_detail.data)
-            self.assertIn(b"62<em>ft</em>", updated_detail.data)
+            self.assertIn(b"19<em>m</em>", updated_detail.data)
             self.assertIn(b"55<em>min</em>", updated_detail.data)
             self.assertIn(b"Very Strong", updated_detail.data)
             updated_home = client.get("/home")
@@ -723,13 +803,13 @@ Kelp House,2 Harbor Way,Alaska,https://kelp.example.test
                     "country_or_area": "Alaska",
                     "latitude": "54.1",
                     "longitude": "-132.9",
-                    "depth_ft": "40",
+                    "depth_m": "12",
                     "duration_min": "70",
-                    "weight_lbs": "",
+                    "weight_kg": "",
                     "exposure": "",
-                    "visibility_ft": "",
-                    "air_temp_degrees": "",
-                    "water_temp_degrees": "",
+                    "visibility_m": "",
+                    "air_temp_c": "",
+                    "water_temp_c": "",
                     "dive_type": "shore dive",
                     "current": "none",
                     "current_strength": "none",
@@ -762,7 +842,7 @@ Kelp House,2 Harbor Way,Alaska,https://kelp.example.test
             self.assertLess(profile_html.index(b"<small>dives</small>"), profile_html.index(b"<small>max depth</small>"))
             self.assertLess(profile_html.index(b"<small>max depth</small>"), profile_html.index(b"<small>longest dive</small>"))
             self.assertLess(profile_html.index(b"<small>longest dive</small>"), profile_html.index(b"<small>total minutes</small>"))
-            self.assertIn(b"<span>40 ft</span><small>max depth</small>", profile_html)
+            self.assertIn(b"<span>12 m</span><small>max depth</small>", profile_html)
             self.assertIn(b"<span>70 min</span><small>longest dive</small>", profile_html)
             self.assertIn(b"<span>70</span><small>total minutes</small>", profile_html)
             self.assertNotIn(b"View map", profile_html)
@@ -796,13 +876,13 @@ Kelp House,2 Harbor Way,Alaska,https://kelp.example.test
                     "country_or_area": "Alaska",
                     "latitude": "54.1",
                     "longitude": "-132.9",
-                    "depth_ft": "42",
+                    "depth_m": "13",
                     "duration_min": "68",
-                    "weight_lbs": "",
+                    "weight_kg": "",
                     "exposure": "",
-                    "visibility_ft": "",
-                    "air_temp_degrees": "",
-                    "water_temp_degrees": "",
+                    "visibility_m": "",
+                    "air_temp_c": "",
+                    "water_temp_c": "",
                     "dive_type": "shore dive",
                     "current": "none",
                     "current_strength": "none",
