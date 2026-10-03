@@ -121,6 +121,8 @@ def register_routes(app):
     app.jinja_env.globals["current_label"] = current_label
     app.jinja_env.globals["current_strength_label"] = current_strength_label
     app.jinja_env.globals["optional_metric"] = optional_metric
+    app.jinja_env.globals["sac_rate"] = sac_rate
+    app.jinja_env.globals["sac_rate_display"] = sac_rate_display
     app.jinja_env.globals["uploaded_file_url"] = uploaded_file_url
 
     @app.route("/uploads/<path:filename>")
@@ -1465,6 +1467,7 @@ def dive_to_json(dive):
         "weight_kg": dive["weight_kg"],
         "starting_pressure_bar": dive["starting_pressure_bar"],
         "ending_pressure_bar": dive["ending_pressure_bar"],
+        "sac_rate": sac_rate(dive),
         "exposure": dive["exposure"],
         "visibility_m": dive["visibility_m"],
         "air_temp_c": dive["air_temp_c"],
@@ -1604,6 +1607,21 @@ def current_label(value):
 
 def current_strength_label(value):
     return CURRENT_STRENGTH_LABELS.get(value, CURRENT_STRENGTH_LABELS["none"])
+
+
+def sac_rate(dive):
+    start = dive["starting_pressure_bar"]
+    end = dive["ending_pressure_bar"]
+    duration = dive["duration_min"]
+    depth = dive["depth_m"]
+    if start is None or end is None or duration <= 0:
+        return None
+    return (start - end) / duration / (depth / 10 + 1)
+
+
+def sac_rate_display(dive):
+    value = sac_rate(dive)
+    return "-" if value is None else f"{value:.1f} bar/min"
 
 
 def optional_metric(value, suffix=""):

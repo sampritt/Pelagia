@@ -125,6 +125,12 @@
                     <input type="range" min="0" max="200" step="10" value="{{ dive.ending_pressure_bar if is_edit and dive.ending_pressure_bar is not none else 0 }}" data-range="endingPressure">
                     <input id="endingPressureBar" name="ending_pressure_bar" type="number" min="0" max="200" step="10" value="{{ dive.ending_pressure_bar if is_edit and dive.ending_pressure_bar is not none else '' }}" data-number="endingPressure">
                 </div>
+                <div class="range-control">
+                    <div>
+                        <label for="sacRateOutput">SAC rate</label>
+                        <output id="sacRateOutput" aria-live="polite">{{ sac_rate_display(dive) if is_edit else '-' }}</output>
+                    </div>
+                </div>
             </div>
         </div>
 

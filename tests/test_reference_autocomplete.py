@@ -12,7 +12,7 @@ from unittest.mock import patch
 from PIL import Image
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from pelagia import create_app
+from pelagia import create_app, sac_rate, sac_rate_display
 
 
 def write_csv(path, content):
@@ -27,6 +27,20 @@ def image_upload(name, color):
 
 
 class ReferenceAutocompleteTest(unittest.TestCase):
+    def test_sac_rate_calculation_and_display(self):
+        dive = {
+            "starting_pressure_bar": 200,
+            "ending_pressure_bar": 50,
+            "duration_min": 50,
+            "depth_m": 20,
+        }
+        self.assertEqual(sac_rate(dive), 1.0)
+        self.assertEqual(sac_rate_display(dive), "1.0 bar/min")
+        self.assertEqual(sac_rate_display({**dive, "duration_min": 40}), "1.2 bar/min")
+        for overrides in ({"starting_pressure_bar": None}, {"ending_pressure_bar": None}, {"duration_min": 0}):
+            self.assertIsNone(sac_rate({**dive, **overrides}))
+            self.assertEqual(sac_rate_display({**dive, **overrides}), "-")
+
     def make_app(self, tmp_path, prepare_db=None):
         sites_csv = tmp_path / "sites.csv"
         species_csv = tmp_path / "species.csv"
@@ -386,6 +400,7 @@ Kelp House,2 Harbor Way,Alaska,https://kelp.example.test
             self.assertIn(b'<output id="weightOutput">-</output>', new_response.data)
             self.assertIn(b'<output id="startingPressureOutput">-</output>', new_response.data)
             self.assertIn(b'<output id="endingPressureOutput">-</output>', new_response.data)
+            self.assertIn(b'<output id="sacRateOutput" aria-live="polite">-</output>', new_response.data)
             self.assertIn(b'<output id="visibilityOutput">-</output>', new_response.data)
             self.assertIn(b'<output id="airTempOutput">-</output>', new_response.data)
             self.assertIn(b'<output id="waterTempOutput">-</output>', new_response.data)

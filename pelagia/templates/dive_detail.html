@@ -118,6 +118,10 @@
                     <dd>{{ optional_metric(dive.ending_pressure_bar, ' bar') }}</dd>
                 </div>
                 <div>
+                    <dt>SAC rate</dt>
+                    <dd>{{ sac_rate_display(dive) }}</dd>
+                </div>
+                <div>
                     <dt>Exposure</dt>
                     <dd>{{ dive.exposure or '-' }}</dd>
                 </div>

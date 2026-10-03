@@ -544,6 +544,20 @@ function initDiveForm() {
 
     const snapToStep = (value, pair) => clamp(Math.round(Number(value) / pair.step) * pair.step, pair.min, pair.max);
 
+    const updateSacRate = () => {
+        const values = ["depth", "duration", "startingPressure", "endingPressure"].map((name) => {
+            const pair = pairs[name];
+            const raw = pair.number.value.trim();
+            const value = Number(raw);
+            return raw && Number.isFinite(value) ? clamp(value, pair.min, pair.max) : null;
+        });
+        const [depth, duration, start, end] = values;
+        const output = document.getElementById("sacRateOutput");
+        output.textContent = values.includes(null) || duration <= 0
+            ? "-"
+            : `${((start - end) / duration / (depth / 10 + 1)).toFixed(1)} bar/min`;
+    };
+
     const setPair = (name, value, fromUser = false, options = {}) => {
         const pair = pairs[name];
         const source = options.source || "auto";
@@ -552,6 +566,7 @@ function initDiveForm() {
         if (!rawValue && pair.optional) {
             pair.number.value = "";
             pair.output.textContent = "-";
+            updateSacRate();
             return null;
         }
         const parsed = Number(rawValue);
@@ -561,6 +576,7 @@ function initDiveForm() {
                 pair.number.value = formatMetricValue(fallback);
                 pair.output.textContent = formatPairOutput(fallback, pair);
             }
+            updateSacRate();
             return null;
         }
 
@@ -578,6 +594,7 @@ function initDiveForm() {
         if (name === "depth" && !durationTouched) {
             setPair("duration", suggestedDuration(exact), false, { commit: true });
         }
+        updateSacRate();
         return exact;
     };
 
