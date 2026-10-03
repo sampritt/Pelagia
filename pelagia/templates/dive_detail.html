@@ -110,6 +110,14 @@
                     <dd>{{ optional_metric(dive.weight_kg, ' kg') }}</dd>
                 </div>
                 <div>
+                    <dt>Starting pressure</dt>
+                    <dd>{{ optional_metric(dive.starting_pressure_bar, ' bar') }}</dd>
+                </div>
+                <div>
+                    <dt>Ending pressure</dt>
+                    <dd>{{ optional_metric(dive.ending_pressure_bar, ' bar') }}</dd>
+                </div>
+                <div>
                     <dt>Exposure</dt>
                     <dd>{{ dive.exposure or '-' }}</dd>
                 </div>

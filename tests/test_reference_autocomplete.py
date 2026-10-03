@@ -361,7 +361,9 @@ Kelp House,2 Harbor Way,Alaska,https://kelp.example.test
         with tempfile.TemporaryDirectory() as tmp_dir:
             _app, db_path, _config_path = self.make_app(Path(tmp_dir), prepare_db=prepare_legacy_db)
             with sqlite3.connect(db_path) as conn:
-                columns = {row[1] for row in conn.execute("PRAGMA table_info(dives)").fetchall()}
+                column_rows = conn.execute("PRAGMA table_info(dives)").fetchall()
+                columns = {row[1] for row in column_rows}
+                column_types = {row[1]: row[2] for row in column_rows}
                 indexes = {row[1] for row in conn.execute("PRAGMA index_list(dives)").fetchall()}
                 migrated = conn.execute(
                     "SELECT depth_m, weight_kg, visibility_m, air_temp_c, water_temp_c FROM dives"
@@ -370,6 +372,7 @@ Kelp House,2 Harbor Way,Alaska,https://kelp.example.test
             self.assertIn("buddy_user_id", columns)
             self.assertIn("idx_dives_buddy_user", indexes)
             self.assertNotIn("depth_ft", columns)
+            self.assertEqual(column_types["weight_kg"], "REAL")
             self.assertEqual(migrated, (19, 5, 20, 30, 25))
             self.assertEqual(foreign_key_errors, [])
 
@@ -381,12 +384,16 @@ Kelp House,2 Harbor Way,Alaska,https://kelp.example.test
 
             new_response = client.get("/dive/new")
             self.assertIn(b'<output id="weightOutput">-</output>', new_response.data)
+            self.assertIn(b'<output id="startingPressureOutput">-</output>', new_response.data)
+            self.assertIn(b'<output id="endingPressureOutput">-</output>', new_response.data)
             self.assertIn(b'<output id="visibilityOutput">-</output>', new_response.data)
             self.assertIn(b'<output id="airTempOutput">-</output>', new_response.data)
             self.assertIn(b'<output id="waterTempOutput">-</output>', new_response.data)
             self.assertIn(b'value="0" data-range="visibility"', new_response.data)
             self.assertIn(b'value="20" data-range="airTemp"', new_response.data)
             self.assertIn(b'value="20" data-range="waterTemp"', new_response.data)
+            self.assertIn(b'min="0" max="200" step="10" value="0" data-range="startingPressure"', new_response.data)
+            self.assertIn(b'min="0" max="200" step="10" value="0" data-range="endingPressure"', new_response.data)
             self.assertIn("Depth (m)".encode(), new_response.data)
             self.assertIn("Weight (kg)".encode(), new_response.data)
             self.assertIn("Air temperature (°C)".encode(), new_response.data)
@@ -408,6 +415,8 @@ Kelp House,2 Harbor Way,Alaska,https://kelp.example.test
                     "depth_m": "12",
                     "duration_min": "70",
                     "weight_kg": "",
+                    "starting_pressure_bar": "",
+                    "ending_pressure_bar": "",
                     "exposure": "",
                     "visibility_m": "",
                     "air_temp_c": "",
@@ -421,6 +430,8 @@ Kelp House,2 Harbor Way,Alaska,https://kelp.example.test
             dive_id = client.get("/api/dives/mine").get_json()[0]["id"]
             logged = client.get(f"/api/dives/{dive_id}").get_json()
             self.assertIsNone(logged["weight_kg"])
+            self.assertIsNone(logged["starting_pressure_bar"])
+            self.assertIsNone(logged["ending_pressure_bar"])
             self.assertIsNone(logged["exposure"])
             self.assertEqual(logged["gas_mix"], "Air")
             self.assertIsNone(logged["visibility_m"])
@@ -435,7 +446,15 @@ Kelp House,2 Harbor Way,Alaska,https://kelp.example.test
                     row[1]: row
                     for row in conn.execute("PRAGMA table_info(dives)").fetchall()
                 }
-            for column in ("weight_kg", "exposure", "visibility_m", "air_temp_c", "water_temp_c"):
+            for column in (
+                "weight_kg",
+                "starting_pressure_bar",
+                "ending_pressure_bar",
+                "exposure",
+                "visibility_m",
+                "air_temp_c",
+                "water_temp_c",
+            ):
                 self.assertEqual(columns[column][3], 0)
 
     def test_metric_dive_values_use_metric_ranges(self):
@@ -453,6 +472,8 @@ Kelp House,2 Harbor Way,Alaska,https://kelp.example.test
                     "depth_m": "100",
                     "duration_min": "70",
                     "weight_kg": "20",
+                    "starting_pressure_bar": "250",
+                    "ending_pressure_bar": "60",
                     "visibility_m": "100",
                     "air_temp_c": "-5",
                     "water_temp_c": "45",
@@ -466,6 +487,8 @@ Kelp House,2 Harbor Way,Alaska,https://kelp.example.test
             logged = client.get("/api/dives/mine").get_json()[0]
             self.assertEqual(logged["depth_m"], 45)
             self.assertEqual(logged["weight_kg"], 10)
+            self.assertEqual(logged["starting_pressure_bar"], 200)
+            self.assertEqual(logged["ending_pressure_bar"], 60)
             self.assertEqual(logged["visibility_m"], 30)
             self.assertEqual(logged["air_temp_c"], -5)
             self.assertEqual(logged["water_temp_c"], 40)
@@ -474,8 +497,51 @@ Kelp House,2 Harbor Way,Alaska,https://kelp.example.test
             self.assertIn(b"45<em>m</em>", detail_response.data)
             self.assertIn(b"30 m", detail_response.data)
             self.assertIn(b"10 kg", detail_response.data)
+            self.assertIn(b"200 bar", detail_response.data)
+            self.assertIn(b"60 bar", detail_response.data)
             self.assertIn("-5°C".encode(), detail_response.data)
             self.assertIn("40°C".encode(), detail_response.data)
+
+    def test_weight_accepts_half_kilos_and_hides_zero_decimal(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            app, db_path, _config_path = self.make_app(Path(tmp_dir))
+            client = app.test_client()
+            self.signup(client)
+
+            new_response = client.get("/dive/new")
+            self.assertIn(b'min="0" max="10" step="0.5" value="0" data-range="weight"', new_response.data)
+            self.assertIn(b'name="weight_kg" type="number" min="0" max="10" step="0.5"', new_response.data)
+
+            base_data = {
+                "date": "2026-07-22",
+                "site_name": "Alert Rock",
+                "dive_site_id": "1",
+                "depth_m": "12",
+                "duration_min": "70",
+                "dive_type": "shore dive",
+                "current": "none",
+                "current_strength": "none",
+                "species_json": json.dumps([]),
+            }
+            client.post("/dive/new", data={**base_data, "weight_kg": "8.5"})
+            client.post("/dive/new", data={**base_data, "weight_kg": "8.0"})
+
+            dives = client.get("/api/dives/mine").get_json()
+            weights = {dive["weight_kg"] for dive in dives}
+            self.assertEqual(weights, {8.0, 8.5})
+
+            half_dive = next(dive for dive in dives if dive["weight_kg"] == 8.5)
+            whole_dive = next(dive for dive in dives if dive["weight_kg"] == 8.0)
+            self.assertIn(b"8.5 kg", client.get(f"/dive/{half_dive['id']}").data)
+            whole_detail = client.get(f"/dive/{whole_dive['id']}").data
+            self.assertIn(b"8 kg", whole_detail)
+            self.assertNotIn(b"8.0 kg", whole_detail)
+
+            with sqlite3.connect(db_path) as conn:
+                weight_type = next(
+                    row[2] for row in conn.execute("PRAGMA table_info(dives)") if row[1] == "weight_kg"
+                )
+            self.assertEqual(weight_type, "REAL")
 
     def test_typed_reference_names_resolve_to_linked_records(self):
         with tempfile.TemporaryDirectory() as tmp_dir:

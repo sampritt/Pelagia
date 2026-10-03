@@ -669,10 +669,11 @@ def create_dive_from_request(user_id, form_request):
         """
         INSERT INTO dives (
             user_id, buddy_user_id, dive_site_id, dive_center_id, dive_center_name, date, site_name, country_or_area, latitude, longitude,
-            depth_m, duration_min, weight_kg, exposure, visibility_m, air_temp_c, water_temp_c,
+            depth_m, duration_min, weight_kg, starting_pressure_bar, ending_pressure_bar,
+            exposure, visibility_m, air_temp_c, water_temp_c,
             gas_mix, dive_type, current, current_strength, notes
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             user_id,
@@ -688,6 +689,8 @@ def create_dive_from_request(user_id, form_request):
             values["depth_m"],
             values["duration_min"],
             values["weight_kg"],
+            values["starting_pressure_bar"],
+            values["ending_pressure_bar"],
             values["exposure"],
             values["visibility_m"],
             values["air_temp_c"],
@@ -724,6 +727,8 @@ def update_dive_from_request(dive_id, user_id, form_request):
             depth_m = ?,
             duration_min = ?,
             weight_kg = ?,
+            starting_pressure_bar = ?,
+            ending_pressure_bar = ?,
             exposure = ?,
             visibility_m = ?,
             air_temp_c = ?,
@@ -748,6 +753,8 @@ def update_dive_from_request(dive_id, user_id, form_request):
             values["depth_m"],
             values["duration_min"],
             values["weight_kg"],
+            values["starting_pressure_bar"],
+            values["ending_pressure_bar"],
             values["exposure"],
             values["visibility_m"],
             values["air_temp_c"],
@@ -772,7 +779,9 @@ def dive_values_from_request(form_request, user_id):
     form = form_request.form
     depth = clamp_int(form.get("depth_m"), 0, 45)
     duration = clamp_int(form.get("duration_min"), 0, 120)
-    weight = maybe_clamped_int(form.get("weight_kg"), 0, 10)
+    weight = maybe_clamped_float(form.get("weight_kg"), 0, 10)
+    starting_pressure = maybe_clamped_int(form.get("starting_pressure_bar"), 0, 200)
+    ending_pressure = maybe_clamped_int(form.get("ending_pressure_bar"), 0, 200)
     exposure = form.get("exposure") if form.get("exposure") in EXPOSURES else None
     visibility = maybe_clamped_int(form.get("visibility_m"), 0, 30)
     air_temp = maybe_clamped_int(form.get("air_temp_c"), -20, 40)
@@ -856,6 +865,8 @@ def dive_values_from_request(form_request, user_id):
         "depth_m": depth,
         "duration_min": duration,
         "weight_kg": weight,
+        "starting_pressure_bar": starting_pressure,
+        "ending_pressure_bar": ending_pressure,
         "exposure": exposure,
         "visibility_m": visibility,
         "air_temp_c": air_temp,
@@ -1452,6 +1463,8 @@ def dive_to_json(dive):
         "depth_m": dive["depth_m"],
         "duration_min": dive["duration_min"],
         "weight_kg": dive["weight_kg"],
+        "starting_pressure_bar": dive["starting_pressure_bar"],
+        "ending_pressure_bar": dive["ending_pressure_bar"],
         "exposure": dive["exposure"],
         "visibility_m": dive["visibility_m"],
         "air_temp_c": dive["air_temp_c"],
@@ -1553,6 +1566,16 @@ def maybe_clamped_int(value, minimum, maximum):
     return clamp_int(value, minimum, maximum)
 
 
+def maybe_clamped_float(value, minimum, maximum):
+    if value is None or str(value).strip() == "":
+        return None
+    try:
+        parsed = float(value)
+    except (TypeError, ValueError):
+        parsed = minimum
+    return max(minimum, min(maximum, parsed))
+
+
 def maybe_float(value):
     try:
         return float(value)
@@ -1586,7 +1609,8 @@ def current_strength_label(value):
 def optional_metric(value, suffix=""):
     if value is None or value == "":
         return "-"
-    return f"{value}{suffix}"
+    display_value = f"{value:g}" if isinstance(value, float) else value
+    return f"{display_value}{suffix}"
 
 
 def _safe_next_url(value):

@@ -124,7 +124,9 @@ def _ensure_dive_site_counts(db):
 
 def _ensure_metric_dive_schema(db):
     _ensure_column(db, "dives", "depth_m", "INTEGER NOT NULL DEFAULT 0")
-    _ensure_column(db, "dives", "weight_kg", "INTEGER")
+    _ensure_column(db, "dives", "weight_kg", "REAL")
+    _ensure_column(db, "dives", "starting_pressure_bar", "INTEGER")
+    _ensure_column(db, "dives", "ending_pressure_bar", "INTEGER")
     _ensure_column(db, "dives", "visibility_m", "INTEGER")
     _ensure_column(db, "dives", "air_temp_c", "INTEGER")
     _ensure_column(db, "dives", "water_temp_c", "INTEGER")
@@ -133,13 +135,24 @@ def _ensure_metric_dive_schema(db):
         for row in db.execute("PRAGMA table_info(dives)").fetchall()
     }
     legacy_columns = {"depth_ft", "weight_lbs", "visibility_ft", "air_temp_degrees", "water_temp_degrees"}
-    optional_columns = ("weight_kg", "exposure", "visibility_m", "air_temp_c", "water_temp_c")
+    optional_columns = (
+        "weight_kg",
+        "starting_pressure_bar",
+        "ending_pressure_bar",
+        "exposure",
+        "visibility_m",
+        "air_temp_c",
+        "water_temp_c",
+    )
     has_legacy_units = bool(legacy_columns.intersection(columns))
     optional_columns_are_nullable = all(
         column in columns and columns[column]["notnull"] == 0
         for column in optional_columns
     )
-    if not has_legacy_units and optional_columns_are_nullable:
+    weight_column_is_real = (
+        "weight_kg" in columns and columns["weight_kg"]["type"].upper() == "REAL"
+    )
+    if not has_legacy_units and optional_columns_are_nullable and weight_column_is_real:
         return
 
     depth_expression = (
@@ -187,7 +200,9 @@ def _ensure_metric_dive_schema(db):
                 longitude REAL,
                 depth_m INTEGER NOT NULL DEFAULT 0,
                 duration_min INTEGER NOT NULL DEFAULT 0,
-                weight_kg INTEGER,
+                weight_kg REAL,
+                starting_pressure_bar INTEGER,
+                ending_pressure_bar INTEGER,
                 exposure TEXT,
                 visibility_m INTEGER,
                 air_temp_c INTEGER,
@@ -208,12 +223,14 @@ def _ensure_metric_dive_schema(db):
             INSERT INTO dives_rebuild (
                 id, user_id, buddy_user_id, dive_site_id, dive_center_id, dive_center_name, date, site_name,
                 country_or_area, latitude, longitude, depth_m, duration_min, weight_kg,
+                starting_pressure_bar, ending_pressure_bar,
                 exposure, visibility_m, air_temp_c, water_temp_c, gas_mix, dive_type,
                 current, current_strength, notes, is_deleted, created_at
             )
             SELECT
                 id, user_id, buddy_user_id, dive_site_id, dive_center_id, dive_center_name, date, site_name,
                 country_or_area, latitude, longitude, {depth_expression}, duration_min, {weight_expression},
+                starting_pressure_bar, ending_pressure_bar,
                 exposure, {visibility_expression}, {air_temp_expression}, {water_temp_expression}, gas_mix, dive_type,
                 current, current_strength, notes, is_deleted, created_at
             FROM dives;

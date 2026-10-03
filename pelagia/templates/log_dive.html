@@ -87,8 +87,8 @@
                         <label for="weightKg">Weight (kg)</label>
                         <output id="weightOutput">{{ optional_metric(dive.weight_kg, ' kg') if is_edit else '-' }}</output>
                     </div>
-                    <input type="range" min="0" max="10" step="1" value="{{ dive.weight_kg if is_edit and dive.weight_kg is not none else 0 }}" data-range="weight">
-                    <input id="weightKg" name="weight_kg" type="number" min="0" max="10" step="1" value="{{ dive.weight_kg if is_edit and dive.weight_kg is not none else '' }}" data-number="weight">
+                    <input type="range" min="0" max="10" step="0.5" value="{{ dive.weight_kg if is_edit and dive.weight_kg is not none else 0 }}" data-range="weight">
+                    <input id="weightKg" name="weight_kg" type="number" min="0" max="10" step="0.5" value="{{ dive.weight_kg if is_edit and dive.weight_kg is not none else '' }}" data-number="weight">
                 </div>
                 <label>
                     Exposure
@@ -109,6 +109,22 @@
                         {% endfor %}
                     </select>
                 </label>
+                <div class="range-control">
+                    <div>
+                        <label for="startingPressureBar">Starting pressure</label>
+                        <output id="startingPressureOutput">{{ optional_metric(dive.starting_pressure_bar, ' bar') if is_edit else '-' }}</output>
+                    </div>
+                    <input type="range" min="0" max="200" step="10" value="{{ dive.starting_pressure_bar if is_edit and dive.starting_pressure_bar is not none else 0 }}" data-range="startingPressure">
+                    <input id="startingPressureBar" name="starting_pressure_bar" type="number" min="0" max="200" step="10" value="{{ dive.starting_pressure_bar if is_edit and dive.starting_pressure_bar is not none else '' }}" data-number="startingPressure">
+                </div>
+                <div class="range-control">
+                    <div>
+                        <label for="endingPressureBar">Ending pressure</label>
+                        <output id="endingPressureOutput">{{ optional_metric(dive.ending_pressure_bar, ' bar') if is_edit else '-' }}</output>
+                    </div>
+                    <input type="range" min="0" max="200" step="10" value="{{ dive.ending_pressure_bar if is_edit and dive.ending_pressure_bar is not none else 0 }}" data-range="endingPressure">
+                    <input id="endingPressureBar" name="ending_pressure_bar" type="number" min="0" max="200" step="10" value="{{ dive.ending_pressure_bar if is_edit and dive.ending_pressure_bar is not none else '' }}" data-number="endingPressure">
+                </div>
             </div>
         </div>
 
