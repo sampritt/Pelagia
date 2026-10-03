@@ -127,6 +127,7 @@ def _ensure_metric_dive_schema(db):
     _ensure_column(db, "dives", "weight_kg", "REAL")
     _ensure_column(db, "dives", "starting_pressure_bar", "INTEGER")
     _ensure_column(db, "dives", "ending_pressure_bar", "INTEGER")
+    _ensure_column(db, "dives", "sac_rate_l_min", "REAL")
     _ensure_column(db, "dives", "visibility_m", "INTEGER")
     _ensure_column(db, "dives", "air_temp_c", "INTEGER")
     _ensure_column(db, "dives", "water_temp_c", "INTEGER")
@@ -139,6 +140,7 @@ def _ensure_metric_dive_schema(db):
         "weight_kg",
         "starting_pressure_bar",
         "ending_pressure_bar",
+        "sac_rate_l_min",
         "exposure",
         "visibility_m",
         "air_temp_c",
@@ -203,6 +205,7 @@ def _ensure_metric_dive_schema(db):
                 weight_kg REAL,
                 starting_pressure_bar INTEGER,
                 ending_pressure_bar INTEGER,
+                sac_rate_l_min REAL,
                 exposure TEXT,
                 visibility_m INTEGER,
                 air_temp_c INTEGER,
@@ -223,14 +226,14 @@ def _ensure_metric_dive_schema(db):
             INSERT INTO dives_rebuild (
                 id, user_id, buddy_user_id, dive_site_id, dive_center_id, dive_center_name, date, site_name,
                 country_or_area, latitude, longitude, depth_m, duration_min, weight_kg,
-                starting_pressure_bar, ending_pressure_bar,
+                starting_pressure_bar, ending_pressure_bar, sac_rate_l_min,
                 exposure, visibility_m, air_temp_c, water_temp_c, gas_mix, dive_type,
                 current, current_strength, notes, is_deleted, created_at
             )
             SELECT
                 id, user_id, buddy_user_id, dive_site_id, dive_center_id, dive_center_name, date, site_name,
                 country_or_area, latitude, longitude, {depth_expression}, duration_min, {weight_expression},
-                starting_pressure_bar, ending_pressure_bar,
+                starting_pressure_bar, ending_pressure_bar, sac_rate_l_min,
                 exposure, {visibility_expression}, {air_temp_expression}, {water_temp_expression}, gas_mix, dive_type,
                 current, current_strength, notes, is_deleted, created_at
             FROM dives;

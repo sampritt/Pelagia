@@ -2,13 +2,12 @@
     <span class="tank-size-label">Tank size</span>
     <div class="tank-size-options">
         <label>
-            <input class="sr-only" type="radio" name="tank_size_preview" value="12" data-tank-size checked>
+            <input class="sr-only" type="radio" name="tank_size_l" value="12" data-tank-size{{ ' checked' if tank_size_l == 12 else '' }}>
             <span>12 L</span>
         </label>
         <label>
-            <input class="sr-only" type="radio" name="tank_size_preview" value="15" data-tank-size>
+            <input class="sr-only" type="radio" name="tank_size_l" value="15" data-tank-size{{ ' checked' if tank_size_l == 15 else '' }}>
             <span>15 L</span>
         </label>
     </div>
-    <small>Not saved</small>
 </div>

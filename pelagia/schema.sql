@@ -75,6 +75,7 @@ CREATE TABLE IF NOT EXISTS dives (
     weight_kg REAL,
     starting_pressure_bar INTEGER,
     ending_pressure_bar INTEGER,
+    sac_rate_l_min REAL,
     exposure TEXT,
     visibility_m INTEGER,
     air_temp_c INTEGER,

@@ -12,7 +12,8 @@ from unittest.mock import patch
 from PIL import Image
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from pelagia import create_app, sac_rate, sac_rate_display
+from pelagia import create_app, sac_rate, sac_rate_display, sac_tank_size
+from pelagia import db as database
 
 
 def write_csv(path, content):
@@ -35,43 +36,119 @@ class ReferenceAutocompleteTest(unittest.TestCase):
             "depth_m": 20,
         }
         self.assertEqual(sac_rate(dive), 1.0)
-        self.assertEqual(sac_rate_display(dive), "12.0 L/min")
-        self.assertEqual(sac_rate_display(dive, tank_size_l=15), "15.0 L/min")
-        self.assertEqual(sac_rate_display({**dive, "duration_min": 40}), "15.0 L/min")
-        self.assertEqual(sac_rate_display({**dive, "duration_min": 40}, tank_size_l=15), "18.8 L/min")
-        self.assertEqual(sac_rate_display({**dive, "ending_pressure_bar": 200}), "0.0 L/min")
+        self.assertEqual(sac_rate({**dive, "duration_min": 40}), 1.25)
+        self.assertEqual(sac_rate_display({**dive, "sac_rate_l_min": 12}), "12.0 L/min")
+        self.assertEqual(sac_rate_display({**dive, "sac_rate_l_min": 18.75}), "18.8 L/min")
+        self.assertEqual(sac_rate_display({**dive, "sac_rate_l_min": 0}), "0.0 L/min")
+        self.assertEqual(sac_tank_size({**dive, "sac_rate_l_min": 15}), 15)
+        self.assertEqual(sac_tank_size({**dive, "sac_rate_l_min": 12}), 12)
+        self.assertEqual(sac_tank_size({**dive, "sac_rate_l_min": None}), 12)
         for overrides in ({"starting_pressure_bar": None}, {"ending_pressure_bar": None}, {"duration_min": 0}):
             self.assertIsNone(sac_rate({**dive, **overrides}))
-            self.assertEqual(sac_rate_display({**dive, **overrides}), "-")
+            self.assertEqual(sac_rate_display({**dive, **overrides, "sac_rate_l_min": None}), "-")
 
-    def test_tank_size_is_a_temporary_display_choice(self):
+    def test_sac_is_saved_with_the_dive_and_detail_is_read_only(self):
         with tempfile.TemporaryDirectory() as tmp_dir:
             app, db_path, _ = self.make_app(Path(tmp_dir))
             client = app.test_client()
             self.signup(client)
-            response = client.post("/dive/new", data={
+            payload = {
                 "date": "2026-07-22",
                 "site_name": "Alert Rock",
                 "depth_m": "20",
-                "duration_min": "50",
+                "duration_min": "40",
                 "starting_pressure_bar": "200",
                 "ending_pressure_bar": "50",
-                "tank_size_preview": "15",
-            })
+                "tank_size_l": "15",
+                "sac_rate_l_min": "999",  # Never trust a client-supplied calculated rate.
+            }
+            response = client.post("/dive/new", data=payload)
             self.assertEqual(response.status_code, 302)
             dive = client.get("/api/dives/mine").get_json()[0]
-            self.assertEqual(dive["sac_rate"], 1.0)
+            self.assertEqual(dive["sac_rate"], 18.75)
+            self.assertEqual(dive["sac_rate_l_min"], 18.75)
             self.assertNotIn("tank_size_preview", dive)
             self.assertNotIn("tank_size_l", dive)
-            for url in (f'/dive/{dive["id"]}', f'/dive/{dive["id"]}/edit'):
-                html = client.get(url).data
-                self.assertIn(b"12.0 L/min", html)
-                self.assertIn(b'value="12" data-tank-size checked', html)
-                self.assertIn(b'value="15" data-tank-size>', html)
-                self.assertIn(b"Not saved", html)
+            detail_url = f'/dive/{dive["id"]}'
+            edit_url = f'{detail_url}/edit'
+            detail = client.get(detail_url).data
+            self.assertIn(b"18.8 L/min", detail)
+            self.assertNotIn(b"data-tank-size", detail)
+            self.assertNotIn(b"data-pressure-sac", detail)
+            edit = client.get(edit_url).data
+            self.assertIn(b"18.8 L/min", edit)
+            self.assertIn(b'value="15" data-tank-size checked', edit)
+            self.assertIn(b'data-is-edit="true"', edit)
+            self.assertIn(b'value="40" data-number="duration"', edit)
             with sqlite3.connect(db_path) as conn:
                 columns = {row[1] for row in conn.execute("PRAGMA table_info(dives)")}
+                self.assertEqual(conn.execute("SELECT sac_rate_l_min FROM dives WHERE id = ?", (dive["id"],)).fetchone()[0], 18.75)
             self.assertFalse(any("tank" in column for column in columns))
+
+            # Re-saving without changing inputs preserves the saved rate.
+            client.post(edit_url, data=payload)
+            self.assertEqual(client.get(f'/api/dives/{dive["id"]}').get_json()["sac_rate_l_min"], 18.75)
+            payload["duration_min"] = "50"
+            client.post(edit_url, data=payload)
+            self.assertEqual(client.get(f'/api/dives/{dive["id"]}').get_json()["sac_rate_l_min"], 15)
+            # Older callers without a tank-size field retain the inferred choice.
+            payload.pop("tank_size_l")
+            client.post(edit_url, data=payload)
+            self.assertEqual(client.get(f'/api/dives/{dive["id"]}').get_json()["sac_rate_l_min"], 15)
+            payload["tank_size_l"] = "12"
+            client.post(edit_url, data=payload)
+            self.assertEqual(client.get(f'/api/dives/{dive["id"]}').get_json()["sac_rate_l_min"], 12)
+
+            # A logged view must use the saved value, not recalculate from pressure.
+            with sqlite3.connect(db_path) as conn:
+                conn.execute("UPDATE dives SET sac_rate_l_min = 17.5 WHERE id = ?", (dive["id"],))
+            self.assertIn(b"17.5 L/min", client.get(detail_url).data)
+            with app.app_context():
+                database.init_db()
+                database.init_db()
+                saved = database.get_db().execute("SELECT sac_rate_l_min FROM dives WHERE id = ?", (dive["id"],)).fetchone()[0]
+            self.assertEqual(saved, 17.5)
+
+            payload["ending_pressure_bar"] = ""
+            client.post(edit_url, data=payload)
+            self.assertIsNone(client.get(f'/api/dives/{dive["id"]}').get_json()["sac_rate_l_min"])
+            self.assertIn(b"<dt>SAC rate</dt>\n                        <dd>-</dd>", client.get(detail_url).data)
+
+    def test_sac_default_validation_and_zero_consumption(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            app, _, _ = self.make_app(Path(tmp_dir))
+            client = app.test_client()
+            self.signup(client)
+            base = {"site_name": "Alert Rock", "depth_m": "20", "duration_min": "50",
+                    "starting_pressure_bar": "200", "ending_pressure_bar": "50"}
+            for overrides, expected in (({}, 12), ({"tank_size_l": "999"}, 12),
+                                        ({"tank_size_l": "15"}, 15), ({"tank_size_preview": "15"}, 15),
+                                        ({"ending_pressure_bar": "200"}, 0), ({"duration_min": "0"}, None)):
+                with self.subTest(overrides=overrides):
+                    client.post("/dive/new", data={**base, **overrides})
+                    dives = client.get("/api/dives/mine").get_json()
+                    logged = max(dives, key=lambda dive: dive["id"])
+                    self.assertEqual(logged["sac_rate_l_min"], expected)
+
+    def test_existing_metric_dives_migrate_without_inventing_a_sac_value(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            def prepare_db(db_path):
+                schema = (Path(__file__).resolve().parents[1] / "pelagia/schema.sql").read_text()
+                with sqlite3.connect(db_path) as conn:
+                    conn.executescript(schema.replace("    sac_rate_l_min REAL,\n", ""))
+                    conn.execute("INSERT INTO users (id, username, password_hash) VALUES (1, 'legacy', 'hash')")
+                    conn.execute("""INSERT INTO dives (user_id, date, site_name, depth_m, duration_min,
+                                   starting_pressure_bar, ending_pressure_bar) VALUES (1, '2026-07-22', 'Legacy dive', 20, 50, 200, 50)""")
+            app, db_path, _ = self.make_app(Path(tmp_dir), prepare_db=prepare_db)
+            with sqlite3.connect(db_path) as conn:
+                row = conn.execute("SELECT starting_pressure_bar, ending_pressure_bar, sac_rate_l_min FROM dives").fetchone()
+                self.assertEqual(row, (200, 50, None))
+                self.assertEqual(conn.execute("PRAGMA foreign_key_check").fetchall(), [])
+            client = app.test_client()
+            self.signup(client)
+            detail = client.get("/dive/1").data
+            self.assertIn(b"<dt>SAC rate</dt>\n                        <dd>-</dd>", detail)
+            self.assertNotIn(b"data-tank-size", detail)
 
     def make_app(self, tmp_path, prepare_db=None):
         sites_csv = tmp_path / "sites.csv"
@@ -378,6 +455,7 @@ Kelp House,2 Harbor Way,Alaska,https://kelp.example.test
                         longitude REAL,
                         depth_ft INTEGER NOT NULL DEFAULT 0,
                         duration_min INTEGER NOT NULL DEFAULT 0,
+                        sac_rate_l_min REAL,
                         weight_lbs INTEGER,
                         exposure TEXT,
                         visibility_ft INTEGER,
@@ -397,9 +475,9 @@ Kelp House,2 Harbor Way,Alaska,https://kelp.example.test
                     """
                     INSERT INTO dives (
                         user_id, date, site_name, depth_ft, duration_min, weight_lbs,
-                        visibility_ft, air_temp_degrees, water_temp_degrees
+                        visibility_ft, air_temp_degrees, water_temp_degrees, sac_rate_l_min
                     )
-                    VALUES (1, '2026-07-01', 'Legacy Reef', 62, 45, 10, 66, 86, 77)
+                    VALUES (1, '2026-07-01', 'Legacy Reef', 62, 45, 10, 66, 86, 77, 17.5)
                     """
                 )
                 conn.commit()
@@ -412,14 +490,14 @@ Kelp House,2 Harbor Way,Alaska,https://kelp.example.test
                 column_types = {row[1]: row[2] for row in column_rows}
                 indexes = {row[1] for row in conn.execute("PRAGMA index_list(dives)").fetchall()}
                 migrated = conn.execute(
-                    "SELECT depth_m, weight_kg, visibility_m, air_temp_c, water_temp_c FROM dives"
+                    "SELECT depth_m, weight_kg, visibility_m, air_temp_c, water_temp_c, sac_rate_l_min FROM dives"
                 ).fetchone()
                 foreign_key_errors = conn.execute("PRAGMA foreign_key_check").fetchall()
             self.assertIn("buddy_user_id", columns)
             self.assertIn("idx_dives_buddy_user", indexes)
             self.assertNotIn("depth_ft", columns)
             self.assertEqual(column_types["weight_kg"], "REAL")
-            self.assertEqual(migrated, (19, 5, 20, 30, 25))
+            self.assertEqual(migrated, (19, 5, 20, 30, 25, 17.5))
             self.assertEqual(foreign_key_errors, [])
 
     def test_optional_dive_metadata_defaults_to_unset(self):

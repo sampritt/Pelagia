@@ -443,16 +443,6 @@ function renderSacRate(calculator, pressureRate) {
     calculator.querySelector(".sac-rate-summary")?.classList.toggle("is-unset", pressureRate === null);
 }
 
-function initSavedDiveSac() {
-    document.querySelectorAll("[data-pressure-sac]").forEach((calculator) => {
-        const raw = calculator.dataset.pressureSac;
-        const pressureRate = raw === "" ? null : Number(raw);
-        const update = () => renderSacRate(calculator, pressureRate);
-        calculator.querySelectorAll("[data-tank-size]").forEach((input) => input.addEventListener("change", update));
-        update();
-    });
-}
-
 function initDiveForm() {
     const form = document.querySelector("[data-dive-form]");
     if (!form) {
@@ -471,7 +461,7 @@ function initDiveForm() {
     const country = document.getElementById("country");
     const latitude = document.getElementById("latitude");
     const longitude = document.getElementById("longitude");
-    let durationTouched = false;
+    let durationTouched = form.dataset.isEdit === "true";
 
     const pairs = {
         depth: {
@@ -1040,7 +1030,6 @@ document.addEventListener("DOMContentLoaded", () => {
     initDiveInteractions();
     initGlobalSearch();
     initDiveForm();
-    initSavedDiveSac();
     initStaticMaps(document);
 });
 

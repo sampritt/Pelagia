@@ -121,7 +121,6 @@ def register_routes(app):
     app.jinja_env.globals["current_label"] = current_label
     app.jinja_env.globals["current_strength_label"] = current_strength_label
     app.jinja_env.globals["optional_metric"] = optional_metric
-    app.jinja_env.globals["sac_rate"] = sac_rate
     app.jinja_env.globals["sac_rate_display"] = sac_rate_display
     app.jinja_env.globals["uploaded_file_url"] = uploaded_file_url
 
@@ -210,6 +209,7 @@ def register_routes(app):
             today=date.today().isoformat(),
             dive=None,
             is_edit=False,
+            tank_size_l=12,
             next_url="",
         )
 
@@ -248,6 +248,7 @@ def register_routes(app):
             today=date.today().isoformat(),
             dive=dive,
             is_edit=True,
+            tank_size_l=sac_tank_size(dive),
             next_url=_safe_next_url(request.args.get("next") or request.referrer),
         )
 
@@ -671,11 +672,11 @@ def create_dive_from_request(user_id, form_request):
         """
         INSERT INTO dives (
             user_id, buddy_user_id, dive_site_id, dive_center_id, dive_center_name, date, site_name, country_or_area, latitude, longitude,
-            depth_m, duration_min, weight_kg, starting_pressure_bar, ending_pressure_bar,
+            depth_m, duration_min, weight_kg, starting_pressure_bar, ending_pressure_bar, sac_rate_l_min,
             exposure, visibility_m, air_temp_c, water_temp_c,
             gas_mix, dive_type, current, current_strength, notes
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             user_id,
@@ -693,6 +694,7 @@ def create_dive_from_request(user_id, form_request):
             values["weight_kg"],
             values["starting_pressure_bar"],
             values["ending_pressure_bar"],
+            values["sac_rate_l_min"],
             values["exposure"],
             values["visibility_m"],
             values["air_temp_c"],
@@ -712,7 +714,9 @@ def create_dive_from_request(user_id, form_request):
 
 
 def update_dive_from_request(dive_id, user_id, form_request):
-    values = dive_values_from_request(form_request, user_id)
+    existing_dive = fetch_owned_dive(dive_id, user_id)
+    default_tank_size_l = sac_tank_size(existing_dive) if existing_dive else 12
+    values = dive_values_from_request(form_request, user_id, default_tank_size_l)
     db = database.get_db()
     db.execute(
         """
@@ -731,6 +735,7 @@ def update_dive_from_request(dive_id, user_id, form_request):
             weight_kg = ?,
             starting_pressure_bar = ?,
             ending_pressure_bar = ?,
+            sac_rate_l_min = ?,
             exposure = ?,
             visibility_m = ?,
             air_temp_c = ?,
@@ -757,6 +762,7 @@ def update_dive_from_request(dive_id, user_id, form_request):
             values["weight_kg"],
             values["starting_pressure_bar"],
             values["ending_pressure_bar"],
+            values["sac_rate_l_min"],
             values["exposure"],
             values["visibility_m"],
             values["air_temp_c"],
@@ -777,13 +783,16 @@ def update_dive_from_request(dive_id, user_id, form_request):
     return dive_id
 
 
-def dive_values_from_request(form_request, user_id):
+def dive_values_from_request(form_request, user_id, default_tank_size_l=12):
     form = form_request.form
     depth = clamp_int(form.get("depth_m"), 0, 45)
     duration = clamp_int(form.get("duration_min"), 0, 120)
     weight = maybe_clamped_float(form.get("weight_kg"), 0, 10)
     starting_pressure = maybe_clamped_int(form.get("starting_pressure_bar"), 0, 200)
     ending_pressure = maybe_clamped_int(form.get("ending_pressure_bar"), 0, 200)
+    # Tank size is a calculation input, not a stored dive field.
+    tank_size_choice = form.get("tank_size_l", form.get("tank_size_preview", str(default_tank_size_l)))
+    tank_size_l = 15 if tank_size_choice == "15" else 12
     exposure = form.get("exposure") if form.get("exposure") in EXPOSURES else None
     visibility = maybe_clamped_int(form.get("visibility_m"), 0, 30)
     air_temp = maybe_clamped_int(form.get("air_temp_c"), -20, 40)
@@ -854,7 +863,7 @@ def dive_values_from_request(form_request, user_id):
         species_names = json.loads(form.get("species_json", "[]"))
     except json.JSONDecodeError:
         species_names = []
-    return {
+    values = {
         "dive_site_id": dive_site_id,
         "dive_center_id": dive_center_id,
         "buddy_user_id": buddy_user_id,
@@ -880,6 +889,9 @@ def dive_values_from_request(form_request, user_id):
         "notes": form.get("notes", "").strip(),
         "species_names": species_names,
     }
+    pressure_rate = sac_rate(values)
+    values["sac_rate_l_min"] = None if pressure_rate is None else pressure_rate * tank_size_l
+    return values
 
 
 def resolve_dive_site_by_name(site_name, country, db):
@@ -1467,7 +1479,8 @@ def dive_to_json(dive):
         "weight_kg": dive["weight_kg"],
         "starting_pressure_bar": dive["starting_pressure_bar"],
         "ending_pressure_bar": dive["ending_pressure_bar"],
-        "sac_rate": sac_rate(dive),
+        "sac_rate": dive["sac_rate_l_min"],
+        "sac_rate_l_min": dive["sac_rate_l_min"],
         "exposure": dive["exposure"],
         "visibility_m": dive["visibility_m"],
         "air_temp_c": dive["air_temp_c"],
@@ -1610,6 +1623,7 @@ def current_strength_label(value):
 
 
 def sac_rate(dive):
+    """Calculate surface-adjusted pressure consumption in bar/min."""
     start = dive["starting_pressure_bar"]
     end = dive["ending_pressure_bar"]
     duration = dive["duration_min"]
@@ -1619,9 +1633,20 @@ def sac_rate(dive):
     return (start - end) / duration / (depth / 10 + 1)
 
 
-def sac_rate_display(dive, tank_size_l=12):
-    value = sac_rate(dive)
-    return "-" if value is None else f"{value * tank_size_l:.1f} L/min"
+def sac_rate_display(dive):
+    value = dive["sac_rate_l_min"]
+    return "-" if value is None else f"{value:.1f} L/min"
+
+
+def sac_tank_size(dive):
+    """Restore the calculator choice on edit without storing tank size itself."""
+    pressure_rate = sac_rate(dive)
+    saved_rate = dive["sac_rate_l_min"]
+    if pressure_rate and saved_rate is not None:
+        for tank_size_l in (12, 15):
+            if math.isclose(saved_rate, pressure_rate * tank_size_l, rel_tol=1e-9, abs_tol=1e-9):
+                return tank_size_l
+    return 12
 
 
 def optional_metric(value, suffix=""):

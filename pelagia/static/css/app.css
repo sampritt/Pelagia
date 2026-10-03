@@ -4014,12 +4014,6 @@ input[type="range"] {
     color: var(--accent-deep);
 }
 
-.tank-size-control small {
-    color: var(--muted);
-    font-size: 0.67rem;
-    font-weight: 550;
-}
-
 /* Metric displays share the same hierarchy across the log and profiles. */
 
 .stat-stack span,
@@ -4081,12 +4075,6 @@ input[type="range"] {
 .detail-pressure-summary dd {
     font-size: 1.07rem;
     font-weight: 750;
-}
-
-.detail-pressure-summary .tank-size-control {
-    margin-top: 14px;
-    padding-top: 14px;
-    border-top: 1px solid var(--accent-line);
 }
 
 .pressure-metric-list .sac-metric {

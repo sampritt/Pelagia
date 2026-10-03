@@ -3,7 +3,7 @@
 
 {% block content %}
 <section class="log-layout">
-    <form class="dive-form keyboard-flow" method="post" enctype="multipart/form-data" data-dive-form>
+    <form class="dive-form keyboard-flow" method="post" enctype="multipart/form-data" data-dive-form data-is-edit="{{ 'true' if is_edit else 'false' }}">
         <input type="hidden" name="next" value="{{ next_url }}">
         <div class="section-head">
             <div>
@@ -143,7 +143,7 @@
                     <div class="sac-rate-summary">
                         <span class="sac-rate-label"><abbr title="Surface Air Consumption">SAC</abbr> rate</span>
                         <output id="sacRateOutput" aria-live="polite" data-sac-output>{{ sac_rate_display(dive) if is_edit else '-' }}</output>
-                        <small>Surface-adjusted gas use for the selected tank size</small>
+                        <small>Calculated rate is saved with your dive</small>
                     </div>
                 </div>
                 <output id="startingPressureOutput" hidden>{{ optional_metric(dive.starting_pressure_bar, ' bar') if is_edit else '-' }}</output>
