@@ -93,48 +93,58 @@
             <span>{{ dive.depth_m }}<em>m</em></span>
         </div>
         <div>
-            <small>Time</small>
+            <small>Duration</small>
             <span>{{ dive.duration_min }}<em>min</em></span>
         </div>
     </div>
 
-    <div class="detail-lower-grid">
-        <div class="detail-panel">
+    <div class="detail-lower-grid dive-metric-groups">
+        <div class="detail-panel equipment-detail">
+            <h2>Equipment &amp; air</h2>
+            <dl class="detail-metric-list">
+                <div>
+                    <dt>Weight</dt>
+                    <dd>{{ optional_metric(dive.weight_kg, ' kg') }}</dd>
+                </div>
+                <div>
+                    <dt>Exposure</dt>
+                    <dd>{{ dive.exposure or '-' }}</dd>
+                </div>
+                <div class="gas-mix-metric">
+                    <dt>Gas mix</dt>
+                    <dd>{{ 'EANx ' ~ dive.gas_mix if is_nitrox_gas_mix(dive.gas_mix) else dive.gas_mix or 'Air' }}</dd>
+                </div>
+            </dl>
+            <div class="detail-pressure-summary">
+                <dl class="detail-metric-list pressure-metric-list">
+                    <div>
+                        <dt>Starting pressure</dt>
+                        <dd>{{ optional_metric(dive.starting_pressure_bar, ' bar') }}</dd>
+                    </div>
+                    <div>
+                        <dt>Ending pressure</dt>
+                        <dd>{{ optional_metric(dive.ending_pressure_bar, ' bar') }}</dd>
+                    </div>
+                    <div class="sac-metric">
+                        <dt>SAC rate</dt>
+                        <dd>{{ sac_rate_display(dive) }}</dd>
+                    </div>
+                </dl>
+            </div>
+        </div>
+        <div class="detail-panel conditions-detail">
+            <h2>Conditions</h2>
             <dl class="detail-metric-list">
                 <div>
                     <dt>Visibility</dt>
                     <dd>{{ optional_metric(dive.visibility_m, ' m') }}</dd>
                 </div>
                 <div>
-                    <dt>Weight</dt>
-                    <dd>{{ optional_metric(dive.weight_kg, ' kg') }}</dd>
-                </div>
-                <div>
-                    <dt>Starting pressure</dt>
-                    <dd>{{ optional_metric(dive.starting_pressure_bar, ' bar') }}</dd>
-                </div>
-                <div>
-                    <dt>Ending pressure</dt>
-                    <dd>{{ optional_metric(dive.ending_pressure_bar, ' bar') }}</dd>
-                </div>
-                <div>
-                    <dt>SAC rate</dt>
-                    <dd>{{ sac_rate_display(dive) }}</dd>
-                </div>
-                <div>
-                    <dt>Exposure</dt>
-                    <dd>{{ dive.exposure or '-' }}</dd>
-                </div>
-                <div>
-                    <dt>Gas mix</dt>
-                    <dd>{{ dive.gas_mix or 'Air' }}</dd>
-                </div>
-                <div>
-                    <dt>Air</dt>
+                    <dt>Air temperature</dt>
                     <dd>{{ optional_metric(dive.air_temp_c, '°C') }}</dd>
                 </div>
                 <div>
-                    <dt>Water</dt>
+                    <dt>Water temperature</dt>
                     <dd>{{ optional_metric(dive.water_temp_c, '°C') }}</dd>
                 </div>
                 <div>
@@ -148,7 +158,6 @@
                 </div>
             </dl>
         </div>
-
     </div>
 
     {% if dive.species %}
@@ -164,6 +173,7 @@
 
     {% if dive.notes %}
         <div class="notes-block">
+            <h2>Dive notes</h2>
             <p>{{ dive.notes }}</p>
         </div>
     {% endif %}

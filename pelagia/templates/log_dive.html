@@ -29,7 +29,7 @@
             <div class="form-section-title">
                 <h2>Location</h2>
             </div>
-            <div class="form-grid">
+            <div class="form-grid location-grid">
                 <label>
                     Date
                     <input type="date" name="date" value="{{ dive.date if is_edit else today }}" required>
@@ -64,69 +64,89 @@
         <div class="form-section">
             <div class="form-section-title">
                 <h2>Metrics</h2>
+                <span class="section-unit-label">Metric units</span>
             </div>
-            <div class="control-panel">
+            <div class="control-panel metrics-panel">
                 <div class="range-control">
                     <div>
                         <label for="depthM">Depth (m)</label>
                         <output id="depthOutput">{{ dive.depth_m if is_edit else 12 }} m</output>
                     </div>
-                    <input type="range" min="0" max="45" step="1" value="{{ dive.depth_m if is_edit else 12 }}" data-range="depth">
+                    <input type="range" min="0" max="45" step="1" value="{{ dive.depth_m if is_edit else 12 }}" data-range="depth" aria-label="Depth slider (m)">
                     <input id="depthM" name="depth_m" type="number" min="0" max="45" step="1" value="{{ dive.depth_m if is_edit else 12 }}" data-number="depth">
                 </div>
                 <div class="range-control">
                     <div>
-                        <label for="durationMin">Time</label>
+                        <label for="durationMin">Duration</label>
                         <output id="durationOutput">{{ dive.duration_min if is_edit else 80 }} min</output>
                     </div>
-                    <input type="range" min="0" max="120" step="5" value="{{ dive.duration_min if is_edit else 80 }}" data-range="duration">
+                    <input type="range" min="0" max="120" step="5" value="{{ dive.duration_min if is_edit else 80 }}" data-range="duration" aria-label="Duration slider (min)">
                     <input id="durationMin" name="duration_min" type="number" min="0" max="120" step="any" value="{{ dive.duration_min if is_edit else 80 }}" data-number="duration">
                 </div>
-                <div class="range-control">
-                    <div>
-                        <label for="weightKg">Weight (kg)</label>
-                        <output id="weightOutput">{{ optional_metric(dive.weight_kg, ' kg') if is_edit else '-' }}</output>
-                    </div>
-                    <input type="range" min="0" max="10" step="0.5" value="{{ dive.weight_kg if is_edit and dive.weight_kg is not none else 0 }}" data-range="weight">
-                    <input id="weightKg" name="weight_kg" type="number" min="0" max="10" step="0.5" value="{{ dive.weight_kg if is_edit and dive.weight_kg is not none else '' }}" data-number="weight">
-                </div>
-                <label>
-                    Exposure
-                    {% set selected_exposure = dive.exposure if is_edit and dive.exposure in exposures else none %}
-                    <select name="exposure">
-                        <option value="" disabled {{ 'selected' if selected_exposure is none else '' }}>-</option>
-                        {% for exposure in exposures %}
-                            <option value="{{ exposure }}" {{ 'selected' if exposure == selected_exposure else '' }}>{{ exposure }}</option>
-                        {% endfor %}
-                    </select>
-                </label>
-                <label>
-                    Gas mix
-                    {% set selected_gas_mix = dive.gas_mix if is_edit and dive.gas_mix in gas_mixes else 'Air' %}
-                    <select name="gas_mix">
-                        {% for gas_mix in gas_mixes %}
-                            <option value="{{ gas_mix }}" {{ 'selected' if gas_mix == selected_gas_mix else '' }}>{{ 'EANx ' ~ gas_mix if is_nitrox_gas_mix(gas_mix) else gas_mix }}</option>
-                        {% endfor %}
-                    </select>
-                </label>
-                <div class="air-consumption-control">
-                    <span>Air consumption <small>(bar)</small></span>
-                    <div class="air-consumption-values">
-                        <label for="startingPressureBar">Starting pressure</label>
-                        <label for="endingPressureBar">Ending pressure</label>
-                    </div>
-                    <div class="air-consumption-inputs">
-                        <input id="startingPressureBar" name="starting_pressure_bar" type="number" min="0" max="200" step="10" placeholder="-" value="{{ dive.starting_pressure_bar if is_edit and dive.starting_pressure_bar is not none else '' }}" data-number="startingPressure">
-                        <div class="pressure-slider">
-                            <input type="range" min="0" max="200" step="10" value="{{ dive.starting_pressure_bar if is_edit and dive.starting_pressure_bar is not none else 200 }}" data-range="startingPressure" aria-label="Starting pressure (bar)">
-                            <input type="range" min="0" max="200" step="10" value="{{ dive.ending_pressure_bar if is_edit and dive.ending_pressure_bar is not none else 0 }}" data-range="endingPressure" aria-label="Ending pressure (bar)">
+                <div class="equipment-controls">
+                    <div class="range-control">
+                        <div>
+                            <label for="weightKg">Weight (kg)</label>
+                            <output id="weightOutput">{{ optional_metric(dive.weight_kg, ' kg') if is_edit else '-' }}</output>
                         </div>
-                        <input id="endingPressureBar" name="ending_pressure_bar" type="number" min="0" max="200" step="10" placeholder="-" value="{{ dive.ending_pressure_bar if is_edit and dive.ending_pressure_bar is not none else '' }}" data-number="endingPressure">
-                        <small class="sac-rate-label">SAC rate: <output id="sacRateOutput" aria-live="polite">{{ sac_rate_display(dive) if is_edit else '-' }}</output></small>
+                        <input type="range" min="0" max="10" step="0.5" value="{{ dive.weight_kg if is_edit and dive.weight_kg is not none else 0 }}" data-range="weight" aria-label="Weight slider (kg)">
+                        <input id="weightKg" name="weight_kg" type="number" min="0" max="10" step="0.5" value="{{ dive.weight_kg if is_edit and dive.weight_kg is not none else '' }}" data-number="weight">
                     </div>
-                    <output id="startingPressureOutput" hidden>{{ optional_metric(dive.starting_pressure_bar, ' bar') if is_edit else '-' }}</output>
-                    <output id="endingPressureOutput" hidden>{{ optional_metric(dive.ending_pressure_bar, ' bar') if is_edit else '-' }}</output>
+                    <label>
+                        Exposure
+                        {% set selected_exposure = dive.exposure if is_edit and dive.exposure in exposures else none %}
+                        <select name="exposure">
+                            <option value="" disabled {{ 'selected' if selected_exposure is none else '' }}>-</option>
+                            {% for exposure in exposures %}
+                                <option value="{{ exposure }}" {{ 'selected' if exposure == selected_exposure else '' }}>{{ exposure }}</option>
+                            {% endfor %}
+                        </select>
+                    </label>
+                    <label>
+                        Gas mix
+                        {% set selected_gas_mix = dive.gas_mix if is_edit and dive.gas_mix in gas_mixes else 'Air' %}
+                        <select name="gas_mix">
+                            {% for gas_mix in gas_mixes %}
+                                <option value="{{ gas_mix }}" {{ 'selected' if gas_mix == selected_gas_mix else '' }}>{{ 'EANx ' ~ gas_mix if is_nitrox_gas_mix(gas_mix) else gas_mix }}</option>
+                            {% endfor %}
+                        </select>
+                    </label>
                 </div>
+            </div>
+            <div class="air-consumption-control">
+                <div class="air-consumption-head">
+                    <h3>Air consumption</h3>
+                    <span class="section-unit-label">Pressure in bar</span>
+                </div>
+                <div class="air-consumption-body">
+                    <div class="pressure-controls">
+                        <div class="air-consumption-values">
+                            <label for="startingPressureBar" class="pressure-start-label">Starting pressure</label>
+                            <label for="endingPressureBar" class="pressure-end-label">Ending pressure</label>
+                        </div>
+                        <div class="air-consumption-inputs">
+                            <div class="pressure-input pressure-start-input">
+                                <input id="startingPressureBar" name="starting_pressure_bar" type="number" min="0" max="200" step="10" placeholder="-" value="{{ dive.starting_pressure_bar if is_edit and dive.starting_pressure_bar is not none else '' }}" data-number="startingPressure">
+                                <span aria-hidden="true">bar</span>
+                            </div>
+                            <div class="pressure-slider">
+                                <input type="range" min="0" max="200" step="10" value="{{ dive.starting_pressure_bar if is_edit and dive.starting_pressure_bar is not none else 200 }}" data-range="startingPressure" aria-label="Starting pressure (bar)">
+                                <input type="range" min="0" max="200" step="10" value="{{ dive.ending_pressure_bar if is_edit and dive.ending_pressure_bar is not none else 0 }}" data-range="endingPressure" aria-label="Ending pressure (bar)">
+                            </div>
+                            <div class="pressure-input pressure-end-input">
+                                <input id="endingPressureBar" name="ending_pressure_bar" type="number" min="0" max="200" step="10" placeholder="-" value="{{ dive.ending_pressure_bar if is_edit and dive.ending_pressure_bar is not none else '' }}" data-number="endingPressure">
+                                <span aria-hidden="true">bar</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="sac-rate-summary">
+                        <span class="sac-rate-label"><abbr title="Surface Air Consumption">SAC</abbr> rate</span>
+                        <output id="sacRateOutput" aria-live="polite">{{ sac_rate_display(dive) if is_edit else '-' }}</output>
+                        <small>Calculated from pressure, depth &amp; duration</small>
+                    </div>
+                </div>
+                <output id="startingPressureOutput" hidden>{{ optional_metric(dive.starting_pressure_bar, ' bar') if is_edit else '-' }}</output>
+                <output id="endingPressureOutput" hidden>{{ optional_metric(dive.ending_pressure_bar, ' bar') if is_edit else '-' }}</output>
             </div>
         </div>
 
@@ -134,13 +154,13 @@
             <div class="form-section-title">
                 <h2>Conditions</h2>
             </div>
-            <div class="control-panel">
+            <div class="control-panel conditions-panel">
                 <div class="range-control">
                     <div>
                         <label for="visibilityM">Visibility (m)</label>
                         <output id="visibilityOutput">{{ optional_metric(dive.visibility_m, ' m') if is_edit else '-' }}</output>
                     </div>
-                    <input type="range" min="0" max="30" step="1" value="{{ dive.visibility_m if is_edit and dive.visibility_m is not none else 0 }}" data-range="visibility">
+                    <input type="range" min="0" max="30" step="1" value="{{ dive.visibility_m if is_edit and dive.visibility_m is not none else 0 }}" data-range="visibility" aria-label="Visibility slider (m)">
                     <input id="visibilityM" name="visibility_m" type="number" min="0" max="30" step="1" value="{{ dive.visibility_m if is_edit and dive.visibility_m is not none else '' }}" data-number="visibility">
                 </div>
                 <div class="range-control">
@@ -148,7 +168,7 @@
                         <label for="airTempC">Air temperature (°C)</label>
                         <output id="airTempOutput">{{ optional_metric(dive.air_temp_c, '°C') if is_edit else '-' }}</output>
                     </div>
-                    <input type="range" min="-20" max="40" step="1" value="{{ dive.air_temp_c if is_edit and dive.air_temp_c is not none else 20 }}" data-range="airTemp">
+                    <input type="range" min="-20" max="40" step="1" value="{{ dive.air_temp_c if is_edit and dive.air_temp_c is not none else 20 }}" data-range="airTemp" aria-label="Air temperature slider (°C)">
                     <input id="airTempC" name="air_temp_c" type="number" min="-20" max="40" step="1" value="{{ dive.air_temp_c if is_edit and dive.air_temp_c is not none else '' }}" data-number="airTemp">
                 </div>
                 <div class="range-control">
@@ -156,38 +176,40 @@
                         <label for="waterTempC">Water temperature (°C)</label>
                         <output id="waterTempOutput">{{ optional_metric(dive.water_temp_c, '°C') if is_edit else '-' }}</output>
                     </div>
-                    <input type="range" min="-20" max="40" step="1" value="{{ dive.water_temp_c if is_edit and dive.water_temp_c is not none else 20 }}" data-range="waterTemp">
+                    <input type="range" min="-20" max="40" step="1" value="{{ dive.water_temp_c if is_edit and dive.water_temp_c is not none else 20 }}" data-range="waterTemp" aria-label="Water temperature slider (°C)">
                     <input id="waterTempC" name="water_temp_c" type="number" min="-20" max="40" step="1" value="{{ dive.water_temp_c if is_edit and dive.water_temp_c is not none else '' }}" data-number="waterTemp">
                 </div>
-                <label>
-                    Dive type
-                    <select name="dive_type">
-                        {% for dive_type in dive_types %}
-                            <option value="{{ dive_type }}" {{ 'selected' if dive_type == (dive.dive_type if is_edit else 'open water') else '' }}>{{ dive_type_labels[dive_type] }}</option>
-                        {% endfor %}
-                    </select>
-                </label>
-                {% set selected_current_type = dive.current if is_edit and dive.current in current_types else 'none' %}
-                <label>
-                    Current type
-                    <select name="current" data-current-type-select>
-                        {% for current in current_types %}
-                            <option value="{{ current }}" {{ 'selected' if current == selected_current_type else '' }}>{{ '-' if current == 'none' else current_type_labels[current] }}</option>
-                        {% endfor %}
-                    </select>
-                </label>
-                {% set selected_current_strength = dive.current_strength if selected_current_type != 'none' and is_edit and dive.current_strength in current_strengths else 'none' %}
-                <div class="range-control discrete-range-control current-strength-control {{ 'is-disabled' if selected_current_type == 'none' else '' }}">
-                    <div>
-                        <label for="currentStrengthRange">Current strength</label>
-                        <output id="currentStrengthOutput">{{ current_strength_labels[selected_current_strength] }}</output>
-                    </div>
-                    <input id="currentStrengthRange" type="range" min="0" max="4" step="1" value="{{ current_strength_indexes[selected_current_strength] }}" data-current-strength-range {{ 'disabled' if selected_current_type == 'none' else '' }}>
-                    <input name="current_strength" type="hidden" value="{{ selected_current_strength }}" data-current-strength-value>
-                    <div class="range-ticks current-strength-ticks" aria-hidden="true">
-                        {% for strength in current_strengths %}
-                            <span>{{ current_strength_labels[strength] }}</span>
-                        {% endfor %}
+                <div class="condition-options">
+                    <label>
+                        Dive type
+                        <select name="dive_type">
+                            {% for dive_type in dive_types %}
+                                <option value="{{ dive_type }}" {{ 'selected' if dive_type == (dive.dive_type if is_edit else 'open water') else '' }}>{{ dive_type_labels[dive_type] }}</option>
+                            {% endfor %}
+                        </select>
+                    </label>
+                    {% set selected_current_type = dive.current if is_edit and dive.current in current_types else 'none' %}
+                    <label>
+                        Current type
+                        <select name="current" data-current-type-select>
+                            {% for current in current_types %}
+                                <option value="{{ current }}" {{ 'selected' if current == selected_current_type else '' }}>{{ '-' if current == 'none' else current_type_labels[current] }}</option>
+                            {% endfor %}
+                        </select>
+                    </label>
+                    {% set selected_current_strength = dive.current_strength if selected_current_type != 'none' and is_edit and dive.current_strength in current_strengths else 'none' %}
+                    <div class="range-control discrete-range-control current-strength-control {{ 'is-disabled' if selected_current_type == 'none' else '' }}">
+                        <div>
+                            <label for="currentStrengthRange">Current strength</label>
+                            <output id="currentStrengthOutput">{{ current_strength_labels[selected_current_strength] }}</output>
+                        </div>
+                        <input id="currentStrengthRange" type="range" min="0" max="4" step="1" value="{{ current_strength_indexes[selected_current_strength] }}" data-current-strength-range {{ 'disabled' if selected_current_type == 'none' else '' }}>
+                        <input name="current_strength" type="hidden" value="{{ selected_current_strength }}" data-current-strength-value>
+                        <div class="range-ticks current-strength-ticks" aria-hidden="true">
+                            {% for strength in current_strengths %}
+                                <span>{{ current_strength_labels[strength] }}</span>
+                            {% endfor %}
+                        </div>
                     </div>
                 </div>
             </div>
@@ -225,7 +247,7 @@
                 <h2>Notes</h2>
             </div>
             <label>
-                Notes
+                <span class="sr-only">Notes</span>
                 <textarea name="notes" rows="5">{{ dive.notes if is_edit and dive.notes else '' }}</textarea>
             </label>
         </div>
@@ -245,7 +267,7 @@
                 </div>
             {% endif %}
             <label class="upload-box">
-                <span>Photos</span>
+                <span>Add photos from your dive</span>
                 <input type="file" name="photos" accept="image/*" multiple data-photo-input>
                 <div class="preview-row" data-photo-preview></div>
             </label>

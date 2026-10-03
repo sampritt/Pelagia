@@ -37,11 +37,11 @@
                 </span>
             </div>
             <div>
-                <small>WATER TEMP</small>
+                <small>Water temperature</small>
                 <span>{{ optional_metric(conditions.water_temp_c, '°C') }}</span>
             </div>
             <div>
-                <small>AIR TEMP</small>
+                <small>Air temperature</small>
                 <span>{{ optional_metric(conditions.air_temp_c, '°C') }}</span>
             </div>
         </div>
@@ -61,6 +61,7 @@
     <div class="site-chart-block">
         <div class="site-chart-head">
             <h2>Visibility</h2>
+            <span class="chart-unit">Meters · 14 days</span>
         </div>
         <svg class="site-line-chart" viewBox="0 0 {{ visibility_chart.width }} {{ visibility_chart.height }}" role="img" aria-label="Two weeks ending with the latest documented visibility or currents observation, visibility in meters by day">
             <line x1="{{ visibility_chart.padding }}" y1="{{ visibility_chart.height - visibility_chart.padding }}" x2="{{ visibility_chart.width - visibility_chart.padding }}" y2="{{ visibility_chart.height - visibility_chart.padding }}"></line>
@@ -85,6 +86,7 @@
     <div class="site-chart-block">
         <div class="site-chart-head">
             <h2>Currents</h2>
+            <span class="chart-unit">Strength · 14 days</span>
         </div>
         <svg class="site-bar-chart" viewBox="0 0 {{ current_chart.width }} {{ current_chart.height }}" role="img" aria-label="Two weeks ending with the latest documented visibility or currents observation, currents by day">
             <line x1="{{ current_chart.padding }}" y1="{{ current_chart.height - current_chart.padding }}" x2="{{ current_chart.width - current_chart.padding }}" y2="{{ current_chart.height - current_chart.padding }}"></line>

@@ -552,6 +552,15 @@ function initDiveForm() {
             return raw && Number.isFinite(value) ? clamp(value, pair.min, pair.max) : null;
         });
         const [depth, duration, start, end] = values;
+        // Keep the pressure track and calculated-value styling in sync with inputs.
+        const pressureTrack = form.querySelector(".pressure-slider");
+        const positions = [pairs.startingPressure, pairs.endingPressure].map((pair) =>
+            (1 - Number(pair.range.value) / pair.max) * 100,
+        );
+        pressureTrack?.style.setProperty("--pressure-low", `${Math.min(...positions)}%`);
+        pressureTrack?.style.setProperty("--pressure-high", `${Math.max(...positions)}%`);
+        pressureTrack?.classList.toggle("has-pressure-values", start !== null && end !== null);
+        form.querySelector(".sac-rate-summary")?.classList.toggle("is-unset", values.includes(null) || duration <= 0);
         const output = document.getElementById("sacRateOutput");
         output.textContent = values.includes(null) || duration <= 0
             ? "-"
