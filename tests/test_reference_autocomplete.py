@@ -35,11 +35,43 @@ class ReferenceAutocompleteTest(unittest.TestCase):
             "depth_m": 20,
         }
         self.assertEqual(sac_rate(dive), 1.0)
-        self.assertEqual(sac_rate_display(dive), "1.0 bar/min")
-        self.assertEqual(sac_rate_display({**dive, "duration_min": 40}), "1.2 bar/min")
+        self.assertEqual(sac_rate_display(dive), "12.0 L/min")
+        self.assertEqual(sac_rate_display(dive, tank_size_l=15), "15.0 L/min")
+        self.assertEqual(sac_rate_display({**dive, "duration_min": 40}), "15.0 L/min")
+        self.assertEqual(sac_rate_display({**dive, "duration_min": 40}, tank_size_l=15), "18.8 L/min")
+        self.assertEqual(sac_rate_display({**dive, "ending_pressure_bar": 200}), "0.0 L/min")
         for overrides in ({"starting_pressure_bar": None}, {"ending_pressure_bar": None}, {"duration_min": 0}):
             self.assertIsNone(sac_rate({**dive, **overrides}))
             self.assertEqual(sac_rate_display({**dive, **overrides}), "-")
+
+    def test_tank_size_is_a_temporary_display_choice(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            app, db_path, _ = self.make_app(Path(tmp_dir))
+            client = app.test_client()
+            self.signup(client)
+            response = client.post("/dive/new", data={
+                "date": "2026-07-22",
+                "site_name": "Alert Rock",
+                "depth_m": "20",
+                "duration_min": "50",
+                "starting_pressure_bar": "200",
+                "ending_pressure_bar": "50",
+                "tank_size_preview": "15",
+            })
+            self.assertEqual(response.status_code, 302)
+            dive = client.get("/api/dives/mine").get_json()[0]
+            self.assertEqual(dive["sac_rate"], 1.0)
+            self.assertNotIn("tank_size_preview", dive)
+            self.assertNotIn("tank_size_l", dive)
+            for url in (f'/dive/{dive["id"]}', f'/dive/{dive["id"]}/edit'):
+                html = client.get(url).data
+                self.assertIn(b"12.0 L/min", html)
+                self.assertIn(b'value="12" data-tank-size checked', html)
+                self.assertIn(b'value="15" data-tank-size>', html)
+                self.assertIn(b"Not saved", html)
+            with sqlite3.connect(db_path) as conn:
+                columns = {row[1] for row in conn.execute("PRAGMA table_info(dives)")}
+            self.assertFalse(any("tank" in column for column in columns))
 
     def make_app(self, tmp_path, prepare_db=None):
         sites_csv = tmp_path / "sites.csv"
@@ -400,7 +432,7 @@ Kelp House,2 Harbor Way,Alaska,https://kelp.example.test
             self.assertIn(b'<output id="weightOutput">-</output>', new_response.data)
             self.assertIn(b'<output id="startingPressureOutput" hidden>-</output>', new_response.data)
             self.assertIn(b'<output id="endingPressureOutput" hidden>-</output>', new_response.data)
-            self.assertIn(b'<output id="sacRateOutput" aria-live="polite">-</output>', new_response.data)
+            self.assertIn(b'<output id="sacRateOutput" aria-live="polite" data-sac-output>-</output>', new_response.data)
             self.assertIn(b'<output id="visibilityOutput">-</output>', new_response.data)
             self.assertIn(b'<output id="airTempOutput">-</output>', new_response.data)
             self.assertIn(b'<output id="waterTempOutput">-</output>', new_response.data)

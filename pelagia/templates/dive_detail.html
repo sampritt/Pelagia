@@ -115,7 +115,8 @@
                     <dd>{{ 'EANx ' ~ dive.gas_mix if is_nitrox_gas_mix(dive.gas_mix) else dive.gas_mix or 'Air' }}</dd>
                 </div>
             </dl>
-            <div class="detail-pressure-summary">
+            {% set pressure_sac = sac_rate(dive) %}
+            <div class="detail-pressure-summary" data-sac-calculator data-pressure-sac="{{ pressure_sac if pressure_sac is not none else '' }}">
                 <dl class="detail-metric-list pressure-metric-list">
                     <div>
                         <dt>Starting pressure</dt>
@@ -127,9 +128,10 @@
                     </div>
                     <div class="sac-metric">
                         <dt>SAC rate</dt>
-                        <dd>{{ sac_rate_display(dive) }}</dd>
+                        <dd><output aria-live="polite" data-sac-output>{{ sac_rate_display(dive) }}</output></dd>
                     </div>
                 </dl>
+                {% include "_tank_size_toggle.html" %}
             </div>
         </div>
         <div class="detail-panel conditions-detail">

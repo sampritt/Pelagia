@@ -432,6 +432,27 @@ function initGlobalSearch() {
     });
 }
 
+const formatSacRate = (pressureRate, tankSize = 12) =>
+    pressureRate === null || !Number.isFinite(pressureRate)
+        ? "-"
+        : `${(pressureRate * tankSize).toFixed(1)} L/min`;
+
+function renderSacRate(calculator, pressureRate) {
+    const tankSize = Number(calculator.querySelector("[data-tank-size]:checked")?.value || 12);
+    calculator.querySelector("[data-sac-output]").textContent = formatSacRate(pressureRate, tankSize);
+    calculator.querySelector(".sac-rate-summary")?.classList.toggle("is-unset", pressureRate === null);
+}
+
+function initSavedDiveSac() {
+    document.querySelectorAll("[data-pressure-sac]").forEach((calculator) => {
+        const raw = calculator.dataset.pressureSac;
+        const pressureRate = raw === "" ? null : Number(raw);
+        const update = () => renderSacRate(calculator, pressureRate);
+        calculator.querySelectorAll("[data-tank-size]").forEach((input) => input.addEventListener("change", update));
+        update();
+    });
+}
+
 function initDiveForm() {
     const form = document.querySelector("[data-dive-form]");
     if (!form) {
@@ -560,11 +581,10 @@ function initDiveForm() {
         pressureTrack?.style.setProperty("--pressure-low", `${Math.min(...positions)}%`);
         pressureTrack?.style.setProperty("--pressure-high", `${Math.max(...positions)}%`);
         pressureTrack?.classList.toggle("has-pressure-values", start !== null && end !== null);
-        form.querySelector(".sac-rate-summary")?.classList.toggle("is-unset", values.includes(null) || duration <= 0);
-        const output = document.getElementById("sacRateOutput");
-        output.textContent = values.includes(null) || duration <= 0
-            ? "-"
-            : `${((start - end) / duration / (depth / 10 + 1)).toFixed(1)} bar/min`;
+        const pressureRate = values.includes(null) || duration <= 0
+            ? null
+            : (start - end) / duration / (depth / 10 + 1);
+        renderSacRate(form.querySelector("[data-sac-calculator]"), pressureRate);
     };
 
     const setPair = (name, value, fromUser = false, options = {}) => {
@@ -613,6 +633,7 @@ function initDiveForm() {
         pair.number.addEventListener("blur", () => setPair(name, pair.number.value, true, { source: "number", commit: true }));
         setPair(name, pair.number.value, false, { commit: true });
     });
+    form.querySelectorAll("[data-tank-size]").forEach((input) => input.addEventListener("change", updateSacRate));
     initCurrentStrengthSlider(form);
 
     siteInput.addEventListener(
@@ -993,7 +1014,7 @@ function initArrowNavigation(form) {
         if (!["ArrowDown", "ArrowUp", "ArrowLeft", "ArrowRight"].includes(event.key)) {
             return;
         }
-        if (event.target.matches("input[type='range']")) {
+        if (event.target.matches("input[type='range'], input[type='radio']")) {
             return;
         }
         const textLike = event.target.matches("input[type='text'], input[type='date'], textarea");
@@ -1019,6 +1040,7 @@ document.addEventListener("DOMContentLoaded", () => {
     initDiveInteractions();
     initGlobalSearch();
     initDiveForm();
+    initSavedDiveSac();
     initStaticMaps(document);
 });
 

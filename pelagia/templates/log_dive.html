@@ -113,7 +113,7 @@
                     </label>
                 </div>
             </div>
-            <div class="air-consumption-control">
+            <div class="air-consumption-control" data-sac-calculator>
                 <div class="air-consumption-head">
                     <h3>Air consumption</h3>
                     <span class="section-unit-label">Pressure in bar</span>
@@ -138,11 +138,12 @@
                                 <span aria-hidden="true">bar</span>
                             </div>
                         </div>
+                        {% include "_tank_size_toggle.html" %}
                     </div>
                     <div class="sac-rate-summary">
                         <span class="sac-rate-label"><abbr title="Surface Air Consumption">SAC</abbr> rate</span>
-                        <output id="sacRateOutput" aria-live="polite">{{ sac_rate_display(dive) if is_edit else '-' }}</output>
-                        <small>Calculated from pressure, depth &amp; duration</small>
+                        <output id="sacRateOutput" aria-live="polite" data-sac-output>{{ sac_rate_display(dive) if is_edit else '-' }}</output>
+                        <small>Surface-adjusted gas use for the selected tank size</small>
                     </div>
                 </div>
                 <output id="startingPressureOutput" hidden>{{ optional_metric(dive.starting_pressure_bar, ' bar') if is_edit else '-' }}</output>

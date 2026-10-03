@@ -3947,6 +3947,79 @@ input[type="range"] {
     line-height: 1.45;
 }
 
+.tank-size-control {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 12px;
+    min-width: 0;
+}
+
+.tank-size-label {
+    color: var(--muted-strong);
+    font-size: 0.72rem;
+    font-weight: 700;
+}
+
+.tank-size-options {
+    display: flex;
+    flex-shrink: 0;
+    gap: 3px;
+    padding: 3px;
+    border: 1px solid var(--accent-line);
+    border-radius: 10px;
+    background: #e4eef8;
+}
+
+.tank-size-options label {
+    position: relative;
+    display: block;
+    cursor: pointer;
+}
+
+.tank-size-options input {
+    width: 1px;
+    height: 1px;
+    min-height: 0;
+    margin: 0;
+    padding: 0;
+}
+
+.tank-size-options span {
+    display: grid;
+    place-items: center;
+    min-width: 52px;
+    min-height: 38px;
+    padding: 6px 10px;
+    border-radius: 7px;
+    color: var(--muted-strong);
+    font-size: 0.78rem;
+    font-weight: 750;
+    font-variant-numeric: tabular-nums;
+    transition: background 150ms ease, color 150ms ease, box-shadow 150ms ease;
+}
+
+.tank-size-options input:checked + span {
+    color: var(--accent-deep);
+    background: #ffffff;
+    box-shadow: 0 2px 6px rgba(4, 34, 55, 0.1);
+}
+
+.tank-size-options input:focus-visible + span {
+    outline: 3px solid var(--accent);
+    outline-offset: 2px;
+}
+
+.tank-size-options label:hover span {
+    color: var(--accent-deep);
+}
+
+.tank-size-control small {
+    color: var(--muted);
+    font-size: 0.67rem;
+    font-weight: 550;
+}
+
 /* Metric displays share the same hierarchy across the log and profiles. */
 
 .stat-stack span,
@@ -4008,6 +4081,12 @@ input[type="range"] {
 .detail-pressure-summary dd {
     font-size: 1.07rem;
     font-weight: 750;
+}
+
+.detail-pressure-summary .tank-size-control {
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px solid var(--accent-line);
 }
 
 .pressure-metric-list .sac-metric {
@@ -4154,6 +4233,21 @@ input[type="range"] {
     .air-consumption-inputs .pressure-end-input {
         grid-column: 2;
         grid-row: 1;
+    }
+}
+
+@media (max-width: 380px) {
+    .sac-rate-summary {
+        gap: 6px 8px;
+        padding: 16px;
+    }
+
+    .sac-rate-label {
+        white-space: nowrap;
+    }
+
+    .sac-rate-summary output {
+        font-size: 1.15rem;
     }
 }
 

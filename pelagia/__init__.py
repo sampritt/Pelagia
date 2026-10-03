@@ -1619,9 +1619,9 @@ def sac_rate(dive):
     return (start - end) / duration / (depth / 10 + 1)
 
 
-def sac_rate_display(dive):
+def sac_rate_display(dive, tank_size_l=12):
     value = sac_rate(dive)
-    return "-" if value is None else f"{value:.1f} bar/min"
+    return "-" if value is None else f"{value * tank_size_l:.1f} L/min"
 
 
 def optional_metric(value, suffix=""):
