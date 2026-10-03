@@ -105,31 +105,27 @@
                     {% set selected_gas_mix = dive.gas_mix if is_edit and dive.gas_mix in gas_mixes else 'Air' %}
                     <select name="gas_mix">
                         {% for gas_mix in gas_mixes %}
-                            <option value="{{ gas_mix }}" {{ 'selected' if gas_mix == selected_gas_mix else '' }}>{{ gas_mix }}</option>
+                            <option value="{{ gas_mix }}" {{ 'selected' if gas_mix == selected_gas_mix else '' }}>{{ 'EANx ' ~ gas_mix if is_nitrox_gas_mix(gas_mix) else gas_mix }}</option>
                         {% endfor %}
                     </select>
                 </label>
-                <div class="range-control">
-                    <div>
+                <div class="air-consumption-control">
+                    <span>Air consumption <small>(bar)</small></span>
+                    <div class="air-consumption-values">
                         <label for="startingPressureBar">Starting pressure</label>
-                        <output id="startingPressureOutput">{{ optional_metric(dive.starting_pressure_bar, ' bar') if is_edit else '-' }}</output>
-                    </div>
-                    <input type="range" min="0" max="200" step="10" value="{{ dive.starting_pressure_bar if is_edit and dive.starting_pressure_bar is not none else 0 }}" data-range="startingPressure">
-                    <input id="startingPressureBar" name="starting_pressure_bar" type="number" min="0" max="200" step="10" value="{{ dive.starting_pressure_bar if is_edit and dive.starting_pressure_bar is not none else '' }}" data-number="startingPressure">
-                </div>
-                <div class="range-control">
-                    <div>
                         <label for="endingPressureBar">Ending pressure</label>
-                        <output id="endingPressureOutput">{{ optional_metric(dive.ending_pressure_bar, ' bar') if is_edit else '-' }}</output>
                     </div>
-                    <input type="range" min="0" max="200" step="10" value="{{ dive.ending_pressure_bar if is_edit and dive.ending_pressure_bar is not none else 0 }}" data-range="endingPressure">
-                    <input id="endingPressureBar" name="ending_pressure_bar" type="number" min="0" max="200" step="10" value="{{ dive.ending_pressure_bar if is_edit and dive.ending_pressure_bar is not none else '' }}" data-number="endingPressure">
-                </div>
-                <div class="range-control">
-                    <div>
-                        <label for="sacRateOutput">SAC rate</label>
-                        <output id="sacRateOutput" aria-live="polite">{{ sac_rate_display(dive) if is_edit else '-' }}</output>
+                    <div class="air-consumption-inputs">
+                        <input id="startingPressureBar" name="starting_pressure_bar" type="number" min="0" max="200" step="10" placeholder="-" value="{{ dive.starting_pressure_bar if is_edit and dive.starting_pressure_bar is not none else '' }}" data-number="startingPressure">
+                        <div class="pressure-slider">
+                            <input type="range" min="0" max="200" step="10" value="{{ dive.starting_pressure_bar if is_edit and dive.starting_pressure_bar is not none else 200 }}" data-range="startingPressure" aria-label="Starting pressure (bar)">
+                            <input type="range" min="0" max="200" step="10" value="{{ dive.ending_pressure_bar if is_edit and dive.ending_pressure_bar is not none else 0 }}" data-range="endingPressure" aria-label="Ending pressure (bar)">
+                        </div>
+                        <input id="endingPressureBar" name="ending_pressure_bar" type="number" min="0" max="200" step="10" placeholder="-" value="{{ dive.ending_pressure_bar if is_edit and dive.ending_pressure_bar is not none else '' }}" data-number="endingPressure">
+                        <small class="sac-rate-label">SAC rate: <output id="sacRateOutput" aria-live="polite">{{ sac_rate_display(dive) if is_edit else '-' }}</output></small>
                     </div>
+                    <output id="startingPressureOutput" hidden>{{ optional_metric(dive.starting_pressure_bar, ' bar') if is_edit else '-' }}</output>
+                    <output id="endingPressureOutput" hidden>{{ optional_metric(dive.ending_pressure_bar, ' bar') if is_edit else '-' }}</output>
                 </div>
             </div>
         </div>
