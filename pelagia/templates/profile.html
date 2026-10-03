@@ -32,6 +32,19 @@
             {% if is_owner %}
             <div class="profile-actions">
                 <a class="primary-button compact" href="{{ url_for('log_dive') }}"><span aria-hidden="true">+</span> Log dive</a>
+                {% if google_login_available %}
+                    {% if google_is_linked %}
+                    <span class="google-linked">Google sign-in linked</span>
+                    {% else %}
+                    <form method="post" action="{{ url_for('google_auth.link') }}">
+                        <input type="hidden" name="csrf_token" value="{{ google_csrf_token() }}">
+                        <button class="google-button" type="submit">
+                            {% include '_google_mark.html' %}
+                            Link Google account
+                        </button>
+                    </form>
+                    {% endif %}
+                {% endif %}
             </div>
             {% endif %}
         </div>

@@ -28,6 +28,7 @@ from PIL import Image, ImageOps, UnidentifiedImageError
 
 from . import db as database
 from .importer import import_reference_data
+from . import google_auth
 
 
 EXPOSURES = ("swimsuit", "shorty", "2mm", "3mm", "4mm", "5mm", "6mm", "7mm", "dry suit")
@@ -57,6 +58,12 @@ def create_app(test_config=None):
         MAX_CONTENT_LENGTH=24 * 1024 * 1024,
         PELAGIA_LOCAL_CONFIG=config,
         PELAGIA_CONFIG_PATH=str(config_path),
+        GOOGLE_CLIENT_ID=os.environ.get("GOOGLE_CLIENT_ID", ""),
+        GOOGLE_CLIENT_SECRET=os.environ.get("GOOGLE_CLIENT_SECRET", ""),
+        GOOGLE_REDIRECT_URI=os.environ.get("GOOGLE_REDIRECT_URI", ""),
+        SESSION_COOKIE_SECURE=os.environ.get("SESSION_COOKIE_SECURE", "false").lower() == "true",
+        SESSION_COOKIE_HTTPONLY=True,
+        SESSION_COOKIE_SAMESITE="Lax",
     )
     if test_config:
         app.config.update(test_config)
@@ -70,6 +77,7 @@ def create_app(test_config=None):
         _ensure_reference_data(app)
 
     register_routes(app)
+    google_auth.init_app(app)
     return app
 
 
@@ -159,7 +167,7 @@ def register_routes(app):
         username = request.form.get("username", "").strip()
         password = request.form.get("password", "")
         user = database.get_db().execute("SELECT * FROM users WHERE username = ?", (username,)).fetchone()
-        if user is None or not check_password_hash(user["password_hash"], password):
+        if user is None or not user["password_hash"] or not check_password_hash(user["password_hash"], password):
             flash("Username or password does not match.")
             return redirect(url_for("landing"))
         session.clear()

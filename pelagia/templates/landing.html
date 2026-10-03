@@ -18,10 +18,18 @@
     </div>
     <div class="auth-grid">
         <section class="auth-panel auth-card" data-auth-panel>
+            {% block auth_content %}
             <div class="auth-header">
                 <p class="eyebrow">Dive log</p>
                 <h2>Start your session</h2>
             </div>
+            {% if google_login_available %}
+            <a class="google-button" href="{{ url_for('google_auth.login') }}">
+                {% include '_google_mark.html' %}
+                Continue with Google
+            </a>
+            <div class="auth-divider"><span>or use your username</span></div>
+            {% endif %}
             <div class="auth-toggle" role="tablist" aria-label="Authentication mode">
                 <button class="active" type="button" role="tab" aria-selected="true" data-auth-tab="login" data-auth-action="{{ url_for('login') }}" data-auth-submit="Log in" data-auth-title="Start your session">Log in</button>
                 <button type="button" role="tab" aria-selected="false" data-auth-tab="signup" data-auth-action="{{ url_for('signup') }}" data-auth-submit="Create account" data-auth-title="Create your account">Sign up</button>
@@ -37,6 +45,7 @@
                 </label>
                 <button class="primary-button" type="submit" data-auth-submit-button>Log in</button>
             </form>
+            {% endblock %}
         </section>
     </div>
 </section>

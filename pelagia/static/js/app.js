@@ -265,6 +265,9 @@ function initAuthToggle() {
     }
     const tabs = Array.from(panel.querySelectorAll("[data-auth-tab]"));
     const form = panel.querySelector("[data-auth-form]");
+    if (!form || !tabs.length) {
+        return;
+    }
     const title = panel.querySelector(".auth-header h2");
     const submitButton = panel.querySelector("[data-auth-submit-button]");
     const username = form?.querySelector("input[name='username']");

@@ -1,0 +1,18 @@
+{% extends "landing.html" %}
+{% block title %}Choose your username - Pelagia{% endblock %}
+{% block auth_content %}
+<div class="auth-header">
+    <p class="eyebrow">One more step</p>
+    <h2>Choose your username</h2>
+</div>
+<p class="auth-help">This is the public name shown on your profile and dives. Your Google email stays private.</p>
+<form class="auth-form" method="post" action="{{ url_for('google_auth.signup') }}">
+    <input type="hidden" name="csrf_token" value="{{ google_csrf_token() }}">
+    <label>
+        Username
+        <input name="username" autocomplete="username" minlength="3" maxlength="40" value="{{ username }}" required autofocus>
+    </label>
+    <button class="primary-button" type="submit">Create account</button>
+</form>
+<p class="auth-help">Already have a Pelagia account? <a href="{{ url_for('landing') }}">Log in with your username</a>, then link Google from your profile to keep your dives.</p>
+{% endblock %}
