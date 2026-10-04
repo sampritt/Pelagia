@@ -97,21 +97,65 @@ class DiveSharingTest(unittest.TestCase):
                 response = client.post("/login", data={"username": "maya", "password": "password", "next": next_url})
                 self.assertEqual(response.location, "/home")
 
-    def test_preview_image_is_public_jpeg_with_and_without_photos(self):
-        for with_photo in (False, True):
-            if with_photo:
-                with self.app.app_context():
-                    filename = Path(self.app.config["UPLOAD_FOLDER"], "dives/photo.jpg")
-                    Image.new("RGB", (200, 300), "#17adad").save(filename)
-                    database.get_db().execute("INSERT INTO photos (dive_id, filename) VALUES (1, 'dives/photo.jpg')")
-                    database.get_db().commit()
-            response = self.client.get("/share/dive/1/preview.jpg")
-            self.assertEqual(response.status_code, 200)
-            self.assertEqual(response.mimetype, "image/jpeg")
-            with Image.open(io.BytesIO(response.data)) as image:
-                self.assertEqual(image.size, (1200, 630))
-            if with_photo:
-                self.assertIn(b"dives/photo.jpg", self.client.get("/share/dive/1").data)
+    def test_preview_image_without_photos_is_public_jpeg(self):
+        response = self.client.get("/share/dive/1/preview.jpg")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.mimetype, "image/jpeg")
+        with Image.open(io.BytesIO(response.data)) as image:
+            self.assertEqual(image.size, (1200, 630))
+
+    def upload_photos(self):
+        photos = []
+        for name, color in (("primary.jpg", "#17adad"), ("second.jpg", "#ff6633")):
+            stream = io.BytesIO()
+            Image.new("RGB", (200, 300), color).save(stream, "JPEG")
+            stream.seek(0)
+            photos.append((stream, name))
+        self.login_session()
+        response = self.client.post("/dive/1/edit", data={
+            "site_name": "Blue Corner", "country_or_area": "Palau",
+            "date": "2026-10-01",
+            "depth_m": "24", "duration_min": "52", "photos": photos,
+        })
+        self.assertEqual(response.status_code, 302)
+
+    def assert_preview_photo_color(self, color):
+        # Check the actual public JPEG, beyond the gradient and text panel.
+        guest = self.app.test_client()
+        response = guest.get("/share/dive/1/preview.jpg")
+        self.assertEqual(response.status_code, 200)
+        with Image.open(io.BytesIO(response.data)) as image:
+            self.assertEqual(image.size, (1200, 630))
+            pixel = image.getpixel((1100, 300))
+            for actual, expected in zip(pixel, color):
+                self.assertLessEqual(abs(actual - expected), 3)
+        download = guest.get("/share/dive/1/preview.jpg?download=1")
+        self.assertEqual(download.data, response.data)
+
+    def test_uploaded_primary_photo_appears_in_public_and_saved_thumbnail(self):
+        self.upload_photos()
+        self.assert_preview_photo_color((23, 173, 173))
+
+    def test_unavailable_primary_photo_uses_next_photo_then_ocean_fallback(self):
+        fallback = self.app.test_client().get("/share/dive/1/preview.jpg").data
+        self.upload_photos()
+        with self.app.app_context():
+            photos = database.get_db().execute("SELECT filename FROM photos ORDER BY id").fetchall()
+            paths = [Path(self.app.config["UPLOAD_FOLDER"], photo["filename"].removeprefix("uploads/")) for photo in photos]
+        paths[0].unlink()
+        self.assert_preview_photo_color((255, 102, 51))
+        paths[0].write_bytes(b"unreadable photo")
+        self.assert_preview_photo_color((255, 102, 51))
+        paths[1].write_bytes(b"unreadable photo")
+        self.assertEqual(self.app.test_client().get("/share/dive/1/preview.jpg").data, fallback)
+
+    def test_thumbnail_cannot_load_a_photo_outside_upload_folder(self):
+        fallback = self.client.get("/share/dive/1/preview.jpg").data
+        Image.new("RGB", (200, 300), "#ff6633").save(Path(self.tmp.name, "outside.jpg"))
+        with self.app.app_context():
+            database.get_db().execute("INSERT INTO photos (dive_id, filename) VALUES (1, 'uploads/../outside.jpg')")
+            database.get_db().commit()
+        self.assertEqual(self.client.get("/share/dive/1/preview.jpg").data, fallback)
 
     def test_save_downloads_a_named_jpeg_attachment(self):
         response = self.client.get("/share/dive/1/preview.jpg?download=1")

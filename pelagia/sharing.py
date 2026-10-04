@@ -91,18 +91,22 @@ def _fit_line(draw, text, font, width):
 
 def render_share_image(dive):
     image = Image.new("RGB", (1200, 630), "#062a46")
-    # Use an existing dive photo, or the app's ocean artwork when there are none.
-    artwork = Path(current_app.static_folder, "img/ocean-hero-v2.jpg")
-    if dive["photos"]:
-        uploads = Path(current_app.config["UPLOAD_FOLDER"]).resolve()
-        candidate = (uploads / dive["photos"][0]["filename"]).resolve()
+    # Gallery order determines the primary photo. Skip unavailable uploads and
+    # fall back to the app's ocean artwork if no photo can be read.
+    uploads = Path(current_app.config["UPLOAD_FOLDER"]).resolve()
+    artwork = []
+    for photo in dive["photos"]:
+        candidate = (uploads / photo["filename"].removeprefix("uploads/")).resolve()
         if candidate.is_relative_to(uploads) and candidate.is_file():
-            artwork = candidate
-    try:
-        with Image.open(artwork) as photo:
-            image.paste(ImageOps.fit(ImageOps.exif_transpose(photo).convert("RGB"), (580, 630)), (620, 0))
-    except (OSError, UnidentifiedImageError):
-        pass
+            artwork.append(candidate)
+    artwork.append(Path(current_app.static_folder, "img/ocean-hero-v2.jpg"))
+    for candidate in artwork:
+        try:
+            with Image.open(candidate) as photo:
+                image.paste(ImageOps.fit(ImageOps.exif_transpose(photo).convert("RGB"), (580, 630)), (620, 0))
+            break
+        except (OSError, UnidentifiedImageError):
+            continue
     # A quiet blue gradient joins the photograph to the text panel.
     overlay = Image.new("RGBA", image.size)
     overlay_draw = ImageDraw.Draw(overlay)
