@@ -1,6 +1,7 @@
 """A deliberately limited public view and its social preview artwork."""
 
 from io import BytesIO
+from datetime import date
 from pathlib import Path
 
 from flask import current_app
@@ -95,6 +96,8 @@ def _layout_title(draw, title, width=550, height=160):
     # entire name. Exceptionally long single words can wrap within the word.
     for size in range(68, 0, -1):
         font = _font(size, bold=True)
+        if size >= 24 and any(draw.textlength(word, font=font) > width for word in words):
+            continue
         lines, line = [], ""
         for word in words:
             trial = f"{line} {word}".strip()
@@ -118,6 +121,23 @@ def _layout_title(draw, title, width=550, height=160):
         if block_height <= height:
             return font, lines, step, block_height
     return font, lines, step, block_height
+
+
+def _draw_caption(draw, position, text):
+    font = _font(16)
+    x, y = position
+    for character in text:
+        draw.text((x, y), character, font=font, fill="#61caff")
+        x += draw.textlength(character, font=font) + 1.5
+
+
+def _display_date(value):
+    try:
+        logged_on = date.fromisoformat(value)
+    except (TypeError, ValueError):
+        return value
+    months = ("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
+    return f"{months[logged_on.month - 1]} {logged_on.day}, {logged_on.year}"
 
 
 def render_share_image(dive):
@@ -150,7 +170,7 @@ def render_share_image(dive):
     draw.text((124, 57), "Pelagia", font=_font(34, bold=True), fill="white", anchor="lt")
     title_font, lines, title_step, title_height = _layout_title(draw, dive["site_name"])
     title_top = round(237 - title_height / 2) if len(lines) > 1 else 197
-    draw.text((56, title_top - 46), "LOGGED DIVE", font=_font(16), fill="#61caff")
+    _draw_caption(draw, (56, title_top - 46), "LOGGED DIVE")
     for index, line in enumerate(lines):
         draw.text((54, title_top + index * title_step), line, font=title_font, fill="white", anchor="lt")
     location_top = title_top + title_height + 22
@@ -163,7 +183,7 @@ def render_share_image(dive):
         draw.text((x, 477), value, font=metric_font, fill="white", anchor="ls")
         draw.text((x + draw.textlength(value, font=metric_font) + 9, 477), unit, font=unit_font, fill="#61caff", anchor="ls")
         draw.text((x, 497), label, font=_font(20), fill="#b7d1e1", anchor="lt")
-    footer = f"Logged by {dive['username']}  ·  {dive['date']}"
+    footer = f"Logged by {dive['username']}  ·  {_display_date(dive['date'])}"
     draw.text((56, 571), _fit_line(draw, footer, _font(24), 540), font=_font(24), fill="#b7d1e1", anchor="ls")
     stream = BytesIO()
     image.save(stream, "JPEG", quality=88)

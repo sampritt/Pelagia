@@ -188,6 +188,7 @@ class DiveSharingTest(unittest.TestCase):
         for title in (
             "Blue Corner",
             "Kicker Rock (Leon Dormido)",
+            "NorthwesternSanctuary Entrance",
             "Great Blue Hole and Lighthouse Reef National Marine Reserve",
             "Very long dive site name " * 15,
             "AReallyLongUnbrokenDiveSiteName" * 4,
@@ -213,6 +214,8 @@ class DiveSharingTest(unittest.TestCase):
                     self.assertLessEqual(right, 604)
                     self.assertGreaterEqual(top, 150)
                     self.assertLessEqual(bottom, 320)
+                if title == "NorthwesternSanctuary Entrance":
+                    self.assertIn("NorthwesternSanctuary", [text for text, _ in drawn])
 
 
 if __name__ == "__main__":
