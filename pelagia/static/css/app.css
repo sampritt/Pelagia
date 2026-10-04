@@ -2035,13 +2035,10 @@ input[type="range"] {
 }
 
 .detail-photo-slide img {
+    display: block;
     width: 100%;
     height: 100%;
     object-fit: cover;
-}
-
-.detail-photo-slide:only-child img {
-    object-fit: contain;
 }
 
 .detail-headline-stats {
