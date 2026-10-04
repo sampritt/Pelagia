@@ -1,13 +1,23 @@
-<dialog class="share-dialog" data-share-dialog aria-labelledby="shareDialogTitle" aria-describedby="shareDialogDescription">
+<dialog class="share-dialog" data-share-dialog aria-labelledby="shareDialogTitle">
     <div class="share-dialog-heading">
         <div><p class="eyebrow">From your dive log</p><h2 id="shareDialogTitle">Share this dive</h2></div>
         <button class="icon-button" type="button" data-share-close aria-label="Close sharing"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"></path></svg></button>
     </div>
     <img class="share-preview-image" data-share-preview alt="Branded dive link preview">
-    <p id="shareDialogDescription">Anyone with the link can see your photos, location, depth and duration, plus your public name and avatar.</p>
-    <label class="share-link-label" for="shareLink">Your permanent dive link</label>
-    <div class="share-link-row"><input id="shareLink" data-share-link readonly type="url"><button class="primary-button compact" type="button" data-share-copy>Copy link</button></div>
-    <a class="share-open-preview" data-share-open target="_blank" rel="noopener">View public preview <span aria-hidden="true">↗</span></a>
-    <button class="primary-button share-native-button" type="button" data-share-native hidden>Share to an app</button>
+    <div class="share-options" aria-label="Share options">
+        <button class="share-option" type="button" data-share-copy>
+            <span class="share-option-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="5" width="14" height="16" rx="2"></rect><rect x="9" y="3" width="6" height="4" rx="1"></rect><path d="M9 12h6M9 16h6"></path></svg></span>
+            <span data-share-copy-label>Copy link</span>
+        </button>
+        <button class="share-option" type="button" data-share-save>
+            <span class="share-option-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m-4-4 4 4 4-4M4 16v5h16v-5"></path></svg></span>
+            <span>Save</span>
+        </button>
+        <button class="share-option" type="button" data-share-native>
+            <span class="share-option-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V3m-4 4 4-4 4 4M6 12H4v9h16v-9h-2"></path></svg></span>
+            <span>More</span>
+        </button>
+    </div>
+    <input class="share-fallback-link" data-share-link readonly type="url" aria-label="Dive link to copy" hidden>
     <p class="share-status" data-share-status role="status" aria-live="polite"></p>
 </dialog>

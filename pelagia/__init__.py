@@ -261,7 +261,11 @@ def register_routes(app):
         dive = fetch_public_dive(dive_id)
         if dive is None:
             abort(404)
-        response = send_file(render_share_image(dive), mimetype="image/jpeg", download_name="pelagia-dive.jpg")
+        filename = secure_filename(dive["site_name"])[:80] or "logged-dive"
+        response = send_file(
+            render_share_image(dive), mimetype="image/jpeg",
+            download_name=f"pelagia-{filename}.jpg", as_attachment=request.args.get("download") == "1",
+        )
         response.headers["Cache-Control"] = "no-store"
         response.headers["X-Robots-Tag"] = "noindex"
         return response

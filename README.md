@@ -45,7 +45,9 @@ On first app startup, Pelagia initializes SQLite and imports reference data from
 
 ## Sharing Logged Dives
 
-Every active dive has a permanent public preview at `/share/dive/<id>`. Owners can open **Share** on a dive card or the full logged dive to copy the link, view the preview, or open their device's share sheet in browsers that support the Web Share API. Native sharing needs HTTPS (localhost is also supported); clipboard or app sharing failures leave a selectable link available.
+Every active dive has a permanent public preview at `/share/dive/<id>`. Owners can open **Share** on a dive card or the full logged dive. Below the branded image, **Copy link** copies the public URL, **Save** downloads the JPEG, and **More** opens their device's share sheet with the URL and “Check out my logged dive at <site name>”. Native sharing needs HTTPS (localhost is also supported); if unavailable, More offers the copy-link alternative. A selectable link appears only when clipboard access fails.
+
+On phones that support file sharing, Save opens the image share sheet so the user can select Save Image or another destination. Browsers cannot silently write to the photo library; the available save options depend on the device. The JPEG is prepared before the Save click to preserve the user activation required by native sharing. Unsupported browsers and file-sharing failures fall back to an attachment download at `/share/dive/<id>/preview.jpg?download=1`; cancellation does not trigger a download. Share destinations control how they display the supplied text and URL.
 
 Visitors see the diver's public username and avatar, dive site, location, date, dive type, center, photos, map, depth and duration. The account gate below uses blurred placeholders; notes, marine life, equipment, conditions, buddies and comments are never sent to anonymous visitors. Signed-in visitors go to `/dive/<id>`, and both password and Google authentication retain this destination. Deleted dives return 404 for both the public page and preview image.
 

@@ -113,6 +113,15 @@ class DiveSharingTest(unittest.TestCase):
             if with_photo:
                 self.assertIn(b"dives/photo.jpg", self.client.get("/share/dive/1").data)
 
+    def test_save_downloads_a_named_jpeg_attachment(self):
+        response = self.client.get("/share/dive/1/preview.jpg?download=1")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.mimetype, "image/jpeg")
+        self.assertIn("attachment;", response.headers["Content-Disposition"])
+        self.assertIn("pelagia-Blue_Corner.jpg", response.headers["Content-Disposition"])
+        with Image.open(io.BytesIO(response.data)) as image:
+            self.assertEqual(image.size, (1200, 630))
+
     def test_deleted_and_missing_dives_have_no_public_page_or_image(self):
         self.login_session()
         self.client.post("/dive/1/delete")

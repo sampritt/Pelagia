@@ -313,10 +313,41 @@ function initDiveSharing() {
     if (!dialog) return;
     const link = dialog.querySelector("[data-share-link]");
     const copy = dialog.querySelector("[data-share-copy]");
+    const copyLabel = dialog.querySelector("[data-share-copy-label]");
+    const save = dialog.querySelector("[data-share-save]");
     const native = dialog.querySelector("[data-share-native]");
     const status = dialog.querySelector("[data-share-status]");
     let trigger;
     let shareData;
+    let previewFile;
+    let downloadUrl;
+    let generation = 0;
+
+    const supportsNativeSharing = () => window.isSecureContext && typeof navigator.share === "function";
+    const downloadImage = () => {
+        const anchor = document.createElement("a");
+        anchor.href = downloadUrl;
+        anchor.download = "pelagia-dive.jpg";
+        document.body.appendChild(anchor);
+        anchor.click();
+        anchor.remove();
+        status.textContent = "Image download started.";
+    };
+
+    const prepareMobileImage = async (imageUrl, version) => {
+        // Load before the Save click so sharing the file retains user activation.
+        save.disabled = true;
+        try {
+            const response = await fetch(imageUrl, { credentials: "same-origin", signal: AbortSignal.timeout(10000) });
+            if (!response.ok) throw new Error("Image unavailable");
+            const file = new File([await response.blob()], "pelagia-dive.jpg", { type: "image/jpeg" });
+            if (version === generation && navigator.canShare({ files: [file] })) previewFile = file;
+        } catch {
+            // The server's attachment download remains available.
+        } finally {
+            if (version === generation) save.disabled = false;
+        }
+    };
 
     document.addEventListener("click", (event) => {
         const button = event.target.closest("[data-share-dive]");
@@ -324,13 +355,20 @@ function initDiveSharing() {
         event.preventDefault();
         trigger = button;
         link.value = button.dataset.shareUrl;
-        shareData = { title: `Check out my logged dive at ${button.dataset.shareTitle}`, url: link.value };
+        const message = `Check out my logged dive at ${button.dataset.shareTitle}`;
+        shareData = { title: message, text: message, url: link.value };
         dialog.querySelector("[data-share-preview]").src = button.dataset.shareImage;
-        dialog.querySelector("[data-share-open]").href = link.value;
+        downloadUrl = button.dataset.shareDownload;
+        previewFile = null;
+        save.disabled = false;
+        link.hidden = true;
         status.textContent = "";
-        copy.textContent = "Copy link";
-        native.hidden = !(window.isSecureContext && typeof navigator.share === "function");
+        copyLabel.textContent = "Copy link";
         dialog.showModal();
+        const version = ++generation;
+        if (supportsNativeSharing() && typeof navigator.canShare === "function" && window.matchMedia("(pointer: coarse)").matches) {
+            prepareMobileImage(button.dataset.shareImage, version);
+        }
     });
     dialog.querySelector("[data-share-close]").addEventListener("click", () => dialog.close());
     dialog.addEventListener("click", (event) => {
@@ -338,22 +376,47 @@ function initDiveSharing() {
         const rect = dialog.getBoundingClientRect();
         if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) dialog.close();
     });
-    dialog.addEventListener("close", () => trigger?.focus());
+    dialog.addEventListener("close", () => {
+        generation += 1;
+        previewFile = null;
+        trigger?.focus();
+    });
     copy.addEventListener("click", async () => {
         try {
             if (!navigator.clipboard?.writeText) throw new Error("Clipboard unavailable");
             await navigator.clipboard.writeText(link.value);
-            copy.textContent = "Copied";
+            copyLabel.textContent = "Copied";
             status.textContent = "Link copied. Ready to send.";
         } catch {
-            copy.textContent = "Copy link";
+            copyLabel.textContent = "Copy link";
+            link.hidden = false;
             link.focus();
             link.select();
             link.setSelectionRange(0, link.value.length);
             status.textContent = "Select and copy this link to share your dive.";
         }
     });
+    save.addEventListener("click", async () => {
+        status.textContent = "";
+        if (!previewFile) {
+            downloadImage();
+            return;
+        }
+        try {
+            status.textContent = "Choose Save Image or a destination in the share sheet.";
+            await navigator.share({ files: [previewFile] });
+            status.textContent = "Image shared.";
+        } catch (error) {
+            if (error.name === "AbortError") status.textContent = "";
+            else downloadImage();
+        }
+    });
     native.addEventListener("click", async () => {
+        status.textContent = "";
+        if (!supportsNativeSharing()) {
+            status.textContent = "App sharing is unavailable in this browser. Use Copy link instead.";
+            return;
+        }
         // Keep this call directly inside a click: native sharing requires
         // user activation, which can be lost after asynchronous preparation.
         try {

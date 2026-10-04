@@ -4662,15 +4662,47 @@ input[type="range"] {
 .share-dialog-heading h2 { margin: 5px 0 0; font-size: 1.5rem; }
 .share-dialog-heading .eyebrow { margin: 0; }
 .share-preview-image { display: block; width: 100%; aspect-ratio: 1200 / 630; border-radius: 14px; object-fit: cover; background: var(--navy); }
-.share-dialog > p { color: var(--muted-strong); font-size: 0.9rem; line-height: 1.65; }
-.share-link-label { display: block; margin: 22px 0 8px; font-size: 0.8rem; font-weight: 700; }
-.share-link-row { display: flex; gap: 8px; }
-.share-link-row input { min-width: 0; flex: 1; font-size: 0.82rem; }
-.share-link-row button { white-space: nowrap; }
-.share-open-preview { display: inline-block; margin: 12px 0 18px; color: var(--accent); font-size: 0.82rem; font-weight: 650; }
-.share-native-button { width: 100%; }
-.share-native-button[hidden] { display: none; }
-.share-dialog .share-status { min-height: 24px; margin: 12px 0 0; font-size: 0.8rem; }
+.share-options {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+    margin-top: 24px;
+}
+.share-option {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+    padding: 8px 4px;
+    border: 0;
+    border-radius: 14px;
+    color: var(--ink);
+    background: transparent;
+    font-size: 0.82rem;
+    font-weight: 700;
+    cursor: pointer;
+}
+.share-option-icon {
+    display: grid;
+    place-items: center;
+    width: 54px;
+    height: 54px;
+    border: 1px solid var(--line);
+    border-radius: 17px;
+    color: var(--accent);
+    background: var(--accent-soft);
+    transition: background 150ms ease, transform 150ms ease;
+}
+.share-option-icon svg { width: 24px; height: 24px; }
+.share-option:hover .share-option-icon { background: var(--accent-line); transform: translateY(-2px); }
+.share-option:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.share-option:disabled { opacity: 0.5; cursor: wait; }
+.share-option:disabled .share-option-icon { transform: none; }
+.share-fallback-link { width: 100%; margin-top: 18px; }
+.share-fallback-link[hidden] { display: none; }
+.share-dialog .share-status { margin: 12px 0 0; color: var(--muted-strong); font-size: 0.8rem; line-height: 1.5; text-align: center; }
+.share-dialog .share-status:empty { display: none; }
 body:has(.share-dialog[open]) { overflow: hidden; }
 
 .shared-dive-body .page-shell { width: min(980px, calc(100% - 48px)); padding-top: 110px; padding-bottom: 28px; }
