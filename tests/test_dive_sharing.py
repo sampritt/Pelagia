@@ -5,7 +5,7 @@ from pathlib import Path
 from unittest.mock import patch
 from urllib.parse import parse_qs, urlsplit
 
-from PIL import Image
+from PIL import Image, ImageDraw
 from werkzeug.security import generate_password_hash
 
 from pelagia import create_app
@@ -182,6 +182,37 @@ class DiveSharingTest(unittest.TestCase):
         self.assertIn(b"Coordinates pending", response.data)
         self.assertNotIn(b"<script>alert(1)</script>", response.data)
         self.assertEqual(self.client.get("/share/dive/1/preview.jpg").status_code, 200)
+
+    def test_complete_titles_are_drawn_inside_the_headline_area(self):
+        original_text = ImageDraw.ImageDraw.text
+        for title in (
+            "Blue Corner",
+            "Kicker Rock (Leon Dormido)",
+            "Great Blue Hole and Lighthouse Reef National Marine Reserve",
+            "Very long dive site name " * 15,
+            "AReallyLongUnbrokenDiveSiteName" * 4,
+        ):
+            with self.subTest(title=title):
+                drawn = []
+
+                def record_text(draw, xy, text, *args, **kwargs):
+                    if xy[0] == 54 and kwargs.get("fill") == "white":
+                        drawn.append((text, draw.textbbox(xy, text, font=kwargs["font"], anchor=kwargs["anchor"])))
+                    return original_text(draw, xy, text, *args, **kwargs)
+
+                with self.app.app_context():
+                    database.get_db().execute("UPDATE dives SET site_name = ? WHERE id = 1", (title,))
+                    database.get_db().commit()
+                with patch.object(ImageDraw.ImageDraw, "text", new=record_text):
+                    response = self.client.get("/share/dive/1/preview.jpg")
+                self.assertEqual(response.status_code, 200)
+                self.assertEqual("".join(text for text, _ in drawn).replace(" ", ""), title.replace(" ", ""))
+                for text, (left, top, right, bottom) in drawn:
+                    self.assertNotIn("…", text)
+                    self.assertGreaterEqual(left, 50)
+                    self.assertLessEqual(right, 604)
+                    self.assertGreaterEqual(top, 150)
+                    self.assertLessEqual(bottom, 320)
 
 
 if __name__ == "__main__":

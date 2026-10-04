@@ -89,6 +89,37 @@ def _fit_line(draw, text, font, width):
     return text.rstrip() + "…"
 
 
+def _layout_title(draw, title, width=550, height=160):
+    words = title.split() or ["Dive log"]
+    # Keep the established headline size when it fits, then shrink to fit the
+    # entire name. Exceptionally long single words can wrap within the word.
+    for size in range(68, 0, -1):
+        font = _font(size, bold=True)
+        lines, line = [], ""
+        for word in words:
+            trial = f"{line} {word}".strip()
+            if draw.textlength(trial, font=font) <= width:
+                line = trial
+                continue
+            if line:
+                lines.append(line)
+            line = ""
+            for character in word:
+                if line and draw.textlength(line + character, font=font) > width:
+                    lines.append(line)
+                    line = ""
+                line += character
+        lines.append(line)
+        step = size + max(2, round(size * 0.15))
+        block_height = max(
+            index * step + draw.textbbox((0, 0), line, font=font, anchor="lt")[3]
+            for index, line in enumerate(lines)
+        )
+        if block_height <= height:
+            return font, lines, step, block_height
+    return font, lines, step, block_height
+
+
 def render_share_image(dive):
     image = Image.new("RGB", (1200, 630), "#062a46")
     # Gallery order determines the primary photo. Skip unavailable uploads and
@@ -117,26 +148,12 @@ def render_share_image(dive):
     image.paste(mark, (56, 48), mark)
     draw = ImageDraw.Draw(image)
     draw.text((124, 57), "Pelagia", font=_font(34, bold=True), fill="white", anchor="lt")
-    title_font = _font(68, bold=True)
-    words = dive["site_name"].split()
-    lines, line = [], ""
-    for word in words:
-        trial = f"{line} {word}".strip()
-        if line and draw.textlength(trial, font=title_font) > 550:
-            lines.append(line)
-            line = word
-        else:
-            line = trial
-    lines.append(line)
-    visible_lines = lines[:2]
-    title_top = 167 if len(visible_lines) > 1 else 197
+    title_font, lines, title_step, title_height = _layout_title(draw, dive["site_name"])
+    title_top = round(237 - title_height / 2) if len(lines) > 1 else 197
     draw.text((56, title_top - 46), "LOGGED DIVE", font=_font(16), fill="#61caff")
-    for index, line in enumerate(visible_lines):
-        if index == 1 and len(lines) > 2:
-            line += "…"
-        draw.text((54, title_top + index * 78), _fit_line(draw, line, title_font, 550), font=title_font, fill="white", anchor="lt")
-    last_line_height = draw.textbbox((0, 0), visible_lines[-1], font=title_font, anchor="lt")[3]
-    location_top = min(342, title_top + (len(visible_lines) - 1) * 78 + last_line_height + 22)
+    for index, line in enumerate(lines):
+        draw.text((54, title_top + index * title_step), line, font=title_font, fill="white", anchor="lt")
+    location_top = title_top + title_height + 22
     location_font = _font(28)
     draw.text((56, location_top), _fit_line(draw, dive["country_or_area"] or "Dive log", location_font, 540), font=location_font, fill="#b7d1e1", anchor="lt")
     draw.line((56, 396, 555, 396), fill="#31546e", width=1)
