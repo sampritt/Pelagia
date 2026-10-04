@@ -80,7 +80,6 @@ def render_share_image(dive):
     for y in (62, 75):
         draw.line([(56, y), (66, y - 5), (78, y + 5), (90, y - 5), (102, y)], fill="#61caff", width=4)
     draw.text((119, 48), "Pelagia", font=_font(29), fill="white")
-    draw.text((56, 137), "CHECK OUT MY LOGGED DIVE", font=_font(16), fill="#61caff")
     title_font = _font(51)
     words = dive["site_name"].split()
     lines, line = [], ""
