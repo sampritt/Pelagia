@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}{{ dive.site_name }} · A dive on Pelagia{% endblock %}
+{% block body_class %}shared-dive-body{% endblock %}
+{% block head %}
+    <meta name="description" content="{{ description }}">
+    <meta name="robots" content="noindex, nofollow">
+    <link rel="canonical" href="{{ share_url }}">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Pelagia">
+    <meta property="og:title" content="{{ dive.username }} logged a dive · Pelagia">
+    <meta property="og:description" content="{{ description }}">
+    <meta property="og:url" content="{{ share_url }}">
+    <meta property="og:image" content="{{ share_image_url }}">
+    <meta property="og:image:type" content="image/jpeg">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:image:alt" content="{{ dive.site_name }} — {{ dive.depth_m }} m, {{ dive.duration_min }} min">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="{{ dive.username }} logged a dive · Pelagia">
+    <meta name="twitter:description" content="{{ description }}">
+    <meta name="twitter:image" content="{{ share_image_url }}">
+{% endblock %}
+{% block content %}
+<header class="shared-topbar">
+    <a class="brand" href="{{ url_for('landing') }}" aria-label="Pelagia home"><img src="{{ url_for('static', filename='img/pelagia-mark.svg') }}" alt="" width="34" height="34"><span>Pelagia</span></a>
+    <a class="shared-login" href="{{ url_for('landing', next=dive_url) }}">Log in <span aria-hidden="true">↗</span></a>
+</header>
+<section class="dive-detail shared-dive">
+    {% set public_preview = true %}
+    {% include "_dive_headline.html" %}
+    <div class="dive-preview-gate">
+        <div class="dive-preview-placeholder" aria-hidden="true" inert>
+            <div class="detail-lower-grid"><div class="detail-panel"><h2>Equipment &amp; air</h2><div class="preview-skeleton"></div><div class="preview-skeleton short"></div><div class="preview-skeleton"></div></div><div class="detail-panel"><h2>Conditions</h2><div class="preview-skeleton short"></div><div class="preview-skeleton"></div><div class="preview-skeleton short"></div></div></div>
+            <div class="detail-panel"><h2>Dive notes &amp; marine life</h2><div class="preview-skeleton"></div><div class="preview-skeleton short"></div></div>
+        </div>
+        <div class="dive-gate-content">
+            <span class="dive-gate-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="11" rx="3"></rect><path d="M8 10V7a4 4 0 0 1 8 0v3"></path><path d="M12 14v3"></path></svg></span>
+            <h2>See the whole dive.</h2>
+            <p>Create a free Pelagia account to see dive notes, marine life, equipment, conditions and comments.</p>
+            <a class="primary-button" href="{{ url_for('landing', next=dive_url, mode='signup') }}">Create your free account <span aria-hidden="true">→</span></a>
+            <p class="dive-gate-login">Already diving with us? <a href="{{ url_for('landing', next=dive_url) }}">Log in</a></p>
+        </div>
+    </div>
+</section>
+<footer class="shared-footer">Pelagia <span aria-hidden="true">·</span> Log your dive. Find your buddy.</footer>
+{% endblock %}

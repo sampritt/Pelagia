@@ -43,6 +43,22 @@ On first app startup, Pelagia initializes SQLite and imports reference data from
 - `pelagia/schema.sql`: SQLite schema
 - `pelagia/importer.py`: pandas CSV import
 
+## Sharing Logged Dives
+
+Every active dive has a permanent public preview at `/share/dive/<id>`. Owners can open **Share** on a dive card or the full logged dive to copy the link, view the preview, or open their device's share sheet in browsers that support the Web Share API. Native sharing needs HTTPS (localhost is also supported); clipboard or app sharing failures leave a selectable link available.
+
+Visitors see the diver's public username and avatar, dive site, location, date, dive type, center, photos, map, depth and duration. The account gate below uses blurred placeholders; notes, marine life, equipment, conditions, buddies and comments are never sent to anonymous visitors. Signed-in visitors go to `/dive/<id>`, and both password and Google authentication retain this destination. Deleted dives return 404 for both the public page and preview image.
+
+Each link includes Open Graph and Twitter metadata and a generated 1200 × 630 JPEG featuring a dive photo (or the ocean artwork), site, location and stats. Preview titles read “username logged a dive”. Messaging apps control whether and when they show or refresh these previews; copies they have already cached cannot be recalled by deleting a dive. Public pages request no search indexing.
+
+Set `PELAGIA_PUBLIC_BASE_URL` to your public HTTPS origin in production, for example `https://YOUR-DOMAIN`. This keeps copied links and image metadata correct behind a reverse proxy. Without this setting, the app uses the request origin, which is convenient for local development. Sharing needs no database migration or external image service.
+
+Run the sharing and authentication tests with the Python command below, plus the JavaScript checks:
+
+```bash
+node --test tests/test_*.cjs
+```
+
 ## Google Sign-In (Optional)
 
 Username/password signup and login remain available. The Google button appears when both `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` are configured; without them, Google routes are disabled.

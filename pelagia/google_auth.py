@@ -65,13 +65,15 @@ def clear_flow():
 
 
 def begin_flow(mode):
+    from . import _safe_next_url, auth_landing_url
     if not is_available():
         abort(404)
     clear_flow()
     session.pop("google_pending", None)
     state = secrets.token_urlsafe(32)
     session["google_flow"] = {
-        "state": state, "mode": mode, "user_id": session.get("user_id"), "started_at": time.time()
+        "state": state, "mode": mode, "user_id": session.get("user_id"), "started_at": time.time(),
+        "next": _safe_next_url(request.args.get("next")) if mode == "login" else url_for("profile"),
     }
     redirect_uri = current_app.config.get("GOOGLE_REDIRECT_URI") or url_for("google_auth.callback", _external=True)
     try:
@@ -79,15 +81,17 @@ def begin_flow(mode):
             redirect_uri, state=state, prompt="select_account"
         )
     except (OAuthError, JoseError, RequestException):
+        next_url = session["google_flow"]["next"]
         clear_flow()
         flash("Google sign-in is temporarily unavailable. Please try again.")
-        return redirect(url_for("profile" if mode == "link" else "landing"))
+        return redirect(url_for("profile") if mode == "link" else auth_landing_url(next_url))
 
 
 @bp.get("/login")
 def login():
+    from . import _safe_next_url
     if session.get("user_id"):
-        return redirect(url_for("home"))
+        return redirect(_safe_next_url(request.args.get("next")))
     return begin_flow("login")
 
 
@@ -104,6 +108,7 @@ def link():
 
 @bp.get("/callback")
 def callback():
+    from . import _safe_next_url, auth_landing_url
     if not is_available():
         abort(404)
     flow = session.get("google_flow")
@@ -114,10 +119,11 @@ def callback():
         or time.time() - flow["started_at"] > FLOW_TTL_SECONDS
         or flow["user_id"] != session.get("user_id")
     ):
+        destination = url_for("landing") if (flow or {}).get("mode") == "link" else auth_landing_url(_safe_next_url((flow or {}).get("next")))
         clear_flow()
         flash("Your Google sign-in expired. Please start again.")
-        return redirect(url_for("landing"))
-    destination = "profile" if flow["mode"] == "link" else "landing"
+        return redirect(destination)
+    destination = url_for("profile") if flow["mode"] == "link" else auth_landing_url(_safe_next_url(flow.get("next")))
     try:
         # Authlib checks state and validates the ID token's signature, issuer,
         # audience, expiry and nonce. Do not substitute unverified token data.
@@ -133,10 +139,10 @@ def callback():
             or identity.get("email_verified") is not True
         ):
             flash("Google could not confirm your account's email address. Please use another account.")
-            return redirect(url_for(destination))
+            return redirect(destination)
     except (OAuthError, JoseError, RequestException):
         flash("Google sign-in could not be completed. Please try again.")
-        return redirect(url_for(destination))
+        return redirect(destination)
     finally:
         clear_flow()
 
@@ -147,10 +153,10 @@ def callback():
     if user:
         db.execute("UPDATE users SET google_email = ? WHERE id = ?", (identity["email"], user["id"]))
         db.commit()
-        return finish_login(user["id"])
+        return finish_login(user["id"], flow.get("next"))
 
     session.clear()
-    session["google_pending"] = {"sub": identity["sub"], "email": identity["email"], "started_at": time.time()}
+    session["google_pending"] = {"sub": identity["sub"], "email": identity["email"], "started_at": time.time(), "next": flow.get("next")}
     return redirect(url_for("google_auth.signup"))
 
 
@@ -181,21 +187,25 @@ def link_identity(identity, user_id, existing_identity):
     return redirect(url_for("profile"))
 
 
-def finish_login(user_id):
+def finish_login(user_id, next_url=None):
+    from . import _safe_next_url
+    destination = _safe_next_url(next_url or (session.get("google_pending") or {}).get("next"))
     session.clear()
     session["user_id"] = user_id
-    return redirect(url_for("home"))
+    return redirect(destination)
 
 
 @bp.route("/signup", methods=("GET", "POST"))
 def signup():
+    from . import _safe_next_url, auth_landing_url
     if not is_available():
         abort(404)
     pending = session.get("google_pending")
     if not pending or time.time() - pending["started_at"] > FLOW_TTL_SECONDS:
+        destination = auth_landing_url(_safe_next_url((pending or {}).get("next")))
         session.pop("google_pending", None)
         flash("Your Google sign-in expired. Please start again.")
-        return redirect(url_for("landing"))
+        return redirect(destination)
     username = ""
     if request.method == "POST":
         check_csrf()
@@ -220,4 +230,4 @@ def signup():
                 flash("That username is already taken. Please choose another.")
             else:
                 return finish_login(cur.lastrowid)
-    return render_template("google_signup.html", username=username)
+    return render_template("google_signup.html", username=username, auth_next=_safe_next_url(pending.get("next")))

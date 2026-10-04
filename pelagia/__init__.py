@@ -19,6 +19,7 @@ from flask import (
     render_template,
     request,
     send_from_directory,
+    send_file,
     session,
     url_for,
 )
@@ -29,6 +30,7 @@ from PIL import Image, ImageOps, UnidentifiedImageError
 from . import db as database
 from .importer import import_reference_data
 from . import google_auth
+from .sharing import fetch_public_dive, render_share_image, share_description
 
 
 EXPOSURES = ("swimsuit", "shorty", "2mm", "3mm", "4mm", "5mm", "6mm", "7mm", "dry suit")
@@ -61,6 +63,7 @@ def create_app(test_config=None):
         GOOGLE_CLIENT_ID=os.environ.get("GOOGLE_CLIENT_ID", ""),
         GOOGLE_CLIENT_SECRET=os.environ.get("GOOGLE_CLIENT_SECRET", ""),
         GOOGLE_REDIRECT_URI=os.environ.get("GOOGLE_REDIRECT_URI", ""),
+        PUBLIC_BASE_URL=os.environ.get("PELAGIA_PUBLIC_BASE_URL", "").rstrip("/"),
         SESSION_COOKIE_SECURE=os.environ.get("SESSION_COOKIE_SECURE", "false").lower() == "true",
         SESSION_COOKIE_HTTPONLY=True,
         SESSION_COOKIE_SAMESITE="Lax",
@@ -105,11 +108,12 @@ def _ensure_reference_data(app):
 def login_required(view):
     @wraps(view)
     def wrapped_view(**kwargs):
+        next_url = request.full_path.rstrip("?") if request.method == "GET" and not request.path.startswith("/api/") else url_for("home")
         if not session.get("user_id"):
-            return redirect(url_for("landing"))
+            return redirect(auth_landing_url(next_url))
         if current_user() is None:
             session.clear()
-            return redirect(url_for("landing"))
+            return redirect(auth_landing_url(next_url))
         return view(**kwargs)
 
     return wrapped_view
@@ -131,6 +135,7 @@ def register_routes(app):
     app.jinja_env.globals["optional_metric"] = optional_metric
     app.jinja_env.globals["sac_rate_display"] = sac_rate_display
     app.jinja_env.globals["uploaded_file_url"] = uploaded_file_url
+    app.jinja_env.globals["public_url"] = public_url
 
     @app.route("/uploads/<path:filename>")
     def uploaded_file(filename):
@@ -138,17 +143,19 @@ def register_routes(app):
 
     @app.route("/")
     def landing():
+        auth_next = _safe_next_url(request.args.get("next"))
         if session.get("user_id"):
-            return redirect(url_for("home"))
-        return render_template("landing.html")
+            return redirect(auth_next)
+        return render_template("landing.html", auth_next=auth_next, auth_mode="signup" if request.args.get("mode") == "signup" else "login")
 
     @app.route("/signup", methods=("POST",))
     def signup():
+        auth_next = _safe_next_url(request.form.get("next"))
         username = request.form.get("username", "").strip()
         password = request.form.get("password", "")
         if len(username) < 3 or len(password) < 6:
             flash("Use a username of 3+ characters and a password of 6+ characters.")
-            return redirect(url_for("landing"))
+            return redirect(auth_landing_url(auth_next, "signup"))
         try:
             cur = database.get_db().execute(
                 "INSERT INTO users (username, password_hash) VALUES (?, ?)",
@@ -157,22 +164,23 @@ def register_routes(app):
             database.get_db().commit()
         except IntegrityError:
             flash("That username is already taken.")
-            return redirect(url_for("landing"))
+            return redirect(auth_landing_url(auth_next, "signup"))
         session.clear()
         session["user_id"] = cur.lastrowid
-        return redirect(url_for("home"))
+        return redirect(auth_next)
 
     @app.route("/login", methods=("POST",))
     def login():
+        auth_next = _safe_next_url(request.form.get("next"))
         username = request.form.get("username", "").strip()
         password = request.form.get("password", "")
         user = database.get_db().execute("SELECT * FROM users WHERE username = ?", (username,)).fetchone()
         if user is None or not user["password_hash"] or not check_password_hash(user["password_hash"], password):
             flash("Username or password does not match.")
-            return redirect(url_for("landing"))
+            return redirect(auth_landing_url(auth_next))
         session.clear()
         session["user_id"] = user["id"]
-        return redirect(url_for("home"))
+        return redirect(auth_next)
 
     @app.route("/logout", methods=("POST",))
     def logout():
@@ -228,6 +236,35 @@ def register_routes(app):
         if dive is None:
             abort(404)
         return render_template("dive_detail.html", dive=dive)
+
+    @app.get("/share/dive/<int:dive_id>")
+    def shared_dive(dive_id):
+        dive = fetch_public_dive(dive_id)
+        if dive is None:
+            abort(404)
+        if current_user():
+            response = redirect(url_for("dive_detail", dive_id=dive_id))
+        else:
+            response = app.make_response(render_template(
+                "shared_dive.html", dive=dive, description=share_description(dive),
+                share_url=public_url("shared_dive", dive_id=dive_id),
+                share_image_url=public_url("shared_dive_image", dive_id=dive_id),
+                dive_url=url_for("dive_detail", dive_id=dive_id),
+            ))
+        response.headers["Cache-Control"] = "private, no-store"
+        response.headers["X-Robots-Tag"] = "noindex, nofollow"
+        response.vary.add("Cookie")
+        return response
+
+    @app.get("/share/dive/<int:dive_id>/preview.jpg")
+    def shared_dive_image(dive_id):
+        dive = fetch_public_dive(dive_id)
+        if dive is None:
+            abort(404)
+        response = send_file(render_share_image(dive), mimetype="image/jpeg", download_name="pelagia-dive.jpg")
+        response.headers["Cache-Control"] = "no-store"
+        response.headers["X-Robots-Tag"] = "noindex"
+        return response
 
     @app.route("/dive/<int:dive_id>/edit", methods=("GET", "POST"))
     @login_required
@@ -1665,7 +1702,7 @@ def optional_metric(value, suffix=""):
 
 
 def _safe_next_url(value):
-    if not value:
+    if not value or "\\" in value or any(ord(char) < 32 for char in value):
         return url_for("home")
     try:
         parsed = urlsplit(value)
@@ -1677,8 +1714,22 @@ def _safe_next_url(value):
     elif not value.startswith("/") or value.startswith("//"):
         return url_for("home")
     path = parsed.path or url_for("home")
+    if not path.startswith("/") or path.startswith("//"):
+        return url_for("home")
     query = f"?{parsed.query}" if parsed.query else ""
     return f"{path}{query}"
+
+
+def auth_landing_url(next_url, mode="login"):
+    params = {"next": next_url} if next_url != url_for("home") else {}
+    if mode == "signup":
+        params["mode"] = mode
+    return url_for("landing", **params)
+
+
+def public_url(endpoint, **values):
+    base = current_app.config.get("PUBLIC_BASE_URL")
+    return base + url_for(endpoint, **values) if base else url_for(endpoint, _external=True, **values)
 
 
 def _url_without_open(value):

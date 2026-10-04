@@ -17,33 +17,34 @@
         <p class="landing-kicker">Log your dive. Find your buddy.</p>
     </div>
     <div class="auth-grid">
-        <section class="auth-panel auth-card" data-auth-panel>
+        <section class="auth-panel auth-card" data-auth-panel data-auth-mode="{{ auth_mode or 'login' }}">
             {% block auth_content %}
             <div class="auth-header">
                 <p class="eyebrow">Dive log</p>
-                <h2>Start your session</h2>
+                <h2>{{ 'Create your account' if auth_mode == 'signup' else 'Start your session' }}</h2>
             </div>
             {% if google_login_available %}
-            <a class="google-button" href="{{ url_for('google_auth.login') }}">
+            <a class="google-button" href="{{ url_for('google_auth.login', next=auth_next) }}">
                 {% include '_google_mark.html' %}
                 Continue with Google
             </a>
             <div class="auth-divider"><span>or use your username</span></div>
             {% endif %}
             <div class="auth-toggle" role="tablist" aria-label="Authentication mode">
-                <button class="active" type="button" role="tab" aria-selected="true" data-auth-tab="login" data-auth-action="{{ url_for('login') }}" data-auth-submit="Log in" data-auth-title="Start your session">Log in</button>
-                <button type="button" role="tab" aria-selected="false" data-auth-tab="signup" data-auth-action="{{ url_for('signup') }}" data-auth-submit="Create account" data-auth-title="Create your account">Sign up</button>
+                <button class="{{ 'active' if auth_mode != 'signup' else '' }}" type="button" role="tab" aria-selected="{{ 'false' if auth_mode == 'signup' else 'true' }}" data-auth-tab="login" data-auth-action="{{ url_for('login') }}" data-auth-submit="Log in" data-auth-title="Start your session">Log in</button>
+                <button class="{{ 'active' if auth_mode == 'signup' else '' }}" type="button" role="tab" aria-selected="{{ 'true' if auth_mode == 'signup' else 'false' }}" data-auth-tab="signup" data-auth-action="{{ url_for('signup') }}" data-auth-submit="Create account" data-auth-title="Create your account">Sign up</button>
             </div>
-            <form class="auth-form" method="post" action="{{ url_for('login') }}" data-auth-form>
+            <form class="auth-form" method="post" action="{{ url_for('signup' if auth_mode == 'signup' else 'login') }}" data-auth-form>
+                <input type="hidden" name="next" value="{{ auth_next or url_for('home') }}">
                 <label>
                     Username
-                    <input name="username" autocomplete="username" required>
+                    <input name="username" autocomplete="username" {% if auth_mode == 'signup' %}minlength="3"{% endif %} required>
                 </label>
                 <label>
                     Password
-                    <input name="password" type="password" autocomplete="current-password" required>
+                    <input name="password" type="password" autocomplete="{{ 'new-password' if auth_mode == 'signup' else 'current-password' }}" {% if auth_mode == 'signup' %}minlength="6"{% endif %} required>
                 </label>
-                <button class="primary-button" type="submit" data-auth-submit-button>Log in</button>
+                <button class="primary-button" type="submit" data-auth-submit-button>{{ 'Create account' if auth_mode == 'signup' else 'Log in' }}</button>
             </form>
             {% endblock %}
         </section>

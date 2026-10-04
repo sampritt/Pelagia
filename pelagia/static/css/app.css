@@ -4608,3 +4608,99 @@ input[type="range"] {
         animation-iteration-count: 1 !important;
     }
 }
+/* Permanent dive sharing and the public log preview. */
+.dive-owner-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+}
+
+.share-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+}
+
+.share-button svg,
+.share-dialog svg,
+.dive-gate-icon svg {
+    width: 20px;
+    height: 20px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.7;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.share-dialog {
+    width: min(510px, calc(100% - 32px));
+    max-height: calc(100dvh - 48px);
+    padding: 26px;
+    border: 1px solid var(--line);
+    border-radius: 24px;
+    color: var(--ink);
+    background: var(--panel);
+    box-shadow: var(--shadow-lg);
+    overflow-y: auto;
+}
+
+.share-dialog::backdrop {
+    background: rgba(3, 30, 51, 0.56);
+    backdrop-filter: blur(5px);
+}
+
+.share-dialog-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 20px;
+}
+
+.share-dialog-heading h2 { margin: 5px 0 0; font-size: 1.5rem; }
+.share-dialog-heading .eyebrow { margin: 0; }
+.share-preview-image { display: block; width: 100%; aspect-ratio: 1200 / 630; border-radius: 14px; object-fit: cover; background: var(--navy); }
+.share-dialog > p { color: var(--muted-strong); font-size: 0.9rem; line-height: 1.65; }
+.share-link-label { display: block; margin: 22px 0 8px; font-size: 0.8rem; font-weight: 700; }
+.share-link-row { display: flex; gap: 8px; }
+.share-link-row input { min-width: 0; flex: 1; font-size: 0.82rem; }
+.share-link-row button { white-space: nowrap; }
+.share-open-preview { display: inline-block; margin: 12px 0 18px; color: var(--accent); font-size: 0.82rem; font-weight: 650; }
+.share-native-button { width: 100%; }
+.share-native-button[hidden] { display: none; }
+.share-dialog .share-status { min-height: 24px; margin: 12px 0 0; font-size: 0.8rem; }
+body:has(.share-dialog[open]) { overflow: hidden; }
+
+.shared-dive-body .page-shell { width: min(980px, calc(100% - 48px)); padding-top: 110px; padding-bottom: 28px; }
+.shared-topbar { position: absolute; top: 0; left: 0; right: 0; display: flex; align-items: center; justify-content: space-between; min-height: 74px; padding: 16px max(24px, calc((100vw - 980px) / 2)); background: var(--navy); }
+.shared-topbar .brand { min-width: 0; }
+.shared-login { color: white; font-size: 0.9rem; font-weight: 650; }
+.shared-login span { margin-left: 8px; color: #61caff; }
+.dive-preview-gate { position: relative; min-height: 405px; isolation: isolate; overflow: hidden; border-radius: var(--radius); }
+.dive-preview-placeholder { position: absolute; inset: 0; display: grid; align-content: start; gap: 16px; filter: blur(6px); opacity: 0.55; user-select: none; padding: 8px; }
+.dive-preview-placeholder .detail-lower-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.dive-preview-placeholder .detail-panel { display: block; }
+.preview-skeleton { height: 15px; width: 88%; margin: 20px 0; border-radius: 20px; background: #b6c7d3; }
+.preview-skeleton.short { width: 58%; }
+.dive-gate-content { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 30px 24px; text-align: center; background: linear-gradient(180deg, rgba(243,247,250,0.45), rgba(243,247,250,0.95) 32%, #f3f7fa 95%); }
+.dive-gate-icon { display: grid; place-items: center; width: 48px; height: 48px; margin-bottom: 14px; border: 1px solid var(--accent-line); border-radius: 15px; color: var(--accent); background: var(--panel); box-shadow: var(--shadow-sm); }
+.dive-gate-icon svg { width: 23px; height: 23px; }
+.dive-gate-content h2 { margin: 0; font-size: clamp(1.7rem, 4vw, 2.2rem); letter-spacing: -0.045em; }
+.dive-gate-content > p:not(.eyebrow) { max-width: 420px; margin: 12px 0 22px; color: var(--muted-strong); line-height: 1.65; font-size: 0.92rem; }
+.dive-gate-content .primary-button { gap: 18px; min-height: 48px; }
+.dive-gate-content .dive-gate-login { margin: 16px 0 0 !important; font-size: 0.82rem !important; }
+.dive-gate-login a { color: var(--accent); font-weight: 700; }
+.shared-footer { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; padding: 26px 0 12px; border-top: 1px solid var(--line); color: var(--muted); font-size: 0.78rem; }
+
+@media (max-width: 640px) {
+    .shared-dive-body .page-shell { width: calc(100% - 32px); padding-top: 100px; }
+    .shared-topbar { padding-inline: 18px; }
+    .shared-dive .detail-map,
+    .shared-dive .detail-photo-carousel { min-height: 260px; max-height: 260px; }
+    .dive-preview-gate { min-height: 440px; }
+    .dive-gate-content { padding-inline: 18px; }
+    .dive-owner-actions { gap: 5px; }
+    .share-dialog { padding: 20px; }
+}

@@ -1,0 +1,13 @@
+<dialog class="share-dialog" data-share-dialog aria-labelledby="shareDialogTitle" aria-describedby="shareDialogDescription">
+    <div class="share-dialog-heading">
+        <div><p class="eyebrow">From your dive log</p><h2 id="shareDialogTitle">Share this dive</h2></div>
+        <button class="icon-button" type="button" data-share-close aria-label="Close sharing"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"></path></svg></button>
+    </div>
+    <img class="share-preview-image" data-share-preview alt="Branded dive link preview">
+    <p id="shareDialogDescription">Anyone with the link can see your photos, location, depth and duration, plus your public name and avatar.</p>
+    <label class="share-link-label" for="shareLink">Your permanent dive link</label>
+    <div class="share-link-row"><input id="shareLink" data-share-link readonly type="url"><button class="primary-button compact" type="button" data-share-copy>Copy link</button></div>
+    <a class="share-open-preview" data-share-open target="_blank" rel="noopener">View public preview <span aria-hidden="true">↗</span></a>
+    <button class="primary-button share-native-button" type="button" data-share-native hidden>Share to an app</button>
+    <p class="share-status" data-share-status role="status" aria-live="polite"></p>
+</dialog>

@@ -84,6 +84,7 @@
     </nav>
     {% endif %}
 
+    {% if me %}{% include '_share_dialog.html' %}{% endif %}
     {% block scripts %}{% endblock %}
 </body>
 </html>

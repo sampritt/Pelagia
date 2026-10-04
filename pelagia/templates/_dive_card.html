@@ -88,6 +88,7 @@
     {% endif %}
 
     <div class="dive-actions">
+        {% if dive.user_id == session.get('user_id') %}{% include '_share_button.html' %}{% endif %}
         <button class="chip-button like-button {{ 'liked' if dive.liked_by_me else '' }}" type="button" data-like data-dive-id="{{ dive.id }}">
             <span class="heart-icon"></span>
             <span data-like-count>{{ dive.like_count }}</span>

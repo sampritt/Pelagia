@@ -305,7 +305,64 @@ function initAuthToggle() {
     tabs.forEach((tab) => {
         tab.addEventListener("click", () => setMode(tab.dataset.authTab));
     });
-    setMode("login");
+    setMode(panel.dataset.authMode || "login");
+}
+
+function initDiveSharing() {
+    const dialog = document.querySelector("[data-share-dialog]");
+    if (!dialog) return;
+    const link = dialog.querySelector("[data-share-link]");
+    const copy = dialog.querySelector("[data-share-copy]");
+    const native = dialog.querySelector("[data-share-native]");
+    const status = dialog.querySelector("[data-share-status]");
+    let trigger;
+    let shareData;
+
+    document.addEventListener("click", (event) => {
+        const button = event.target.closest("[data-share-dive]");
+        if (!button || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+        event.preventDefault();
+        trigger = button;
+        link.value = button.dataset.shareUrl;
+        shareData = { title: `Check out my logged dive at ${button.dataset.shareTitle}`, url: link.value };
+        dialog.querySelector("[data-share-preview]").src = button.dataset.shareImage;
+        dialog.querySelector("[data-share-open]").href = link.value;
+        status.textContent = "";
+        copy.textContent = "Copy link";
+        native.hidden = !(window.isSecureContext && typeof navigator.share === "function");
+        dialog.showModal();
+    });
+    dialog.querySelector("[data-share-close]").addEventListener("click", () => dialog.close());
+    dialog.addEventListener("click", (event) => {
+        if (event.target !== dialog) return;
+        const rect = dialog.getBoundingClientRect();
+        if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) dialog.close();
+    });
+    dialog.addEventListener("close", () => trigger?.focus());
+    copy.addEventListener("click", async () => {
+        try {
+            if (!navigator.clipboard?.writeText) throw new Error("Clipboard unavailable");
+            await navigator.clipboard.writeText(link.value);
+            copy.textContent = "Copied";
+            status.textContent = "Link copied. Ready to send.";
+        } catch {
+            copy.textContent = "Copy link";
+            link.focus();
+            link.select();
+            link.setSelectionRange(0, link.value.length);
+            status.textContent = "Select and copy this link to share your dive.";
+        }
+    });
+    native.addEventListener("click", async () => {
+        // Keep this call directly inside a click: native sharing requires
+        // user activation, which can be lost after asynchronous preparation.
+        try {
+            await navigator.share(shareData);
+            status.textContent = "Your dive link was shared.";
+        } catch (error) {
+            if (error.name !== "AbortError") status.textContent = "App sharing is unavailable. You can copy the link instead.";
+        }
+    });
 }
 
 async function toggleLike(diveId) {
@@ -1030,6 +1087,7 @@ function initArrowNavigation(form) {
 
 document.addEventListener("DOMContentLoaded", () => {
     initAuthToggle();
+    initDiveSharing();
     initDiveInteractions();
     initGlobalSearch();
     initDiveForm();

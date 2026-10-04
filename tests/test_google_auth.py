@@ -54,6 +54,21 @@ class GoogleAuthTest(unittest.TestCase):
                 **overrides,
             })
 
+    def test_shared_dive_destination_survives_google_signup(self):
+        response = self.client.get("/auth/google/login?next=/dive/42")
+        params = parse_qs(urlsplit(response.location).query)
+        self.assertEqual(self.callback(params).location, "/auth/google/signup")
+        response = self.complete_signup("shared-diver")
+        self.assertEqual(response.location, "/dive/42")
+
+    def test_shared_dive_destination_survives_existing_google_login(self):
+        with self.app.app_context():
+            database.get_db().execute("INSERT INTO users (username, password_hash, google_subject) VALUES ('returning-diver', '', 'google-123')")
+            database.get_db().commit()
+        response = self.client.get("/auth/google/login?next=/dive/42")
+        params = parse_qs(urlsplit(response.location).query)
+        self.assertEqual(self.callback(params).location, "/dive/42")
+
     def start(self, link=False):
         if link:
             self.client.get("/you")

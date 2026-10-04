@@ -14,5 +14,5 @@
     </label>
     <button class="primary-button" type="submit">Create account</button>
 </form>
-<p class="auth-help">Already have a Pelagia account? <a href="{{ url_for('landing') }}">Log in with your username</a>, then link Google from your profile to keep your dives.</p>
+<p class="auth-help">Already have a Pelagia account? <a href="{{ url_for('landing', next=auth_next) }}">Log in with your username</a>, then link Google from your profile to keep your dives.</p>
 {% endblock %}
