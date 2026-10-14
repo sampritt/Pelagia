@@ -329,12 +329,16 @@ class ReferenceAutocompleteTest(unittest.TestCase):
                     for url in ("/home", "/you", f"/dive/{dive_id}", "/dive-sites/1"):
                         page = client.get(url)
                         self.assertEqual(page.status_code, 200)
-                        self.assertIn(b"<small>Average depth</small>", page.data)
-                        self.assertIn(display.encode(), page.data)
+                        self.assertNotIn(b"<small>Average depth</small>", page.data)
+                        if url == f"/dive/{dive_id}":
+                            self.assertIn(b"<dt>Average depth</dt>", page.data)
+                            self.assertIn(f"<dd>{display} m</dd>".encode(), page.data)
+                        else:
+                            self.assertNotIn(b"Average depth", page.data)
                         self.assertNotIn(b"15.0", page.data)
                     public = app.test_client().get(f"/share/dive/{dive_id}").data
                     self.assertIn(f"{display} m average depth".encode(), public)
-                    self.assertIn(b"<small>Average depth</small>", public)
+                    self.assertNotIn(b"<small>Average depth</small>", public)
                     # Preserve both average depth and the inferred 15 L tank choice.
                     without_tank = {**payload, "average_depth_m": value}
                     without_tank.pop("tank_size_l")
@@ -346,6 +350,7 @@ class ReferenceAutocompleteTest(unittest.TestCase):
             self.assertEqual(dive["sac_rate_l_min"], 15)
             self.assertIn(b'<output id="averageDepthOutput">-</output>', client.get(edit_url).data)
             self.assertNotIn(b"<small>Average depth</small>", client.get("/home").data)
+            self.assertNotIn(b"<dt>Average depth</dt>", client.get(f"/dive/{dive_id}").data)
             # Creating a new dive with average depth uses the same calculation.
             client.post("/dive/new", data={**payload, "average_depth_m": "10.3"})
             created = max(client.get("/api/dives/mine").get_json(), key=lambda item: item["id"])

@@ -85,17 +85,11 @@
         {% endif %}
     </div>
 
-    <div class="detail-headline-stats {{ 'has-average-depth' if dive.average_depth_m is not none else '' }}" aria-label="Dive stats">
+    <div class="detail-headline-stats" aria-label="Dive stats">
         <div>
             <small>Max depth</small>
             <span>{{ optional_metric(dive.depth_m) }}<em>m</em></span>
         </div>
-        {% if dive.average_depth_m is not none %}
-        <div>
-            <small>Average depth</small>
-            <span>{{ optional_metric(dive.average_depth_m) }}<em>m</em></span>
-        </div>
-        {% endif %}
         <div>
             <small>Duration</small>
             <span>{{ dive.duration_min }}<em>min</em></span>

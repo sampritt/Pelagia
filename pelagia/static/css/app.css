@@ -215,6 +215,10 @@ p {
     top: calc(100% + 8px);
 }
 
+.topbar:has(.topbar-search-menu:not([hidden])) {
+    z-index: 80;
+}
+
 .desktop-nav {
     display: flex;
     align-items: center;
@@ -2713,6 +2717,7 @@ h2 {
 .topbar-search {
     flex-basis: 330px;
     max-width: 420px;
+    min-width: 180px;
 }
 
 .topbar-search::before {
@@ -2868,6 +2873,7 @@ h2 {
 .mini-avatar {
     width: 38px;
     height: 38px;
+    flex-shrink: 0;
     border: 2px solid #ffffff;
     color: #ffffff;
     background: linear-gradient(145deg, #0b3657 0 52%, #1597ff 52% 100%);
@@ -3255,6 +3261,11 @@ textarea:focus {
     box-shadow: 0 4px 12px rgba(3, 30, 51, 0.12);
 }
 
+.coordinate-label {
+    top: 10px;
+    bottom: auto;
+}
+
 .stat-stack {
     gap: 0;
     margin-inline: 20px;
@@ -3617,11 +3628,15 @@ textarea:focus {
     border-radius: 13px;
     background: #ffffff;
     box-shadow: var(--shadow-lg);
+    overflow-y: auto;
+    overscroll-behavior: contain;
 }
 
 .autocomplete-menu button {
     border-bottom-color: var(--line);
     color: var(--ink);
+    min-height: 52px;
+    overflow-wrap: anywhere;
 }
 
 .autocomplete-menu button:hover,
@@ -4464,6 +4479,16 @@ input[type="range"] {
     }
 }
 
+@media (min-width: 821px) and (max-width: 1040px) {
+    .user-corner {
+        min-width: 0;
+    }
+
+    .topbar .user-corner > .mini-avatar {
+        display: none;
+    }
+}
+
 @media (max-width: 900px) {
     .activity-layout {
         grid-template-columns: minmax(0, 1fr);
@@ -4497,6 +4522,27 @@ input[type="range"] {
     .brand-mark {
         width: 34px;
         height: 34px;
+    }
+
+    .brand {
+        min-width: 0;
+        flex-shrink: 0;
+    }
+
+    .topbar-search {
+        min-width: 0;
+    }
+
+    .user-corner {
+        flex-shrink: 0;
+    }
+
+    .topbar-search-menu {
+        position: fixed;
+        top: calc(var(--pwa-topbar-height) + env(safe-area-inset-top) + 8px);
+        left: max(15px, env(safe-area-inset-left));
+        right: max(15px, env(safe-area-inset-right));
+        max-height: min(360px, calc(100dvh - var(--pwa-topbar-height) - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 120px));
     }
 
     .topbar-search::after {
@@ -4572,8 +4618,9 @@ input[type="range"] {
     }
 
     .profile-hero {
-        min-height: 320px;
+        min-height: 280px;
         padding: 24px;
+        gap: 14px;
         background-position: 42% center;
     }
 
@@ -4667,21 +4714,49 @@ input[type="range"] {
         border-radius: 16px;
     }
 
-    .section-head {
-        align-items: start;
+    .dive-form .section-head {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 12px;
     }
 
-    .section-head .form-actions {
-        width: 100%;
+    .dive-form .section-head h1 {
+        font-size: 1.75rem;
     }
 
-    .section-head .form-actions .primary-button {
-        flex: 1;
+    .dive-form .section-head .form-actions {
+        width: auto;
+        margin-left: auto;
+    }
+
+    .dive-form .section-head .primary-button {
+        width: auto;
+        min-height: 44px;
+    }
+
+    .location-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .location-grid > label,
+    .location-grid > label.wide {
+        grid-column: 1 / -1;
+    }
+
+    .location-grid > .location-coordinate {
+        grid-column: auto;
     }
 
     .profile-hero {
-        min-height: 340px;
+        min-height: 280px;
         border-radius: 16px;
+    }
+
+    .profile-avatar,
+    .center-avatar {
+        width: 88px;
+        height: 88px;
     }
 
     .stats-grid {
@@ -4896,25 +4971,6 @@ body:has(.share-dialog[open]) { overflow: hidden; }
     .dive-gate-content { padding-inline: 18px; }
     .dive-owner-actions { gap: 5px; }
     .share-dialog { padding: 20px; }
-}
-
-.stat-stack.has-average-depth,
-.detail-headline-stats.has-average-depth {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
-@media (max-width: 640px) {
-    .stat-stack.has-average-depth > div {
-        padding-inline: 7px;
-    }
-
-    .stat-stack.has-average-depth span {
-        font-size: 1.3rem;
-    }
-
-    .detail-headline-stats.has-average-depth span {
-        font-size: clamp(1.7rem, 8vw, 2.8rem);
-    }
 }
 
 /* Installed app layout and public PWA controls. */

@@ -42,6 +42,12 @@
         <div class="detail-panel conditions-detail">
             <h2>Conditions</h2>
             <dl class="detail-metric-list">
+                {% if dive.average_depth_m is not none %}
+                <div>
+                    <dt>Average depth</dt>
+                    <dd>{{ optional_metric(dive.average_depth_m, ' m') }}</dd>
+                </div>
+                {% endif %}
                 <div>
                     <dt>Visibility</dt>
                     <dd>{{ optional_metric(dive.visibility_m, ' m', 2) }}</dd>

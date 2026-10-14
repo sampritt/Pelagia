@@ -51,11 +51,11 @@
                     Country
                     <input name="country_or_area" id="country" data-country-input value="{{ dive.country_or_area if is_edit and dive.country_or_area else '' }}">
                 </label>
-                <label>
+                <label class="location-coordinate">
                     Latitude
                     <input name="latitude" id="latitude" inputmode="decimal" value="{{ dive.latitude if is_edit and dive.latitude is not none else '' }}">
                 </label>
-                <label>
+                <label class="location-coordinate">
                     Longitude
                     <input name="longitude" id="longitude" inputmode="decimal" value="{{ dive.longitude if is_edit and dive.longitude is not none else '' }}">
                 </label>

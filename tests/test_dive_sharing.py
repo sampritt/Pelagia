@@ -144,6 +144,19 @@ class DiveSharingTest(unittest.TestCase):
         self.assertEqual(missing.data, failed.data)
         self.tile_request.assert_not_called()
 
+    def test_average_depth_is_only_in_logged_dive_metrics(self):
+        with self.app.app_context():
+            database.get_db().execute("UPDATE dives SET average_depth_m = 15.0 WHERE id = 1")
+            database.get_db().commit()
+        self.login_session()
+        for url in ("/home", "/you"):
+            self.assertNotIn(b"Average depth", self.client.get(url).data)
+        detail = self.client.get("/dive/1").data
+        headline, metrics = detail.split(b"detail-lower-grid", 1)
+        self.assertNotIn(b"Average depth", headline)
+        self.assertIn(b"<dt>Average depth</dt>", metrics)
+        self.assertIn(b"<dd>15 m</dd>", metrics)
+
     def test_share_thumbnail_includes_average_depth_when_logged(self):
         with self.app.app_context():
             database.get_db().execute("UPDATE dives SET average_depth_m = 15.0 WHERE id = 1")

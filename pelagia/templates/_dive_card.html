@@ -74,11 +74,8 @@
         </div>
     </div>
 
-    <div class="stat-stack {{ 'has-average-depth' if dive.average_depth_m is not none else '' }}">
+    <div class="stat-stack">
         <div><span>{{ optional_metric(dive.depth_m) }} <em>m</em></span><small>Max depth</small></div>
-        {% if dive.average_depth_m is not none %}
-            <div><span>{{ optional_metric(dive.average_depth_m) }} <em>m</em></span><small>Average depth</small></div>
-        {% endif %}
         <div><span>{{ dive.duration_min }} <em>min</em></span><small>Duration</small></div>
     </div>
 
