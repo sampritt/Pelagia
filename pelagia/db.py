@@ -35,7 +35,9 @@ def init_db():
     _ensure_column(db, "dives", "exposure", "TEXT")
     _ensure_column(db, "dives", "gas_mix", "TEXT NOT NULL DEFAULT 'Air'")
     _ensure_column(db, "dives", "dive_type", "TEXT NOT NULL DEFAULT 'open water'")
+    _ensure_column(db, "dives", "dive_types_json", "TEXT")
     _ensure_column(db, "dives", "current", "TEXT NOT NULL DEFAULT 'none'")
+    _ensure_column(db, "dives", "current_types_json", "TEXT")
     _ensure_column(db, "dives", "current_strength", "TEXT NOT NULL DEFAULT 'none'")
     _ensure_column(db, "dives", "is_deleted", "INTEGER NOT NULL DEFAULT 0")
     _ensure_column(db, "dive_sites", "logged_dive_count", "INTEGER NOT NULL DEFAULT 0")
@@ -126,20 +128,22 @@ def _ensure_dive_site_counts(db):
 
 
 def _ensure_metric_dive_schema(db):
-    _ensure_column(db, "dives", "depth_m", "INTEGER NOT NULL DEFAULT 0")
+    _ensure_column(db, "dives", "depth_m", "REAL NOT NULL DEFAULT 0")
+    _ensure_column(db, "dives", "average_depth_m", "REAL")
     _ensure_column(db, "dives", "weight_kg", "REAL")
-    _ensure_column(db, "dives", "starting_pressure_bar", "INTEGER")
-    _ensure_column(db, "dives", "ending_pressure_bar", "INTEGER")
+    _ensure_column(db, "dives", "starting_pressure_bar", "REAL")
+    _ensure_column(db, "dives", "ending_pressure_bar", "REAL")
     _ensure_column(db, "dives", "sac_rate_l_min", "REAL")
-    _ensure_column(db, "dives", "visibility_m", "INTEGER")
-    _ensure_column(db, "dives", "air_temp_c", "INTEGER")
-    _ensure_column(db, "dives", "water_temp_c", "INTEGER")
+    _ensure_column(db, "dives", "visibility_m", "REAL")
+    _ensure_column(db, "dives", "air_temp_c", "REAL")
+    _ensure_column(db, "dives", "water_temp_c", "REAL")
     columns = {
         row["name"]: row
         for row in db.execute("PRAGMA table_info(dives)").fetchall()
     }
     legacy_columns = {"depth_ft", "weight_lbs", "visibility_ft", "air_temp_degrees", "water_temp_degrees"}
     optional_columns = (
+        "average_depth_m",
         "weight_kg",
         "starting_pressure_bar",
         "ending_pressure_bar",
@@ -157,7 +161,13 @@ def _ensure_metric_dive_schema(db):
     weight_column_is_real = (
         "weight_kg" in columns and columns["weight_kg"]["type"].upper() == "REAL"
     )
-    if not has_legacy_units and optional_columns_are_nullable and weight_column_is_real:
+    depth_column_is_real = columns["depth_m"]["type"].upper() == "REAL"
+    converted_columns_are_real = all(
+        columns[column]["type"].upper() == "REAL"
+        for column in ("starting_pressure_bar", "ending_pressure_bar", "visibility_m", "air_temp_c", "water_temp_c")
+    )
+    if (not has_legacy_units and optional_columns_are_nullable and weight_column_is_real
+            and depth_column_is_real and converted_columns_are_real):
         return
 
     depth_expression = (
@@ -203,19 +213,22 @@ def _ensure_metric_dive_schema(db):
                 country_or_area TEXT,
                 latitude REAL,
                 longitude REAL,
-                depth_m INTEGER NOT NULL DEFAULT 0,
+                depth_m REAL NOT NULL DEFAULT 0,
+                average_depth_m REAL,
                 duration_min INTEGER NOT NULL DEFAULT 0,
                 weight_kg REAL,
-                starting_pressure_bar INTEGER,
-                ending_pressure_bar INTEGER,
+                starting_pressure_bar REAL,
+                ending_pressure_bar REAL,
                 sac_rate_l_min REAL,
                 exposure TEXT,
-                visibility_m INTEGER,
-                air_temp_c INTEGER,
-                water_temp_c INTEGER,
+                visibility_m REAL,
+                air_temp_c REAL,
+                water_temp_c REAL,
                 gas_mix TEXT NOT NULL DEFAULT 'Air',
                 dive_type TEXT NOT NULL DEFAULT 'open water',
+                dive_types_json TEXT,
                 current TEXT NOT NULL DEFAULT 'none',
+                current_types_json TEXT,
                 current_strength TEXT NOT NULL DEFAULT 'none',
                 notes TEXT,
                 is_deleted INTEGER NOT NULL DEFAULT 0,
@@ -228,17 +241,17 @@ def _ensure_metric_dive_schema(db):
 
             INSERT INTO dives_rebuild (
                 id, user_id, buddy_user_id, dive_site_id, dive_center_id, dive_center_name, date, site_name,
-                country_or_area, latitude, longitude, depth_m, duration_min, weight_kg,
+                country_or_area, latitude, longitude, depth_m, average_depth_m, duration_min, weight_kg,
                 starting_pressure_bar, ending_pressure_bar, sac_rate_l_min,
-                exposure, visibility_m, air_temp_c, water_temp_c, gas_mix, dive_type,
-                current, current_strength, notes, is_deleted, created_at
+                exposure, visibility_m, air_temp_c, water_temp_c, gas_mix, dive_type, dive_types_json,
+                current, current_types_json, current_strength, notes, is_deleted, created_at
             )
             SELECT
                 id, user_id, buddy_user_id, dive_site_id, dive_center_id, dive_center_name, date, site_name,
-                country_or_area, latitude, longitude, {depth_expression}, duration_min, {weight_expression},
+                country_or_area, latitude, longitude, {depth_expression}, average_depth_m, duration_min, {weight_expression},
                 starting_pressure_bar, ending_pressure_bar, sac_rate_l_min,
-                exposure, {visibility_expression}, {air_temp_expression}, {water_temp_expression}, gas_mix, dive_type,
-                current, current_strength, notes, is_deleted, created_at
+                exposure, {visibility_expression}, {air_temp_expression}, {water_temp_expression}, gas_mix, dive_type, dive_types_json,
+                current, current_types_json, current_strength, notes, is_deleted, created_at
             FROM dives;
 
             DROP TABLE dives;

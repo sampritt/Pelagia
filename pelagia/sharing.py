@@ -8,6 +8,9 @@ from flask import current_app
 from PIL import Image, ImageDraw, ImageFont, ImageOps, UnidentifiedImageError
 
 from .db import get_db
+from .metrics import format_metric
+from .dive_options import dive_type_options
+from .static_maps import render_static_map
 
 
 def fetch_public_dive(dive_id):
@@ -16,7 +19,7 @@ def fetch_public_dive(dive_id):
     row = get_db().execute(
         """
         SELECT d.id, d.site_name, d.country_or_area, d.date, d.latitude,
-               d.longitude, d.depth_m, d.duration_min, d.dive_type,
+               d.longitude, d.depth_m, d.average_depth_m, d.duration_min, d.dive_type, d.dive_types_json,
                COALESCE(dc.name, d.dive_center_name) AS center_name,
                u.username, u.profile_photo
         FROM dives d JOIN users u ON u.id = d.user_id
@@ -27,6 +30,7 @@ def fetch_public_dive(dive_id):
     if row is None:
         return None
     dive = dict(row)
+    dive["dive_types"] = dive_type_options(dive)
     dive["photos"] = get_db().execute(
         "SELECT filename FROM photos WHERE dive_id = ? ORDER BY id", (dive_id,),
     ).fetchall()
@@ -35,7 +39,9 @@ def fetch_public_dive(dive_id):
 
 def share_description(dive):
     location = f" in {dive['country_or_area']}" if dive["country_or_area"] else ""
-    return f"{dive['site_name']}{location} · {dive['depth_m']} m deep · {dive['duration_min']} min underwater. Explore this dive on Pelagia."
+    average_depth = dive.get("average_depth_m")
+    average = f" · {format_metric(average_depth)} m average depth" if average_depth is not None else ""
+    return f"{dive['site_name']}{location} · {format_metric(dive['depth_m'])} m deep{average} · {dive['duration_min']} min underwater. Explore this dive on Pelagia."
 
 
 def _font(size, bold=False):
@@ -142,22 +148,32 @@ def _display_date(value):
 
 def render_share_image(dive):
     image = Image.new("RGB", (1200, 630), "#062a46")
-    # Gallery order determines the primary photo. Skip unavailable uploads and
-    # fall back to the app's ocean artwork if no photo can be read.
+    # Gallery order determines the primary photo. The site map replaces the
+    # ocean artwork when no readable photo is attached and coordinates exist.
     uploads = Path(current_app.config["UPLOAD_FOLDER"]).resolve()
-    artwork = []
+    media = None
+    is_map = False
     for photo in dive["photos"]:
         candidate = (uploads / photo["filename"].removeprefix("uploads/")).resolve()
-        if candidate.is_relative_to(uploads) and candidate.is_file():
-            artwork.append(candidate)
-    artwork.append(Path(current_app.static_folder, "img/ocean-hero-v2.jpg"))
-    for candidate in artwork:
+        if not candidate.is_relative_to(uploads) or not candidate.is_file():
+            continue
         try:
             with Image.open(candidate) as photo:
-                image.paste(ImageOps.fit(ImageOps.exif_transpose(photo).convert("RGB"), (580, 630)), (620, 0))
+                media = ImageOps.fit(ImageOps.exif_transpose(photo).convert("RGB"), (580, 630))
             break
         except (OSError, UnidentifiedImageError):
             continue
+    if media is None:
+        media = render_static_map(dive["latitude"], dive["longitude"])
+        is_map = media is not None
+    if media is None:
+        try:
+            with Image.open(Path(current_app.static_folder, "img/ocean-hero-v2.jpg")) as artwork:
+                media = ImageOps.fit(artwork.convert("RGB"), (580, 630))
+        except (OSError, UnidentifiedImageError):
+            pass
+    if media is not None:
+        image.paste(media, (620, 0))
     # A quiet blue gradient joins the photograph to the text panel.
     overlay = Image.new("RGBA", image.size)
     overlay_draw = ImageDraw.Draw(overlay)
@@ -167,6 +183,12 @@ def render_share_image(dive):
     mark = _brand_mark()
     image.paste(mark, (56, 48), mark)
     draw = ImageDraw.Draw(image)
+    if is_map:
+        attribution = "© OpenStreetMap contributors"
+        font = _font(16)
+        text_width = draw.textlength(attribution, font=font)
+        draw.rounded_rectangle((1182 - text_width - 10, 591, 1192, 621), radius=6, fill="#062a46")
+        draw.text((1182 - text_width, 598), attribution, font=font, fill="white", anchor="lt")
     draw.text((124, 57), "Pelagia", font=_font(34, bold=True), fill="white", anchor="lt")
     title_font, lines, title_step, title_height = _layout_title(draw, dive["site_name"])
     title_top = round(237 - title_height / 2) if len(lines) > 1 else 197
@@ -178,11 +200,16 @@ def render_share_image(dive):
     draw.text((56, location_top), _fit_line(draw, dive["country_or_area"] or "Dive log", location_font, 540), font=location_font, fill="#b7d1e1", anchor="lt")
     draw.line((56, 396, 555, 396), fill="#31546e", width=1)
     metric_font, unit_font = _font(56, bold=True), _font(26)
-    for x, value, unit, label in ((56, dive["depth_m"], "m", "DEPTH"), (303, dive["duration_min"], "min", "DURATION")):
-        value = str(value)
+    metrics = ((56, dive["depth_m"], "m", "MAX DEPTH"), (303, dive["duration_min"], "min", "DURATION"))
+    if dive.get("average_depth_m") is not None:
+        metric_font, unit_font = _font(44, bold=True), _font(20)
+        metrics = ((56, dive["depth_m"], "m", "MAX DEPTH"), (245, dive["average_depth_m"], "m", "AVG DEPTH"),
+                   (435, dive["duration_min"], "min", "DURATION"))
+    for x, value, unit, label in metrics:
+        value = format_metric(value)
         draw.text((x, 477), value, font=metric_font, fill="white", anchor="ls")
         draw.text((x + draw.textlength(value, font=metric_font) + 9, 477), unit, font=unit_font, fill="#61caff", anchor="ls")
-        draw.text((x, 497), label, font=_font(20), fill="#b7d1e1", anchor="lt")
+        draw.text((x, 497), label, font=_font(16), fill="#b7d1e1", anchor="lt")
     footer = f"Logged by {dive['username']}  ·  {_display_date(dive['date'])}"
     draw.text((56, 571), _fit_line(draw, footer, _font(24), 540), font=_font(24), fill="#b7d1e1", anchor="ls")
     stream = BytesIO()

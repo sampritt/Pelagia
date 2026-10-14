@@ -19,7 +19,7 @@
                 </strong>
                 <p>
                     <span>{{ dive.date }}</span>
-                    {% set dive_type = dive.dive_type or 'open water' %}
+                    {% set dive_type = dive.dive_types %}
                     <span class="dive-type-label" title="{{ dive_type_label(dive_type) }} dive">
                         <span class="dive-type-icon" aria-hidden="true"></span>
                         {{ dive_type_label(dive_type) }}
@@ -85,11 +85,17 @@
         {% endif %}
     </div>
 
-    <div class="detail-headline-stats" aria-label="Dive stats">
+    <div class="detail-headline-stats {{ 'has-average-depth' if dive.average_depth_m is not none else '' }}" aria-label="Dive stats">
         <div>
-            <small>Depth</small>
-            <span>{{ dive.depth_m }}<em>m</em></span>
+            <small>Max depth</small>
+            <span>{{ optional_metric(dive.depth_m) }}<em>m</em></span>
         </div>
+        {% if dive.average_depth_m is not none %}
+        <div>
+            <small>Average depth</small>
+            <span>{{ optional_metric(dive.average_depth_m) }}<em>m</em></span>
+        </div>
+        {% endif %}
         <div>
             <small>Duration</small>
             <span>{{ dive.duration_min }}<em>min</em></span>

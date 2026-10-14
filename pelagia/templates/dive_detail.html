@@ -11,7 +11,7 @@
             <dl class="detail-metric-list">
                 <div>
                     <dt>Weight</dt>
-                    <dd>{{ optional_metric(dive.weight_kg, ' kg') }}</dd>
+                    <dd>{{ optional_metric(dive.weight_kg, ' kg', 2) }}</dd>
                 </div>
                 <div>
                     <dt>Exposure</dt>
@@ -26,11 +26,11 @@
                 <dl class="detail-metric-list pressure-metric-list">
                     <div>
                         <dt>Starting pressure</dt>
-                        <dd>{{ optional_metric(dive.starting_pressure_bar, ' bar') }}</dd>
+                        <dd>{{ optional_metric(dive.starting_pressure_bar, ' bar', 2) }}</dd>
                     </div>
                     <div>
                         <dt>Ending pressure</dt>
-                        <dd>{{ optional_metric(dive.ending_pressure_bar, ' bar') }}</dd>
+                        <dd>{{ optional_metric(dive.ending_pressure_bar, ' bar', 2) }}</dd>
                     </div>
                     <div class="sac-metric">
                         <dt>SAC rate</dt>
@@ -44,21 +44,21 @@
             <dl class="detail-metric-list">
                 <div>
                     <dt>Visibility</dt>
-                    <dd>{{ optional_metric(dive.visibility_m, ' m') }}</dd>
+                    <dd>{{ optional_metric(dive.visibility_m, ' m', 2) }}</dd>
                 </div>
                 <div>
                     <dt>Air temperature</dt>
-                    <dd>{{ optional_metric(dive.air_temp_c, '°C') }}</dd>
+                    <dd>{{ optional_metric(dive.air_temp_c, '°C', 2) }}</dd>
                 </div>
                 <div>
                     <dt>Water temperature</dt>
-                    <dd>{{ optional_metric(dive.water_temp_c, '°C') }}</dd>
+                    <dd>{{ optional_metric(dive.water_temp_c, '°C', 2) }}</dd>
                 </div>
                 <div>
                     <dt>Current</dt>
                     <dd>
-                        {{ current_label(dive.current) }}
-                        {% if dive.current and dive.current != "none" and dive.current_strength != "none" %}
+                        {{ current_label(dive.current_types) }}
+                        {% if 'none' not in dive.current_types and dive.current_strength != "none" %}
                             - {{ current_strength_label(dive.current_strength) }}
                         {% endif %}
                     </dd>

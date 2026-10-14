@@ -1,0 +1,12 @@
+{% macro unit_toggle(group, title, metric, metric_label, alternate, alternate_label) -%}
+<div class="unit-toggle" role="group" aria-label="{{ title }} units">
+    <label>
+        <input class="sr-only" type="radio" name="{{ group }}_unit" value="{{ metric }}" data-unit-toggle="{{ group }}" checked aria-label="{{ title }} in {{ metric_label }}">
+        <span>{{ metric_label }}</span>
+    </label>
+    <label>
+        <input class="sr-only" type="radio" name="{{ group }}_unit" value="{{ alternate }}" data-unit-toggle="{{ group }}" aria-label="{{ title }} in {{ alternate_label }}">
+        <span>{{ alternate_label }}</span>
+    </label>
+</div>
+{%- endmacro %}

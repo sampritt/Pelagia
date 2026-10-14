@@ -6,14 +6,16 @@ import sys
 import tempfile
 import unittest
 from datetime import date, timedelta
+from html.parser import HTMLParser
 from pathlib import Path
 from unittest.mock import patch
 
 from PIL import Image
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from pelagia import create_app, sac_rate, sac_rate_display, sac_tank_size
+from pelagia import create_app, sac_rate, sac_rate_display, sac_tank_size, dive_site_recent_conditions
 from pelagia import db as database
+from pelagia.units import PSI_TO_BAR
 
 
 def write_csv(path, content):
@@ -28,6 +30,442 @@ def image_upload(name, color):
 
 
 class ReferenceAutocompleteTest(unittest.TestCase):
+    def test_imperial_form_measurements_are_saved_in_metric_and_used_for_sac(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            app, db_path, _ = self.make_app(Path(tmp_dir))
+            client = app.test_client()
+            self.signup(client)
+            form = client.get("/dive/new").data
+            for group, metric, alternate in (("length", "m", "ft"), ("weight", "kg", "lb"),
+                                             ("pressure", "bar", "psi"), ("temperature", "c", "f")):
+                self.assertIn(f'name="{group}_unit" value="{metric}" data-unit-toggle="{group}" checked'.encode(), form)
+                self.assertIn(f'name="{group}_unit" value="{alternate}" data-unit-toggle="{group}"'.encode(), form)
+            payload = {"site_name": "Alert Rock", "depth_m": "100", "average_depth_m": "35", "duration_min": "50",
+                       "weight_kg": "16", "starting_pressure_bar": "2850", "ending_pressure_bar": "600",
+                       "air_temp_c": "75", "water_temp_c": "65", "visibility_m": "50", "tank_size_l": "15",
+                       "length_unit": "ft", "weight_unit": "lb", "pressure_unit": "psi", "temperature_unit": "f"}
+            self.assertEqual(client.post("/dive/new", data=payload).status_code, 302)
+            dive = client.get("/api/dives/mine").get_json()[0]
+            expected = {"depth_m": 30.48, "average_depth_m": 10.668, "weight_kg": 7.25747792,
+                        "starting_pressure_bar": 2850 * PSI_TO_BAR, "ending_pressure_bar": 600 * PSI_TO_BAR,
+                        "air_temp_c": (75 - 32) * 5 / 9, "water_temp_c": (65 - 32) * 5 / 9, "visibility_m": 15.24}
+            for field, value in expected.items():
+                self.assertAlmostEqual(dive[field], value, places=8)
+            expected_sac = (dive["starting_pressure_bar"] - dive["ending_pressure_bar"]) / 50 / (10.668 / 10 + 1) * 15
+            self.assertAlmostEqual(dive["sac_rate_l_min"], expected_sac)
+            dive_id = dive["id"]
+            edit_url = f"/dive/{dive_id}/edit"
+            edit = client.get(edit_url).data
+            self.assertIn(b'value="30.48" data-number="depth"', edit)
+            self.assertIn(b'value="10.668" data-number="averageDepth"', edit)
+            self.assertIn(b'value="15" data-tank-size checked', edit)
+            # Editing starts from stored metric, so re-saving defaults to metric.
+            metric_payload = {"site_name": "Alert Rock", "duration_min": "50", "tank_size_l": "15",
+                              **{field: str(dive[field]) for field in expected}}
+            self.assertEqual(client.post(edit_url, data=metric_payload).status_code, 302)
+            saved = client.get(f"/api/dives/{dive_id}").get_json()
+            for field in expected:
+                self.assertEqual(saved[field], dive[field])
+            self.assertEqual(saved["sac_rate_l_min"], dive["sac_rate_l_min"])
+            # Optional values can still be cleared with imperial units selected.
+            client.post(edit_url, data={**payload, "average_depth_m": "", "weight_kg": "", "air_temp_c": "", "visibility_m": ""})
+            cleared = client.get(f"/api/dives/{dive_id}").get_json()
+            for field in ("average_depth_m", "weight_kg", "air_temp_c", "visibility_m"):
+                self.assertIsNone(cleared[field])
+            self.assertAlmostEqual(cleared["sac_rate_l_min"], (2850 - 600) * PSI_TO_BAR / 50 / (30.48 / 10 + 1) * 15)
+            with sqlite3.connect(db_path) as conn:
+                column_types = {row[1]: row[2] for row in conn.execute("PRAGMA table_info(dives)")}
+                for field in expected:
+                    self.assertEqual(column_types[field], "REAL")
+                self.assertNotIn("length_unit", column_types)
+
+    def test_units_convert_before_clamping_and_groups_can_use_different_units(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            app, _, _ = self.make_app(Path(tmp_dir))
+            client = app.test_client()
+            self.signup(client)
+            payload = {"site_name": "Alert Rock", "depth_m": "100", "average_depth_m": "60", "duration_min": "50",
+                       "weight_kg": "8.5", "starting_pressure_bar": "195", "ending_pressure_bar": "47",
+                       "air_temp_c": "25", "water_temp_c": "20", "length_unit": "ft"}
+            client.post("/dive/new", data=payload)
+            dive = client.get("/api/dives/mine").get_json()[0]
+            self.assertEqual(dive["depth_m"], 30.48)
+            self.assertEqual(dive["average_depth_m"], 18.288)
+            self.assertEqual(dive["weight_kg"], 8.5)
+            self.assertEqual(dive["starting_pressure_bar"], 195)
+            self.assertEqual(dive["air_temp_c"], 25)
+            client.post(f"/dive/{dive['id']}/edit", data={**payload, "depth_m": "500", "average_depth_m": "-10",
+                        "weight_kg": "100", "weight_unit": "lb", "starting_pressure_bar": "5000", "pressure_unit": "psi",
+                        "air_temp_c": "-100", "water_temp_c": "200", "temperature_unit": "f"})
+            saved = client.get(f"/api/dives/{dive['id']}").get_json()
+            self.assertEqual((saved["depth_m"], saved["average_depth_m"], saved["weight_kg"], saved["starting_pressure_bar"]), (45, 0, 10, 200))
+            self.assertEqual((saved["air_temp_c"], saved["water_temp_c"]), (-20, 40))
+            # Unknown unit names cannot trigger an arbitrary conversion.
+            client.post(f"/dive/{dive['id']}/edit", data={**payload, "depth_m": "15.3", "length_unit": "bad"})
+            self.assertEqual(client.get(f"/api/dives/{dive['id']}").get_json()["depth_m"], 15.3)
+
+    def test_integer_metric_columns_migrate_preserving_existing_values_and_relationships(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            def prepare_db(db_path):
+                schema = (Path(__file__).resolve().parents[1] / "pelagia/schema.sql").read_text()
+                for field in ("starting_pressure_bar", "ending_pressure_bar", "visibility_m", "air_temp_c", "water_temp_c"):
+                    schema = schema.replace(f"{field} REAL", f"{field} INTEGER")
+                with sqlite3.connect(db_path) as conn:
+                    conn.executescript(schema)
+                    conn.execute("INSERT INTO users (id, username, password_hash) VALUES (1, 'legacy', 'hash')")
+                    conn.execute("""INSERT INTO dives (id, user_id, date, site_name, depth_m, average_depth_m, duration_min,
+                                   starting_pressure_bar, ending_pressure_bar, visibility_m, air_temp_c, water_temp_c, sac_rate_l_min,
+                                   dive_types_json, current_types_json)
+                                   VALUES (1, 1, '2026-10-13', 'Legacy dive', 20, 10.3, 50, 195, 47, 15, 25, 20, 17.5, '["reef", "wall"]', '["tidal", "drift"]')""")
+                    conn.execute("INSERT INTO photos (dive_id, filename) VALUES (1, 'existing.jpg')")
+                    conn.execute("INSERT INTO dive_species (dive_id, common_name) VALUES (1, 'Coral')")
+            app, db_path, _ = self.make_app(Path(tmp_dir), prepare_db=prepare_db)
+            with app.app_context():
+                database.init_db()
+                database.init_db()
+            with sqlite3.connect(db_path) as conn:
+                self.assertEqual(conn.execute("SELECT starting_pressure_bar, ending_pressure_bar, visibility_m, air_temp_c, water_temp_c, sac_rate_l_min FROM dives").fetchone(), (195, 47, 15, 25, 20, 17.5))
+                self.assertEqual(conn.execute("SELECT average_depth_m, dive_types_json, current_types_json FROM dives").fetchone(), (10.3, '["reef", "wall"]', '["tidal", "drift"]'))
+                self.assertEqual(conn.execute("SELECT dive_id FROM photos").fetchall(), [(1,)])
+                self.assertEqual(conn.execute("SELECT dive_id FROM dive_species").fetchall(), [(1,)])
+                self.assertEqual(conn.execute("PRAGMA foreign_key_check").fetchall(), [])
+
+    def test_multiple_dive_and_current_types_round_trip_and_display(self):
+        class CheckedOptionsParser(HTMLParser):
+            def __init__(self):
+                super().__init__()
+                self.selected = {"dive_type": [], "current": []}
+
+            def handle_starttag(self, tag, attrs):
+                attrs = dict(attrs)
+                if tag == "input" and attrs.get("name") in self.selected and "checked" in attrs:
+                    self.selected[attrs["name"]].append(attrs["value"])
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            app, db_path, _ = self.make_app(Path(tmp_dir))
+            client = app.test_client()
+            self.signup(client)
+            payload = {"site_name": "Alert Rock", "depth_m": "20", "duration_min": "50",
+                       "dive_type": ["open water", "reef", "wall"], "current": ["tidal", "drift"],
+                       "current_strength": "moderate"}
+            self.assertEqual(client.post("/dive/new", data=payload).status_code, 302)
+            dive = client.get("/api/dives/mine").get_json()[0]
+            dive_id = dive["id"]
+            self.assertEqual(dive["dive_types"], ["open water", "reef", "wall"])
+            self.assertEqual(dive["current_types"], ["tidal", "drift"])
+            self.assertEqual(dive["dive_type"], "open water")
+            self.assertEqual(dive["current"], "tidal")
+            self.assertEqual(dive["current_strength"], "moderate")
+            for url in ("/home", "/you", f"/dive/{dive_id}", "/dive-sites/1"):
+                self.assertIn(b"Open Water, Reef, Wall", client.get(url).data)
+            self.assertIn(b"Tidal, Drift", client.get(f"/dive/{dive_id}").data)
+            self.assertIn(b"Open Water, Reef, Wall", app.test_client().get(f"/share/dive/{dive_id}").data)
+
+            def edit_selections():
+                parser = CheckedOptionsParser()
+                page = client.get(f"/dive/{dive_id}/edit")
+                self.assertEqual(page.status_code, 200)
+                parser.feed(page.data.decode())
+                return parser.selected
+
+            for _ in range(2):
+                selected = edit_selections()
+                self.assertEqual(selected, {"dive_type": payload["dive_type"], "current": payload["current"]})
+                self.assertEqual(client.post(f"/dive/{dive_id}/edit", data={**payload, **selected}).status_code, 302)
+            updated = {**payload, "dive_type": ["wall", "night"], "current": ["surge", "rip"]}
+            client.post(f"/dive/{dive_id}/edit", data=updated)
+            self.assertEqual(edit_selections(), {"dive_type": ["wall", "night"], "current": ["surge", "rip"]})
+            with app.app_context():
+                database.init_db()
+                database.init_db()
+            self.assertEqual(edit_selections(), {"dive_type": ["wall", "night"], "current": ["surge", "rip"]})
+            with sqlite3.connect(db_path) as conn:
+                row = conn.execute("SELECT dive_types_json, current_types_json FROM dives").fetchone()
+                self.assertEqual(json.loads(row[0]), ["wall", "night"])
+                self.assertEqual(json.loads(row[1]), ["surge", "rip"])
+
+    def test_multiple_type_validation_and_none_current(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            app, _, _ = self.make_app(Path(tmp_dir))
+            client = app.test_client()
+            self.signup(client)
+            payload = {"site_name": "Alert Rock", "depth_m": "20", "duration_min": "50", "current_strength": "strong"}
+            for dive_types, currents, expected_dives, expected_currents, strength in (
+                (["wall", "reef", "wall", "bad"], ["none", "drift", "tidal", "drift", "bad"], ["reef", "wall"], ["tidal", "drift"], "strong"),
+                ([], [], ["open water"], ["none"], "none"),
+                (["bad"], ["bad"], ["open water"], ["none"], "none"),
+                (["wreck"], ["none"], ["wreck"], ["none"], "none"),
+            ):
+                with self.subTest(dive_types=dive_types, currents=currents):
+                    client.post("/dive/new", data={**payload, "dive_type": dive_types, "current": currents})
+                    dive = max(client.get("/api/dives/mine").get_json(), key=lambda item: item["id"])
+                    self.assertEqual(dive["dive_types"], expected_dives)
+                    self.assertEqual(dive["current_types"], expected_currents)
+                    self.assertEqual(dive["current_strength"], strength)
+
+    def test_legacy_single_types_and_multi_types_survive_schema_migration(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            def prepare_db(db_path):
+                schema = (Path(__file__).resolve().parents[1] / "pelagia/schema.sql").read_text()
+                old_schema = schema.replace("    dive_types_json TEXT,\n", "").replace("    current_types_json TEXT,\n", "")
+                with sqlite3.connect(db_path) as conn:
+                    conn.executescript(old_schema)
+                    conn.execute("INSERT INTO users (id, username, password_hash) VALUES (1, 'legacy', 'hash')")
+                    conn.execute("""INSERT INTO dives (user_id, date, site_name, dive_type, current, current_strength)
+                                    VALUES (1, '2026-10-13', 'Legacy dive', 'wall', 'rip', 'strong')""")
+            app, db_path, _ = self.make_app(Path(tmp_dir), prepare_db=prepare_db)
+            client = app.test_client()
+            self.signup(client)
+            dive = client.get("/api/dives/1").get_json()
+            self.assertEqual(dive["dive_types"], ["wall"])
+            self.assertEqual(dive["current_types"], ["rip"])
+            # Only the owner sees the edit form, so verify through a legacy session.
+            with client.session_transaction() as session:
+                session["user_id"] = 1
+            edit = client.get("/dive/1/edit").data
+            self.assertIn(b'name="dive_type" value="wall" data-option-label="Wall" checked', edit)
+            self.assertIn(b'name="current" value="rip" data-option-label="Rip" checked', edit)
+            with sqlite3.connect(db_path) as conn:
+                conn.execute("UPDATE dives SET dive_types_json = ?, current_types_json = ?", (json.dumps(["reef", "wall"]), json.dumps(["tidal", "rip"])))
+                # Exercise the existing table rebuild while keeping the new arrays.
+                conn.execute("ALTER TABLE dives ADD COLUMN weight_lbs REAL")
+            with app.app_context():
+                database.init_db()
+            migrated = client.get("/api/dives/1").get_json()
+            self.assertEqual(migrated["dive_types"], ["reef", "wall"])
+            self.assertEqual(migrated["current_types"], ["tidal", "rip"])
+            self.assertEqual(migrated["current_strength"], "strong")
+
+    def test_site_current_summary_counts_all_selected_current_types(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            app, _, _ = self.make_app(Path(tmp_dir))
+            client = app.test_client()
+            self.signup(client)
+            for currents in (["tidal", "drift"], ["tidal", "drift"], ["drift"]):
+                client.post("/dive/new", data={"site_name": "Alert Rock", "depth_m": "20", "duration_min": "50",
+                                               "date": date.today().isoformat(), "current": currents, "current_strength": "strong"})
+            with app.app_context():
+                self.assertEqual(dive_site_recent_conditions(1)["current"], "drift")
+
+    def test_average_depth_is_optional_and_sac_prefers_it_when_present(self):
+        dive = {"starting_pressure_bar": 200, "ending_pressure_bar": 50,
+                "duration_min": 50, "depth_m": 20}
+        for average_depth, expected in ((None, 1), (10, 1.5), (10.3, 3 / 2.03), (0, 3)):
+            with self.subTest(average_depth=average_depth):
+                values = {**dive, "average_depth_m": average_depth}
+                self.assertAlmostEqual(sac_rate(values), expected)
+                self.assertEqual(sac_tank_size({**values, "sac_rate_l_min": expected * 15}), 15)
+                self.assertIsNone(sac_rate({**values, "starting_pressure_bar": None}))
+                self.assertIsNone(sac_rate({**values, "duration_min": 0}))
+
+    def test_average_depth_round_trip_display_and_clear(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            app, db_path, _ = self.make_app(Path(tmp_dir))
+            client = app.test_client()
+            self.signup(client)
+            form = client.get("/dive/new").data
+            self.assertIn(b'<output id="averageDepthOutput">-</output>', form)
+            self.assertIn(b'name="average_depth_m" type="number" min="0" max="45" step="any" placeholder="-" value=""', form)
+            self.assertIn(b'min="0" max="45" step="1" value="0" data-range="averageDepth"', form)
+            self.assertLess(form.index(b'name="depth_m"'), form.index(b'name="average_depth_m"'))
+            self.assertLess(form.index(b'name="average_depth_m"'), form.index(b'name="duration_min"'))
+            payload = {"site_name": "Alert Rock", "depth_m": "20", "duration_min": "50",
+                       "starting_pressure_bar": "200", "ending_pressure_bar": "50", "tank_size_l": "15"}
+            self.assertEqual(client.post("/dive/new", data=payload).status_code, 302)
+            dive = client.get("/api/dives/mine").get_json()[0]
+            self.assertIsNone(dive["average_depth_m"])
+            self.assertEqual(dive["sac_rate_l_min"], 15)
+            dive_id = dive["id"]
+            edit_url = f"/dive/{dive_id}/edit"
+            self.assertNotIn(b"<small>Average depth</small>", client.get("/home").data)
+            for value, display in (("10.3", "10.3"), ("15.0", "15"), ("0", "0")):
+                with self.subTest(average_depth=value):
+                    self.assertEqual(client.post(edit_url, data={**payload, "average_depth_m": value}).status_code, 302)
+                    dive = client.get(f"/api/dives/{dive_id}").get_json()
+                    self.assertIsInstance(dive["average_depth_m"], float)
+                    self.assertEqual(dive["average_depth_m"], float(value))
+                    self.assertEqual(dive["depth_m"], 20)
+                    expected = 150 / 50 / (float(value) / 10 + 1) * 15
+                    self.assertAlmostEqual(dive["sac_rate_l_min"], expected)
+                    edit = client.get(edit_url).data
+                    self.assertIn(f'value="{display}" data-number="averageDepth"'.encode(), edit)
+                    self.assertIn(b'value="15" data-tank-size checked', edit)
+                    for url in ("/home", "/you", f"/dive/{dive_id}", "/dive-sites/1"):
+                        page = client.get(url)
+                        self.assertEqual(page.status_code, 200)
+                        self.assertIn(b"<small>Average depth</small>", page.data)
+                        self.assertIn(display.encode(), page.data)
+                        self.assertNotIn(b"15.0", page.data)
+                    public = app.test_client().get(f"/share/dive/{dive_id}").data
+                    self.assertIn(f"{display} m average depth".encode(), public)
+                    self.assertIn(b"<small>Average depth</small>", public)
+                    # Preserve both average depth and the inferred 15 L tank choice.
+                    without_tank = {**payload, "average_depth_m": value}
+                    without_tank.pop("tank_size_l")
+                    client.post(edit_url, data=without_tank)
+                    self.assertAlmostEqual(client.get(f"/api/dives/{dive_id}").get_json()["sac_rate_l_min"], expected)
+            self.assertEqual(client.post(edit_url, data={**payload, "average_depth_m": ""}).status_code, 302)
+            dive = client.get(f"/api/dives/{dive_id}").get_json()
+            self.assertIsNone(dive["average_depth_m"])
+            self.assertEqual(dive["sac_rate_l_min"], 15)
+            self.assertIn(b'<output id="averageDepthOutput">-</output>', client.get(edit_url).data)
+            self.assertNotIn(b"<small>Average depth</small>", client.get("/home").data)
+            # Creating a new dive with average depth uses the same calculation.
+            client.post("/dive/new", data={**payload, "average_depth_m": "10.3"})
+            created = max(client.get("/api/dives/mine").get_json(), key=lambda item: item["id"])
+            self.assertEqual(created["average_depth_m"], 10.3)
+            self.assertAlmostEqual(created["sac_rate_l_min"], 150 / 50 / 2.03 * 15)
+            with sqlite3.connect(db_path) as conn:
+                column = next(row for row in conn.execute("PRAGMA table_info(dives)") if row[1] == "average_depth_m")
+                self.assertEqual((column[2], column[3]), ("REAL", 0))
+
+    def test_existing_dives_gain_null_average_depth_without_changing_saved_sac(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            def prepare_db(db_path):
+                schema = (Path(__file__).resolve().parents[1] / "pelagia/schema.sql").read_text()
+                with sqlite3.connect(db_path) as conn:
+                    conn.executescript(schema.replace("    average_depth_m REAL,\n", ""))
+                    conn.execute("INSERT INTO users (id, username, password_hash) VALUES (1, 'legacy', 'hash')")
+                    conn.execute("""INSERT INTO dives (user_id, date, site_name, depth_m, duration_min, sac_rate_l_min)
+                                    VALUES (1, '2026-07-22', 'Legacy dive', 20, 50, 17.5)""")
+            app, db_path, _ = self.make_app(Path(tmp_dir), prepare_db=prepare_db)
+            with app.app_context():
+                database.init_db()
+                database.init_db()
+            with sqlite3.connect(db_path) as conn:
+                self.assertEqual(conn.execute("SELECT depth_m, average_depth_m, sac_rate_l_min FROM dives").fetchone(),
+                                 (20.0, None, 17.5))
+                self.assertEqual(conn.execute("PRAGMA foreign_key_check").fetchall(), [])
+
+    def test_edit_species_preload_and_save_preserve_selected_tags(self):
+        class SpeciesInputParser(HTMLParser):
+            value = None
+
+            def handle_starttag(self, tag, attrs):
+                attrs = dict(attrs)
+                if tag == "input" and attrs.get("id") == "speciesJson":
+                    self.value = attrs.get("value")
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            app, _, _ = self.make_app(Path(tmp_dir))
+            client = app.test_client()
+            self.signup(client)
+            special_name = 'Diver\'s "fish" & ray'
+            with app.app_context():
+                db = database.get_db()
+                db.execute("INSERT INTO species (country_or_area, common_name) VALUES ('Alaska', ?)", (special_name,))
+                db.commit()
+            selected = ["Coral", "Reef Fish", special_name]
+            payload = {"site_name": "Alert Rock", "depth_m": "15.3", "duration_min": "40",
+                       "species_json": json.dumps(selected)}
+            client.post("/dive/new", data=payload)
+            dive_id = client.get("/api/dives/mine").get_json()[0]["id"]
+            edit_url = f"/dive/{dive_id}/edit"
+
+            def loaded_species():
+                parser = SpeciesInputParser()
+                page = client.get(edit_url)
+                self.assertEqual(page.status_code, 200)
+                parser.feed(page.data.decode())
+                return json.loads(parser.value)
+
+            self.assertEqual(loaded_species(), sorted(selected))
+            # Submit the actual value that a browser reads from the edit form.
+            response = client.post(edit_url, data={**payload, "notes": "Updated notes",
+                                                  "species_json": json.dumps(loaded_species())})
+            self.assertEqual(response.status_code, 302)
+            self.assertEqual(client.get(f"/api/dives/{dive_id}").get_json()["species"], sorted(selected))
+            self.assertEqual(loaded_species(), sorted(selected))
+
+            # Removing a tag and adding another saves exactly the new selection.
+            updated = [special_name, "Reef Fish", "Turtle"]
+            client.post(edit_url, data={**payload, "species_json": json.dumps(updated)})
+            self.assertEqual(loaded_species(), sorted(updated))
+            self.assertEqual(client.get(f"/api/dives/{dive_id}").get_json()["species"], sorted(updated))
+            client.post(edit_url, data={**payload, "species_json": "[]"})
+            self.assertEqual(loaded_species(), [])
+            self.assertEqual(client.get(f"/api/dives/{dive_id}").get_json()["species"], [])
+
+    def test_slider_steps_are_independent_of_numeric_input_steps(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            app, _, _ = self.make_app(Path(tmp_dir))
+            client = app.test_client()
+            self.signup(client)
+            form = client.get("/dive/new").data
+            self.assertIn(b'min="0" max="45" step="1" value="12" data-range="depth"', form)
+            self.assertIn(b'name="depth_m" type="number" min="0" max="45" step="any"', form)
+            self.assertIn(b'min="0" max="120" step="1" value="80" data-range="duration"', form)
+            self.assertIn(b'min="0" max="10" step="1" value="0" data-range="weight"', form)
+            for name in ("starting_pressure_bar", "ending_pressure_bar"):
+                self.assertIn(f'name="{name}" type="number" min="0" max="200" step="1"'.encode(), form)
+
+    def test_decimal_depth_and_integer_pressure_round_trip_and_display(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            app, db_path, _ = self.make_app(Path(tmp_dir))
+            client = app.test_client()
+            self.signup(client)
+            payload = {"site_name": "Alert Rock", "depth_m": "15.0", "duration_min": "40",
+                       "starting_pressure_bar": "195", "ending_pressure_bar": "47"}
+            client.post("/dive/new", data=payload)
+            dive_id = client.get("/api/dives/mine").get_json()[0]["id"]
+            guest = app.test_client()
+            for raw, display in (("15.0", "15"), ("15.3", "15.3"), ("15.3456789", "15.3456789")):
+                with self.subTest(depth=raw):
+                    self.assertEqual(client.post(f"/dive/{dive_id}/edit", data={**payload, "depth_m": raw}).status_code, 302)
+                    dive = client.get(f"/api/dives/{dive_id}").get_json()
+                    self.assertIsInstance(dive["depth_m"], float)
+                    self.assertEqual(dive["depth_m"], float(raw))
+                    self.assertEqual(dive["starting_pressure_bar"], 195)
+                    self.assertEqual(dive["ending_pressure_bar"], 47)
+                    self.assertAlmostEqual(dive["sac_rate_l_min"], (195 - 47) / 40 / (float(raw) / 10 + 1) * 12)
+                    edit = client.get(f"/dive/{dive_id}/edit").data
+                    self.assertIn(f'<output id="depthOutput">{display} m</output>'.encode(), edit)
+                    self.assertIn(f'value="{display}" data-number="depth"'.encode(), edit)
+                    for url in (f"/dive/{dive_id}", "/home", "/you"):
+                        page = client.get(url).data
+                        self.assertIn(display.encode(), page)
+                        self.assertNotIn(b"15.0", page)
+                    preview = guest.get(f"/share/dive/{dive_id}").data
+                    self.assertIn(f"{display} m deep".encode(), preview)
+                    self.assertIn(f"{display} m, 40 min".encode(), preview)
+                    self.assertNotIn(b"15.0", preview)
+            with sqlite3.connect(db_path) as conn:
+                depth, storage_type = conn.execute("SELECT depth_m, typeof(depth_m) FROM dives").fetchone()
+                self.assertEqual((depth, storage_type), (15.3456789, "real"))
+
+    def test_integer_depth_schema_migration_preserves_dives_and_relationships(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            def prepare_db(db_path):
+                schema = (Path(__file__).resolve().parents[1] / "pelagia/schema.sql").read_text()
+                with sqlite3.connect(db_path) as conn:
+                    conn.executescript(schema.replace("depth_m REAL NOT NULL", "depth_m INTEGER NOT NULL"))
+                    conn.execute("INSERT INTO users (id, username, password_hash) VALUES (1, 'legacy', 'hash')")
+                    conn.execute("INSERT INTO dive_sites (id, master_site_id, name) VALUES (1, 'DS1', 'Alert Rock')")
+                    for depth in (15, 15.3):
+                        conn.execute("""INSERT INTO dives (user_id, dive_site_id, date, site_name, depth_m, average_depth_m, duration_min)
+                                        VALUES (1, 1, '2026-07-22', 'Alert Rock', ?, ?, 40)""", (depth, depth - 5))
+                    conn.execute("INSERT INTO photos (dive_id, filename) VALUES (1, 'existing.jpg')")
+                    conn.execute("INSERT INTO dive_species (dive_id, common_name) VALUES (1, 'Coral')")
+                    conn.execute("INSERT INTO likes (dive_id, user_id) VALUES (1, 1)")
+                    conn.execute("INSERT INTO comments (dive_id, user_id, body) VALUES (1, 1, 'Existing comment')")
+                    database._ensure_dive_site_counts(conn)
+            app, db_path, _ = self.make_app(Path(tmp_dir), prepare_db=prepare_db)
+            with app.app_context():
+                database.init_db()
+                database.init_db()
+            with sqlite3.connect(db_path) as conn:
+                columns = {row[1]: row[2] for row in conn.execute("PRAGMA table_info(dives)")}
+                self.assertEqual(columns["depth_m"], "REAL")
+                self.assertEqual(conn.execute("SELECT id, depth_m, typeof(depth_m) FROM dives ORDER BY id").fetchall(),
+                                 [(1, 15.0, "real"), (2, 15.3, "real")])
+                self.assertEqual(conn.execute("SELECT average_depth_m FROM dives ORDER BY id").fetchall(), [(10.0,), (10.3,)])
+                for table in ("photos", "dive_species", "likes", "comments"):
+                    self.assertEqual(conn.execute(f"SELECT dive_id FROM {table}").fetchall(), [(1,)])
+                self.assertEqual(conn.execute("PRAGMA foreign_key_check").fetchall(), [])
+                self.assertEqual(conn.execute("SELECT logged_dive_count FROM dive_sites WHERE id = 1").fetchone()[0], 2)
+                conn.execute("UPDATE dives SET is_deleted = 1 WHERE id = 1")
+                self.assertEqual(conn.execute("SELECT logged_dive_count FROM dive_sites WHERE id = 1").fetchone()[0], 1)
+
     def test_sac_rate_calculation_and_display(self):
         dive = {
             "starting_pressure_bar": 200,
@@ -519,7 +957,7 @@ Kelp House,2 Harbor Way,Alaska,https://kelp.example.test
             self.assertIn(b'value="20" data-range="waterTemp"', new_response.data)
             self.assertIn(b'min="0" max="200" step="10" value="200" data-range="startingPressure"', new_response.data)
             self.assertIn(b'min="0" max="200" step="10" value="0" data-range="endingPressure"', new_response.data)
-            self.assertIn("Depth (m)".encode(), new_response.data)
+            self.assertIn("Max depth (m)".encode(), new_response.data)
             self.assertIn("Weight (kg)".encode(), new_response.data)
             self.assertIn("Air temperature (°C)".encode(), new_response.data)
             self.assertIn(b'name="depth_m" type="number" min="0" max="45"', new_response.data)
@@ -634,8 +1072,8 @@ Kelp House,2 Harbor Way,Alaska,https://kelp.example.test
             self.signup(client)
 
             new_response = client.get("/dive/new")
-            self.assertIn(b'min="0" max="10" step="0.5" value="0" data-range="weight"', new_response.data)
-            self.assertIn(b'name="weight_kg" type="number" min="0" max="10" step="0.5"', new_response.data)
+            self.assertIn(b'min="0" max="10" step="1" value="0" data-range="weight"', new_response.data)
+            self.assertIn(b'name="weight_kg" type="number" min="0" max="10" step="any"', new_response.data)
 
             base_data = {
                 "date": "2026-07-22",
@@ -826,14 +1264,12 @@ Kelp House,2 Harbor Way,Alaska,https://kelp.example.test
             self.signup(client)
 
             new_response = client.get("/dive/new")
-            self.assertIn(b'<option value="open water" selected>Open Water</option>', new_response.data)
-            self.assertIn(b'<option value="shore dive" >Shore Dive</option>', new_response.data)
-            self.assertIn(b'<option value="none" selected>-</option>', new_response.data)
+            self.assertIn(b'name="dive_type" value="open water" data-option-label="Open Water" checked', new_response.data)
+            self.assertIn(b'name="dive_type" value="shore dive" data-option-label="Shore Dive" ', new_response.data)
+            self.assertIn(b'name="current" value="none" data-option-label="-" checked', new_response.data)
             self.assertIn(b"Current type", new_response.data)
-            self.assertIn(b'<option value="slack" >Slack</option>', new_response.data)
-            self.assertIn(b'<option value="tidal" >Tidal</option>', new_response.data)
-            self.assertIn(b'<option value="rip" >Rip</option>', new_response.data)
-            self.assertIn(b'<option value="vertical" >Vertical</option>', new_response.data)
+            for current in ("slack", "tidal", "rip", "vertical"):
+                self.assertIn(f'name="current" value="{current}" data-option-label="{current.title()}" '.encode(), new_response.data)
             self.assertIn(b"Current strength", new_response.data)
             self.assertIn(b"current-strength-control is-disabled", new_response.data)
             self.assertIn(b"data-current-type-select", new_response.data)

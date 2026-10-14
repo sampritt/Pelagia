@@ -29,6 +29,9 @@ from PIL import Image, ImageOps, UnidentifiedImageError
 
 from . import db as database
 from .importer import import_reference_data
+from .metrics import format_metric
+from .units import metric_measurement
+from .dive_options import DIVE_TYPES, CURRENT_TYPES, normalize_options, dive_type_options, current_type_options
 from . import google_auth
 from .sharing import fetch_public_dive, render_share_image, share_description
 
@@ -36,8 +39,6 @@ from .sharing import fetch_public_dive, render_share_image, share_description
 EXPOSURES = ("swimsuit", "shorty", "2mm", "3mm", "4mm", "5mm", "6mm", "7mm", "dry suit")
 GAS_MIXES = ("Air", "30%", "32%", "34%", "36%", "38%", "40%", "Other")
 NITROX_GAS_MIXES = {"30%", "32%", "34%", "36%", "38%", "40%"}
-DIVE_TYPES = ("open water", "shore dive", "reef", "wall", "deep", "night", "wreck", "cavern", "cave")
-CURRENT_TYPES = ("none", "slack", "tidal", "surge", "drift", "rip", "vertical")
 CURRENT_STRENGTHS = ("none", "light", "moderate", "strong", "very strong")
 DIVE_TYPE_LABELS = {value: value.title() for value in DIVE_TYPES}
 CURRENT_TYPE_LABELS = {value: value.title() for value in CURRENT_TYPES}
@@ -721,11 +722,11 @@ def create_dive_from_request(user_id, form_request):
         """
         INSERT INTO dives (
             user_id, buddy_user_id, dive_site_id, dive_center_id, dive_center_name, date, site_name, country_or_area, latitude, longitude,
-            depth_m, duration_min, weight_kg, starting_pressure_bar, ending_pressure_bar, sac_rate_l_min,
+            depth_m, average_depth_m, duration_min, weight_kg, starting_pressure_bar, ending_pressure_bar, sac_rate_l_min,
             exposure, visibility_m, air_temp_c, water_temp_c,
-            gas_mix, dive_type, current, current_strength, notes
+            gas_mix, dive_type, dive_types_json, current, current_types_json, current_strength, notes
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             user_id,
@@ -739,6 +740,7 @@ def create_dive_from_request(user_id, form_request):
             values["latitude"],
             values["longitude"],
             values["depth_m"],
+            values["average_depth_m"],
             values["duration_min"],
             values["weight_kg"],
             values["starting_pressure_bar"],
@@ -750,7 +752,9 @@ def create_dive_from_request(user_id, form_request):
             values["water_temp_c"],
             values["gas_mix"],
             values["dive_type"],
+            json.dumps(values["dive_types"]),
             values["current"],
+            json.dumps(values["current_types"]),
             values["current_strength"],
             values["notes"],
         ),
@@ -780,6 +784,7 @@ def update_dive_from_request(dive_id, user_id, form_request):
             latitude = ?,
             longitude = ?,
             depth_m = ?,
+            average_depth_m = ?,
             duration_min = ?,
             weight_kg = ?,
             starting_pressure_bar = ?,
@@ -791,7 +796,9 @@ def update_dive_from_request(dive_id, user_id, form_request):
             water_temp_c = ?,
             gas_mix = ?,
             dive_type = ?,
+            dive_types_json = ?,
             current = ?,
+            current_types_json = ?,
             current_strength = ?,
             notes = ?
         WHERE id = ? AND user_id = ? AND COALESCE(is_deleted, 0) = 0
@@ -807,6 +814,7 @@ def update_dive_from_request(dive_id, user_id, form_request):
             values["latitude"],
             values["longitude"],
             values["depth_m"],
+            values["average_depth_m"],
             values["duration_min"],
             values["weight_kg"],
             values["starting_pressure_bar"],
@@ -818,7 +826,9 @@ def update_dive_from_request(dive_id, user_id, form_request):
             values["water_temp_c"],
             values["gas_mix"],
             values["dive_type"],
+            json.dumps(values["dive_types"]),
             values["current"],
+            json.dumps(values["current_types"]),
             values["current_strength"],
             values["notes"],
             dive_id,
@@ -834,21 +844,28 @@ def update_dive_from_request(dive_id, user_id, form_request):
 
 def dive_values_from_request(form_request, user_id, default_tank_size_l=12):
     form = form_request.form
-    depth = clamp_int(form.get("depth_m"), 0, 45)
+    # Unit choices affect the form only. Convert before validation, SAC, or storage.
+    length_unit = "ft" if form.get("length_unit") == "ft" else "m"
+    weight_unit = "lb" if form.get("weight_unit") == "lb" else "kg"
+    pressure_unit = "psi" if form.get("pressure_unit") == "psi" else "bar"
+    temperature_unit = "f" if form.get("temperature_unit") == "f" else "c"
+    depth = metric_measurement(form.get("depth_m"), length_unit, 0.0, 45.0) or 0.0
+    average_depth = metric_measurement(form.get("average_depth_m"), length_unit, 0.0, 45.0)
     duration = clamp_int(form.get("duration_min"), 0, 120)
-    weight = maybe_clamped_float(form.get("weight_kg"), 0, 10)
-    starting_pressure = maybe_clamped_int(form.get("starting_pressure_bar"), 0, 200)
-    ending_pressure = maybe_clamped_int(form.get("ending_pressure_bar"), 0, 200)
+    weight = metric_measurement(form.get("weight_kg"), weight_unit, 0, 10)
+    starting_pressure = metric_measurement(form.get("starting_pressure_bar"), pressure_unit, 0, 200)
+    ending_pressure = metric_measurement(form.get("ending_pressure_bar"), pressure_unit, 0, 200)
     # Tank size is a calculation input, not a stored dive field.
     tank_size_choice = form.get("tank_size_l", form.get("tank_size_preview", str(default_tank_size_l)))
     tank_size_l = 15 if tank_size_choice == "15" else 12
     exposure = form.get("exposure") if form.get("exposure") in EXPOSURES else None
-    visibility = maybe_clamped_int(form.get("visibility_m"), 0, 30)
-    air_temp = maybe_clamped_int(form.get("air_temp_c"), -20, 40)
-    water_temp = maybe_clamped_int(form.get("water_temp_c"), -20, 40)
+    visibility = metric_measurement(form.get("visibility_m"), length_unit, 0, 30)
+    air_temp = metric_measurement(form.get("air_temp_c"), temperature_unit, -20, 40)
+    water_temp = metric_measurement(form.get("water_temp_c"), temperature_unit, -20, 40)
     gas_mix = form.get("gas_mix") if form.get("gas_mix") in GAS_MIXES else "Air"
-    dive_type = form.get("dive_type") if form.get("dive_type") in DIVE_TYPES else "open water"
-    current = form.get("current") if form.get("current") in CURRENT_TYPES else "none"
+    dive_types = normalize_options(form.getlist("dive_type"), DIVE_TYPES, "open water")
+    current_types = normalize_options(form.getlist("current"), CURRENT_TYPES, "none")
+    dive_type, current = dive_types[0], current_types[0]
     current_strength = form.get("current_strength") if form.get("current_strength") in CURRENT_STRENGTHS else "none"
     if current == "none":
         current_strength = "none"
@@ -923,6 +940,7 @@ def dive_values_from_request(form_request, user_id, default_tank_size_l=12):
         "latitude": latitude,
         "longitude": longitude,
         "depth_m": depth,
+        "average_depth_m": average_depth,
         "duration_min": duration,
         "weight_kg": weight,
         "starting_pressure_bar": starting_pressure,
@@ -933,7 +951,9 @@ def dive_values_from_request(form_request, user_id, default_tank_size_l=12):
         "water_temp_c": water_temp,
         "gas_mix": gas_mix,
         "dive_type": dive_type,
+        "dive_types": dive_types,
         "current": current,
+        "current_types": current_types,
         "current_strength": current_strength,
         "notes": form.get("notes", "").strip(),
         "species_names": species_names,
@@ -1200,6 +1220,8 @@ def fetch_owned_dive(dive_id, user_id):
 def hydrate_dive(row):
     db = database.get_db()
     dive = dict(row)
+    dive["dive_types"] = dive_type_options(dive)
+    dive["current_types"] = current_type_options(dive)
     dive["photos"] = db.execute("SELECT id, filename FROM photos WHERE dive_id = ? ORDER BY id", (row["id"],)).fetchall()
     dive["species"] = db.execute(
         "SELECT common_name FROM dive_species WHERE dive_id = ? ORDER BY common_name",
@@ -1347,7 +1369,7 @@ def dive_site_recent_conditions(site_id):
         return empty
     rows = database.get_db().execute(
         """
-        SELECT visibility_m, current, current_strength, water_temp_c, air_temp_c
+        SELECT visibility_m, current, current_types_json, current_strength, water_temp_c, air_temp_c
         FROM dives
         WHERE dive_site_id = ?
             AND COALESCE(is_deleted, 0) = 0
@@ -1467,8 +1489,8 @@ def round_half_up(value):
 def dominant_current_type(rows):
     counts = {}
     for row in rows:
-        if row["current"] in CURRENT_TYPES:
-            counts[row["current"]] = counts.get(row["current"], 0) + 1
+        for current in current_type_options(row):
+            counts[current] = counts.get(current, 0) + 1
     if not counts:
         return None
     return max(counts.items(), key=lambda item: (item[1], -CURRENT_TYPES.index(item[0])))[0]
@@ -1524,6 +1546,7 @@ def dive_to_json(dive):
         "latitude": dive["latitude"],
         "longitude": dive["longitude"],
         "depth_m": dive["depth_m"],
+        "average_depth_m": dive["average_depth_m"],
         "duration_min": dive["duration_min"],
         "weight_kg": dive["weight_kg"],
         "starting_pressure_bar": dive["starting_pressure_bar"],
@@ -1536,7 +1559,9 @@ def dive_to_json(dive):
         "water_temp_c": dive["water_temp_c"],
         "gas_mix": dive["gas_mix"],
         "dive_type": dive["dive_type"],
+        "dive_types": dive["dive_types"],
         "current": dive["current"],
+        "current_types": dive["current_types"],
         "current_strength": dive["current_strength"],
         "notes": dive["notes"],
         "like_count": dive["like_count"],
@@ -1656,7 +1681,7 @@ def maybe_int(value):
 
 
 def dive_type_label(value):
-    return DIVE_TYPE_LABELS.get(value, DIVE_TYPE_LABELS["open water"])
+    return ", ".join(DIVE_TYPE_LABELS[item] for item in normalize_options(value, DIVE_TYPES, "open water"))
 
 
 def is_nitrox_gas_mix(value):
@@ -1664,7 +1689,7 @@ def is_nitrox_gas_mix(value):
 
 
 def current_label(value):
-    return CURRENT_TYPE_LABELS.get(value, CURRENT_TYPE_LABELS["none"])
+    return ", ".join(CURRENT_TYPE_LABELS[item] for item in normalize_options(value, CURRENT_TYPES, "none"))
 
 
 def current_strength_label(value):
@@ -1676,7 +1701,8 @@ def sac_rate(dive):
     start = dive["starting_pressure_bar"]
     end = dive["ending_pressure_bar"]
     duration = dive["duration_min"]
-    depth = dive["depth_m"]
+    average_depth = dive.get("average_depth_m")
+    depth = average_depth if average_depth is not None else dive["depth_m"]
     if start is None or end is None or duration <= 0:
         return None
     return (start - end) / duration / (depth / 10 + 1)
@@ -1698,10 +1724,10 @@ def sac_tank_size(dive):
     return 12
 
 
-def optional_metric(value, suffix=""):
+def optional_metric(value, suffix="", precision=None):
     if value is None or value == "":
         return "-"
-    display_value = f"{value:g}" if isinstance(value, float) else value
+    display_value = format_metric(round(value, precision) if precision is not None else value)
     return f"{display_value}{suffix}"
 
 

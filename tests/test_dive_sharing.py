@@ -2,10 +2,11 @@ import io
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 from urllib.parse import parse_qs, urlsplit
 
 from PIL import Image, ImageDraw
+import requests
 from werkzeug.security import generate_password_hash
 
 from pelagia import create_app
@@ -26,6 +27,17 @@ class DiveSharingTest(unittest.TestCase):
                 "PUBLIC_BASE_URL": "https://pelagia.example",
             })
         self.client = self.app.test_client()
+        # Unit tests render deterministic tiles without accessing a live provider.
+        tile = io.BytesIO()
+        Image.new("RGB", (256, 256), "#aad3df").save(tile, "PNG")
+
+        def tile_response(*args, **kwargs):
+            response = Mock(status_code=200, content=tile.getvalue(), headers={"Cache-Control": "max-age=604800"})
+            response.__enter__ = Mock(return_value=response)
+            response.__exit__ = Mock(return_value=False)
+            return response
+
+        self.tile_request = self.enterContext(patch("pelagia.static_maps.requests.get", side_effect=tile_response))
         with self.app.app_context():
             db = database.get_db()
             db.execute("INSERT INTO users (username, password_hash, google_email, profile_photo) VALUES (?, ?, ?, ?)",
@@ -98,11 +110,58 @@ class DiveSharingTest(unittest.TestCase):
                 self.assertEqual(response.location, "/home")
 
     def test_preview_image_without_photos_is_public_jpeg(self):
-        response = self.client.get("/share/dive/1/preview.jpg")
+        drawn_text = []
+        original_text = ImageDraw.ImageDraw.text
+
+        def record_text(draw, xy, text, *args, **kwargs):
+            drawn_text.append(text)
+            return original_text(draw, xy, text, *args, **kwargs)
+
+        with patch.object(ImageDraw.ImageDraw, "text", new=record_text):
+            response = self.client.get("/share/dive/1/preview.jpg")
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.mimetype, "image/jpeg")
         with Image.open(io.BytesIO(response.data)) as image:
             self.assertEqual(image.size, (1200, 630))
+            # The right panel contains actual map tiles and a centered location pin.
+            for actual, expected in zip(image.getpixel((1100, 300)), (170, 211, 223)):
+                self.assertLessEqual(abs(actual - expected), 3)
+            self.assertNotEqual(image.getpixel((910, 315)), image.getpixel((1100, 300)))
+        self.assertIn("© OpenStreetMap contributors", drawn_text)
+        self.assertGreater(self.tile_request.call_count, 0)
+        self.assertEqual(self.client.get("/share/dive/1/preview.jpg?download=1").data, response.data)
+
+    def test_map_failure_or_missing_coordinates_keeps_thumbnail_available(self):
+        self.tile_request.side_effect = requests.Timeout("Map unavailable")
+        failed = self.client.get("/share/dive/1/preview.jpg")
+        self.assertEqual(failed.status_code, 200)
+        self.assertGreater(self.tile_request.call_count, 0)
+        self.tile_request.reset_mock()
+        with self.app.app_context():
+            database.get_db().execute("UPDATE dives SET latitude = NULL, longitude = NULL WHERE id = 1")
+            database.get_db().commit()
+        missing = self.client.get("/share/dive/1/preview.jpg")
+        self.assertEqual(missing.data, failed.data)
+        self.tile_request.assert_not_called()
+
+    def test_share_thumbnail_includes_average_depth_when_logged(self):
+        with self.app.app_context():
+            database.get_db().execute("UPDATE dives SET average_depth_m = 15.0 WHERE id = 1")
+            database.get_db().commit()
+        drawn = []
+        original_text = ImageDraw.ImageDraw.text
+
+        def record_text(draw, xy, text, *args, **kwargs):
+            drawn.append(text)
+            return original_text(draw, xy, text, *args, **kwargs)
+
+        with patch.object(ImageDraw.ImageDraw, "text", new=record_text):
+            response = self.client.get("/share/dive/1/preview.jpg")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("AVG DEPTH", drawn)
+        self.assertIn("MAX DEPTH", drawn)
+        self.assertIn("15", drawn)
+        self.assertNotIn("15.0", drawn)
 
     def upload_photos(self):
         photos = []
@@ -116,6 +175,7 @@ class DiveSharingTest(unittest.TestCase):
             "site_name": "Blue Corner", "country_or_area": "Palau",
             "date": "2026-10-01",
             "depth_m": "24", "duration_min": "52", "photos": photos,
+            "latitude": "7.134", "longitude": "134.22",
         })
         self.assertEqual(response.status_code, 302)
 
@@ -134,9 +194,12 @@ class DiveSharingTest(unittest.TestCase):
 
     def test_uploaded_primary_photo_appears_in_public_and_saved_thumbnail(self):
         self.upload_photos()
-        self.assert_preview_photo_color((23, 173, 173))
+        with patch("pelagia.sharing.render_static_map") as map_renderer:
+            self.assert_preview_photo_color((23, 173, 173))
+            map_renderer.assert_not_called()
+        self.tile_request.assert_not_called()
 
-    def test_unavailable_primary_photo_uses_next_photo_then_ocean_fallback(self):
+    def test_unavailable_primary_photo_uses_next_photo_then_map_fallback(self):
         fallback = self.app.test_client().get("/share/dive/1/preview.jpg").data
         self.upload_photos()
         with self.app.app_context():

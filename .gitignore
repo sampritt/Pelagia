@@ -5,6 +5,7 @@ __pycache__/
 .venv312/
 instance/*.sqlite3
 instance/*.sqlite3-*
+instance/map_tiles/
 pelagia/static/uploads/dives/*
 pelagia/static/uploads/profiles/*
 !pelagia/static/uploads/dives/.gitkeep

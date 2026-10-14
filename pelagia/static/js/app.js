@@ -566,6 +566,13 @@ function renderSacRate(calculator, pressureRate) {
     calculator.querySelector(".sac-rate-summary")?.classList.toggle("is-unset", pressureRate === null);
 }
 
+const FORM_UNITS = {
+    length: { metric: "m", alternate: "ft", factor: 1 / 0.3048, offset: 0, decimals: 2, step: 1 },
+    weight: { metric: "kg", alternate: "lb", factor: 1 / 0.45359237, offset: 0, decimals: 2, step: 1 },
+    pressure: { metric: "bar", alternate: "psi", factor: 1 / (0.45359237 * 9.80665 / 0.0254 ** 2 / 100000), offset: 0, decimals: 0, step: 100 },
+    temperature: { metric: "c", alternate: "f", factor: 9 / 5, offset: 32, decimals: 1, step: 1 },
+};
+
 function initDiveForm() {
     const form = document.querySelector("[data-dive-form]");
     if (!form) {
@@ -596,13 +603,23 @@ function initDiveForm() {
             step: 1,
             unit: "m",
         },
+        averageDepth: {
+            range: form.querySelector("[data-range='averageDepth']"),
+            number: form.querySelector("[data-number='averageDepth']"),
+            output: document.getElementById("averageDepthOutput"),
+            min: 0,
+            max: 45,
+            step: 1,
+            unit: "m",
+            optional: true,
+        },
         duration: {
             range: form.querySelector("[data-range='duration']"),
             number: form.querySelector("[data-number='duration']"),
             output: document.getElementById("durationOutput"),
             min: 0,
             max: 120,
-            step: 5,
+            step: 1,
             unit: "min",
         },
         weight: {
@@ -611,7 +628,7 @@ function initDiveForm() {
             output: document.getElementById("weightOutput"),
             min: 0,
             max: 10,
-            step: 0.5,
+            step: 1,
             unit: "kg",
             optional: true,
         },
@@ -669,23 +686,68 @@ function initDiveForm() {
         },
     };
 
-    const formatMetricValue = (value) => {
-        const rounded = Math.round(Number(value) * 100) / 100;
-        return Number.isInteger(rounded) ? String(rounded) : String(rounded);
+    const unitGroups = { depth: "length", averageDepth: "length", visibility: "length", weight: "weight",
+        startingPressure: "pressure", endingPressure: "pressure", airTemp: "temperature", waterTemp: "temperature" };
+    const titles = { depth: "Max depth", averageDepth: "Average depth", visibility: "Visibility", weight: "Weight",
+        startingPressure: "Starting pressure", endingPressure: "Ending pressure", airTemp: "Air temperature", waterTemp: "Water temperature" };
+    const selectedUnits = Object.fromEntries(Object.entries(FORM_UNITS).map(([group, config]) => [group, config.metric]));
+    Object.entries(pairs).forEach(([name, pair]) => {
+        pair.name = name;
+        pair.group = unitGroups[name];
+        pair.title = titles[name];
+        pair.metricMin = pair.min;
+        pair.metricMax = pair.max;
+        pair.metricStep = pair.step;
+        pair.metricUnit = pair.unit;
+        pair.rangeMetric = Number(pair.range.value);
+        pair.label = form.querySelector(`[data-unit-label='${name}']`);
+    });
+    const usesAlternate = (pair) => pair.group && selectedUnits[pair.group] === FORM_UNITS[pair.group].alternate;
+    const toDisplay = (metric, pair) => usesAlternate(pair) ? metric * FORM_UNITS[pair.group].factor + FORM_UNITS[pair.group].offset : metric;
+    const toMetric = (display, pair) => usesAlternate(pair)
+        ? Number(((display - FORM_UNITS[pair.group].offset) / FORM_UNITS[pair.group].factor).toFixed(10)) : display;
+    const formatMetricValue = (value) => String(Number(value));
+    const formatPairOutput = (value, pair) => `${formatMetricValue(value)}${pair.compactUnit ? "" : " "}${pair.unit}`;
+    const snapToStep = (value, pair) => clamp(pair.min + Math.round((Number(value) - pair.min) / pair.step) * pair.step, pair.min, pair.max);
+    const displayDigits = (pair) => usesAlternate(pair) ? FORM_UNITS[pair.group].decimals
+        : ["depth", "averageDepth", "duration"].includes(pair.name) ? 10 : 2;
+    const roundedDisplay = (value, pair) => !usesAlternate(pair) && ["depth", "averageDepth", "duration"].includes(pair.name)
+        ? value : Number(value.toFixed(displayDigits(pair)));
+
+    const renderPair = (pair, normalizeNumber = true) => {
+        const alternate = usesAlternate(pair);
+        const config = FORM_UNITS[pair.group];
+        pair.unit = alternate ? (pair.group === "temperature" ? "°F" : config.alternate) : pair.metricUnit;
+        const scale = 10 ** displayDigits(pair);
+        pair.min = Math.floor(toDisplay(pair.metricMin, pair) * scale) / scale;
+        pair.max = Math.ceil(toDisplay(pair.metricMax, pair) * scale) / scale;
+        pair.step = alternate ? config.step : pair.metricStep;
+        pair.range.min = pair.number.min = String(pair.min);
+        pair.range.max = pair.number.max = String(pair.max);
+        pair.range.step = String(pair.step);
+        if (pair.group) {
+            pair.number.step = pair.group === "pressure" && (alternate || Number.isInteger(pair.metricValue)) ? "1" : "any";
+            pair.range.setAttribute("aria-label", `${pair.title}${pair.group === "pressure" ? "" : " slider"} (${pair.unit})`);
+            if (pair.label) pair.label.textContent = `${pair.title} (${pair.unit})`;
+        }
+        const metric = pair.metricValue ?? pair.rangeMetric;
+        const display = toDisplay(metric, pair);
+        pair.range.value = snapToStep(display, pair);
+        if (pair.metricValue === null) {
+            pair.number.value = "";
+            pair.output.textContent = "-";
+        } else {
+            const visible = normalizeNumber ? roundedDisplay(display, pair) : Number(pair.number.value);
+            if (normalizeNumber) pair.number.value = formatMetricValue(visible);
+            pair.output.textContent = formatPairOutput(visible, pair);
+        }
+        pair.displayRaw = pair.number.value;
     };
 
-    const formatPairOutput = (value, pair) => `${formatMetricValue(value)}${pair.compactUnit ? "" : " "}${pair.unit}`;
-
-    const snapToStep = (value, pair) => clamp(Math.round(Number(value) / pair.step) * pair.step, pair.min, pair.max);
-
     const updateSacRate = () => {
-        const values = ["depth", "duration", "startingPressure", "endingPressure"].map((name) => {
-            const pair = pairs[name];
-            const raw = pair.number.value.trim();
-            const value = Number(raw);
-            return raw && Number.isFinite(value) ? clamp(value, pair.min, pair.max) : null;
-        });
-        const [depth, duration, start, end] = values;
+        const values = ["depth", "averageDepth", "duration", "startingPressure", "endingPressure"].map((name) => pairs[name].metricValue ?? null);
+        const [maxDepth, averageDepth, duration, start, end] = values;
+        const depth = averageDepth ?? maxDepth;
         // Keep the pressure track and calculated-value styling in sync with inputs.
         const pressureTrack = form.querySelector(".pressure-slider");
         const positions = [pairs.startingPressure, pairs.endingPressure].map((pair) =>
@@ -694,7 +756,7 @@ function initDiveForm() {
         pressureTrack?.style.setProperty("--pressure-low", `${Math.min(...positions)}%`);
         pressureTrack?.style.setProperty("--pressure-high", `${Math.max(...positions)}%`);
         pressureTrack?.classList.toggle("has-pressure-values", start !== null && end !== null);
-        const pressureRate = values.includes(null) || duration <= 0
+        const pressureRate = [depth, duration, start, end].includes(null) || duration <= 0
             ? null
             : (start - end) / duration / (depth / 10 + 1);
         renderSacRate(form.querySelector("[data-sac-calculator]"), pressureRate);
@@ -706,8 +768,10 @@ function initDiveForm() {
         const commit = Boolean(options.commit);
         const rawValue = String(value ?? "").trim();
         if (!rawValue && pair.optional) {
+            pair.metricValue = null;
             pair.number.value = "";
             pair.output.textContent = "-";
+            pair.displayRaw = "";
             updateSacRate();
             return null;
         }
@@ -715,29 +779,31 @@ function initDiveForm() {
         if (!Number.isFinite(parsed)) {
             if (commit) {
                 const fallback = clamp(pair.range.value, pair.min, pair.max);
-                pair.number.value = formatMetricValue(fallback);
-                pair.output.textContent = formatPairOutput(fallback, pair);
+                pair.metricValue = clamp(toMetric(fallback, pair), pair.metricMin, pair.metricMax);
+                renderPair(pair);
             }
             updateSacRate();
             return null;
         }
 
-        const exact = clamp(parsed, pair.min, pair.max);
-        const snapped = snapToStep(exact, pair);
-        const displayValue = source === "slider" ? snapped : exact;
-        pair.range.value = snapped;
-        if (source !== "number" || commit || exact !== parsed) {
-            pair.number.value = formatMetricValue(displayValue);
-        }
-        pair.output.textContent = formatPairOutput(displayValue, pair);
+        const exact = source === "auto" ? parsed : clamp(parsed, pair.min, pair.max);
+        const displayValue = source === "slider" ? snapToStep(exact, pair) : exact;
+        // Preserve the exact measurement when blur or a unit switch follows a
+        // rounded display. User edits replace it with the newly entered value.
+        const metric = source === "number" && rawValue === pair.displayRaw && pair.metricValue !== null
+            ? pair.metricValue : source === "auto" ? parsed : toMetric(displayValue, pair);
+        pair.metricValue = clamp(metric, pair.metricMin, pair.metricMax);
+        pair.rangeMetric = pair.metricValue;
+        if (source === "number" && (commit || exact !== parsed)) pair.number.value = formatMetricValue(displayValue);
+        renderPair(pair, source !== "number");
         if (name === "duration" && fromUser) {
             durationTouched = true;
         }
         if (name === "depth" && !durationTouched) {
-            setPair("duration", suggestedDuration(exact), false, { commit: true });
+            setPair("duration", suggestedDuration(pair.metricValue), false, { commit: true });
         }
         updateSacRate();
-        return exact;
+        return pair.metricValue;
     };
 
     Object.entries(pairs).forEach(([name, pair]) => {
@@ -746,7 +812,25 @@ function initDiveForm() {
         pair.number.addEventListener("blur", () => setPair(name, pair.number.value, true, { source: "number", commit: true }));
         setPair(name, pair.number.value, false, { commit: true });
     });
+    form.querySelectorAll("[data-unit-toggle]").forEach((input) => input.addEventListener("change", () => {
+        if (!input.checked) return;
+        const group = input.dataset.unitToggle;
+        selectedUnits[group] = input.value;
+        Object.values(pairs).filter((pair) => pair.group === group).forEach((pair) => renderPair(pair));
+        if (group === "pressure") {
+            form.querySelectorAll("[data-pressure-unit]").forEach((label) => { label.textContent = input.value; });
+        }
+        updateSacRate();
+    }));
+    // Serialize full precision in the chosen units after browser validation,
+    // leaving the visible inputs unchanged. The server converts these on save.
+    form.addEventListener("formdata", (event) => {
+        Object.values(pairs).filter((pair) => pair.group).forEach((pair) => {
+            event.formData.set(pair.number.name, pair.metricValue === null ? "" : formatMetricValue(toDisplay(pair.metricValue, pair)));
+        });
+    });
     form.querySelectorAll("[data-tank-size]").forEach((input) => input.addEventListener("change", updateSacRate));
+    initMultiSelects(form);
     initCurrentStrengthSlider(form);
 
     siteInput.addEventListener(
@@ -931,6 +1015,43 @@ function initBuddyAutocomplete({ input, results, hidden }) {
     setValidity();
 }
 
+function initMultiSelects(form) {
+    const controls = Array.from(form.querySelectorAll("[data-multi-select]"));
+    controls.forEach((control) => {
+        const inputs = Array.from(control.querySelectorAll("input[type='checkbox']"));
+        const summary = control.querySelector("[data-multi-select-summary]");
+        const refresh = (changed) => {
+            const exclusive = inputs.find((input) => input.value === control.dataset.exclusive);
+            if (exclusive) {
+                if (changed === exclusive && exclusive.checked) {
+                    inputs.forEach((input) => { input.checked = input === exclusive; });
+                } else if (inputs.some((input) => input !== exclusive && input.checked)) {
+                    exclusive.checked = false;
+                }
+            }
+            if (!inputs.some((input) => input.checked)) {
+                const fallback = inputs.find((input) => input.value === control.dataset.default);
+                if (fallback) fallback.checked = true;
+            }
+            summary.textContent = inputs.filter((input) => input.checked).map((input) => input.dataset.optionLabel).join(", ");
+        };
+        // Listen on the container so normalization precedes current-strength updates.
+        control.addEventListener("change", (event) => refresh(event.target));
+        control.addEventListener("keydown", (event) => {
+            if (event.key === "Escape") {
+                control.open = false;
+                control.querySelector("summary").focus();
+            }
+        });
+        refresh();
+    });
+    document.addEventListener("click", (event) => {
+        controls.forEach((control) => {
+            if (!control.contains(event.target)) control.open = false;
+        });
+    });
+}
+
 function initCurrentStrengthSlider(form) {
     const currentType = form.querySelector("[data-current-type-select]");
     const range = form.querySelector("[data-current-strength-range]");
@@ -949,7 +1070,8 @@ function initCurrentStrengthSlider(form) {
         output.textContent = strength.label;
     };
     const setAvailability = () => {
-        const isNone = currentType?.value === "none";
+        const isNone = !Array.from(currentType?.querySelectorAll("input[type='checkbox']:checked") || [])
+            .some((input) => input.value !== "none");
         if (isNone) {
             setStrength(0);
         }
