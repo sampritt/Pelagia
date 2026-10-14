@@ -7,6 +7,7 @@ const vm = require("node:vm");
 function setup(initial = {}) {
     const element = (value = "") => ({
         value, textContent: "", handlers: {}, dataset: {},
+        classList: {toggle() {}},
         addEventListener(name, handler) { this.handlers[name] = handler; },
         setAttribute(name, value) { this[name] = value; },
     });

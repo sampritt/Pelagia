@@ -80,17 +80,14 @@
                         <input type="range" min="0" max="45" step="1" value="{{ optional_metric(dive.depth_m) if is_edit else 12 }}" data-range="depth" aria-label="Max depth slider (m)">
                         <input id="depthM" name="depth_m" type="number" min="0" max="45" step="any" value="{{ optional_metric(dive.depth_m) if is_edit else 12 }}" data-number="depth">
                     </div>
-                    <details class="average-depth-control" {{ 'open' if is_edit and dive.average_depth_m is not none else '' }}>
+                    <details class="average-depth-control {{ 'is-unset' if not is_edit or dive.average_depth_m is none else '' }}" data-average-depth {{ 'open' if is_edit and dive.average_depth_m is not none else '' }}>
                         <summary>
-                            <span>Average depth</span>
+                            <span id="averageDepthLabel" data-unit-label="averageDepth">Average depth (m)</span>
                             <output id="averageDepthOutput">{{ optional_metric(dive.average_depth_m, ' m') if is_edit else '-' }}</output>
                         </summary>
                         <div class="range-control">
-                            <div>
-                                <label for="averageDepthM"><span data-unit-label="averageDepth">Average depth (m)</span></label>
-                            </div>
                             <input type="range" min="0" max="45" step="1" value="{{ optional_metric(dive.average_depth_m) if is_edit and dive.average_depth_m is not none else 0 }}" data-range="averageDepth" aria-label="Average depth slider (m)">
-                            <input id="averageDepthM" name="average_depth_m" type="number" min="0" max="45" step="any" placeholder="-" value="{{ optional_metric(dive.average_depth_m) if is_edit and dive.average_depth_m is not none else '' }}" data-number="averageDepth">
+                            <input id="averageDepthM" aria-labelledby="averageDepthLabel" name="average_depth_m" type="number" min="0" max="45" step="any" placeholder="-" value="{{ optional_metric(dive.average_depth_m) if is_edit and dive.average_depth_m is not none else '' }}" data-number="averageDepth">
                         </div>
                     </details>
                 </div>

@@ -705,6 +705,7 @@ function initDiveForm() {
         pair.metricUnit = pair.unit;
         pair.rangeMetric = Number(pair.range.value);
         pair.label = form.querySelector(`[data-unit-label='${name}']`);
+        if (name === "averageDepth") pair.disclosure = form.querySelector("[data-average-depth]");
     });
     const usesAlternate = (pair) => pair.group && selectedUnits[pair.group] === FORM_UNITS[pair.group].alternate;
     const toDisplay = (metric, pair) => usesAlternate(pair) ? metric * FORM_UNITS[pair.group].factor + FORM_UNITS[pair.group].offset : metric;
@@ -748,6 +749,7 @@ function initDiveForm() {
             pair.output.textContent = formatPairOutput(visible, pair);
         }
         pair.displayRaw = pair.number.value;
+        pair.disclosure?.classList.toggle("is-unset", pair.metricValue === null);
     };
 
     const updateSacRate = () => {
@@ -778,6 +780,7 @@ function initDiveForm() {
             pair.number.value = "";
             pair.output.textContent = "-";
             pair.displayRaw = "";
+            pair.disclosure?.classList.toggle("is-unset", true);
             updateSacRate();
             return null;
         }
