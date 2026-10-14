@@ -68,6 +68,8 @@ def create_app(test_config=None):
         SESSION_COOKIE_SECURE=os.environ.get("SESSION_COOKIE_SECURE", "false").lower() == "true",
         SESSION_COOKIE_HTTPONLY=True,
         SESSION_COOKIE_SAMESITE="Lax",
+        PERMANENT_SESSION_LIFETIME=timedelta(days=30),
+        SESSION_REFRESH_EACH_REQUEST=True,
     )
     if test_config:
         app.config.update(test_config)
@@ -168,6 +170,7 @@ def register_routes(app):
             return redirect(auth_landing_url(auth_next, "signup"))
         session.clear()
         session["user_id"] = cur.lastrowid
+        session.permanent = True
         return redirect(auth_next)
 
     @app.route("/login", methods=("POST",))
@@ -181,6 +184,7 @@ def register_routes(app):
             return redirect(auth_landing_url(auth_next))
         session.clear()
         session["user_id"] = user["id"]
+        session.permanent = True
         return redirect(auth_next)
 
     @app.route("/logout", methods=("POST",))

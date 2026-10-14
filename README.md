@@ -28,6 +28,8 @@ export PELAGIA_UPLOAD_FOLDER="$PWD/pelagia/static/uploads"
 
 Set `SECRET_KEY` to a long random value in production. Local development falls back to the value in `app_config.json`.
 
+Successful password and Google login/signup create persistent sessions that survive browser restarts. Sessions expire after 30 days without a request; each request refreshes the expiration for another 30 days. Logout clears the session. Keep the same `SECRET_KEY` across workers, restarts and deployments to preserve existing sessions; changing it invalidates them. Users with older browser-session cookies receive persistent cookies when they next sign in.
+
 For Render, attach a persistent disk at `/var/data`. No database or upload-path environment variables are required there. Configure `SECRET_KEY` and set `SESSION_COOKIE_SECURE=true` for HTTPS deployments.
 
 - `data_sources.dive_sites_csv`: dive-site master CSV path

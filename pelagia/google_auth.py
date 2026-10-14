@@ -192,6 +192,7 @@ def finish_login(user_id, next_url=None):
     destination = _safe_next_url(next_url or (session.get("google_pending") or {}).get("next"))
     session.clear()
     session["user_id"] = user_id
+    session.permanent = True
     return redirect(destination)
 
 

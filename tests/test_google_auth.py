@@ -3,6 +3,7 @@ import sqlite3
 import tempfile
 import time
 import unittest
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from unittest.mock import patch
 from urllib.parse import parse_qs, urlsplit
@@ -77,6 +78,7 @@ class GoogleAuthTest(unittest.TestCase):
             response = self.client.post("/auth/google/link", data={"csrf_token": csrf})
         else:
             response = self.client.get("/auth/google/login")
+            self.assertIsNone(self.client.get_cookie("session").expires)
         self.assertEqual(response.status_code, 302)
         params = parse_qs(urlsplit(response.location).query)
         self.assertEqual(params["redirect_uri"], ["https://pelagia.example/auth/google/callback"])
@@ -111,6 +113,50 @@ class GoogleAuthTest(unittest.TestCase):
         with self.client.session_transaction() as session:
             return session["user_id"]
 
+    def request_at(self, timestamp, path, method="GET", client=None, **kwargs):
+        with patch("time.time", return_value=timestamp), patch("flask.sessions.datetime") as clock:
+            clock.now.return_value = datetime.fromtimestamp(timestamp, timezone.utc)
+            return (client or self.client).open(path, method=method, **kwargs)
+
+    def test_password_signup_and_login_set_persistent_cookies(self):
+        started_at = 1800000000
+        lifetime = timedelta(days=30)
+        for path in ("/signup", "/login"):
+            with self.subTest(path=path):
+                response = self.request_at(started_at, path, method="POST", data={
+                    "username": "persistent-diver", "password": "password",
+                })
+                self.assertEqual(response.location, "/home")
+                self.assertEqual(self.client.get_cookie("session").expires,
+                                 datetime.fromtimestamp(started_at, timezone.utc) + lifetime)
+                self.client.post("/logout")
+
+    def test_activity_renews_session_and_inactivity_expires_it(self):
+        started_at = 1800000000
+        day = 24 * 60 * 60
+        self.request_at(started_at, "/signup", method="POST", data={
+            "username": "returning-diver", "password": "password",
+        })
+        for days_since_login in (29, 31):
+            with self.subTest(days_since_login=days_since_login):
+                response = self.request_at(started_at + days_since_login * day, "/api/dives/mine")
+                self.assertEqual(response.status_code, 200)
+                self.assertEqual(self.client.get_cookie("session").expires,
+                                 datetime.fromtimestamp(started_at + (days_since_login + 30) * day, timezone.utc))
+        response = self.request_at(started_at + 62 * day, "/api/dives/mine")
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.location, "/")
+
+    def test_persistent_session_survives_restart_and_logout_clears_it(self):
+        self.password_signup("persistent-diver")
+        cookie = self.client.get_cookie("session")
+        restarted_client = self.make_app().test_client()
+        restarted_client.set_cookie(cookie.key, cookie.value)
+        self.assertEqual(restarted_client.get("/api/dives/mine").status_code, 200)
+        restarted_client.post("/logout")
+        self.assertIsNone(restarted_client.get_cookie("session"))
+        self.assertEqual(restarted_client.get("/api/dives/mine").status_code, 302)
+
     def test_optional_feature_and_password_login(self):
         app = self.make_app(GOOGLE_CLIENT_ID="", GOOGLE_CLIENT_SECRET="")
         client = app.test_client()
@@ -135,9 +181,10 @@ class GoogleAuthTest(unittest.TestCase):
         self.assertIn(b"Choose your username", page.data)
         self.assertNotIn(b"diver@example.com", page.data)
         self.assertEqual(self.complete_signup("new-diver").location, "/home")
+        self.assertIsNotNone(self.client.get_cookie("session").expires)
         with self.client.session_transaction() as session:
             user_id = session["user_id"]
-            self.assertEqual(dict(session), {"user_id": user_id})
+            self.assertEqual(dict(session), {"user_id": user_id, "_permanent": True})
         with sqlite3.connect(self.db_path) as conn:
             self.assertEqual(conn.execute("SELECT username, password_hash, google_subject FROM users").fetchone(), ("new-diver", "", "google-123"))
         self.assertIn(b"Google sign-in linked", self.client.get("/you").data)
@@ -147,8 +194,10 @@ class GoogleAuthTest(unittest.TestCase):
             with self.client.session_transaction() as session:
                 self.assertNotIn("user_id", session)
         self.assertEqual(self.callback(self.start(), email="new-address@example.com").location, "/home")
+        self.assertIsNotNone(self.client.get_cookie("session").expires)
         with self.client.session_transaction() as session:
             self.assertEqual(session["user_id"], user_id)
+            self.assertTrue(session.permanent)
         with sqlite3.connect(self.db_path) as conn:
             self.assertEqual(conn.execute("SELECT COUNT(*), google_email FROM users").fetchone(), (1, "new-address@example.com"))
 
