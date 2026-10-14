@@ -145,13 +145,13 @@ test("unit toggles update values, bounds, labels and slider steps without changi
     state.setUnit("weight", "lb");
     state.setUnit("pressure", "psi");
     state.setUnit("temperature", "f");
-    assert.equal(state.pairs.depth.number.value, "65.62");
-    assert.equal(state.pairs.averageDepth.number.value, "33.79");
-    assert.equal(state.pairs.visibility.number.value, "49.21");
+    assert.equal(state.pairs.depth.number.value, "66");
+    assert.equal(state.pairs.averageDepth.number.value, "34");
+    assert.equal(state.pairs.visibility.number.value, "49");
     assert.equal(state.labels.depth.textContent, "Max depth (ft)");
-    assert.equal(state.pairs.depth.number.max, "147.64");
-    assert.equal(state.pairs.weight.number.max, "22.05");
-    assert.equal(state.pairs.weight.number.value, "17.64");
+    assert.equal(state.pairs.depth.number.max, "148");
+    assert.equal(state.pairs.weight.number.max, "22");
+    assert.equal(state.pairs.weight.number.value, "18");
     assert.equal(state.pairs.startingPressure.number.value, "2828");
     assert.equal(state.pairs.startingPressure.range.step, "100");
     assert.equal(state.pairs.startingPressure.number.max, "2901");
@@ -176,7 +176,7 @@ test("unit toggles update values, bounds, labels and slider steps without changi
     state.setUnit("length", "m");
     state.setUnit("pressure", "bar");
     assert.equal(state.pairs.depth.number.value, "20");
-    assert.equal(state.pairs.averageDepth.number.value, "10.3");
+    assert.equal(state.pairs.averageDepth.number.value, "10");
     assert.equal(state.pairs.startingPressure.number.value, "195");
     assert.equal(state.pairs.depth.range.max, "45");
     assert.equal(state.pairs.startingPressure.range.step, "10");
@@ -201,8 +201,8 @@ test("imperial edits and sliders use the selected units and serialize full preci
     state.pairs.startingPressure.range.handlers.input();
     assert.equal(state.pairs.startingPressure.number.value, "2800");
     state.setUnit("length", "m");
-    assert.equal(state.pairs.depth.number.value, "30.48");
-    assert.equal(state.pairs.averageDepth.number.value, "10.668");
+    assert.equal(state.pairs.depth.number.value, "30");
+    assert.equal(state.pairs.averageDepth.number.value, "11");
 });
 
 test("changing units preserves blanks and editing decimal text remains possible", () => {
@@ -220,4 +220,37 @@ test("changing units preserves blanks and editing decimal text remains possible"
     state.pairs.depth.number.handlers.blur();
     assert.equal(state.pairs.depth.number.value, "15.3");
     assert.equal(state.sacOutput.textContent, "-");
+});
+
+test("all converted displays round to whole numbers in either direction without rounding saved measurements", () => {
+    const state = setup({depth: "12", averageDepth: "15.3", weight: "8.3", visibility: "15.3",
+        startingPressure: "195.3", endingPressure: "47", airTemp: "25.3", waterTemp: "-17.7"});
+    const sac = state.sacOutput.textContent;
+    for (const [group, unit] of [["length", "ft"], ["weight", "lb"], ["pressure", "psi"], ["temperature", "f"]]) state.setUnit(group, unit);
+    const alternate = {depth: "39", averageDepth: "50", weight: "18", visibility: "50",
+        startingPressure: "2833", airTemp: "78", waterTemp: "0"};
+    for (const [name, value] of Object.entries(alternate)) {
+        assert.equal(state.pairs[name].number.value, value);
+        assert.equal(state.pairs[name].output.textContent, `${value}${["airTemp", "waterTemp"].includes(name) ? "°F" : name === "weight" ? " lb" : name === "startingPressure" ? " psi" : " ft"}`);
+        state.pairs[name].number.handlers.blur();
+    }
+    assert.equal(state.sacOutput.textContent, sac);
+    for (const [group, unit] of [["length", "m"], ["weight", "kg"], ["pressure", "bar"], ["temperature", "c"]]) state.setUnit(group, unit);
+    const metric = {depth: "12", averageDepth: "15", weight: "8", visibility: "15", startingPressure: "195", airTemp: "25", waterTemp: "-18"};
+    for (const [name, value] of Object.entries(metric)) {
+        assert.equal(state.pairs[name].number.value, value);
+        state.pairs[name].number.handlers.blur();
+    }
+    const submitted = state.submitted();
+    assert.equal(submitted.depth_m, "12");
+    assert.equal(submitted.average_depth_m, "15.3");
+    assert.equal(submitted.weight_kg, "8.3");
+    assert.equal(submitted.starting_pressure_bar, "195.3");
+    assert.equal(submitted.air_temp_c, "25.3");
+    assert.equal(submitted.water_temp_c, "-17.7");
+    // Re-entering a rounded value is an edit, rather than another unit switch.
+    state.pairs.averageDepth.number.value = "15";
+    state.pairs.averageDepth.number.handlers.input();
+    state.pairs.averageDepth.number.handlers.blur();
+    assert.equal(state.submitted().average_depth_m, "15");
 });

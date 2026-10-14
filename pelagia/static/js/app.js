@@ -567,10 +567,10 @@ function renderSacRate(calculator, pressureRate) {
 }
 
 const FORM_UNITS = {
-    length: { metric: "m", alternate: "ft", factor: 1 / 0.3048, offset: 0, decimals: 2, step: 1 },
-    weight: { metric: "kg", alternate: "lb", factor: 1 / 0.45359237, offset: 0, decimals: 2, step: 1 },
+    length: { metric: "m", alternate: "ft", factor: 1 / 0.3048, offset: 0, decimals: 0, step: 1 },
+    weight: { metric: "kg", alternate: "lb", factor: 1 / 0.45359237, offset: 0, decimals: 0, step: 1 },
     pressure: { metric: "bar", alternate: "psi", factor: 1 / (0.45359237 * 9.80665 / 0.0254 ** 2 / 100000), offset: 0, decimals: 0, step: 100 },
-    temperature: { metric: "c", alternate: "f", factor: 9 / 5, offset: 32, decimals: 1, step: 1 },
+    temperature: { metric: "c", alternate: "f", factor: 9 / 5, offset: 32, decimals: 0, step: 1 },
 };
 
 function initDiveForm() {
@@ -711,16 +711,16 @@ function initDiveForm() {
     const snapToStep = (value, pair) => clamp(pair.min + Math.round((Number(value) - pair.min) / pair.step) * pair.step, pair.min, pair.max);
     const displayDigits = (pair) => usesAlternate(pair) ? FORM_UNITS[pair.group].decimals
         : ["depth", "averageDepth", "duration"].includes(pair.name) ? 10 : 2;
-    const roundedDisplay = (value, pair) => !usesAlternate(pair) && ["depth", "averageDepth", "duration"].includes(pair.name)
-        ? value : Number(value.toFixed(displayDigits(pair)));
+    const roundedDisplay = (value, pair) => usesAlternate(pair) ? Math.round(value)
+        : ["depth", "averageDepth", "duration"].includes(pair.name) ? value : Number(value.toFixed(displayDigits(pair)));
 
-    const renderPair = (pair, normalizeNumber = true) => {
+    const renderPair = (pair, normalizeNumber = true, converted = false) => {
         const alternate = usesAlternate(pair);
         const config = FORM_UNITS[pair.group];
         pair.unit = alternate ? (pair.group === "temperature" ? "°F" : config.alternate) : pair.metricUnit;
         const scale = 10 ** displayDigits(pair);
-        pair.min = Math.floor(toDisplay(pair.metricMin, pair) * scale) / scale;
-        pair.max = Math.ceil(toDisplay(pair.metricMax, pair) * scale) / scale;
+        pair.min = alternate ? Math.round(toDisplay(pair.metricMin, pair)) : Math.floor(pair.metricMin * scale) / scale;
+        pair.max = alternate ? Math.round(toDisplay(pair.metricMax, pair)) : Math.ceil(pair.metricMax * scale) / scale;
         pair.step = alternate ? config.step : pair.metricStep;
         pair.range.min = pair.number.min = String(pair.min);
         pair.range.max = pair.number.max = String(pair.max);
@@ -737,7 +737,7 @@ function initDiveForm() {
             pair.number.value = "";
             pair.output.textContent = "-";
         } else {
-            const visible = normalizeNumber ? roundedDisplay(display, pair) : Number(pair.number.value);
+            const visible = normalizeNumber ? (converted ? Math.round(display) : roundedDisplay(display, pair)) : Number(pair.number.value);
             if (normalizeNumber) pair.number.value = formatMetricValue(visible);
             pair.output.textContent = formatPairOutput(visible, pair);
         }
@@ -790,7 +790,7 @@ function initDiveForm() {
         const displayValue = source === "slider" ? snapToStep(exact, pair) : exact;
         // Preserve the exact measurement when blur or a unit switch follows a
         // rounded display. User edits replace it with the newly entered value.
-        const metric = source === "number" && rawValue === pair.displayRaw && pair.metricValue !== null
+        const metric = source === "number" && commit && rawValue === pair.displayRaw && pair.metricValue !== null
             ? pair.metricValue : source === "auto" ? parsed : toMetric(displayValue, pair);
         pair.metricValue = clamp(metric, pair.metricMin, pair.metricMax);
         pair.rangeMetric = pair.metricValue;
@@ -815,8 +815,9 @@ function initDiveForm() {
     form.querySelectorAll("[data-unit-toggle]").forEach((input) => input.addEventListener("change", () => {
         if (!input.checked) return;
         const group = input.dataset.unitToggle;
+        if (selectedUnits[group] === input.value) return;
         selectedUnits[group] = input.value;
-        Object.values(pairs).filter((pair) => pair.group === group).forEach((pair) => renderPair(pair));
+        Object.values(pairs).filter((pair) => pair.group === group).forEach((pair) => renderPair(pair, true, true));
         if (group === "pressure") {
             form.querySelectorAll("[data-pressure-unit]").forEach((label) => { label.textContent = input.value; });
         }
