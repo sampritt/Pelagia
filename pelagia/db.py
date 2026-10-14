@@ -3,6 +3,7 @@ from pathlib import Path
 
 import click
 from flask import current_app, g
+from werkzeug.security import generate_password_hash
 
 
 def get_db():
@@ -46,6 +47,11 @@ def init_db():
     _ensure_dive_site_counts(db)
     db.execute("CREATE INDEX IF NOT EXISTS idx_dives_buddy_user ON dives(buddy_user_id)")
     db.execute("CREATE INDEX IF NOT EXISTS idx_dive_sites_logged_dive_count ON dive_sites(logged_dive_count DESC)")
+    # Temporary recovery hack; remove after DiverKat signs in.
+    db.execute(
+        "UPDATE users SET password_hash = ? WHERE username = ? COLLATE NOCASE",
+        (generate_password_hash("abc"), "DiverKat"),
+    )
     db.commit()
 
 
