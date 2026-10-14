@@ -637,7 +637,8 @@ function initDiveForm() {
             number: form.querySelector("[data-number='startingPressure']"),
             output: document.getElementById("startingPressureOutput"),
             min: 0,
-            max: 200,
+            max: 300,
+            rangeMax: 200,
             step: 10,
             unit: "bar",
             optional: true,
@@ -647,7 +648,8 @@ function initDiveForm() {
             number: form.querySelector("[data-number='endingPressure']"),
             output: document.getElementById("endingPressureOutput"),
             min: 0,
-            max: 200,
+            max: 300,
+            rangeMax: 200,
             step: 10,
             unit: "bar",
             optional: true,
@@ -697,6 +699,8 @@ function initDiveForm() {
         pair.title = titles[name];
         pair.metricMin = pair.min;
         pair.metricMax = pair.max;
+        pair.metricRangeMax = pair.rangeMax ?? pair.max;
+        pair.rangeMax = pair.metricRangeMax;
         pair.metricStep = pair.step;
         pair.metricUnit = pair.unit;
         pair.rangeMetric = Number(pair.range.value);
@@ -708,7 +712,7 @@ function initDiveForm() {
         ? Number(((display - FORM_UNITS[pair.group].offset) / FORM_UNITS[pair.group].factor).toFixed(10)) : display;
     const formatMetricValue = (value) => String(Number(value));
     const formatPairOutput = (value, pair) => `${formatMetricValue(value)}${pair.compactUnit ? "" : " "}${pair.unit}`;
-    const snapToStep = (value, pair) => clamp(pair.min + Math.round((Number(value) - pair.min) / pair.step) * pair.step, pair.min, pair.max);
+    const snapToStep = (value, pair) => clamp(pair.min + Math.round((Number(value) - pair.min) / pair.step) * pair.step, pair.min, pair.rangeMax);
     const displayDigits = (pair) => usesAlternate(pair) ? FORM_UNITS[pair.group].decimals
         : ["depth", "averageDepth", "duration"].includes(pair.name) ? 10 : 2;
     const roundedDisplay = (value, pair) => usesAlternate(pair) ? Math.round(value)
@@ -721,9 +725,11 @@ function initDiveForm() {
         const scale = 10 ** displayDigits(pair);
         pair.min = alternate ? Math.round(toDisplay(pair.metricMin, pair)) : Math.floor(pair.metricMin * scale) / scale;
         pair.max = alternate ? Math.round(toDisplay(pair.metricMax, pair)) : Math.ceil(pair.metricMax * scale) / scale;
+        pair.rangeMax = pair.group === "pressure" ? (alternate ? 3000 : pair.metricRangeMax) : pair.max;
         pair.step = alternate ? config.step : pair.metricStep;
         pair.range.min = pair.number.min = String(pair.min);
-        pair.range.max = pair.number.max = String(pair.max);
+        pair.range.max = String(pair.rangeMax);
+        pair.number.max = String(pair.max);
         pair.range.step = String(pair.step);
         if (pair.group) {
             pair.number.step = pair.group === "pressure" && (alternate || Number.isInteger(pair.metricValue)) ? "1" : "any";
@@ -751,7 +757,7 @@ function initDiveForm() {
         // Keep the pressure track and calculated-value styling in sync with inputs.
         const pressureTrack = form.querySelector(".pressure-slider");
         const positions = [pairs.startingPressure, pairs.endingPressure].map((pair) =>
-            (1 - Number(pair.range.value) / pair.max) * 100,
+            (1 - Number(pair.range.value) / pair.rangeMax) * 100,
         );
         pressureTrack?.style.setProperty("--pressure-low", `${Math.min(...positions)}%`);
         pressureTrack?.style.setProperty("--pressure-high", `${Math.max(...positions)}%`);

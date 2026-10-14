@@ -30,6 +30,42 @@ def image_upload(name, color):
 
 
 class ReferenceAutocompleteTest(unittest.TestCase):
+    def test_pressure_numeric_limits_are_independent_of_sliders_and_saved_in_bar(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            app, _, _ = self.make_app(Path(tmp_dir))
+            client = app.test_client()
+            self.signup(client)
+            form = client.get("/dive/new").data
+            for field in ("starting_pressure_bar", "ending_pressure_bar"):
+                self.assertIn(f'name="{field}" type="number" min="0" max="300"'.encode(), form)
+            self.assertIn(b'min="0" max="200" step="10" value="200" data-range="startingPressure"', form)
+            for unit, start, end, expected_start, expected_end in (
+                ("bar", "250", "50", 250, 50),
+                ("bar", "300", "250", 300, 250),
+                ("bar", "350", "325", 300, 300),
+                ("psi", "3000", "600", 3000 * PSI_TO_BAR, 600 * PSI_TO_BAR),
+                ("psi", "4000", "3500", 4000 * PSI_TO_BAR, 3500 * PSI_TO_BAR),
+                ("psi", "4351", "3500", 4351 * PSI_TO_BAR, 3500 * PSI_TO_BAR),
+                ("psi", "5000", "4500", 300, 300),
+            ):
+                with self.subTest(unit=unit, start=start, end=end):
+                    payload = {"site_name": "Alert Rock", "depth_m": "20", "duration_min": "50", "pressure_unit": unit,
+                               "starting_pressure_bar": start, "ending_pressure_bar": end}
+                    self.assertEqual(client.post("/dive/new", data=payload).status_code, 302)
+                    dive = max(client.get("/api/dives/mine").get_json(), key=lambda item: item["id"])
+                    self.assertAlmostEqual(dive["starting_pressure_bar"], expected_start, places=8)
+                    self.assertAlmostEqual(dive["ending_pressure_bar"], expected_end, places=8)
+                    self.assertAlmostEqual(dive["sac_rate_l_min"], (expected_start - expected_end) / 50 / 3 * 12)
+                    # Reopen and resave in metric without discarding pressures
+                    # above the 200 bar slider maximum.
+                    self.assertEqual(client.get(f"/dive/{dive['id']}/edit").status_code, 200)
+                    self.assertEqual(client.post(f"/dive/{dive['id']}/edit", data={**payload, "pressure_unit": "bar",
+                                     "starting_pressure_bar": str(dive["starting_pressure_bar"]),
+                                     "ending_pressure_bar": str(dive["ending_pressure_bar"])}).status_code, 302)
+                    resaved = client.get(f"/api/dives/{dive['id']}").get_json()
+                    self.assertEqual(resaved["starting_pressure_bar"], dive["starting_pressure_bar"])
+                    self.assertEqual(resaved["ending_pressure_bar"], dive["ending_pressure_bar"])
+
     def test_imperial_form_measurements_are_saved_in_metric_and_used_for_sac(self):
         with tempfile.TemporaryDirectory() as tmp_dir:
             app, db_path, _ = self.make_app(Path(tmp_dir))
@@ -98,7 +134,7 @@ class ReferenceAutocompleteTest(unittest.TestCase):
                         "weight_kg": "100", "weight_unit": "lb", "starting_pressure_bar": "5000", "pressure_unit": "psi",
                         "air_temp_c": "-100", "water_temp_c": "200", "temperature_unit": "f"})
             saved = client.get(f"/api/dives/{dive['id']}").get_json()
-            self.assertEqual((saved["depth_m"], saved["average_depth_m"], saved["weight_kg"], saved["starting_pressure_bar"]), (45, 0, 10, 200))
+            self.assertEqual((saved["depth_m"], saved["average_depth_m"], saved["weight_kg"], saved["starting_pressure_bar"]), (45, 0, 10, 300))
             self.assertEqual((saved["air_temp_c"], saved["water_temp_c"]), (-20, 40))
             # Unknown unit names cannot trigger an arbitrary conversion.
             client.post(f"/dive/{dive['id']}/edit", data={**payload, "depth_m": "15.3", "length_unit": "bad"})
@@ -397,7 +433,7 @@ class ReferenceAutocompleteTest(unittest.TestCase):
             self.assertIn(b'min="0" max="120" step="1" value="80" data-range="duration"', form)
             self.assertIn(b'min="0" max="10" step="1" value="0" data-range="weight"', form)
             for name in ("starting_pressure_bar", "ending_pressure_bar"):
-                self.assertIn(f'name="{name}" type="number" min="0" max="200" step="1"'.encode(), form)
+                self.assertIn(f'name="{name}" type="number" min="0" max="300" step="1"'.encode(), form)
 
     def test_decimal_depth_and_integer_pressure_round_trip_and_display(self):
         with tempfile.TemporaryDirectory() as tmp_dir:
@@ -1050,7 +1086,7 @@ Kelp House,2 Harbor Way,Alaska,https://kelp.example.test
             logged = client.get("/api/dives/mine").get_json()[0]
             self.assertEqual(logged["depth_m"], 45)
             self.assertEqual(logged["weight_kg"], 10)
-            self.assertEqual(logged["starting_pressure_bar"], 200)
+            self.assertEqual(logged["starting_pressure_bar"], 250)
             self.assertEqual(logged["ending_pressure_bar"], 60)
             self.assertEqual(logged["visibility_m"], 30)
             self.assertEqual(logged["air_temp_c"], -5)
@@ -1060,7 +1096,7 @@ Kelp House,2 Harbor Way,Alaska,https://kelp.example.test
             self.assertIn(b"45<em>m</em>", detail_response.data)
             self.assertIn(b"30 m", detail_response.data)
             self.assertIn(b"10 kg", detail_response.data)
-            self.assertIn(b"200 bar", detail_response.data)
+            self.assertIn(b"250 bar", detail_response.data)
             self.assertIn(b"60 bar", detail_response.data)
             self.assertIn("-5°C".encode(), detail_response.data)
             self.assertIn("40°C".encode(), detail_response.data)

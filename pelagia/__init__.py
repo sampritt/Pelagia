@@ -853,8 +853,8 @@ def dive_values_from_request(form_request, user_id, default_tank_size_l=12):
     average_depth = metric_measurement(form.get("average_depth_m"), length_unit, 0.0, 45.0)
     duration = clamp_int(form.get("duration_min"), 0, 120)
     weight = metric_measurement(form.get("weight_kg"), weight_unit, 0, 10)
-    starting_pressure = metric_measurement(form.get("starting_pressure_bar"), pressure_unit, 0, 200)
-    ending_pressure = metric_measurement(form.get("ending_pressure_bar"), pressure_unit, 0, 200)
+    starting_pressure = metric_measurement(form.get("starting_pressure_bar"), pressure_unit, 0, 300)
+    ending_pressure = metric_measurement(form.get("ending_pressure_bar"), pressure_unit, 0, 300)
     # Tank size is a calculation input, not a stored dive field.
     tank_size_choice = form.get("tank_size_l", form.get("tank_size_preview", str(default_tank_size_l)))
     tank_size_l = 15 if tank_size_choice == "15" else 12

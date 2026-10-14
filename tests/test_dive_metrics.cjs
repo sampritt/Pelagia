@@ -24,6 +24,8 @@ function setup(initial = {}) {
     const labels = Object.fromEntries(names.map(name => [name, element()]));
     const calculator = { querySelector: selector => selector === "[data-tank-size]:checked" ? { value: "12" } : selector === "[data-sac-output]" ? sacOutput : null };
     const sacOutput = element();
+    const trackStyles = {};
+    const pressureTrack = {style: {setProperty(name, value) {trackStyles[name] = value;}}, classList: {toggle() {}}};
     const form = {
         handlers: {}, addEventListener(name, handler) { this.handlers[name] = handler; },
         dataset: { isEdit: "true" },
@@ -31,7 +33,7 @@ function setup(initial = {}) {
             const metric = selector.match(/\[data-(range|number)='(.+)'\]/);
             if (metric) return pairs[metric[2]][metric[1]];
             if (selector === "[data-sac-calculator]") return calculator;
-            if (selector === ".pressure-slider") return null;
+            if (selector === ".pressure-slider") return pressureTrack;
             const label = selector.match(/\[data-unit-label='(.+)'\]/);
             if (label) return labels[label[1]];
             return element();
@@ -58,7 +60,7 @@ function setup(initial = {}) {
         form.handlers.formdata({formData: {set: (name, value) => values.set(name, value)}});
         return Object.fromEntries(values);
     };
-    return { pairs, sacOutput, setUnit, submitted, labels };
+    return { pairs, sacOutput, setUnit, submitted, labels, trackStyles };
 }
 
 test("typed depths retain decimal precision through blur and reopening; sliders use whole meters", () => {
@@ -154,7 +156,8 @@ test("unit toggles update values, bounds, labels and slider steps without changi
     assert.equal(state.pairs.weight.number.value, "18");
     assert.equal(state.pairs.startingPressure.number.value, "2828");
     assert.equal(state.pairs.startingPressure.range.step, "100");
-    assert.equal(state.pairs.startingPressure.number.max, "2901");
+    assert.equal(state.pairs.startingPressure.range.max, "3000");
+    assert.equal(state.pairs.startingPressure.number.max, "4351");
     assert.equal(state.pairs.airTemp.number.value, "77");
     assert.equal(state.pairs.waterTemp.number.value, "68");
     assert.equal(state.pairs.waterTemp.number.min, "-4");
@@ -253,4 +256,55 @@ test("all converted displays round to whole numbers in either direction without 
     state.pairs.averageDepth.number.handlers.input();
     state.pairs.averageDepth.number.handlers.blur();
     assert.equal(state.submitted().average_depth_m, "15");
+});
+
+test("pressure sliders use 200 bar or 3000 psi while typed values can reach 300 bar equivalent", () => {
+    const state = setup({depth: "20", duration: "50", startingPressure: "250", endingPressure: "50"});
+    for (const name of ["startingPressure", "endingPressure"]) {
+        assert.equal(state.pairs[name].range.max, "200");
+        assert.equal(state.pairs[name].number.max, "300");
+    }
+    assert.equal(state.pairs.startingPressure.range.value, 200);
+    assert.equal(state.pairs.startingPressure.number.value, "250");
+    assert.equal(state.sacOutput.textContent, "16.0 L/min");
+    assert.equal(state.trackStyles["--pressure-low"], "0%");
+    assert.equal(state.trackStyles["--pressure-high"], "75%");
+    state.setUnit("pressure", "psi");
+    for (const name of ["startingPressure", "endingPressure"]) {
+        assert.equal(state.pairs[name].range.max, "3000");
+        assert.equal(state.pairs[name].number.max, "4351");
+    }
+    assert.equal(state.pairs.startingPressure.number.value, "3626");
+    assert.equal(state.pairs.startingPressure.range.value, 3000);
+    assert.equal(state.trackStyles["--pressure-low"], "0%");
+    assert.equal(state.sacOutput.textContent, "16.0 L/min");
+    for (const name of ["startingPressure", "endingPressure"]) {
+        state.pairs[name].number.value = "4000";
+        state.pairs[name].number.handlers.input();
+        state.pairs[name].number.handlers.blur();
+        assert.equal(state.pairs[name].number.value, "4000");
+        assert.equal(state.pairs[name].range.value, 3000);
+    }
+    assert.ok(Math.abs(Number(state.submitted().starting_pressure_bar) - 4000) < 1e-8);
+    assert.equal(state.sacOutput.textContent, "0.0 L/min");
+    state.setUnit("pressure", "bar");
+    state.pairs.startingPressure.number.value = "300";
+    state.pairs.startingPressure.number.handlers.input();
+    state.pairs.startingPressure.number.handlers.blur();
+    assert.equal(state.pairs.startingPressure.number.value, "300");
+    assert.equal(state.pairs.startingPressure.range.value, 200);
+    assert.equal(state.submitted().starting_pressure_bar, "300");
+    state.pairs.startingPressure.number.value = "350";
+    state.pairs.startingPressure.number.handlers.input();
+    state.pairs.startingPressure.number.handlers.blur();
+    assert.equal(state.pairs.startingPressure.number.value, "300");
+    // Moving the slider replaces the typed pressure with its chosen value.
+    state.pairs.startingPressure.range.value = "190";
+    state.pairs.startingPressure.range.handlers.input();
+    assert.equal(state.pairs.startingPressure.number.value, "190");
+    state.setUnit("pressure", "psi");
+    state.pairs.startingPressure.range.value = "3000";
+    state.pairs.startingPressure.range.handlers.input();
+    assert.equal(state.pairs.startingPressure.number.value, "3000");
+    assert.ok(Math.abs(Number(state.submitted().starting_pressure_bar) - 3000) < 1e-8);
 });
