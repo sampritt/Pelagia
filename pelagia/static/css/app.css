@@ -3774,11 +3774,33 @@ input[type="range"] {
 .unit-toggle input:checked + span { color: var(--accent-deep); background: #ffffff; box-shadow: 0 1px 4px rgba(4, 34, 55, 0.12); }
 .unit-toggle input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 2px; }
 
-.optional-label {
-    color: var(--muted);
-    font-size: 0.7rem;
-    font-weight: 500;
+.average-depth-control {
+    min-width: 0;
+    border: 1px solid var(--line);
+    border-radius: 13px;
+    background: var(--panel-tint);
 }
+
+.average-depth-control > summary {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-height: 48px;
+    padding: 14px 16px;
+    color: var(--ink);
+    font-size: 0.78rem;
+    font-weight: 650;
+    cursor: pointer;
+    list-style: none;
+}
+
+.average-depth-control > summary::-webkit-details-marker { display: none; }
+.average-depth-control > summary::after { content: "+"; color: var(--accent-deep); font-size: 1rem; }
+.average-depth-control[open] > summary::after { content: "−"; }
+.average-depth-control > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 13px; }
+.average-depth-control > summary > output { margin-left: auto; color: var(--accent-deep); font-weight: 750; }
+.average-depth-control[open] > summary { border-bottom: 1px solid var(--line); }
+.average-depth-control > .range-control { padding: 16px; }
 
 .equipment-controls,
 .condition-options {
