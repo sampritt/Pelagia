@@ -12,7 +12,7 @@
                 {% else %}
                     <span>{{ user.username[:1]|upper }}</span>
                 {% endif %}
-                <input type="file" name="profile_photo" accept="image/*" onchange="this.form.submit()">
+                <input type="file" name="profile_photo" accept="image/*" onchange="this.form.requestSubmit()">
             </label>
         </form>
         {% else %}
@@ -32,6 +32,7 @@
             {% if is_owner %}
             <div class="profile-actions">
                 <a class="primary-button compact" href="{{ url_for('log_dive') }}"><span aria-hidden="true">+</span> Log dive</a>
+                <button class="ghost-button" type="button" data-pwa-install hidden>Install Pelagia</button>
                 {% if google_login_available %}
                     {% if google_is_linked %}
                     <span class="google-linked">Google sign-in linked</span>

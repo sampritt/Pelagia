@@ -33,6 +33,7 @@ from .metrics import format_metric
 from .units import metric_measurement
 from .dive_options import DIVE_TYPES, CURRENT_TYPES, normalize_options, dive_type_options, current_type_options
 from . import google_auth
+from . import pwa
 from .sharing import fetch_public_dive, render_share_image, share_description
 
 
@@ -83,6 +84,7 @@ def create_app(test_config=None):
         _ensure_reference_data(app)
 
     register_routes(app)
+    pwa.init_app(app)
     google_auth.init_app(app)
     return app
 

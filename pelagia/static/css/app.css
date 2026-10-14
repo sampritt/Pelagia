@@ -42,6 +42,7 @@ html {
 
 body {
     min-height: 100vh;
+    min-height: 100dvh;
     margin: 0;
     color: var(--ink);
     background:
@@ -4914,4 +4915,131 @@ body:has(.share-dialog[open]) { overflow: hidden; }
     .detail-headline-stats.has-average-depth span {
         font-size: clamp(1.7rem, 8vw, 2.8rem);
     }
+}
+
+/* Installed app layout and public PWA controls. */
+:root {
+    --pwa-topbar-height: 72px;
+    --pwa-page-top: 104px;
+    --pwa-page-bottom: 64px;
+    --pwa-page-gutter: 16px;
+}
+
+.topbar {
+    height: calc(var(--pwa-topbar-height) + env(safe-area-inset-top));
+    padding-top: env(safe-area-inset-top);
+    padding-left: max(24px, calc((100vw - var(--content)) / 2), env(safe-area-inset-left));
+    padding-right: max(24px, calc((100vw - var(--content)) / 2), env(safe-area-inset-right));
+}
+
+.page-shell {
+    width: min(var(--content), calc(100% - 2 * var(--pwa-page-gutter) - env(safe-area-inset-left) - env(safe-area-inset-right)));
+    padding-top: calc(var(--pwa-page-top) + env(safe-area-inset-top));
+    padding-bottom: calc(var(--pwa-page-bottom) + env(safe-area-inset-bottom));
+}
+
+body::before { inset-block-start: calc(var(--pwa-topbar-height) + env(safe-area-inset-top)); }
+.flash-stack { top: calc(var(--pwa-topbar-height) + 18px + env(safe-area-inset-top)); }
+.landing-body .page-shell { width: 100%; padding: 0; }
+.landing-hero {
+    min-height: 100dvh;
+    padding-top: calc(64px + env(safe-area-inset-top));
+    padding-bottom: calc(64px + env(safe-area-inset-bottom));
+    padding-left: max(28px, calc((100vw - 1240px) / 2), env(safe-area-inset-left));
+    padding-right: max(28px, calc((100vw - 1240px) / 2), env(safe-area-inset-right));
+}
+
+.shared-dive-body .page-shell {
+    width: min(980px, calc(100% - 48px - env(safe-area-inset-left) - env(safe-area-inset-right)));
+    padding-top: calc(110px + env(safe-area-inset-top));
+    padding-bottom: calc(28px + env(safe-area-inset-bottom));
+}
+.shared-topbar {
+    padding-top: calc(16px + env(safe-area-inset-top));
+    padding-left: max(24px, calc((100vw - 980px) / 2), env(safe-area-inset-left));
+    padding-right: max(24px, calc((100vw - 980px) / 2), env(safe-area-inset-right));
+}
+
+.share-dialog {
+    max-height: calc(var(--pwa-viewport-height, 100dvh) - 48px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+}
+.pwa-install-dialog p { color: var(--muted-strong); }
+body:has(.pwa-install-dialog[open]) { overflow: hidden; }
+[data-pwa-install][hidden], .pwa-notice[hidden] { display: none; }
+.pwa-landing-install { margin-top: 18px; color: #fff; border-color: rgba(255, 255, 255, 0.3); background: rgba(255, 255, 255, 0.1); }
+.pwa-landing-install:hover { color: #fff; border-color: rgba(255, 255, 255, 0.5); background: rgba(255, 255, 255, 0.2); }
+.pwa-back-link { display: none; }
+.pwa-standalone .pwa-back-link {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    margin-bottom: 12px;
+    color: var(--accent-deep);
+    font-weight: 700;
+}
+.pwa-keyboard-open .mobile-nav { visibility: hidden; pointer-events: none; }
+
+.pwa-notices {
+    position: sticky;
+    z-index: 70;
+    top: calc(var(--pwa-topbar-height) + 12px + env(safe-area-inset-top));
+    display: grid;
+    justify-items: center;
+    gap: 8px;
+}
+.pwa-notice {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    width: min(600px, 100%);
+    margin-bottom: 16px;
+    padding: 16px;
+    border: 1px solid var(--accent-line);
+    border-radius: 16px;
+    color: var(--ink);
+    background: var(--panel);
+    box-shadow: var(--shadow-lg);
+}
+.landing-body .pwa-notices:has(.pwa-notice:not([hidden])) {
+    padding: calc(16px + env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) 0 max(16px, env(safe-area-inset-left));
+}
+.pwa-notice p { flex: 1 1 250px; margin: 0; }
+
+.offline-body {
+    display: grid;
+    place-items: center;
+    padding: max(24px, env(safe-area-inset-top)) max(24px, env(safe-area-inset-right)) max(24px, env(safe-area-inset-bottom)) max(24px, env(safe-area-inset-left));
+}
+.offline-card { width: min(460px, 100%); padding: 32px; border: 1px solid var(--line); border-radius: 24px; background: var(--panel); box-shadow: var(--shadow-lg); text-align: center; }
+.offline-icon { margin: 0 auto 24px; border-radius: 22px; }
+.offline-card .primary-button, .offline-card .ghost-button { width: 100%; margin-top: 8px; }
+.offline-hint { color: var(--muted); font-size: 0.85rem; }
+
+@media (max-width: 820px) {
+    :root { --pwa-topbar-height: 66px; --pwa-page-top: 90px; --pwa-page-bottom: 108px; --pwa-page-gutter: 14px; }
+    .topbar { padding-left: max(15px, env(safe-area-inset-left)); padding-right: max(15px, env(safe-area-inset-right)); }
+    .page-shell { max-width: 700px; }
+    .landing-body .page-shell { max-width: none; }
+    .mobile-nav { left: max(16px, env(safe-area-inset-left)); right: max(16px, env(safe-area-inset-right)); }
+    .mobile-nav a, .auth-toggle button { min-height: 44px; }
+    .icon-button { min-width: 44px; min-height: 44px; }
+    input:not([type=range]):not([type=checkbox]):not([type=radio]), select, textarea { font-size: 16px; }
+    .landing-hero {
+        padding-top: calc(44px + env(safe-area-inset-top));
+        padding-bottom: calc(56px + env(safe-area-inset-bottom));
+        padding-left: max(20px, env(safe-area-inset-left));
+        padding-right: max(20px, env(safe-area-inset-right));
+    }
+}
+@media (max-width: 640px) {
+    .shared-dive-body .page-shell { width: calc(100% - 32px - env(safe-area-inset-left) - env(safe-area-inset-right)); padding-top: calc(100px + env(safe-area-inset-top)); }
+    .shared-topbar { padding-left: max(18px, env(safe-area-inset-left)); padding-right: max(18px, env(safe-area-inset-right)); }
+}
+@media (max-width: 560px) { :root { --pwa-page-gutter: 10px; } }
+@media (max-width: 380px) {
+    .topbar { padding-left: max(10px, env(safe-area-inset-left)); padding-right: max(10px, env(safe-area-inset-right)); }
+    .mobile-nav { left: max(9px, env(safe-area-inset-left)); right: max(9px, env(safe-area-inset-right)); }
+    .offline-card { padding: 24px; }
 }

@@ -45,6 +45,35 @@ On first app startup, Pelagia initializes SQLite and imports reference data from
 - `pelagia/schema.sql`: SQLite schema
 - `pelagia/importer.py`: pandas CSV import
 
+## Install Pelagia on a Phone (PWA)
+
+Pelagia can be installed from its HTTPS website and opened from a home-screen icon in a standalone window. Its manifest, PNG icons, Apple touch icon, service worker and offline page are included in the app; no additional package, build step or database migration is needed.
+
+- **iPhone/iPad:** open Pelagia in Safari, choose Share → Add to Home Screen (under More on some versions), leave Open as Web App enabled if shown, then tap Add. Installation guidance is available on the login page and your own profile. The installed app may need a separate sign-in.
+- **Android:** use the browser's Install app/Add to Home screen action. An Install Pelagia button appears on the login page and your own profile when the browser supplies an installation prompt.
+
+The service worker caches only explicitly listed public assets and a generic offline screen. Dive pages, account pages, APIs, uploads and external map tiles are not cached. Viewing or saving dives still requires internet access. When the browser reports that it is offline, form submissions are blocked and a notice asks users to keep the page open to preserve their changes. This release does not persist offline dive drafts or sync them later.
+
+Asset cache versions are derived automatically from deployed files. An update notice offers Reload to update; an open form is never automatically reloaded. Users should save their changes before accepting an update.
+
+### Deployment configuration
+
+1. Serve the app at a stable **HTTPS origin**. Render's HTTPS URL or an HTTPS custom domain works. Phone testing also needs HTTPS; plain HTTP on a computer's LAN IP is not equivalent to localhost on the phone.
+2. Set **`SESSION_COOKIE_SECURE=true`** on the production service. Keep **`SECRET_KEY`** set to the existing stable, long random value across workers and deployments so installed users stay signed in. Do not rotate a working key just for the PWA rollout.
+3. Set **`PELAGIA_PUBLIC_BASE_URL=https://YOUR-DOMAIN`** to the same public origin used for installation and sharing (without a trailing slash). This is the existing sharing setting, not a new PWA variable.
+4. If Google sign-in is enabled, retain **`GOOGLE_CLIENT_ID`**, **`GOOGLE_CLIENT_SECRET`**, and **`GOOGLE_REDIRECT_URI=https://YOUR-DOMAIN/auth/google/callback`**. The redirect URI must exactly match the Google OAuth client's authorized URI. No Google configuration change is needed if the domain and callback already match.
+5. Redeploy from **`main`** (or allow Render's automatic deployment). Keep the existing Gunicorn command and `/var/data` persistent disk. Database and upload path settings are unchanged; no new environment variables, dependencies or disk storage are required for PWA caching, which lives on each user's device.
+6. If a CDN or proxy overrides cache headers, preserve revalidation for **`/service-worker.js`**, **`/manifest.webmanifest`**, and **`/offline.html`**, and honor the `v` query parameter on static asset URLs. These public routes must be reachable without authentication and must not be rewritten to a login page. A standard Render deployment needs no special routing or cache configuration.
+
+After deployment, install from the public URL on a real iPhone and Android phone. Check standalone launch, password/Google login, closing and reopening the app, photo uploads, dive sharing and navigation. After the first online launch, enable airplane mode and navigate/relaunch: the branded offline screen should appear, and an already-open form should block saving. Reconnect and retry. With an installed app open, deploy a subsequent update and confirm the update notice only reloads after the user selects it.
+
+Automated PWA checks are included in the normal Python and JavaScript test suites:
+
+```bash
+.venv312/bin/python -m unittest discover -s tests -p 'test_*.py'
+node --test tests/test_*.cjs
+```
+
 ## Sharing Logged Dives
 
 The log/edit form stores max depth and an optional average depth in meters. Both accept decimals and display whole values without `.0`. Average depth starts unset; when supplied it is used for SAC calculation, otherwise SAC uses max depth. Clearing average depth restores that fallback. Logged cards, dive views and share previews show average depth when available. Existing dives keep an unset average depth and their saved SAC rate.
