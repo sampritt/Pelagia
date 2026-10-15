@@ -78,7 +78,7 @@
                             <output id="depthOutput">{{ optional_metric(dive.depth_m) if is_edit else 12 }} m</output>
                         </div>
                         <input type="range" min="0" max="45" step="1" value="{{ optional_metric(dive.depth_m) if is_edit else 12 }}" data-range="depth" aria-label="Max depth slider (m)">
-                        <input id="depthM" name="depth_m" type="number" min="0" max="45" step="any" value="{{ optional_metric(dive.depth_m) if is_edit else 12 }}" data-number="depth">
+                        <input id="depthM" data-metric-value="{{ dive.depth_m if is_edit and dive.depth_m is not none else '' }}" name="depth_m" type="number" min="0" max="45" step="any" value="{{ optional_metric(dive.depth_m) if is_edit else 12 }}" data-number="depth">
                     </div>
                     <details class="average-depth-control {{ 'is-unset' if not is_edit or dive.average_depth_m is none else '' }}" data-average-depth {{ 'open' if is_edit and dive.average_depth_m is not none else '' }}>
                         <summary>
@@ -87,7 +87,7 @@
                         </summary>
                         <div class="range-control">
                             <input type="range" min="0" max="45" step="1" value="{{ optional_metric(dive.average_depth_m) if is_edit and dive.average_depth_m is not none else 0 }}" data-range="averageDepth" aria-label="Average depth slider (m)">
-                            <input id="averageDepthM" aria-labelledby="averageDepthLabel" name="average_depth_m" type="number" min="0" max="45" step="any" placeholder="-" value="{{ optional_metric(dive.average_depth_m) if is_edit and dive.average_depth_m is not none else '' }}" data-number="averageDepth">
+                            <input id="averageDepthM" aria-labelledby="averageDepthLabel" data-metric-value="{{ dive.average_depth_m if is_edit and dive.average_depth_m is not none else '' }}" name="average_depth_m" type="number" min="0" max="45" step="any" placeholder="-" value="{{ optional_metric(dive.average_depth_m) if is_edit and dive.average_depth_m is not none else '' }}" data-number="averageDepth">
                         </div>
                     </details>
                 </div>
@@ -97,19 +97,19 @@
                         <output id="durationOutput">{{ dive.duration_min if is_edit else 80 }} min</output>
                     </div>
                     <input type="range" min="0" max="120" step="1" value="{{ dive.duration_min if is_edit else 80 }}" data-range="duration" aria-label="Duration slider (min)">
-                    <input id="durationMin" name="duration_min" type="number" min="0" max="120" step="any" value="{{ dive.duration_min if is_edit else 80 }}" data-number="duration">
+                    <input id="durationMin" data-metric-value="{{ dive.duration_min if is_edit and dive.duration_min is not none else '' }}" name="duration_min" type="number" min="0" max="120" step="any" value="{{ dive.duration_min if is_edit else 80 }}" data-number="duration">
                 </div>
                 <div class="equipment-controls">
                     <div class="range-control">
                         <div>
                             <label for="weightKg"><span data-unit-label="weight">Weight (kg)</span></label>
-                            <output id="weightOutput">{{ optional_metric(dive.weight_kg, ' kg', 2) if is_edit else '-' }}</output>
+                            <output id="weightOutput">{{ optional_metric(dive.weight_kg, ' kg', weight=True) if is_edit else '-' }}</output>
                         </div>
                         <div class="measurement-unit-row weight-unit-row">
                             {{ unit_toggle('weight', 'Weight', 'kg', 'kg', 'lb', 'lb') }}
                         </div>
-                        <input type="range" min="0" max="10" step="1" value="{{ dive.weight_kg if is_edit and dive.weight_kg is not none else 0 }}" data-range="weight" aria-label="Weight slider (kg)">
-                        <input id="weightKg" name="weight_kg" type="number" min="0" max="10" step="any" value="{{ dive.weight_kg if is_edit and dive.weight_kg is not none else '' }}" data-number="weight">
+                        <input type="range" min="0" max="10" step="0.5" value="{{ optional_metric(dive.weight_kg, weight=True) if is_edit and dive.weight_kg is not none else 0 }}" data-range="weight" aria-label="Weight slider (kg)">
+                        <input id="weightKg" data-metric-value="{{ dive.weight_kg if is_edit and dive.weight_kg is not none else '' }}" name="weight_kg" type="number" min="0" max="10" step="any" value="{{ optional_metric(dive.weight_kg, weight=True) if is_edit and dive.weight_kg is not none else '' }}" data-number="weight">
                     </div>
                     <label>
                         Exposure
@@ -121,15 +121,22 @@
                             {% endfor %}
                         </select>
                     </label>
-                    <label>
-                        Gas mix
-                        {% set selected_gas_mix = dive.gas_mix if is_edit and dive.gas_mix in gas_mixes else 'Air' %}
-                        <select name="gas_mix">
-                            {% for gas_mix in gas_mixes %}
-                                <option value="{{ gas_mix }}" {{ 'selected' if gas_mix == selected_gas_mix else '' }}>{{ 'EANx ' ~ gas_mix if is_nitrox_gas_mix(gas_mix) else gas_mix }}</option>
+                    <details class="average-depth-control gas-mix-control" data-gas-mix>
+                        <summary><span class="sr-only">Gas mix: </span><span data-gas-mix-label>{{ dive.gas_mix_label if is_edit else 'Air' }}</span></summary>
+                        <fieldset class="gas-mix-controls">
+                            <legend class="sr-only">Gas mix</legend>
+                            {% for gas, label, value in [('oxygen', 'O', dive.oxygen_pct if is_edit else 21), ('helium', 'He', dive.helium_pct if is_edit else 0), ('nitrogen', 'N', dive.nitrogen_pct if is_edit else 79)] %}
+                            <div class="range-control">
+                                <label for="{{ gas }}Pct">{{ label }}</label>
+                                <input type="range" min="0" max="100" step="1" value="{{ value }}" data-gas-range="{{ gas }}" aria-label="{{ label }} percentage slider" {{ 'disabled' if gas == 'nitrogen' else '' }}>
+                                <div class="gas-percentage">
+                                    <input id="{{ gas }}Pct" {{ 'name=' ~ gas ~ '_pct' if gas != 'nitrogen' else '' }} type="number" min="0" max="100" step="1" value="{{ value }}" data-gas-number="{{ gas }}" {{ 'readonly' if gas == 'nitrogen' else '' }}>
+                                    <span>%</span>
+                                </div>
+                            </div>
                             {% endfor %}
-                        </select>
-                    </label>
+                        </fieldset>
+                    </details>
                 </div>
             </div>
             <div class="air-consumption-control" data-sac-calculator>
@@ -145,7 +152,7 @@
                         </div>
                         <div class="air-consumption-inputs">
                             <div class="pressure-input pressure-start-input">
-                                <input id="startingPressureBar" name="starting_pressure_bar" type="number" min="0" max="300" step="1" placeholder="-" value="{{ optional_metric(dive.starting_pressure_bar) if is_edit and dive.starting_pressure_bar is not none else '' }}" data-number="startingPressure">
+                                <input id="startingPressureBar" data-metric-value="{{ dive.starting_pressure_bar if is_edit and dive.starting_pressure_bar is not none else '' }}" name="starting_pressure_bar" type="number" min="0" max="300" step="1" placeholder="-" value="{{ optional_metric(dive.starting_pressure_bar) if is_edit and dive.starting_pressure_bar is not none else '' }}" data-number="startingPressure">
                                 <span aria-hidden="true" data-pressure-unit>bar</span>
                             </div>
                             <div class="pressure-slider">
@@ -153,7 +160,7 @@
                                 <input type="range" min="0" max="200" step="10" value="{{ dive.ending_pressure_bar if is_edit and dive.ending_pressure_bar is not none else 0 }}" data-range="endingPressure" aria-label="Ending pressure (bar)">
                             </div>
                             <div class="pressure-input pressure-end-input">
-                                <input id="endingPressureBar" name="ending_pressure_bar" type="number" min="0" max="300" step="1" placeholder="-" value="{{ optional_metric(dive.ending_pressure_bar) if is_edit and dive.ending_pressure_bar is not none else '' }}" data-number="endingPressure">
+                                <input id="endingPressureBar" data-metric-value="{{ dive.ending_pressure_bar if is_edit and dive.ending_pressure_bar is not none else '' }}" name="ending_pressure_bar" type="number" min="0" max="300" step="1" placeholder="-" value="{{ optional_metric(dive.ending_pressure_bar) if is_edit and dive.ending_pressure_bar is not none else '' }}" data-number="endingPressure">
                                 <span aria-hidden="true" data-pressure-unit>bar</span>
                             </div>
                         </div>
@@ -165,8 +172,8 @@
                         <small>Uses average depth when provided, otherwise max depth</small>
                     </div>
                 </div>
-                <output id="startingPressureOutput" hidden>{{ optional_metric(dive.starting_pressure_bar, ' bar', 2) if is_edit else '-' }}</output>
-                <output id="endingPressureOutput" hidden>{{ optional_metric(dive.ending_pressure_bar, ' bar', 2) if is_edit else '-' }}</output>
+                <output id="startingPressureOutput" hidden>{{ optional_metric(dive.starting_pressure_bar, ' bar') if is_edit else '-' }}</output>
+                <output id="endingPressureOutput" hidden>{{ optional_metric(dive.ending_pressure_bar, ' bar') if is_edit else '-' }}</output>
             </div>
         </div>
 
@@ -179,26 +186,26 @@
                 <div class="range-control">
                     <div>
                         <label for="visibilityM"><span data-unit-label="visibility">Visibility (m)</span></label>
-                        <output id="visibilityOutput">{{ optional_metric(dive.visibility_m, ' m', 2) if is_edit else '-' }}</output>
+                        <output id="visibilityOutput">{{ optional_metric(dive.visibility_m, ' m') if is_edit else '-' }}</output>
                     </div>
                     <input type="range" min="0" max="30" step="1" value="{{ dive.visibility_m if is_edit and dive.visibility_m is not none else 0 }}" data-range="visibility" aria-label="Visibility slider (m)">
-                    <input id="visibilityM" name="visibility_m" type="number" min="0" max="30" step="any" value="{{ dive.visibility_m if is_edit and dive.visibility_m is not none else '' }}" data-number="visibility">
+                    <input id="visibilityM" data-metric-value="{{ dive.visibility_m if is_edit and dive.visibility_m is not none else '' }}" name="visibility_m" type="number" min="0" step="any" value="{{ optional_metric(dive.visibility_m) if is_edit and dive.visibility_m is not none else '' }}" data-number="visibility">
                 </div>
                 <div class="range-control">
                     <div>
                         <label for="airTempC"><span data-unit-label="airTemp">Air temperature (°C)</span></label>
-                        <output id="airTempOutput">{{ optional_metric(dive.air_temp_c, '°C', 2) if is_edit else '-' }}</output>
+                        <output id="airTempOutput">{{ optional_metric(dive.air_temp_c, '°C') if is_edit else '-' }}</output>
                     </div>
                     <input type="range" min="-20" max="40" step="1" value="{{ dive.air_temp_c if is_edit and dive.air_temp_c is not none else 20 }}" data-range="airTemp" aria-label="Air temperature slider (°C)">
-                    <input id="airTempC" name="air_temp_c" type="number" min="-20" max="40" step="any" value="{{ dive.air_temp_c if is_edit and dive.air_temp_c is not none else '' }}" data-number="airTemp">
+                    <input id="airTempC" data-metric-value="{{ dive.air_temp_c if is_edit and dive.air_temp_c is not none else '' }}" name="air_temp_c" type="number" min="-20" max="40" step="any" value="{{ optional_metric(dive.air_temp_c) if is_edit and dive.air_temp_c is not none else '' }}" data-number="airTemp">
                 </div>
                 <div class="range-control">
                     <div>
                         <label for="waterTempC"><span data-unit-label="waterTemp">Water temperature (°C)</span></label>
-                        <output id="waterTempOutput">{{ optional_metric(dive.water_temp_c, '°C', 2) if is_edit else '-' }}</output>
+                        <output id="waterTempOutput">{{ optional_metric(dive.water_temp_c, '°C') if is_edit else '-' }}</output>
                     </div>
                     <input type="range" min="-20" max="40" step="1" value="{{ dive.water_temp_c if is_edit and dive.water_temp_c is not none else 20 }}" data-range="waterTemp" aria-label="Water temperature slider (°C)">
-                    <input id="waterTempC" name="water_temp_c" type="number" min="-20" max="40" step="any" value="{{ dive.water_temp_c if is_edit and dive.water_temp_c is not none else '' }}" data-number="waterTemp">
+                    <input id="waterTempC" data-metric-value="{{ dive.water_temp_c if is_edit and dive.water_temp_c is not none else '' }}" name="water_temp_c" type="number" min="-20" max="40" step="any" value="{{ optional_metric(dive.water_temp_c) if is_edit and dive.water_temp_c is not none else '' }}" data-number="waterTemp">
                 </div>
                 <div class="condition-options">
                     {% set selected_dive_types = dive.dive_types if is_edit else ['open water'] %}

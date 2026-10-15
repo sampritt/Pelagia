@@ -4,7 +4,7 @@ const path = require("node:path");
 const test = require("node:test");
 const vm = require("node:vm");
 
-function setup(initial = {}) {
+function setup(initial = {}, stored = {}) {
     const element = (value = "") => ({
         value, textContent: "", handlers: {}, dataset: {},
         classList: {toggle() {}},
@@ -19,7 +19,10 @@ function setup(initial = {}) {
     const fields = {depth: "depth_m", averageDepth: "average_depth_m", weight: "weight_kg", duration: "duration_min",
         startingPressure: "starting_pressure_bar", endingPressure: "ending_pressure_bar", visibility: "visibility_m",
         airTemp: "air_temp_c", waterTemp: "water_temp_c"};
-    for (const name of names) pairs[name].number.name = fields[name];
+    for (const name of names) {
+        pairs[name].number.name = fields[name];
+        if (name in stored) pairs[name].number.dataset.metricValue = stored[name];
+    }
     const unitInputs = Object.entries({length: ["m", "ft"], weight: ["kg", "lb"], pressure: ["bar", "psi"], temperature: ["c", "f"]})
         .flatMap(([group, units]) => units.map((unit, index) => Object.assign(element(unit), {checked: index === 0, dataset: {unitToggle: group}})));
     const labels = Object.fromEntries(names.map(name => [name, element()]));
@@ -64,7 +67,7 @@ function setup(initial = {}) {
     return { pairs, sacOutput, setUnit, submitted, labels, trackStyles };
 }
 
-test("typed depths retain decimal precision through blur and reopening; sliders use whole meters", () => {
+test("typed depths round on blur and reopening; sliders use whole meters", () => {
     const { pairs } = setup({ depth: "15.0" });
     assert.equal(pairs.depth.number.value, "15");
     assert.equal(pairs.depth.output.textContent, "15 m");
@@ -72,10 +75,10 @@ test("typed depths retain decimal precision through blur and reopening; sliders 
         pairs.depth.number.value = value;
         pairs.depth.number.handlers.input();
         pairs.depth.number.handlers.blur();
-        assert.equal(pairs.depth.number.value, value);
-        assert.equal(pairs.depth.output.textContent, `${value} m`);
+        assert.equal(pairs.depth.number.value, "15");
+        assert.equal(pairs.depth.output.textContent, "15 m");
         assert.equal(pairs.depth.range.value, 15);
-        assert.equal(setup({ depth: value }).pairs.depth.number.value, value);
+        assert.equal(setup({ depth: value }).pairs.depth.number.value, "15");
     }
     pairs.depth.range.value = "16";
     pairs.depth.range.handlers.input();
@@ -92,52 +95,52 @@ test("pressure inputs retain off-step integers and SAC uses the exact entered de
         assert.equal(pairs[name].output.textContent, `${value} bar`);
         assert.equal(pairs[name].range.value, snapped);
     }
-    assert.equal(sacOutput.textContent, `${((195 - 47) / 40 / (15.3 / 10 + 1) * 12).toFixed(1)} L/min`);
+    assert.equal(sacOutput.textContent, `${Math.round((195 - 47) / 40 / (15.3 / 10 + 1) * 12)} L/min`);
     pairs.startingPressure.range.value = "190";
     pairs.startingPressure.range.handlers.input();
     assert.equal(pairs.startingPressure.number.value, "190");
 });
 
-test("duration and weight sliders advance by one while typed fractional weight stays exact", () => {
+test("weight sliders support half units and duration sliders use integers", () => {
     const { pairs } = setup({ weight: "8.5" });
     assert.equal(pairs.weight.number.value, "8.5");
     pairs.duration.range.value = "81";
     pairs.duration.range.handlers.input();
     assert.equal(pairs.duration.number.value, "81");
-    pairs.weight.range.value = "9";
+    pairs.weight.range.value = "9.5";
     pairs.weight.range.handlers.input();
-    assert.equal(pairs.weight.number.value, "9");
+    assert.equal(pairs.weight.number.value, "9.5");
 });
 
 test("optional average depth drives SAC, including zero, and clearing restores max depth", () => {
     const { pairs, sacOutput } = setup({ depth: "20", duration: "50", startingPressure: "200", endingPressure: "50" });
     assert.equal(pairs.averageDepth.number.value, "");
     assert.equal(pairs.averageDepth.output.textContent, "-");
-    assert.equal(sacOutput.textContent, "12.0 L/min");
+    assert.equal(sacOutput.textContent, "12 L/min");
     pairs.averageDepth.number.value = "10.3";
     pairs.averageDepth.number.handlers.input();
     pairs.averageDepth.number.handlers.blur();
-    assert.equal(pairs.averageDepth.number.value, "10.3");
+    assert.equal(pairs.averageDepth.number.value, "10");
     assert.equal(pairs.averageDepth.range.value, 10);
-    assert.equal(pairs.averageDepth.output.textContent, "10.3 m");
-    assert.equal(sacOutput.textContent, `${(150 / 50 / 2.03 * 12).toFixed(1)} L/min`);
+    assert.equal(pairs.averageDepth.output.textContent, "10 m");
+    assert.equal(sacOutput.textContent, `${Math.round(150 / 50 / 2.03 * 12)} L/min`);
     // Max-depth changes must not override an explicitly entered average depth.
     pairs.depth.range.value = "30";
     pairs.depth.range.handlers.input();
-    assert.equal(sacOutput.textContent, `${(150 / 50 / 2.03 * 12).toFixed(1)} L/min`);
+    assert.equal(sacOutput.textContent, `${Math.round(150 / 50 / 2.03 * 12)} L/min`);
     pairs.averageDepth.range.value = "0";
     pairs.averageDepth.range.handlers.input();
     assert.equal(pairs.averageDepth.number.value, "0");
-    assert.equal(sacOutput.textContent, "36.0 L/min");
+    assert.equal(sacOutput.textContent, "36 L/min");
     pairs.averageDepth.number.value = "";
     pairs.averageDepth.number.handlers.input();
     pairs.averageDepth.number.handlers.blur();
     assert.equal(pairs.averageDepth.output.textContent, "-");
-    assert.equal(sacOutput.textContent, "9.0 L/min");
+    assert.equal(sacOutput.textContent, "9 L/min");
     const reopened = setup({ depth: "30", averageDepth: "15.0", duration: "50", startingPressure: "200", endingPressure: "50" });
     assert.equal(reopened.pairs.averageDepth.number.value, "15");
     assert.equal(reopened.pairs.averageDepth.output.textContent, "15 m");
-    assert.equal(reopened.sacOutput.textContent, "14.4 L/min");
+    assert.equal(reopened.sacOutput.textContent, "14 L/min");
 });
 
 test("unit toggles update values, bounds, labels and slider steps without changing SAC", () => {
@@ -154,7 +157,7 @@ test("unit toggles update values, bounds, labels and slider steps without changi
     assert.equal(state.labels.depth.textContent, "Max depth (ft)");
     assert.equal(state.pairs.depth.number.max, "148");
     assert.equal(state.pairs.weight.number.max, "22");
-    assert.equal(state.pairs.weight.number.value, "18");
+    assert.equal(state.pairs.weight.number.value, "17.5");
     assert.equal(state.pairs.startingPressure.number.value, "2828");
     assert.equal(state.pairs.startingPressure.range.step, "100");
     assert.equal(state.pairs.startingPressure.range.max, "3000");
@@ -197,7 +200,7 @@ test("imperial edits and sliders use the selected units and serialize full preci
         assert.equal(state.pairs[name].number.value, value);
     }
     const psiToBar = 0.45359237 * 9.80665 / 0.0254 ** 2 / 100000;
-    assert.equal(state.sacOutput.textContent, `${((2850 - 600) * psiToBar / 50 / (35 * 0.3048 / 10 + 1) * 12).toFixed(1)} L/min`);
+    assert.equal(state.sacOutput.textContent, `${Math.round((2850 - 600) * psiToBar / 50 / (35 * 0.3048 / 10 + 1) * 12)} L/min`);
     const saved = state.submitted();
     assert.ok(Math.abs(Number(saved.depth_m) - 100) < 1e-10);
     assert.ok(Math.abs(Number(saved.air_temp_c) - 75) < 1e-10);
@@ -222,16 +225,16 @@ test("changing units preserves blanks and editing decimal text remains possible"
     state.pairs.depth.number.value = "15.3";
     state.pairs.depth.number.handlers.input();
     state.pairs.depth.number.handlers.blur();
-    assert.equal(state.pairs.depth.number.value, "15.3");
+    assert.equal(state.pairs.depth.number.value, "15");
     assert.equal(state.sacOutput.textContent, "-");
 });
 
-test("all converted displays round to whole numbers in either direction without rounding saved measurements", () => {
+test("converted displays use whole or half units without rounding saved measurements", () => {
     const state = setup({depth: "12", averageDepth: "15.3", weight: "8.3", visibility: "15.3",
         startingPressure: "195.3", endingPressure: "47", airTemp: "25.3", waterTemp: "-17.7"});
     const sac = state.sacOutput.textContent;
     for (const [group, unit] of [["length", "ft"], ["weight", "lb"], ["pressure", "psi"], ["temperature", "f"]]) state.setUnit(group, unit);
-    const alternate = {depth: "39", averageDepth: "50", weight: "18", visibility: "50",
+    const alternate = {depth: "39", averageDepth: "50", weight: "18.5", visibility: "50",
         startingPressure: "2833", airTemp: "78", waterTemp: "0"};
     for (const [name, value] of Object.entries(alternate)) {
         assert.equal(state.pairs[name].number.value, value);
@@ -240,7 +243,7 @@ test("all converted displays round to whole numbers in either direction without 
     }
     assert.equal(state.sacOutput.textContent, sac);
     for (const [group, unit] of [["length", "m"], ["weight", "kg"], ["pressure", "bar"], ["temperature", "c"]]) state.setUnit(group, unit);
-    const metric = {depth: "12", averageDepth: "15", weight: "8", visibility: "15", startingPressure: "195", airTemp: "25", waterTemp: "-18"};
+    const metric = {depth: "12", averageDepth: "15", weight: "8.5", visibility: "15", startingPressure: "195", airTemp: "25", waterTemp: "-18"};
     for (const [name, value] of Object.entries(metric)) {
         assert.equal(state.pairs[name].number.value, value);
         state.pairs[name].number.handlers.blur();
@@ -267,7 +270,7 @@ test("pressure sliders use 200 bar or 3000 psi while typed values can reach 300 
     }
     assert.equal(state.pairs.startingPressure.range.value, 200);
     assert.equal(state.pairs.startingPressure.number.value, "250");
-    assert.equal(state.sacOutput.textContent, "16.0 L/min");
+    assert.equal(state.sacOutput.textContent, "16 L/min");
     assert.equal(state.trackStyles["--pressure-low"], "0%");
     assert.equal(state.trackStyles["--pressure-high"], "75%");
     state.setUnit("pressure", "psi");
@@ -278,7 +281,7 @@ test("pressure sliders use 200 bar or 3000 psi while typed values can reach 300 
     assert.equal(state.pairs.startingPressure.number.value, "3626");
     assert.equal(state.pairs.startingPressure.range.value, 3000);
     assert.equal(state.trackStyles["--pressure-low"], "0%");
-    assert.equal(state.sacOutput.textContent, "16.0 L/min");
+    assert.equal(state.sacOutput.textContent, "16 L/min");
     for (const name of ["startingPressure", "endingPressure"]) {
         state.pairs[name].number.value = "4000";
         state.pairs[name].number.handlers.input();
@@ -287,7 +290,7 @@ test("pressure sliders use 200 bar or 3000 psi while typed values can reach 300 
         assert.equal(state.pairs[name].range.value, 3000);
     }
     assert.ok(Math.abs(Number(state.submitted().starting_pressure_bar) - 4000) < 1e-8);
-    assert.equal(state.sacOutput.textContent, "0.0 L/min");
+    assert.equal(state.sacOutput.textContent, "0 L/min");
     state.setUnit("pressure", "bar");
     state.pairs.startingPressure.number.value = "300";
     state.pairs.startingPressure.number.handlers.input();
@@ -308,4 +311,84 @@ test("pressure sliders use 200 bar or 3000 psi while typed values can reach 300 
     state.pairs.startingPressure.range.handlers.input();
     assert.equal(state.pairs.startingPressure.number.value, "3000");
     assert.ok(Math.abs(Number(state.submitted().starting_pressure_bar) - 3000) < 1e-8);
+});
+
+
+test("rounded edit inputs restore exact stored measurements and preserve them on blur", () => {
+    const initial = {depth: "31", averageDepth: "11", weight: "7.5", visibility: "15", airTemp: "24", waterTemp: "-2", startingPressure: "195"};
+    const stored = {depth: "31.1234", averageDepth: "10.668", weight: "7.25747792", visibility: "15.3", airTemp: "23.7", waterTemp: "-2.4", startingPressure: "195.3"};
+    const state = setup(initial, stored);
+    for (const name of Object.keys(stored)) {
+        assert.equal(state.pairs[name].number.value, initial[name]);
+        state.pairs[name].number.handlers.blur();
+    }
+    const saved = state.submitted();
+    for (const [name, field] of Object.entries({depth: "depth_m", averageDepth: "average_depth_m", weight: "weight_kg", visibility: "visibility_m", airTemp: "air_temp_c", waterTemp: "water_temp_c", startingPressure: "starting_pressure_bar"})) {
+        assert.equal(saved[field], stored[name]);
+    }
+});
+
+
+test("visibility slider caps at 30 m or 100 ft while numeric entries can exceed it", () => {
+    const state = setup({visibility: "60"});
+    assert.equal(state.pairs.visibility.range.max, "30");
+    assert.equal(state.pairs.visibility.number.max, "");
+    assert.equal(state.pairs.visibility.range.value, 30);
+    assert.equal(state.pairs.visibility.number.value, "60");
+    state.setUnit("length", "ft");
+    assert.equal(state.pairs.visibility.range.max, "100");
+    assert.equal(state.pairs.visibility.range.value, 100);
+    assert.equal(state.pairs.visibility.number.value, "197");
+    state.pairs.visibility.number.value = "150";
+    state.pairs.visibility.number.handlers.input();
+    state.pairs.visibility.number.handlers.blur();
+    assert.equal(state.pairs.visibility.number.value, "150");
+    assert.equal(state.pairs.visibility.range.value, 100);
+    assert.ok(Math.abs(Number(state.submitted().visibility_m) - 150) < 1e-8);
+    state.setUnit("length", "m");
+    assert.equal(state.pairs.visibility.number.value, "46");
+    assert.equal(state.pairs.visibility.range.max, "30");
+    state.setUnit("length", "ft");
+    state.pairs.visibility.range.value = "100";
+    state.pairs.visibility.range.handlers.input();
+    assert.equal(state.pairs.visibility.number.value, "100");
+    assert.ok(Math.abs(Number(state.submitted().visibility_m) - 100) < 1e-8);
+});
+
+
+test("gas sliders update nitrogen, preserve the other editable gas, and clamp the total", () => {
+    const field = value => ({value: String(value), handlers: {}, addEventListener(name, handler) {this.handlers[name] = handler;}});
+    const gases = Object.fromEntries([["oxygen", 21], ["helium", 0], ["nitrogen", 79]].map(([gas, value]) => [gas, {range: field(value), number: field(value)}]));
+    const summary = {textContent: ""};
+    const controls = {querySelector(selector) {
+        if (selector === "[data-gas-mix-label]") return summary;
+        const [, kind, gas] = selector.match(/data-gas-(range|number)='(\w+)'/);
+        return gases[gas][kind];
+    }};
+    const context = vm.createContext({document: {addEventListener() {}}, window: {}});
+    vm.runInContext(fs.readFileSync(path.join(__dirname, "../pelagia/static/js/app.js"), "utf8"), context);
+    context.form = {querySelector: () => controls};
+    vm.runInContext("initGasMix(form)", context);
+    const set = (gas, kind, value) => {gases[gas][kind].value = String(value); gases[gas][kind].handlers.input();};
+    assert.equal(summary.textContent, "Air");
+    set("oxygen", "range", 32);
+    assert.equal(summary.textContent, "EANx 32%");
+    assert.equal(gases.nitrogen.number.value, "68");
+    set("helium", "number", 35);
+    assert.equal(summary.textContent, "Trimix 32/35");
+    assert.equal(gases.oxygen.number.value, "32");
+    assert.equal(gases.nitrogen.range.value, "33");
+    set("oxygen", "number", 99);
+    assert.equal(gases.oxygen.number.value, "65");
+    assert.equal(gases.helium.number.value, "35");
+    assert.equal(gases.nitrogen.number.value, "0");
+    set("helium", "range", 100);
+    assert.equal(gases.helium.number.value, "35");
+    set("oxygen", "number", -5);
+    assert.equal(gases.oxygen.number.value, "0");
+    set("helium", "number", 22.6);
+    assert.equal(gases.helium.number.value, "23");
+    assert.equal(gases.nitrogen.number.value, "77");
+    assert.deepEqual(Object.keys(gases.nitrogen.number.handlers), []);
+    assert.deepEqual(Object.keys(gases.nitrogen.range.handlers), []);
 });

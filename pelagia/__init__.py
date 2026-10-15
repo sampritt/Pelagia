@@ -593,7 +593,7 @@ def register_routes(app):
             sightings=sightings,
             visibility_series=visibility_series,
             current_series=current_series,
-            visibility_chart=line_chart_points(visibility_series, max_value=30),
+            visibility_chart=line_chart_points(visibility_series, max_value=max([30] + [item["value"] or 0 for item in visibility_series])),
             current_chart=bar_chart_points(current_series, max_value=4),
             current_strength_labels=CURRENT_STRENGTH_LABELS,
             current_strength_index_labels={index: CURRENT_STRENGTH_LABELS[value] for value, index in CURRENT_STRENGTH_INDEXES.items()},
@@ -730,9 +730,9 @@ def create_dive_from_request(user_id, form_request):
             user_id, buddy_user_id, dive_site_id, dive_center_id, dive_center_name, date, site_name, country_or_area, latitude, longitude,
             depth_m, average_depth_m, duration_min, weight_kg, starting_pressure_bar, ending_pressure_bar, sac_rate_l_min,
             exposure, visibility_m, air_temp_c, water_temp_c,
-            gas_mix, dive_type, dive_types_json, current, current_types_json, current_strength, notes
+            gas_mix, oxygen_pct, helium_pct, dive_type, dive_types_json, current, current_types_json, current_strength, notes
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             user_id,
@@ -757,6 +757,8 @@ def create_dive_from_request(user_id, form_request):
             values["air_temp_c"],
             values["water_temp_c"],
             values["gas_mix"],
+            values["oxygen_pct"],
+            values["helium_pct"],
             values["dive_type"],
             json.dumps(values["dive_types"]),
             values["current"],
@@ -801,6 +803,8 @@ def update_dive_from_request(dive_id, user_id, form_request):
             air_temp_c = ?,
             water_temp_c = ?,
             gas_mix = ?,
+            oxygen_pct = ?,
+            helium_pct = ?,
             dive_type = ?,
             dive_types_json = ?,
             current = ?,
@@ -831,6 +835,8 @@ def update_dive_from_request(dive_id, user_id, form_request):
             values["air_temp_c"],
             values["water_temp_c"],
             values["gas_mix"],
+            values["oxygen_pct"],
+            values["helium_pct"],
             values["dive_type"],
             json.dumps(values["dive_types"]),
             values["current"],
@@ -865,10 +871,15 @@ def dive_values_from_request(form_request, user_id, default_tank_size_l=12):
     tank_size_choice = form.get("tank_size_l", form.get("tank_size_preview", str(default_tank_size_l)))
     tank_size_l = 15 if tank_size_choice == "15" else 12
     exposure = form.get("exposure") if form.get("exposure") in EXPOSURES else None
-    visibility = metric_measurement(form.get("visibility_m"), length_unit, 0, 30)
+    visibility = metric_measurement(form.get("visibility_m"), length_unit, 0, math.inf)
     air_temp = metric_measurement(form.get("air_temp_c"), temperature_unit, -20, 40)
     water_temp = metric_measurement(form.get("water_temp_c"), temperature_unit, -20, 40)
     gas_mix = form.get("gas_mix") if form.get("gas_mix") in GAS_MIXES else "Air"
+    oxygen, helium = gas_composition(gas_mix)
+    if "oxygen_pct" in form or "helium_pct" in form:
+        oxygen = gas_percentage(form.get("oxygen_pct"), 21)
+        helium = min(gas_percentage(form.get("helium_pct"), 0), 100 - oxygen)
+        gas_mix = gas_mix_label(oxygen, helium)
     dive_types = normalize_options(form.getlist("dive_type"), DIVE_TYPES, "open water")
     current_types = normalize_options(form.getlist("current"), CURRENT_TYPES, "none")
     dive_type, current = dive_types[0], current_types[0]
@@ -956,6 +967,8 @@ def dive_values_from_request(form_request, user_id, default_tank_size_l=12):
         "air_temp_c": air_temp,
         "water_temp_c": water_temp,
         "gas_mix": gas_mix,
+        "oxygen_pct": oxygen,
+        "helium_pct": helium,
         "dive_type": dive_type,
         "dive_types": dive_types,
         "current": current,
@@ -1226,6 +1239,10 @@ def fetch_owned_dive(dive_id, user_id):
 def hydrate_dive(row):
     db = database.get_db()
     dive = dict(row)
+    if dive.get("oxygen_pct") is None or dive.get("helium_pct") is None:
+        dive["oxygen_pct"], dive["helium_pct"] = gas_composition(dive["gas_mix"])
+    dive["nitrogen_pct"] = 100 - dive["oxygen_pct"] - dive["helium_pct"]
+    dive["gas_mix_label"] = gas_mix_label(dive["oxygen_pct"], dive["helium_pct"])
     dive["dive_types"] = dive_type_options(dive)
     dive["current_types"] = current_type_options(dive)
     dive["photos"] = db.execute("SELECT id, filename FROM photos WHERE dive_id = ? ORDER BY id", (row["id"],)).fetchall()
@@ -1564,6 +1581,10 @@ def dive_to_json(dive):
         "air_temp_c": dive["air_temp_c"],
         "water_temp_c": dive["water_temp_c"],
         "gas_mix": dive["gas_mix"],
+        "oxygen_pct": dive["oxygen_pct"],
+        "helium_pct": dive["helium_pct"],
+        "nitrogen_pct": dive["nitrogen_pct"],
+        "gas_mix_label": dive["gas_mix_label"],
         "dive_type": dive["dive_type"],
         "dive_types": dive["dive_types"],
         "current": dive["current"],
@@ -1690,8 +1711,27 @@ def dive_type_label(value):
     return ", ".join(DIVE_TYPE_LABELS[item] for item in normalize_options(value, DIVE_TYPES, "open water"))
 
 
+def gas_percentage(value, default):
+    try:
+        return max(0, min(100, int(value)))
+    except (TypeError, ValueError):
+        return default
+
+
+def gas_composition(value):
+    if value in NITROX_GAS_MIXES:
+        return int(value.rstrip("%")), 0
+    return 21, 0
+
+
+def gas_mix_label(oxygen, helium):
+    if helium > 0:
+        return f"Trimix {oxygen}/{helium}"
+    return "Air" if oxygen == 21 else f"EANx {oxygen}%"
+
+
 def is_nitrox_gas_mix(value):
-    return value in NITROX_GAS_MIXES
+    return value in NITROX_GAS_MIXES or str(value).startswith("EANx ")
 
 
 def current_label(value):
@@ -1716,7 +1756,7 @@ def sac_rate(dive):
 
 def sac_rate_display(dive):
     value = dive["sac_rate_l_min"]
-    return "-" if value is None else f"{value:.1f} L/min"
+    return "-" if value is None else f"{format_metric(value)} L/min"
 
 
 def sac_tank_size(dive):
@@ -1730,10 +1770,10 @@ def sac_tank_size(dive):
     return 12
 
 
-def optional_metric(value, suffix="", precision=None):
+def optional_metric(value, suffix="", *, weight=False):
     if value is None or value == "":
         return "-"
-    display_value = format_metric(round(value, precision) if precision is not None else value)
+    display_value = format_metric(value, weight=weight)
     return f"{display_value}{suffix}"
 
 

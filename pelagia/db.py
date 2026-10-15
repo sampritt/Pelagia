@@ -41,7 +41,13 @@ def init_db():
     _ensure_column(db, "dives", "current_strength", "TEXT NOT NULL DEFAULT 'none'")
     _ensure_column(db, "dives", "is_deleted", "INTEGER NOT NULL DEFAULT 0")
     _ensure_column(db, "dive_sites", "logged_dive_count", "INTEGER NOT NULL DEFAULT 0")
+    _ensure_column(db, "dives", "oxygen_pct", "INTEGER")
+    _ensure_column(db, "dives", "helium_pct", "INTEGER")
     _ensure_metric_dive_schema(db)
+    db.execute("""UPDATE dives SET oxygen_pct = CASE
+        WHEN gas_mix IN ('30%', '32%', '34%', '36%', '38%', '40%')
+        THEN CAST(REPLACE(gas_mix, '%', '') AS INTEGER) ELSE 21 END,
+        helium_pct = 0 WHERE oxygen_pct IS NULL OR helium_pct IS NULL""")
     _normalize_current_values(db)
     _ensure_dive_site_counts(db)
     db.execute("CREATE INDEX IF NOT EXISTS idx_dives_buddy_user ON dives(buddy_user_id)")
@@ -73,7 +79,6 @@ def _normalize_current_values(db):
             AND exposure NOT IN ('swimsuit', 'shorty', '2mm', '3mm', '4mm', '5mm', '6mm', '7mm', 'dry suit')
         """
     )
-    db.execute("UPDATE dives SET gas_mix = 'Air' WHERE gas_mix NOT IN ('Air', '30%', '32%', '34%', '36%', '38%', '40%', 'Other')")
 
 
 def _ensure_dive_site_counts(db):
@@ -225,6 +230,8 @@ def _ensure_metric_dive_schema(db):
                 air_temp_c REAL,
                 water_temp_c REAL,
                 gas_mix TEXT NOT NULL DEFAULT 'Air',
+                oxygen_pct INTEGER CHECK (oxygen_pct BETWEEN 0 AND 100),
+                helium_pct INTEGER CHECK (helium_pct BETWEEN 0 AND 100 AND oxygen_pct + helium_pct <= 100),
                 dive_type TEXT NOT NULL DEFAULT 'open water',
                 dive_types_json TEXT,
                 current TEXT NOT NULL DEFAULT 'none',
@@ -243,14 +250,14 @@ def _ensure_metric_dive_schema(db):
                 id, user_id, buddy_user_id, dive_site_id, dive_center_id, dive_center_name, date, site_name,
                 country_or_area, latitude, longitude, depth_m, average_depth_m, duration_min, weight_kg,
                 starting_pressure_bar, ending_pressure_bar, sac_rate_l_min,
-                exposure, visibility_m, air_temp_c, water_temp_c, gas_mix, dive_type, dive_types_json,
+                exposure, visibility_m, air_temp_c, water_temp_c, gas_mix, oxygen_pct, helium_pct, dive_type, dive_types_json,
                 current, current_types_json, current_strength, notes, is_deleted, created_at
             )
             SELECT
                 id, user_id, buddy_user_id, dive_site_id, dive_center_id, dive_center_name, date, site_name,
                 country_or_area, latitude, longitude, {depth_expression}, average_depth_m, duration_min, {weight_expression},
                 starting_pressure_bar, ending_pressure_bar, sac_rate_l_min,
-                exposure, {visibility_expression}, {air_temp_expression}, {water_temp_expression}, gas_mix, dive_type, dive_types_json,
+                exposure, {visibility_expression}, {air_temp_expression}, {water_temp_expression}, gas_mix, oxygen_pct, helium_pct, dive_type, dive_types_json,
                 current, current_types_json, current_strength, notes, is_deleted, created_at
             FROM dives;
 

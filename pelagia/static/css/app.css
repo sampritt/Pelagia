@@ -5099,3 +5099,28 @@ body:has(.pwa-install-dialog[open]) { overflow: hidden; }
     .mobile-nav { left: max(9px, env(safe-area-inset-left)); right: max(9px, env(safe-area-inset-right)); }
     .offline-card { padding: 24px; }
 }
+
+
+.gas-mix-controls {
+    border: 0;
+    margin: 0;
+    padding: 0;
+    min-width: 0;
+    display: grid;
+    gap: 12px;
+}
+.gas-mix-control > .gas-mix-controls { padding: 12px 16px 16px; }
+.gas-mix-control > summary > span { color: var(--accent-deep); }
+.gas-mix-controls .range-control { margin: 0; }
+.gas-percentage { display: flex; align-items: center; gap: 8px; }
+.gas-mix-controls input:disabled { opacity: 0.65; cursor: default; }
+
+.gas-mix-controls .range-control {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 78px;
+    gap: 8px;
+}
+.gas-mix-controls .range-control > label { grid-column: 1 / -1; }
+.gas-mix-controls .range-control input[type="range"] { grid-column: 1; grid-row: 2; width: 100%; }
+.gas-mix-controls .gas-percentage { grid-column: 2; grid-row: 2; }
+.gas-percentage input { min-width: 0; width: 100%; }

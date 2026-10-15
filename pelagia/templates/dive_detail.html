@@ -7,11 +7,17 @@
 
     <div class="detail-lower-grid dive-metric-groups">
         <div class="detail-panel equipment-detail">
-            <h2>Equipment &amp; air</h2>
+            <h2>Metrics</h2>
             <dl class="detail-metric-list">
+                {% if dive.average_depth_m is not none %}
+                <div>
+                    <dt>Average depth</dt>
+                    <dd>{{ optional_metric(dive.average_depth_m, ' m') }}</dd>
+                </div>
+                {% endif %}
                 <div>
                     <dt>Weight</dt>
-                    <dd>{{ optional_metric(dive.weight_kg, ' kg', 2) }}</dd>
+                    <dd>{{ optional_metric(dive.weight_kg, ' kg', weight=True) }}</dd>
                 </div>
                 <div>
                     <dt>Exposure</dt>
@@ -19,18 +25,18 @@
                 </div>
                 <div class="gas-mix-metric">
                     <dt>Gas mix</dt>
-                    <dd>{{ 'EANx ' ~ dive.gas_mix if is_nitrox_gas_mix(dive.gas_mix) else dive.gas_mix or 'Air' }}</dd>
+                    <dd>{{ dive.gas_mix_label }}</dd>
                 </div>
             </dl>
             <div class="detail-pressure-summary">
                 <dl class="detail-metric-list pressure-metric-list">
                     <div>
                         <dt>Starting pressure</dt>
-                        <dd>{{ optional_metric(dive.starting_pressure_bar, ' bar', 2) }}</dd>
+                        <dd>{{ optional_metric(dive.starting_pressure_bar, ' bar') }}</dd>
                     </div>
                     <div>
                         <dt>Ending pressure</dt>
-                        <dd>{{ optional_metric(dive.ending_pressure_bar, ' bar', 2) }}</dd>
+                        <dd>{{ optional_metric(dive.ending_pressure_bar, ' bar') }}</dd>
                     </div>
                     <div class="sac-metric">
                         <dt>SAC rate</dt>
@@ -42,23 +48,17 @@
         <div class="detail-panel conditions-detail">
             <h2>Conditions</h2>
             <dl class="detail-metric-list">
-                {% if dive.average_depth_m is not none %}
-                <div>
-                    <dt>Average depth</dt>
-                    <dd>{{ optional_metric(dive.average_depth_m, ' m') }}</dd>
-                </div>
-                {% endif %}
                 <div>
                     <dt>Visibility</dt>
-                    <dd>{{ optional_metric(dive.visibility_m, ' m', 2) }}</dd>
+                    <dd>{{ optional_metric(dive.visibility_m, ' m') }}</dd>
                 </div>
                 <div>
                     <dt>Air temperature</dt>
-                    <dd>{{ optional_metric(dive.air_temp_c, '°C', 2) }}</dd>
+                    <dd>{{ optional_metric(dive.air_temp_c, '°C') }}</dd>
                 </div>
                 <div>
                     <dt>Water temperature</dt>
-                    <dd>{{ optional_metric(dive.water_temp_c, '°C', 2) }}</dd>
+                    <dd>{{ optional_metric(dive.water_temp_c, '°C') }}</dd>
                 </div>
                 <div>
                     <dt>Current</dt>

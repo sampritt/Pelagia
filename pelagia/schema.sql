@@ -84,6 +84,8 @@ CREATE TABLE IF NOT EXISTS dives (
     air_temp_c REAL,
     water_temp_c REAL,
     gas_mix TEXT NOT NULL DEFAULT 'Air',
+    oxygen_pct INTEGER CHECK (oxygen_pct BETWEEN 0 AND 100),
+    helium_pct INTEGER CHECK (helium_pct BETWEEN 0 AND 100 AND oxygen_pct + helium_pct <= 100),
     dive_type TEXT NOT NULL DEFAULT 'open water',
     dive_types_json TEXT,
     current TEXT NOT NULL DEFAULT 'none',

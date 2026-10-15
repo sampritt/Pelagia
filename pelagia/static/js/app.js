@@ -558,7 +558,7 @@ function initGlobalSearch() {
 const formatSacRate = (pressureRate, tankSize = 12) =>
     pressureRate === null || !Number.isFinite(pressureRate)
         ? "-"
-        : `${(pressureRate * tankSize).toFixed(1)} L/min`;
+        : `${Math.round(pressureRate * tankSize)} L/min`;
 
 function renderSacRate(calculator, pressureRate) {
     const tankSize = Number(calculator.querySelector("[data-tank-size]:checked")?.value || 12);
@@ -567,11 +567,42 @@ function renderSacRate(calculator, pressureRate) {
 }
 
 const FORM_UNITS = {
-    length: { metric: "m", alternate: "ft", factor: 1 / 0.3048, offset: 0, decimals: 0, step: 1 },
-    weight: { metric: "kg", alternate: "lb", factor: 1 / 0.45359237, offset: 0, decimals: 0, step: 1 },
-    pressure: { metric: "bar", alternate: "psi", factor: 1 / (0.45359237 * 9.80665 / 0.0254 ** 2 / 100000), offset: 0, decimals: 0, step: 100 },
-    temperature: { metric: "c", alternate: "f", factor: 9 / 5, offset: 32, decimals: 0, step: 1 },
+    length: { metric: "m", alternate: "ft", factor: 1 / 0.3048, offset: 0, step: 1 },
+    weight: { metric: "kg", alternate: "lb", factor: 1 / 0.45359237, offset: 0, step: 0.5 },
+    pressure: { metric: "bar", alternate: "psi", factor: 1 / (0.45359237 * 9.80665 / 0.0254 ** 2 / 100000), offset: 0, step: 100 },
+    temperature: { metric: "c", alternate: "f", factor: 9 / 5, offset: 32, step: 1 },
 };
+
+function initGasMix(form) {
+    const controls = form.querySelector("[data-gas-mix]");
+    if (!controls) return;
+    const gases = Object.fromEntries(["oxygen", "helium", "nitrogen"].map((gas) => [gas, {
+        range: controls.querySelector(`[data-gas-range='${gas}']`),
+        number: controls.querySelector(`[data-gas-number='${gas}']`),
+    }]));
+    const updateLabel = () => {
+        const oxygen = Number(gases.oxygen.number.value);
+        const helium = Number(gases.helium.number.value);
+        controls.querySelector("[data-gas-mix-label]").textContent = helium > 0
+            ? `Trimix ${oxygen}/${helium}` : oxygen === 21 ? "Air" : `EANx ${oxygen}%`;
+    };
+    updateLabel();
+    const render = (gas, value) => {
+        gases[gas].range.value = gases[gas].number.value = String(value);
+    };
+    for (const gas of ["oxygen", "helium"]) {
+        const other = gas === "oxygen" ? "helium" : "oxygen";
+        const update = (raw) => {
+            const value = Number(raw);
+            render(gas, Math.max(0, Math.min(100 - Number(gases[other].number.value), Number.isFinite(value) ? Math.round(value) : 0)));
+            render("nitrogen", 100 - Number(gases.oxygen.number.value) - Number(gases.helium.number.value));
+            updateLabel();
+        };
+        gases[gas].range.addEventListener("input", () => update(gases[gas].range.value));
+        gases[gas].number.addEventListener("input", () => update(gases[gas].number.value));
+        gases[gas].number.addEventListener("blur", () => update(gases[gas].number.value));
+    }
+}
 
 function initDiveForm() {
     const form = document.querySelector("[data-dive-form]");
@@ -628,7 +659,7 @@ function initDiveForm() {
             output: document.getElementById("weightOutput"),
             min: 0,
             max: 10,
-            step: 1,
+            step: 0.5,
             unit: "kg",
             optional: true,
         },
@@ -659,7 +690,8 @@ function initDiveForm() {
             number: form.querySelector("[data-number='visibility']"),
             output: document.getElementById("visibilityOutput"),
             min: 0,
-            max: 30,
+            max: Infinity,
+            rangeMax: 30,
             step: 1,
             unit: "m",
             optional: true,
@@ -714,23 +746,25 @@ function initDiveForm() {
     const formatMetricValue = (value) => String(Number(value));
     const formatPairOutput = (value, pair) => `${formatMetricValue(value)}${pair.compactUnit ? "" : " "}${pair.unit}`;
     const snapToStep = (value, pair) => clamp(pair.min + Math.round((Number(value) - pair.min) / pair.step) * pair.step, pair.min, pair.rangeMax);
-    const displayDigits = (pair) => usesAlternate(pair) ? FORM_UNITS[pair.group].decimals
-        : ["depth", "averageDepth", "duration"].includes(pair.name) ? 10 : 2;
-    const roundedDisplay = (value, pair) => usesAlternate(pair) ? Math.round(value)
-        : ["depth", "averageDepth", "duration"].includes(pair.name) ? value : Number(value.toFixed(displayDigits(pair)));
+    const displayDigits = (pair) => pair.name === "weight" ? 1 : 0;
+    const roundedDisplay = (value, pair) => {
+        const scale = pair.name === "weight" ? 2 : 1;
+        return Math.round(value * scale) / scale;
+    };
 
-    const renderPair = (pair, normalizeNumber = true, converted = false) => {
+    const renderPair = (pair, normalizeNumber = true) => {
         const alternate = usesAlternate(pair);
         const config = FORM_UNITS[pair.group];
         pair.unit = alternate ? (pair.group === "temperature" ? "°F" : config.alternate) : pair.metricUnit;
         const scale = 10 ** displayDigits(pair);
         pair.min = alternate ? Math.round(toDisplay(pair.metricMin, pair)) : Math.floor(pair.metricMin * scale) / scale;
         pair.max = alternate ? Math.round(toDisplay(pair.metricMax, pair)) : Math.ceil(pair.metricMax * scale) / scale;
-        pair.rangeMax = pair.group === "pressure" ? (alternate ? 3000 : pair.metricRangeMax) : pair.max;
+        pair.rangeMax = pair.group === "pressure" ? (alternate ? 3000 : pair.metricRangeMax)
+            : pair.name === "visibility" ? (alternate ? 100 : pair.metricRangeMax) : pair.max;
         pair.step = alternate ? config.step : pair.metricStep;
         pair.range.min = pair.number.min = String(pair.min);
         pair.range.max = String(pair.rangeMax);
-        pair.number.max = String(pair.max);
+        pair.number.max = Number.isFinite(pair.max) ? String(pair.max) : "";
         pair.range.step = String(pair.step);
         if (pair.group) {
             pair.number.step = pair.group === "pressure" && (alternate || Number.isInteger(pair.metricValue)) ? "1" : "any";
@@ -744,9 +778,9 @@ function initDiveForm() {
             pair.number.value = "";
             pair.output.textContent = "-";
         } else {
-            const visible = normalizeNumber ? (converted ? Math.round(display) : roundedDisplay(display, pair)) : Number(pair.number.value);
+            const visible = normalizeNumber ? roundedDisplay(display, pair) : Number(pair.number.value);
             if (normalizeNumber) pair.number.value = formatMetricValue(visible);
-            pair.output.textContent = formatPairOutput(visible, pair);
+            pair.output.textContent = formatPairOutput(roundedDisplay(visible, pair), pair);
         }
         pair.displayRaw = pair.number.value;
         pair.disclosure?.classList.toggle("is-unset", pair.metricValue === null);
@@ -804,7 +838,7 @@ function initDiveForm() {
         pair.metricValue = clamp(metric, pair.metricMin, pair.metricMax);
         pair.rangeMetric = pair.metricValue;
         if (source === "number" && (commit || exact !== parsed)) pair.number.value = formatMetricValue(displayValue);
-        renderPair(pair, source !== "number");
+        renderPair(pair, source !== "number" || commit);
         if (name === "duration" && fromUser) {
             durationTouched = true;
         }
@@ -819,14 +853,14 @@ function initDiveForm() {
         pair.range.addEventListener("input", () => setPair(name, pair.range.value, true, { source: "slider", commit: true }));
         pair.number.addEventListener("input", () => setPair(name, pair.number.value, true, { source: "number" }));
         pair.number.addEventListener("blur", () => setPair(name, pair.number.value, true, { source: "number", commit: true }));
-        setPair(name, pair.number.value, false, { commit: true });
+        setPair(name, pair.number.dataset.metricValue || pair.number.value, false, { commit: true });
     });
     form.querySelectorAll("[data-unit-toggle]").forEach((input) => input.addEventListener("change", () => {
         if (!input.checked) return;
         const group = input.dataset.unitToggle;
         if (selectedUnits[group] === input.value) return;
         selectedUnits[group] = input.value;
-        Object.values(pairs).filter((pair) => pair.group === group).forEach((pair) => renderPair(pair, true, true));
+        Object.values(pairs).filter((pair) => pair.group === group).forEach((pair) => renderPair(pair));
         if (group === "pressure") {
             form.querySelectorAll("[data-pressure-unit]").forEach((label) => { label.textContent = input.value; });
         }
@@ -1286,6 +1320,8 @@ document.addEventListener("DOMContentLoaded", () => {
     initDiveInteractions();
     initGlobalSearch();
     initDiveForm();
+    const diveForm = document.querySelector("[data-dive-form]");
+    if (diveForm) initGasMix(diveForm);
     initStaticMaps(document);
 });
 

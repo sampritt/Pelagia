@@ -78,13 +78,13 @@ class ReferenceAutocompleteTest(unittest.TestCase):
                 self.assertIn(f'name="{group}_unit" value="{alternate}" data-unit-toggle="{group}"'.encode(), form)
             payload = {"site_name": "Alert Rock", "depth_m": "100", "average_depth_m": "35", "duration_min": "50",
                        "weight_kg": "16", "starting_pressure_bar": "2850", "ending_pressure_bar": "600",
-                       "air_temp_c": "75", "water_temp_c": "65", "visibility_m": "50", "tank_size_l": "15",
+                       "air_temp_c": "75", "water_temp_c": "65", "visibility_m": "150", "tank_size_l": "15",
                        "length_unit": "ft", "weight_unit": "lb", "pressure_unit": "psi", "temperature_unit": "f"}
             self.assertEqual(client.post("/dive/new", data=payload).status_code, 302)
             dive = client.get("/api/dives/mine").get_json()[0]
             expected = {"depth_m": 30.48, "average_depth_m": 10.668, "weight_kg": 7.25747792,
                         "starting_pressure_bar": 2850 * PSI_TO_BAR, "ending_pressure_bar": 600 * PSI_TO_BAR,
-                        "air_temp_c": (75 - 32) * 5 / 9, "water_temp_c": (65 - 32) * 5 / 9, "visibility_m": 15.24}
+                        "air_temp_c": (75 - 32) * 5 / 9, "water_temp_c": (65 - 32) * 5 / 9, "visibility_m": 45.72}
             for field, value in expected.items():
                 self.assertAlmostEqual(dive[field], value, places=8)
             expected_sac = (dive["starting_pressure_bar"] - dive["ending_pressure_bar"]) / 50 / (10.668 / 10 + 1) * 15
@@ -92,8 +92,8 @@ class ReferenceAutocompleteTest(unittest.TestCase):
             dive_id = dive["id"]
             edit_url = f"/dive/{dive_id}/edit"
             edit = client.get(edit_url).data
-            self.assertIn(b'value="30.48" data-number="depth"', edit)
-            self.assertIn(b'value="10.668" data-number="averageDepth"', edit)
+            self.assertIn(b'value="30" data-number="depth"', edit)
+            self.assertIn(b'value="11" data-number="averageDepth"', edit)
             self.assertIn(b'value="15" data-tank-size checked', edit)
             # Editing starts from stored metric, so re-saving defaults to metric.
             metric_payload = {"site_name": "Alert Rock", "duration_min": "50", "tank_size_l": "15",
@@ -314,7 +314,7 @@ class ReferenceAutocompleteTest(unittest.TestCase):
             dive_id = dive["id"]
             edit_url = f"/dive/{dive_id}/edit"
             self.assertNotIn(b"<small>Average depth</small>", client.get("/home").data)
-            for value, display in (("10.3", "10.3"), ("15.0", "15"), ("0", "0")):
+            for value, display in (("10.3", "10"), ("15.0", "15"), ("0", "0")):
                 with self.subTest(average_depth=value):
                     self.assertEqual(client.post(edit_url, data={**payload, "average_depth_m": value}).status_code, 302)
                     dive = client.get(f"/api/dives/{dive_id}").get_json()
@@ -436,7 +436,7 @@ class ReferenceAutocompleteTest(unittest.TestCase):
             self.assertIn(b'min="0" max="45" step="1" value="12" data-range="depth"', form)
             self.assertIn(b'name="depth_m" type="number" min="0" max="45" step="any"', form)
             self.assertIn(b'min="0" max="120" step="1" value="80" data-range="duration"', form)
-            self.assertIn(b'min="0" max="10" step="1" value="0" data-range="weight"', form)
+            self.assertIn(b'min="0" max="10" step="0.5" value="0" data-range="weight"', form)
             for name in ("starting_pressure_bar", "ending_pressure_bar"):
                 self.assertIn(f'name="{name}" type="number" min="0" max="300" step="1"'.encode(), form)
 
@@ -450,7 +450,7 @@ class ReferenceAutocompleteTest(unittest.TestCase):
             client.post("/dive/new", data=payload)
             dive_id = client.get("/api/dives/mine").get_json()[0]["id"]
             guest = app.test_client()
-            for raw, display in (("15.0", "15"), ("15.3", "15.3"), ("15.3456789", "15.3456789")):
+            for raw, display in (("15.0", "15"), ("15.3", "15"), ("15.3456789", "15")):
                 with self.subTest(depth=raw):
                     self.assertEqual(client.post(f"/dive/{dive_id}/edit", data={**payload, "depth_m": raw}).status_code, 302)
                     dive = client.get(f"/api/dives/{dive_id}").get_json()
@@ -516,9 +516,9 @@ class ReferenceAutocompleteTest(unittest.TestCase):
         }
         self.assertEqual(sac_rate(dive), 1.0)
         self.assertEqual(sac_rate({**dive, "duration_min": 40}), 1.25)
-        self.assertEqual(sac_rate_display({**dive, "sac_rate_l_min": 12}), "12.0 L/min")
-        self.assertEqual(sac_rate_display({**dive, "sac_rate_l_min": 18.75}), "18.8 L/min")
-        self.assertEqual(sac_rate_display({**dive, "sac_rate_l_min": 0}), "0.0 L/min")
+        self.assertEqual(sac_rate_display({**dive, "sac_rate_l_min": 12}), "12 L/min")
+        self.assertEqual(sac_rate_display({**dive, "sac_rate_l_min": 18.75}), "19 L/min")
+        self.assertEqual(sac_rate_display({**dive, "sac_rate_l_min": 0}), "0 L/min")
         self.assertEqual(sac_tank_size({**dive, "sac_rate_l_min": 15}), 15)
         self.assertEqual(sac_tank_size({**dive, "sac_rate_l_min": 12}), 12)
         self.assertEqual(sac_tank_size({**dive, "sac_rate_l_min": None}), 12)
@@ -551,11 +551,11 @@ class ReferenceAutocompleteTest(unittest.TestCase):
             detail_url = f'/dive/{dive["id"]}'
             edit_url = f'{detail_url}/edit'
             detail = client.get(detail_url).data
-            self.assertIn(b"18.8 L/min", detail)
+            self.assertIn(b"19 L/min", detail)
             self.assertNotIn(b"data-tank-size", detail)
             self.assertNotIn(b"data-pressure-sac", detail)
             edit = client.get(edit_url).data
-            self.assertIn(b"18.8 L/min", edit)
+            self.assertIn(b"19 L/min", edit)
             self.assertIn(b'value="15" data-tank-size checked', edit)
             self.assertIn(b'data-is-edit="true"', edit)
             self.assertIn(b'value="40" data-number="duration"', edit)
@@ -581,7 +581,7 @@ class ReferenceAutocompleteTest(unittest.TestCase):
             # A logged view must use the saved value, not recalculate from pressure.
             with sqlite3.connect(db_path) as conn:
                 conn.execute("UPDATE dives SET sac_rate_l_min = 17.5 WHERE id = ?", (dive["id"],))
-            self.assertIn(b"17.5 L/min", client.get(detail_url).data)
+            self.assertIn(b"18 L/min", client.get(detail_url).data)
             with app.app_context():
                 database.init_db()
                 database.init_db()
@@ -979,6 +979,36 @@ Kelp House,2 Harbor Way,Alaska,https://kelp.example.test
             self.assertEqual(migrated, (19, 5, 20, 30, 25, 17.5))
             self.assertEqual(foreign_key_errors, [])
 
+    def test_gas_compositions_save_edit_and_survive_initialization(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            app, db_path, _ = self.make_app(Path(tmp_dir))
+            client = app.test_client()
+            self.signup(client)
+            base = {"site_name": "Alert Rock", "depth_m": "20", "duration_min": "50"}
+            for oxygen, helium, label in ((21, 0, "Air"), (32, 0, "EANx 32%"), (21, 35, "Trimix 21/35"), (0, 100, "Trimix 0/100"), (100, 0, "EANx 100%")):
+                with self.subTest(label=label):
+                    self.assertEqual(client.post("/dive/new", data={**base, "oxygen_pct": str(oxygen), "helium_pct": str(helium), "nitrogen_pct": "999"}).status_code, 302)
+                    dive = max(client.get("/api/dives/mine").get_json(), key=lambda item: item["id"])
+                    self.assertEqual((dive["oxygen_pct"], dive["helium_pct"], dive["nitrogen_pct"]), (oxygen, helium, 100 - oxygen - helium))
+                    self.assertEqual(dive["gas_mix_label"], label)
+                    self.assertIn(f"<dd>{label}</dd>".encode(), client.get(f"/dive/{dive['id']}").data)
+                    edit = client.get(f"/dive/{dive['id']}/edit").data
+                    self.assertIn(f'value="{oxygen}" data-gas-number="oxygen"'.encode(), edit)
+                    with app.app_context():
+                        database.init_db()
+                    self.assertEqual(client.get(f"/api/dives/{dive['id']}").get_json()["gas_mix_label"], label)
+            self.assertEqual(client.post(f"/dive/{dive['id']}/edit", data={**base, "oxygen_pct": "18", "helium_pct": "45"}).status_code, 302)
+            self.assertEqual(client.get(f"/api/dives/{dive['id']}").get_json()["gas_mix_label"], "Trimix 18/45")
+            client.post(f"/dive/{dive['id']}/edit", data={**base, "oxygen_pct": "90", "helium_pct": "50"})
+            saved = client.get(f"/api/dives/{dive['id']}").get_json()
+            self.assertEqual((saved["oxygen_pct"], saved["helium_pct"], saved["nitrogen_pct"]), (90, 10, 0))
+            # Existing dropdown values migrate once without changing later compositions.
+            with sqlite3.connect(db_path) as db:
+                db.execute("UPDATE dives SET gas_mix = '32%', oxygen_pct = NULL, helium_pct = NULL WHERE id = ?", (dive["id"],))
+            with app.app_context():
+                database.init_db()
+            self.assertEqual(client.get(f"/api/dives/{dive['id']}").get_json()["gas_mix_label"], "EANx 32%")
+
     def test_optional_dive_metadata_defaults_to_unset(self):
         with tempfile.TemporaryDirectory() as tmp_dir:
             app, db_path, _config_path = self.make_app(Path(tmp_dir))
@@ -1002,10 +1032,12 @@ Kelp House,2 Harbor Way,Alaska,https://kelp.example.test
             self.assertIn("Weight (kg)".encode(), new_response.data)
             self.assertIn("Air temperature (°C)".encode(), new_response.data)
             self.assertIn(b'name="depth_m" type="number" min="0" max="45"', new_response.data)
-            self.assertIn(b'name="visibility_m" type="number" min="0" max="30"', new_response.data)
+            self.assertIn(b'name="visibility_m" type="number" min="0" step="any"', new_response.data)
             self.assertIn(b'name="air_temp_c" type="number" min="-20" max="40"', new_response.data)
             self.assertIn(b'value="" disabled selected', new_response.data)
-            self.assertIn(b'<option value="Air" selected>Air</option>', new_response.data)
+            self.assertIn(b'value="21" data-gas-number="oxygen"', new_response.data)
+            self.assertIn(b'value="0" data-gas-number="helium"', new_response.data)
+            self.assertIn(b'value="79" data-gas-number="nitrogen" readonly', new_response.data)
 
             client.post(
                 "/dive/new",
@@ -1093,13 +1125,13 @@ Kelp House,2 Harbor Way,Alaska,https://kelp.example.test
             self.assertEqual(logged["weight_kg"], 10)
             self.assertEqual(logged["starting_pressure_bar"], 250)
             self.assertEqual(logged["ending_pressure_bar"], 60)
-            self.assertEqual(logged["visibility_m"], 30)
+            self.assertEqual(logged["visibility_m"], 100)
             self.assertEqual(logged["air_temp_c"], -5)
             self.assertEqual(logged["water_temp_c"], 40)
 
             detail_response = client.get(f"/dive/{logged['id']}")
             self.assertIn(b"45<em>m</em>", detail_response.data)
-            self.assertIn(b"30 m", detail_response.data)
+            self.assertIn(b"100 m", detail_response.data)
             self.assertIn(b"10 kg", detail_response.data)
             self.assertIn(b"250 bar", detail_response.data)
             self.assertIn(b"60 bar", detail_response.data)
@@ -1113,7 +1145,7 @@ Kelp House,2 Harbor Way,Alaska,https://kelp.example.test
             self.signup(client)
 
             new_response = client.get("/dive/new")
-            self.assertIn(b'min="0" max="10" step="1" value="0" data-range="weight"', new_response.data)
+            self.assertIn(b'min="0" max="10" step="0.5" value="0" data-range="weight"', new_response.data)
             self.assertIn(b'name="weight_kg" type="number" min="0" max="10" step="any"', new_response.data)
 
             base_data = {
