@@ -879,6 +879,8 @@ def dive_values_from_request(form_request, user_id, default_tank_size_l=12):
     if "oxygen_pct" in form or "helium_pct" in form:
         oxygen = gas_percentage(form.get("oxygen_pct"), 21)
         helium = min(gas_percentage(form.get("helium_pct"), 0), 100 - oxygen)
+        if oxygen < 21 and helium == 0:
+            helium = 21 - oxygen
         gas_mix = gas_mix_label(oxygen, helium)
     dive_types = normalize_options(form.getlist("dive_type"), DIVE_TYPES, "open water")
     current_types = normalize_options(form.getlist("current"), CURRENT_TYPES, "none")

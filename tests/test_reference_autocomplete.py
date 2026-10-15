@@ -1002,6 +1002,10 @@ Kelp House,2 Harbor Way,Alaska,https://kelp.example.test
             client.post(f"/dive/{dive['id']}/edit", data={**base, "oxygen_pct": "90", "helium_pct": "50"})
             saved = client.get(f"/api/dives/{dive['id']}").get_json()
             self.assertEqual((saved["oxygen_pct"], saved["helium_pct"], saved["nitrogen_pct"]), (90, 10, 0))
+            client.post(f"/dive/{dive['id']}/edit", data={**base, "oxygen_pct": "18", "helium_pct": "0"})
+            saved = client.get(f"/api/dives/{dive['id']}").get_json()
+            self.assertEqual((saved["oxygen_pct"], saved["helium_pct"], saved["nitrogen_pct"]), (18, 3, 79))
+            self.assertEqual(saved["gas_mix_label"], "Trimix 18/3")
             # Existing dropdown values migrate once without changing later compositions.
             with sqlite3.connect(db_path) as db:
                 db.execute("UPDATE dives SET gas_mix = '32%', oxygen_pct = NULL, helium_pct = NULL WHERE id = ?", (dive["id"],))

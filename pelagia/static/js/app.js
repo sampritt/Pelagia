@@ -594,8 +594,17 @@ function initGasMix(form) {
         const other = gas === "oxygen" ? "helium" : "oxygen";
         const update = (raw) => {
             const value = Number(raw);
-            render(gas, Math.max(0, Math.min(100 - Number(gases[other].number.value), Number.isFinite(value) ? Math.round(value) : 0)));
-            render("nitrogen", 100 - Number(gases.oxygen.number.value) - Number(gases.helium.number.value));
+            const entered = Math.max(0, Math.min(100, Number.isFinite(value) ? Math.round(value) : 0));
+            if (gas === "oxygen" && entered < 21) {
+                // Hypoxic oxygen edits replace helium, keeping nitrogen fixed.
+                const oxygen = Math.min(entered, Math.max(0, 99 - Number(gases.nitrogen.number.value)));
+                render("oxygen", oxygen);
+                render("helium", 100 - oxygen - Number(gases.nitrogen.number.value));
+            } else {
+                const minimum = gas === "helium" && Number(gases.oxygen.number.value) < 21 ? 1 : 0;
+                render(gas, Math.max(minimum, Math.min(100 - Number(gases[other].number.value), entered)));
+                render("nitrogen", 100 - Number(gases.oxygen.number.value) - Number(gases.helium.number.value));
+            }
             updateLabel();
         };
         gases[gas].range.addEventListener("input", () => update(gases[gas].range.value));
