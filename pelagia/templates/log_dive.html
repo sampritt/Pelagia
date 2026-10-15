@@ -99,7 +99,7 @@
                     <input type="range" min="0" max="120" step="1" value="{{ dive.duration_min if is_edit else 80 }}" data-range="duration" aria-label="Duration slider (min)">
                     <input id="durationMin" data-metric-value="{{ dive.duration_min if is_edit and dive.duration_min is not none else '' }}" name="duration_min" type="number" min="0" max="120" step="any" value="{{ dive.duration_min if is_edit else 80 }}" data-number="duration">
                 </div>
-                <div class="equipment-controls">
+                <div class="equipment-controls weight-exposure-controls">
                     <div class="range-control">
                         <div>
                             <label for="weightKg"><span data-unit-label="weight">Weight (kg)</span></label>
@@ -121,23 +121,23 @@
                             {% endfor %}
                         </select>
                     </label>
-                    <details class="average-depth-control gas-mix-control" data-gas-mix>
-                        <summary><span class="sr-only">Gas mix: </span><span data-gas-mix-label>{{ dive.gas_mix_label if is_edit else 'Air' }}</span></summary>
-                        <fieldset class="gas-mix-controls">
-                            <legend class="sr-only">Gas mix</legend>
-                            {% for gas, label, value in [('oxygen', 'O', dive.oxygen_pct if is_edit else 21), ('helium', 'He', dive.helium_pct if is_edit else 0), ('nitrogen', 'N', dive.nitrogen_pct if is_edit else 79)] %}
-                            <div class="range-control">
-                                <label for="{{ gas }}Pct">{{ label }}</label>
-                                <input type="range" min="0" max="100" step="1" value="{{ value }}" data-gas-range="{{ gas }}" aria-label="{{ label }} percentage slider" {{ 'disabled' if gas == 'nitrogen' else '' }}>
-                                <div class="gas-percentage">
-                                    <input id="{{ gas }}Pct" {{ 'name=' ~ gas ~ '_pct' if gas != 'nitrogen' else '' }} type="number" min="0" max="100" step="1" value="{{ value }}" data-gas-number="{{ gas }}" {{ 'readonly' if gas == 'nitrogen' else '' }}>
-                                    <span>%</span>
-                                </div>
-                            </div>
-                            {% endfor %}
-                        </fieldset>
-                    </details>
                 </div>
+                <details class="average-depth-control gas-mix-control" data-gas-mix>
+                    <summary><span>Gas mix</span><output data-gas-mix-label>{{ dive.gas_mix_label if is_edit else 'Air' }}</output></summary>
+                    <fieldset class="gas-mix-controls">
+                        <legend class="sr-only">Gas mix</legend>
+                        {% for gas, label, value in [('oxygen', 'O', dive.oxygen_pct if is_edit else 21), ('helium', 'He', dive.helium_pct if is_edit else 0), ('nitrogen', 'N', dive.nitrogen_pct if is_edit else 79)] %}
+                        <div class="range-control">
+                            <label for="{{ gas }}Pct">{{ label }}</label>
+                            <input type="range" min="0" max="100" step="1" value="{{ value }}" data-gas-range="{{ gas }}" aria-label="{{ label }} percentage slider" {{ 'disabled' if gas == 'nitrogen' else '' }}>
+                            <div class="gas-percentage">
+                                <input id="{{ gas }}Pct" {{ 'name=' ~ gas ~ '_pct' if gas != 'nitrogen' else '' }} type="number" min="0" max="100" step="1" value="{{ value }}" data-gas-number="{{ gas }}" {{ 'readonly' if gas == 'nitrogen' else '' }}>
+                                <span>%</span>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </fieldset>
+                </details>
             </div>
             <div class="air-consumption-control" data-sac-calculator>
                 <div class="air-consumption-head">

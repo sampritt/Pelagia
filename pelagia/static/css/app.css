@@ -5110,7 +5110,8 @@ body:has(.pwa-install-dialog[open]) { overflow: hidden; }
     gap: 12px;
 }
 .gas-mix-control > .gas-mix-controls { padding: 12px 16px 16px; }
-.gas-mix-control > summary > span { color: var(--accent-deep); }
+.gas-mix-control { grid-column: 1 / -1; }
+.weight-exposure-controls { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .gas-mix-controls .range-control { margin: 0; }
 .gas-percentage { display: flex; align-items: center; gap: 8px; }
 .gas-mix-controls input:disabled { opacity: 0.65; cursor: default; }
