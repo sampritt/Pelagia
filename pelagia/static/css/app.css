@@ -4279,10 +4279,6 @@ input[type="range"] {
     gap: 16px;
 }
 
-.gas-mix-metric {
-    grid-column: 1 / -1;
-}
-
 .detail-pressure-summary {
     padding: 16px;
     border: 1px solid var(--accent-line);
