@@ -5115,6 +5115,9 @@ body:has(.pwa-install-dialog[open]) { overflow: hidden; }
     color: inherit;
 }
 
+.profile-settings-logout { margin-top: 20px; }
+.profile-settings-logout .ghost-button { width: 100%; min-height: 44px; }
+
 .settings-links { display: grid; margin-top: 16px; }
 .settings-links a { display: flex; justify-content: space-between; align-items: center; gap: 16px; min-height: 48px; padding: 12px 0; border-bottom: 1px solid var(--line); color: var(--ink); text-decoration: none; }
 .settings-links a:hover { color: var(--accent-deep); }
