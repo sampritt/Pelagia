@@ -65,33 +65,31 @@
         <div class="form-section">
             <div class="form-section-title">
                 <h2>Metrics</h2>
+                <div class="measurement-unit-row">
+                    <span>Depth &amp; visibility</span>
+                    {{ unit_toggle('length', 'Depth and visibility', 'm', 'm', 'ft', 'ft') }}
+                </div>
             </div>
             <div class="control-panel metrics-panel">
-                <div class="depth-controls">
-                    <div class="measurement-unit-row">
-                        <span>Depth &amp; visibility</span>
-                        {{ unit_toggle('length', 'Depth and visibility', 'm', 'm', 'ft', 'ft') }}
-                    </div>
-                    <div class="range-control">
-                        <div>
-                            <label for="depthM"><span data-unit-label="depth">Max depth (m)</span></label>
-                            <output id="depthOutput">{{ optional_metric(dive.depth_m) if is_edit else 12 }} m</output>
-                        </div>
-                        <input type="range" min="0" max="45" step="1" value="{{ optional_metric(dive.depth_m) if is_edit else 12 }}" data-range="depth" aria-label="Max depth slider (m)">
-                        <input id="depthM" data-metric-value="{{ dive.depth_m if is_edit and dive.depth_m is not none else '' }}" name="depth_m" type="number" min="0" max="45" step="any" value="{{ optional_metric(dive.depth_m) if is_edit else 12 }}" data-number="depth">
-                    </div>
-                    <details class="average-depth-control {{ 'is-unset' if not is_edit or dive.average_depth_m is none else '' }}" data-average-depth {{ 'open' if is_edit and dive.average_depth_m is not none else '' }}>
-                        <summary>
-                            <span id="averageDepthLabel" data-unit-label="averageDepth">Average depth (m)</span>
-                            <output id="averageDepthOutput">{{ optional_metric(dive.average_depth_m, ' m') if is_edit else '-' }}</output>
-                        </summary>
-                        <div class="range-control">
-                            <input type="range" min="0" max="45" step="1" value="{{ optional_metric(dive.average_depth_m) if is_edit and dive.average_depth_m is not none else 0 }}" data-range="averageDepth" aria-label="Average depth slider (m)">
-                            <input id="averageDepthM" aria-labelledby="averageDepthLabel" data-metric-value="{{ dive.average_depth_m if is_edit and dive.average_depth_m is not none else '' }}" name="average_depth_m" type="number" min="0" max="45" step="any" placeholder="-" value="{{ optional_metric(dive.average_depth_m) if is_edit and dive.average_depth_m is not none else '' }}" data-number="averageDepth">
-                        </div>
-                    </details>
-                </div>
                 <div class="range-control">
+                    <div>
+                        <label for="depthM"><span data-unit-label="depth">Max depth (m)</span></label>
+                        <output id="depthOutput">{{ optional_metric(dive.depth_m) if is_edit else 12 }} m</output>
+                    </div>
+                    <input type="range" min="0" max="45" step="1" value="{{ optional_metric(dive.depth_m) if is_edit else 12 }}" data-range="depth" aria-label="Max depth slider (m)">
+                    <input id="depthM" data-metric-value="{{ dive.depth_m if is_edit and dive.depth_m is not none else '' }}" name="depth_m" type="number" min="0" max="45" step="any" value="{{ optional_metric(dive.depth_m) if is_edit else 12 }}" data-number="depth">
+                </div>
+                <details class="average-depth-control {{ 'is-unset' if not is_edit or dive.average_depth_m is none else '' }}" data-average-depth {{ 'open' if is_edit and dive.average_depth_m is not none else '' }}>
+                    <summary>
+                        <span id="averageDepthLabel" data-unit-label="averageDepth">Average depth (m)</span>
+                        <output id="averageDepthOutput">{{ optional_metric(dive.average_depth_m, ' m') if is_edit else '-' }}</output>
+                    </summary>
+                    <div class="range-control">
+                        <input type="range" min="0" max="45" step="1" value="{{ optional_metric(dive.average_depth_m) if is_edit and dive.average_depth_m is not none else 0 }}" data-range="averageDepth" aria-label="Average depth slider (m)">
+                        <input id="averageDepthM" aria-labelledby="averageDepthLabel" data-metric-value="{{ dive.average_depth_m if is_edit and dive.average_depth_m is not none else '' }}" name="average_depth_m" type="number" min="0" max="45" step="any" placeholder="-" value="{{ optional_metric(dive.average_depth_m) if is_edit and dive.average_depth_m is not none else '' }}" data-number="averageDepth">
+                    </div>
+                </details>
+                <div class="range-control duration-control">
                     <div>
                         <label for="durationMin">Duration</label>
                         <output id="durationOutput">{{ dive.duration_min if is_edit else 80 }} min</output>
@@ -101,19 +99,17 @@
                 </div>
                 <div class="equipment-controls weight-exposure-controls">
                     <div class="range-control">
-                        <div>
+                        <div class="weight-control-heading">
                             <label for="weightKg"><span data-unit-label="weight">Weight (kg)</span></label>
                             <output id="weightOutput">{{ optional_metric(dive.weight_kg, ' kg', weight=True) if is_edit else '-' }}</output>
-                        </div>
-                        <div class="measurement-unit-row weight-unit-row">
                             {{ unit_toggle('weight', 'Weight', 'kg', 'kg', 'lb', 'lb') }}
                         </div>
                         <input type="range" min="0" max="10" step="0.5" value="{{ optional_metric(dive.weight_kg, weight=True) if is_edit and dive.weight_kg is not none else 0 }}" data-range="weight" aria-label="Weight slider (kg)">
                         <input id="weightKg" data-metric-value="{{ dive.weight_kg if is_edit and dive.weight_kg is not none else '' }}" name="weight_kg" type="number" min="0" max="10" step="any" value="{{ optional_metric(dive.weight_kg, weight=True) if is_edit and dive.weight_kg is not none else '' }}" data-number="weight">
                     </div>
                     {% set selected_exposure = dive.exposure if is_edit and dive.exposure in exposures else none %}
-                    <fieldset class="exposure-control">
-                        <legend>Exposure: <output data-exposure-label aria-live="polite">{{ selected_exposure or '-' }}</output></legend>
+                    <div class="exposure-control" role="group" aria-labelledby="exposureLabel">
+                        <div class="exposure-heading" id="exposureLabel">Exposure: <output data-exposure-label aria-live="polite">{{ selected_exposure or '-' }}</output></div>
                         <div class="exposure-options">
                             {% for exposure in exposures %}
                                 <label>
@@ -122,7 +118,7 @@
                                 </label>
                             {% endfor %}
                         </div>
-                    </fieldset>
+                    </div>
                 </div>
                 <details class="average-depth-control gas-mix-control" data-gas-mix>
                     <summary><span>Gas mix</span><output data-gas-mix-label>{{ dive.gas_mix_label if is_edit else 'Air' }}</output></summary>

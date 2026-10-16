@@ -760,6 +760,7 @@ def render_user_profile(user, is_owner):
                 ("sac_rate_l_min", "SAC rate", "L/min"),
                 ("depth_m", "Max depth", "m"),
                 ("duration_min", "Duration", "min"),
+                ("dive_count", "Number of dives", "dives"),
             )
         ],
         is_owner=is_owner,
@@ -1350,10 +1351,11 @@ def hydrate_dive(row):
 
 
 def get_profile_sac_history(user_id, metric="sac_rate_l_min"):
-    if metric not in {"sac_rate_l_min", "depth_m", "duration_min"}:
+    if metric not in {"sac_rate_l_min", "depth_m", "duration_min", "dive_count"}:
         raise ValueError("Unsupported history metric")
+    value_expression = "1" if metric == "dive_count" else metric
     rows = database.get_db().execute(
-        f"""SELECT date, {metric} AS value FROM dives
+        f"""SELECT date, {value_expression} AS value FROM dives
            WHERE user_id = ? AND COALESCE(is_deleted, 0) = 0
            ORDER BY date, id""", (user_id,),
     ).fetchall()
@@ -1375,12 +1377,17 @@ def get_profile_sac_history(user_id, metric="sac_rate_l_min"):
             continue
         days.setdefault(day, []).append(rate)
     width, height, left, right, top, bottom = 800, 240, 48, 18, 18, 32
-    ceiling = max(4, math.ceil(max(rates, default=0) / 4) * 4)
+    chart_values = [len(values) for values in days.values()] if metric == "dive_count" else rates
+    ceiling = max(4, math.ceil(max(chart_values, default=0) / 4) * 4)
     first_day = min(axis_days) if axis_days else None
     span = max((max(axis_days) - first_day).days, 1) if axis_days else 1
+    # Use the shared date scale to keep bars equally wide across metrics.
+    ordered_days = sorted(axis_days)
+    min_gap = min(((b - a).days for a, b in zip(ordered_days, ordered_days[1:])), default=span)
+    bar_width = min(28, (width - left - right) * min_gap / span * 0.7)
     points = []
     for day, day_rates in sorted(days.items()):
-        value = statistics.median(day_rates)
+        value = len(day_rates) if metric == "dive_count" else statistics.median(day_rates)
         x = left + (day - first_day).days / span * (width - left - right) if len(axis_days) > 1 else (width + left - right) / 2
         points.append({
             "date": day.isoformat(), "label": day.strftime("%b %d, %Y"),
@@ -1392,7 +1399,7 @@ def get_profile_sac_history(user_id, metric="sac_rate_l_min"):
         "median": median, "count": len(rates), "points": points,
         "date_labels": [day.strftime("%b %d, %Y") for day in sorted(axis_days)],
         "width": width, "height": height, "left": left, "right": right,
-        "top": top, "bottom": bottom,
+        "top": top, "bottom": bottom, "bar_width": bar_width,
         "polyline": " ".join(f"{p['x']:g},{p['y']:g}" for p in points),
         "ticks": [{"value": str(ceiling * step // 4), "y": height - bottom - step / 4 * (height - top - bottom)} for step in range(5)],
     }

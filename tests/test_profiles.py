@@ -88,18 +88,39 @@ class ProfileTest(unittest.TestCase):
                     ("2026-01-05", 9, 0), ("2026-01-09", 100, 1),
                 ])
                 histories = [get_profile_sac_history(1, metric) for metric in
-                             ("sac_rate_l_min", "depth_m", "duration_min")]
+                             ("sac_rate_l_min", "depth_m", "duration_min", "dive_count")]
                 for history in histories:
                     self.assertEqual(history["date_labels"], histories[0]["date_labels"])
                     self.assertTrue(all(tick["value"].isdigit() for tick in history["ticks"]))
                 self.assertEqual(histories[0]["points"][0]["x"], histories[1]["points"][1]["x"])
                 self.assertEqual([p["value"] for p in histories[2]["points"]], [40, 40, 40])
             html = client.get("/you").data
-            for metric in (b"sac_rate_l_min", b"depth_m", b"duration_min"):
+            for metric in (b"sac_rate_l_min", b"depth_m", b"duration_min", b"dive_count"):
                 self.assertIn(b'data-history-option="' + metric + b'"', html)
                 self.assertIn(b'data-history-view="' + metric + b'"', html)
             self.assertIn(b'Max depth (m)', html)
             self.assertIn(b'Duration (min)', html)
+
+    def test_daily_dive_counts_include_missing_metrics_and_exclude_other_or_deleted_dives(self):
+        with tempfile.TemporaryDirectory() as directory:
+            app, _, _ = self.make_app(Path(directory))
+            client = app.test_client()
+            self.signup(client)
+            self.signup(app.test_client(), "other-diver")
+            with app.app_context():
+                db = database.get_db()
+                _seed_dives(db, 1, [("2026-01-01", None, 0)] * 6 + [
+                    ("2026-01-02", 10, 0), ("2026-01-02", None, 0),
+                    ("2026-01-02", 20, 1), ("unknown date", None, 0),
+                ])
+                _seed_dives(db, 2, [("2026-01-01", None, 0)])
+                history = get_profile_sac_history(1, "dive_count")
+                self.assertEqual([p["value"] for p in history["points"]], [6, 2])
+                self.assertEqual(history["ticks"][-1]["value"], "8")
+            html = client.get("/you").data
+            self.assertIn(b"Number of dives (dives)", html)
+            self.assertIn(b"Dives per day", html)
+            self.assertIn(b"Jan 01, 2026: 6 dives", html)
 
     def test_profile_fields_migrate_for_existing_accounts(self):
         with tempfile.TemporaryDirectory() as directory:

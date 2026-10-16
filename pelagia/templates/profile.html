@@ -90,22 +90,21 @@
         {% if chart.history.points %}
         <svg class="profile-sac-chart" viewBox="0 0 {{ chart.history.width }} {{ chart.history.height }}" role="img" aria-labelledby="{{ chart.key }}ChartTitle {{ chart.key }}ChartDescription">
             <title id="{{ chart.key }}ChartTitle">{{ chart.title }} history for {{ user.username }}</title>
-            <desc id="{{ chart.key }}ChartDescription">Chronological {{ chart.title|lower }} in {{ chart.unit }}. Multiple recorded dives on a day are combined using their median. {{ chart.history.count }} recorded dives across {{ chart.history.points|length }} days.</desc>
+            <desc id="{{ chart.key }}ChartDescription">Chronological {{ chart.title|lower }} in {{ chart.unit }}. {% if chart.key == "dive_count" %}Total recorded dives per day.{% else %}Multiple recorded dives on a day are combined using their median.{% endif %} {{ chart.history.count }} recorded dives across {{ chart.history.points|length }} days.</desc>
             {% for tick in chart.history.ticks %}
             <line class="sac-grid-line" x1="{{ chart.history.left }}" y1="{{ '%g'|format(tick.y) }}" x2="{{ chart.history.width - chart.history.right }}" y2="{{ '%g'|format(tick.y) }}"></line>
             <text class="sac-axis-label" x="{{ chart.history.left - 12 }}" y="{{ '%g'|format(tick.y + 4) }}" text-anchor="end">{{ tick.value }}</text>
             {% endfor %}
-            {% if chart.history.points|length > 1 %}<polyline class="sac-series-line" points="{{ chart.history.polyline }}"></polyline>{% endif %}
             {% for point in chart.history.points %}
-            <circle class="sac-series-point" cx="{{ '%g'|format(point.x) }}" cy="{{ '%g'|format(point.y) }}" r="4" tabindex="0" aria-label="{{ point.label }}: {{ point.display }} {{ chart.unit }}">
+            <rect class="history-series-bar" x="{{ '%g'|format(point.x - chart.history.bar_width / 2) }}" y="{{ '%g'|format(point.y) }}" width="{{ '%g'|format(chart.history.bar_width) }}" height="{{ '%g'|format(chart.history.height - chart.history.bottom - point.y) }}" tabindex="0" aria-label="{{ point.label }}: {{ point.display }} {{ chart.unit }}">
                 <title>{{ point.label }}: {{ point.display }} {{ chart.unit }} · {{ point.count }} {{ 'dive' if point.count == 1 else 'dives' }}</title>
-            </circle>
+            </rect>
             {% endfor %}
         </svg>
         <div class="sac-date-labels"><span>{{ chart.history.date_labels[0] }}</span>{% if chart.history.date_labels|length > 1 %}<span>{{ chart.history.date_labels[-1] }}</span>{% endif %}</div>
-        <details class="sac-data-table"><summary>View recorded values</summary><table><thead><tr><th scope="col">Date</th><th scope="col">Daily median ({{ chart.unit }})</th></tr></thead><tbody>{% for point in chart.history.points %}<tr><td>{{ point.label }}</td><td>{{ point.display }}</td></tr>{% endfor %}</tbody></table></details>
+        <details class="sac-data-table"><summary>View recorded values</summary><table><thead><tr><th scope="col">Date</th><th scope="col">{{ "Dives per day" if chart.key == "dive_count" else "Daily median (" ~ chart.unit ~ ")" }}</th></tr></thead><tbody>{% for point in chart.history.points %}<tr><td>{{ point.label }}</td><td>{{ point.display }}</td></tr>{% endfor %}</tbody></table></details>
         {% else %}
-        <div class="sac-empty"><svg viewBox="0 0 48 40" aria-hidden="true"><path d="M4 4v30h40M10 26l9-9 9 4 12-14"></path></svg><h3>{{ "Your air consumption, over time" if chart.key == "sac_rate_l_min" else "Your " ~ chart.title|lower ~ ", over time" }}</h3><p>Log a dive with {{ chart.title|lower }} data to start your history.</p></div>
+        <div class="sac-empty"><svg viewBox="0 0 48 40" aria-hidden="true"><path d="M4 4v30h40M10 26l9-9 9 4 12-14"></path></svg><h3>{{ "Your air consumption, over time" if chart.key == "sac_rate_l_min" else "Your " ~ chart.title|lower ~ ", over time" }}</h3><p>{{ "Log a dive to start your daily dive history." if chart.key == "dive_count" else "Log a dive with " ~ chart.title|lower ~ " data to start your history." }}</p></div>
         {% endif %}
         </div>
         {% endfor %}
