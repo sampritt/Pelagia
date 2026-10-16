@@ -111,16 +111,18 @@
                         <input type="range" min="0" max="10" step="0.5" value="{{ optional_metric(dive.weight_kg, weight=True) if is_edit and dive.weight_kg is not none else 0 }}" data-range="weight" aria-label="Weight slider (kg)">
                         <input id="weightKg" data-metric-value="{{ dive.weight_kg if is_edit and dive.weight_kg is not none else '' }}" name="weight_kg" type="number" min="0" max="10" step="any" value="{{ optional_metric(dive.weight_kg, weight=True) if is_edit and dive.weight_kg is not none else '' }}" data-number="weight">
                     </div>
-                    <label>
-                        Exposure
-                        {% set selected_exposure = dive.exposure if is_edit and dive.exposure in exposures else none %}
-                        <select name="exposure">
-                            <option value="" disabled {{ 'selected' if selected_exposure is none else '' }}>-</option>
+                    {% set selected_exposure = dive.exposure if is_edit and dive.exposure in exposures else none %}
+                    <fieldset class="exposure-control">
+                        <legend>Exposure: <output data-exposure-label aria-live="polite">{{ selected_exposure or '-' }}</output></legend>
+                        <div class="exposure-options">
                             {% for exposure in exposures %}
-                                <option value="{{ exposure }}" {{ 'selected' if exposure == selected_exposure else '' }}>{{ exposure }}</option>
+                                <label>
+                                    <input class="sr-only" type="radio" name="exposure" value="{{ exposure }}" data-exposure-option {{ 'checked' if exposure == selected_exposure else '' }}>
+                                    <span>{{ exposure }}</span>
+                                </label>
                             {% endfor %}
-                        </select>
-                    </label>
+                        </div>
+                    </fieldset>
                 </div>
                 <details class="average-depth-control gas-mix-control" data-gas-mix>
                     <summary><span>Gas mix</span><output data-gas-mix-label>{{ dive.gas_mix_label if is_edit else 'Air' }}</output></summary>

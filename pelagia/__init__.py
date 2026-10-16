@@ -747,14 +747,21 @@ def render_user_profile(user, is_owner):
         viewer_user_id=session["user_id"],
         limit=None,
     )
-    sac_history = get_profile_sac_history(user["id"])
     return render_template(
         "profile.html",
         user=user,
         stats=stats,
         total_dive_count=stats["summary"]["dive_count"] + user["starting_dive_count"],
         dives=dives,
-        sac_history=sac_history,
+        profile_histories=[
+            dict(key=key, title=title, unit=unit,
+                 history=get_profile_sac_history(user["id"], key))
+            for key, title, unit in (
+                ("sac_rate_l_min", "SAC rate", "L/min"),
+                ("depth_m", "Max depth", "m"),
+                ("duration_min", "Duration", "min"),
+            )
+        ],
         is_owner=is_owner,
     )
 
@@ -1342,16 +1349,23 @@ def hydrate_dive(row):
     return dive
 
 
-def get_profile_sac_history(user_id):
+def get_profile_sac_history(user_id, metric="sac_rate_l_min"):
+    if metric not in {"sac_rate_l_min", "depth_m", "duration_min"}:
+        raise ValueError("Unsupported history metric")
     rows = database.get_db().execute(
-        """SELECT date, sac_rate_l_min FROM dives
-           WHERE user_id = ? AND COALESCE(is_deleted, 0) = 0 AND sac_rate_l_min IS NOT NULL
+        f"""SELECT date, {metric} AS value FROM dives
+           WHERE user_id = ? AND COALESCE(is_deleted, 0) = 0
            ORDER BY date, id""", (user_id,),
     ).fetchall()
     days = {}
     rates = []
+    axis_days = set()
     for row in rows:
-        rate = row["sac_rate_l_min"]
+        try:
+            axis_days.add(date.fromisoformat(row["date"][:10]))
+        except (TypeError, ValueError):
+            pass
+        rate = row["value"]
         if not isinstance(rate, (int, float)) or not math.isfinite(rate) or rate < 0:
             continue
         rates.append(rate)
@@ -1361,13 +1375,13 @@ def get_profile_sac_history(user_id):
             continue
         days.setdefault(day, []).append(rate)
     width, height, left, right, top, bottom = 800, 240, 48, 18, 18, 32
-    ceiling = max(5, math.ceil(max(rates, default=0) / 5) * 5)
-    first_day = min(days) if days else None
-    span = max((max(days) - first_day).days, 1) if days else 1
+    ceiling = max(4, math.ceil(max(rates, default=0) / 4) * 4)
+    first_day = min(axis_days) if axis_days else None
+    span = max((max(axis_days) - first_day).days, 1) if axis_days else 1
     points = []
     for day, day_rates in sorted(days.items()):
         value = statistics.median(day_rates)
-        x = left + (day - first_day).days / span * (width - left - right) if len(days) > 1 else (width + left - right) / 2
+        x = left + (day - first_day).days / span * (width - left - right) if len(axis_days) > 1 else (width + left - right) / 2
         points.append({
             "date": day.isoformat(), "label": day.strftime("%b %d, %Y"),
             "value": value, "display": f"{value:.1f}".removesuffix(".0"), "count": len(day_rates),
@@ -1376,10 +1390,11 @@ def get_profile_sac_history(user_id):
     median = statistics.median(rates) if rates else None
     return {
         "median": median, "count": len(rates), "points": points,
+        "date_labels": [day.strftime("%b %d, %Y") for day in sorted(axis_days)],
         "width": width, "height": height, "left": left, "right": right,
         "top": top, "bottom": bottom,
         "polyline": " ".join(f"{p['x']:g},{p['y']:g}" for p in points),
-        "ticks": [{"value": f"{ceiling * step / 4:g}", "y": height - bottom - step / 4 * (height - top - bottom)} for step in range(5)],
+        "ticks": [{"value": str(ceiling * step // 4), "y": height - bottom - step / 4 * (height - top - bottom)} for step in range(5)],
     }
 
 

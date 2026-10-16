@@ -71,11 +71,35 @@ class ProfileTest(unittest.TestCase):
                 self.assertEqual(history["count"], 2)
                 self.assertEqual(len(history["points"]), 1)
                 self.assertEqual(history["points"][0]["value"], 10)
-                self.assertEqual(history["points"][0]["x"], 415)
+                self.assertEqual(history["points"][0]["x"], 48)
                 _seed_dives(database.get_db(), 1, [("legacy unknown date", 30, 0)])
                 history = get_profile_sac_history(1)
                 self.assertEqual(history["median"], 20)
                 self.assertEqual(len(history["points"]), 1)
+
+    def test_history_metrics_share_dates_and_use_integer_ticks(self):
+        with tempfile.TemporaryDirectory() as directory:
+            app, _, _ = self.make_app(Path(directory))
+            client = app.test_client()
+            self.signup(client)
+            with app.app_context():
+                _seed_dives(database.get_db(), 1, [
+                    ("2026-01-01", None, 0), ("2026-01-02", 6.5, 0),
+                    ("2026-01-05", 9, 0), ("2026-01-09", 100, 1),
+                ])
+                histories = [get_profile_sac_history(1, metric) for metric in
+                             ("sac_rate_l_min", "depth_m", "duration_min")]
+                for history in histories:
+                    self.assertEqual(history["date_labels"], histories[0]["date_labels"])
+                    self.assertTrue(all(tick["value"].isdigit() for tick in history["ticks"]))
+                self.assertEqual(histories[0]["points"][0]["x"], histories[1]["points"][1]["x"])
+                self.assertEqual([p["value"] for p in histories[2]["points"]], [40, 40, 40])
+            html = client.get("/you").data
+            for metric in (b"sac_rate_l_min", b"depth_m", b"duration_min"):
+                self.assertIn(b'data-history-option="' + metric + b'"', html)
+                self.assertIn(b'data-history-view="' + metric + b'"', html)
+            self.assertIn(b'Max depth (m)', html)
+            self.assertIn(b'Duration (min)', html)
 
     def test_profile_fields_migrate_for_existing_accounts(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -123,7 +147,7 @@ class ProfileTest(unittest.TestCase):
             x = [p["x"] for p in history["points"]]
             self.assertAlmostEqual((x[2] - x[1]) / (x[1] - x[0]), 3)
             html = client.get('/you').data
-            self.assertIn(b'SAC over time', html)
+            self.assertIn(b'History</h2>', html)
             self.assertNotIn(b'<small>SAC rate</small>', html)
             self.assertIn(b'Jan 01, 2026: 20 L/min', html)
             self.assertNotIn(b'999 L/min', html)

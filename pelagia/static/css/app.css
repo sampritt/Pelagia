@@ -5027,6 +5027,15 @@ body:has(.pwa-install-dialog[open]) { overflow: hidden; }
 .gas-mix-control > .gas-mix-controls { padding: 12px 16px 16px; }
 .gas-mix-control { grid-column: 1 / -1; }
 .weight-exposure-controls { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.exposure-control { min-width: 0; margin: 0; padding: 0; border: 0; }
+.exposure-control legend { margin-bottom: 8px; padding: 0; color: var(--muted-strong); font-size: 0.78rem; font-weight: 700; }
+.exposure-options { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 5px; }
+.exposure-options label { position: relative; display: block; min-width: 0; cursor: pointer; }
+.exposure-options input { width: 1px; height: 1px; min-height: 0; margin: 0; padding: 0; }
+.exposure-options span { display: grid; place-items: center; min-height: 32px; padding: 5px 4px; border: 1px solid var(--accent-line); border-radius: 7px; background: #e4eef8; color: var(--muted-strong); font-size: 0.72rem; font-weight: 700; }
+.exposure-options input:checked + span { background: var(--accent-deep); border-color: var(--accent-deep); color: #fff; }
+.exposure-options input:focus-visible + span { outline: 3px solid var(--accent); outline-offset: 2px; }
+.exposure-options label:hover span { border-color: var(--accent-deep); }
 .gas-mix-controls .range-control { margin: 0; }
 .gas-percentage { display: flex; align-items: center; gap: 8px; }
 .gas-mix-controls input:disabled { opacity: 0.65; cursor: default; }
@@ -5483,3 +5492,9 @@ textarea { resize: vertical; }
 .feeling-endpoints span:last-child {
     text-align: right;
 }
+
+.history-switch { display: flex; gap: 4px; padding: 4px; margin-bottom: 24px; border: 1px solid var(--line); border-radius: 10px; width: fit-content; max-width: 100%; }
+.history-switch button { border: 0; border-radius: 7px; padding: 9px 16px; background: transparent; color: var(--muted); font: inherit; font-size: 0.8rem; cursor: pointer; }
+.history-switch button[aria-pressed="true"] { background: var(--accent-deep); color: white; }
+.history-switch button:focus-visible { outline: 2px solid var(--accent-deep); outline-offset: 2px; }
+[data-history-view][hidden] { display: none; }

@@ -558,6 +558,13 @@ function initDiveForm() {
         return;
     }
 
+    const exposureLabel = form.querySelector("[data-exposure-label]");
+    form.querySelectorAll("[data-exposure-option]").forEach((input) => {
+        input.addEventListener("change", () => {
+            if (exposureLabel) exposureLabel.textContent = input.value;
+        });
+    });
+
     const siteInput = form.querySelector("[data-site-input]");
     const siteResults = form.querySelector("[data-site-results]");
     const centerInput = form.querySelector("[data-center-input]");
@@ -1395,3 +1402,16 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 window.openDive = openDive;
+
+document.querySelectorAll("[data-profile-history]").forEach((section) => {
+    section.querySelectorAll("[data-history-option]").forEach((button) => {
+        button.addEventListener("click", () => {
+            section.querySelectorAll("[data-history-option]").forEach((option) => {
+                option.setAttribute("aria-pressed", String(option === button));
+            });
+            section.querySelectorAll("[data-history-view]").forEach((view) => {
+                view.hidden = view.dataset.historyView !== button.dataset.historyOption;
+            });
+        });
+    });
+});
