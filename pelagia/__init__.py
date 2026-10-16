@@ -32,7 +32,7 @@ from .importer import import_reference_data
 from .metrics import format_metric
 from .units import metric_measurement
 from .dive_options import DIVE_TYPES, CURRENT_TYPES, normalize_options, dive_type_options, current_type_options
-from . import google_auth
+from . import google_auth, email_auth
 from . import pwa
 from .sharing import fetch_public_dive, render_share_image, share_description
 
@@ -62,6 +62,8 @@ def create_app(test_config=None):
         MAX_CONTENT_LENGTH=24 * 1024 * 1024,
         PELAGIA_LOCAL_CONFIG=config,
         PELAGIA_CONFIG_PATH=str(config_path),
+        RESEND_API_KEY=os.environ.get("RESEND_API_KEY", ""),
+        EMAIL_FROM=os.environ.get("PELAGIA_EMAIL_FROM", ""),
         GOOGLE_CLIENT_ID=os.environ.get("GOOGLE_CLIENT_ID", ""),
         GOOGLE_CLIENT_SECRET=os.environ.get("GOOGLE_CLIENT_SECRET", ""),
         GOOGLE_REDIRECT_URI=os.environ.get("GOOGLE_REDIRECT_URI", ""),
@@ -88,6 +90,7 @@ def create_app(test_config=None):
     register_routes(app)
     pwa.init_app(app)
     google_auth.init_app(app)
+    email_auth.init_app(app)
     return app
 
 

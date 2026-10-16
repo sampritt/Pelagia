@@ -5574,3 +5574,7 @@ textarea { resize: vertical; }
     .history-chart-heading h3 { font-size: 0.85rem; }
     .sac-data-table { margin-top: 18px; }
 }
+
+.auth-divider { display: flex; align-items: center; gap: 16px; color: #597276; font-size: 12px; margin: 24px 0; }
+.auth-divider::before, .auth-divider::after { content: ""; flex: 1; height: 1px; background: #d3dedb; }
+.signin-card .email-code { font-size: 28px; letter-spacing: .3em; text-align: center; }

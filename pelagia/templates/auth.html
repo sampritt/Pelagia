@@ -12,8 +12,19 @@
             <h1 id="signinTitle">{{ 'Sign up for Pelagia' if auth_mode == 'signup' else 'Log in to Pelagia' }}</h1>
             {% if google_login_available %}
             <a class="google-button" href="{{ url_for('google_auth.login', next=auth_next) }}">{% include '_google_mark.html' %}Continue with Google</a>
-            {% else %}
+            {% elif not email_login_available %}
             <p class="signin-unavailable" role="status">Google sign-in is temporarily unavailable. Please try again later.</p>
+            {% endif %}
+            {% if email_login_available %}
+            {% if google_login_available %}<p class="auth-divider">or</p>{% endif %}
+            <form class="auth-form" method="post" action="{{ url_for('email_auth.start') }}">
+                <input type="hidden" name="csrf_token" value="{{ google_csrf_token() }}">
+                <input type="hidden" name="next" value="{{ auth_next }}">
+                <label for="signinEmail">Email address</label>
+                <input id="signinEmail" type="email" name="email" autocomplete="email" maxlength="254" placeholder="you@example.com" required>
+                <button class="welcome-button" type="submit">Continue with email <span aria-hidden="true">↗</span></button>
+                <small>We’ll email you a sign-in code. No password needed.</small>
+            </form>
             {% endif %}
             <p class="signin-switch">{{ 'Already have an account?' if auth_mode == 'signup' else 'New to Pelagia?' }} <a href="{{ url_for('login' if auth_mode == 'signup' else 'signup', next=auth_next) }}">{{ 'Log in' if auth_mode == 'signup' else 'Sign up' }}</a></p>
             {% endblock %}

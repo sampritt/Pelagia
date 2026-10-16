@@ -41,6 +41,13 @@ def init_db():
     )
     _ensure_column(db, "users", "google_subject", "TEXT")
     _ensure_column(db, "users", "google_email", "TEXT")
+    _ensure_column(db, "users", "login_email", "TEXT")
+    db.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_users_login_email ON users(login_email)")
+    db.execute("""CREATE TABLE IF NOT EXISTS email_challenges (
+        id TEXT PRIMARY KEY, email TEXT NOT NULL, code_hash TEXT NOT NULL,
+        created REAL NOT NULL, ip TEXT NOT NULL, link_user INTEGER REFERENCES users(id),
+        attempts INTEGER NOT NULL DEFAULT 0, consumed INTEGER NOT NULL DEFAULT 0)""")
+    db.execute("CREATE INDEX IF NOT EXISTS idx_email_challenges_created ON email_challenges(created)")
     db.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_users_google_subject ON users(google_subject)")
     _ensure_column(db, "dives", "buddy_user_id", "INTEGER REFERENCES users(id) ON DELETE SET NULL")
     _ensure_column(db, "dives", "dive_center_id", "INTEGER")

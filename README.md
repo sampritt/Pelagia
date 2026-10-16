@@ -110,7 +110,7 @@ node --test tests/test_*.cjs
 
 ## Google Sign-In (Required)
 
-Google is the only sign-up and login method. Configure both `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`; without them, the login screen displays an unavailable message and Google routes are disabled. `/login` and `/signup` are GET-only screens; credential POSTs are rejected.
+Google and passwordless email codes are supported. Configure both `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`; without them, Google routes are disabled; email remains available when configured. `/login` and `/signup` are GET-only screens; credential POSTs are rejected.
 
 1. In [Google Auth Platform](https://console.cloud.google.com/auth/overview), create/select a project and configure its branding and audience. For a public app, choose an external audience; while in testing, add the Google accounts that will test sign-in.
 2. Create an OAuth client of type **Web application**. Add the exact authorized redirect URI for each environment:
@@ -128,7 +128,7 @@ On Render, add those variables to the service environment, using the production 
 
 Google authentication uses [Authlib's OpenID Connect integration](https://docs.authlib.org/en/latest/oauth2/client/web/flask.html) with state, nonce and PKCE checks. Only `openid email` scopes are requested, and provider tokens are not persisted. Identities are matched by Google's stable `sub` ID, [as Google recommends](https://developers.google.com/identity/openid-connect/openid-connect), rather than by email or public username.
 
-New Google users choose a unique public username before an account is created. Their Google email is stored privately and is not returned by profile or user APIs. Existing Google users keep their user ID and dives. There is no account-linking flow. Password-only accounts retain their data but cannot sign in until an administrator verifies ownership and assigns their Google subject ID; email and username matches never automatically merge accounts. A Google account can belong to only one Pelagia account.
+New Google users choose a unique public username before an account is created. Their Google email is stored privately and is not returned by profile or user APIs. Existing Google users keep their user ID and dives. Signed-in users can enable email sign-in from Profile → Settings after verifying a code. Accounts are never automatically merged by matching email. Password-only accounts retain their data but cannot sign in until an administrator verifies ownership and assigns their Google subject ID; email and username matches never automatically merge accounts. A Google account can belong to only one Pelagia account.
 
 Startup adds nullable `google_subject`/`google_email` columns and a unique identity index to existing SQLite databases, preserving existing rows and relationships. Startup removes the retired `password_hash` column using SQLite `DROP COLUMN` (SQLite 3.35+), without rebuilding the users table or changing IDs. No direct Werkzeug dependency or imports remain; Flask still uses Werkzeug internally. Back up production SQLite using your normal deployment procedure before rolling out schema changes.
 
@@ -152,6 +152,23 @@ Dive site profiles use the site's coordinate map as their header, with a pending
 
 ## Public landing page and search
 
-The public `/` page introduces Pelagia and links to dedicated Google-only `/login` and `/signup` screens. Set `PELAGIA_PUBLIC_BASE_URL` to the canonical HTTPS origin: canonical, Open Graph, Twitter card, JSON-LD and sitemap URLs all use it. `/sitemap.xml` lists the landing page, terms and privacy policy. `/robots.txt` blocks crawling OAuth endpoints, APIs and uploads. The `/login` and `/signup` pages remain crawlable so search engines can read their `noindex` directive. Homepage navigation and account controls use `data-nosnippet` to exclude interface text from search snippets. Search directives do not replace access controls.
+The public `/` page introduces Pelagia and links to dedicated `/login` and `/signup` screens. Set `PELAGIA_PUBLIC_BASE_URL` to the canonical HTTPS origin: canonical, Open Graph, Twitter card, JSON-LD and sitemap URLs all use it. `/sitemap.xml` lists the landing page, terms and privacy policy. `/robots.txt` blocks crawling OAuth endpoints, APIs and uploads. The `/login` and `/signup` pages remain crawlable so search engines can read their `noindex` directive. Homepage navigation and account controls use `data-nosnippet` to exclude interface text from search snippets. Search directives do not replace access controls.
 
 After deployment, confirm `PELAGIA_PUBLIC_BASE_URL=https://pelagiadivelog.com`, inspect the homepage in Google Search Console (including its rendered HTML and canonical URL), submit `/sitemap.xml`, and request homepage indexing. Google chooses titles and descriptions and may take time to recrawl; metadata does not guarantee exact search-result wording.
+
+
+### Email sign-in with Resend
+
+Set these environment variables on the Render web service:
+
+- `RESEND_API_KEY`: a Resend API key with sending permission for your verified domain.
+- `PELAGIA_EMAIL_FROM`: a sender on that domain, e.g. `Pelagia <login@your-domain.com>`.
+- `SESSION_COOKIE_SECURE=true` for production HTTPS. Keep a strong, stable `SECRET_KEY` across deployments and workers.
+
+Restart/redeploy after setting the variables. The email option appears only when both Resend settings are present. No SMTP configuration or additional Python dependency is required. Resend must show the sending domain as verified; merely adding DNS records is not sufficient until verification completes.
+
+Users enter their email, receive a six-digit code, then enter it in the same browser/app. New users choose a public username; returning users retain their account and 30-day session. Codes expire after ten minutes, allow five attempts, and are consumed atomically in SQLite. Only keyed hashes are stored. Resends have a one-minute cooldown; email/address combinations are limited to ten sends per hour. Challenge records are pruned after one day. Failed deliveries show a retry message without logging credentials or codes.
+
+Existing Google users should first sign in with Google, open Profile → Settings → Enable or change email sign-in, and verify their chosen address. This explicitly attaches email access to the existing user ID and dives. Matching Google emails never silently merge accounts. Google login remains independent; email-only accounts cannot automatically add Google login by matching addresses.
+
+Before production release, run `.venv312/bin/python -m unittest tests.test_email_auth tests.test_google_auth`, then test actual email delivery, spam placement, new signup, logout/re-login and linking an existing Google account on the deployed app. Each code request counts toward Resend’s sending quota; monitor provider usage. Tests mock delivery and never send real emails.

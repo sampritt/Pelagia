@@ -1,0 +1,13 @@
+{% extends "auth.html" %}
+{% block title %}Continue with email — Pelagia{% endblock %}
+{% block auth_content %}
+<h1 id="signinTitle">Continue with email</h1>
+<p class="signin-description">We’ll send you a code. If you’re signed in, this enables email access to your current account.</p>
+<form class="auth-form" method="post">
+<input type="hidden" name="csrf_token" value="{{ google_csrf_token() }}">
+<input type="hidden" name="next" value="{{ auth_next }}">
+<label for="email">Email address</label><input id="email" type="email" name="email" value="{{ email|default('') }}" autocomplete="email" maxlength="254" required autofocus>
+<button class="welcome-button">Send sign-in code</button>
+</form>
+<p class="signin-switch"><a href="{{ url_for('login', next=auth_next) }}">Back to sign in</a></p>
+{% endblock %}
