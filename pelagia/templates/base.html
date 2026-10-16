@@ -16,6 +16,7 @@
     {% block head %}{% endblock %}
 </head>
 <body class="{% block body_class %}{% endblock %}">
+    <a class="skip-link" href="#mainContent">Skip to content</a>
     {% set me = current_user() %}
     {% if me %}
     <header class="topbar {{ 'feed-topbar' if request.endpoint == 'home' else '' }}">
@@ -71,7 +72,7 @@
         {% endif %}
     {% endwith %}
 
-    <main class="page-shell">
+    <main class="page-shell" id="mainContent" tabindex="-1">
         {% include '_pwa_controls.html' %}
         {% if me and request.endpoint != 'home' %}
         <a class="pwa-back-link" href="{{ url_for('home') }}" data-pwa-back>&larr; Back</a>

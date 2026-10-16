@@ -1,37 +1,37 @@
 {% extends "base.html" %}
-{% block title %}Pelagia — Scuba Dive Logbook & Diving Community{% endblock %}
+{% block title %}Pelagia Dive Log — Scuba Logbook & Dive Buddies{% endblock %}
 {% block body_class %}welcome-body{% endblock %}
 {% block head %}
-<meta name="description" content="Log scuba dives, track your progress, explore dive sites and connect with dive buddies.">
+<meta name="description" content="Record your scuba dives, track depth and bottom time, add photos, explore dive sites, and share your underwater adventures with dive buddies.">
 <link rel="canonical" href="{{ public_url('landing') }}">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Pelagia">
-<meta property="og:title" content="Pelagia — Log your dive. Find your buddy.">
-<meta property="og:description" content="Your scuba dive logbook and diving community. Log dives, explore dive sites and connect with dive buddies.">
+<meta property="og:title" content="Pelagia Dive Log — Scuba Logbook & Dive Buddies">
+<meta property="og:description" content="Record your scuba dives, track depth and bottom time, add photos, explore dive sites, and share your underwater adventures with dive buddies.">
 <meta property="og:url" content="{{ public_url('landing') }}">
 <meta property="og:image" content="{{ public_url('static', filename='img/ocean-hero-v2.jpg') }}">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="Pelagia — Log your dive. Find your buddy.">
-<meta name="twitter:description" content="Log scuba dives, explore dive sites and connect with dive buddies.">
+<meta name="twitter:title" content="Pelagia Dive Log — Scuba Logbook & Dive Buddies">
+<meta name="twitter:description" content="Record your scuba dives, track depth and bottom time, add photos, explore dive sites, and share your underwater adventures with dive buddies.">
 <meta name="twitter:image" content="{{ public_url('static', filename='img/ocean-hero-v2.jpg') }}">
 <link rel="preload" as="image" href="{{ url_for('static', filename='img/ocean-hero-v2.jpg') }}">
-<script type="application/ld+json">{{ {"@context": "https://schema.org", "@type": "WebApplication", "name": "Pelagia", "url": public_url('landing'), "applicationCategory": "LifestyleApplication", "operatingSystem": "Web, iOS, Android", "description": "A scuba dive logbook and community for logging dives, exploring dive sites and connecting with dive buddies."}|tojson }}</script>
+<script type="application/ld+json">{{ {"@context": "https://schema.org", "@type": "WebApplication", "name": "Pelagia", "url": public_url('landing'), "applicationCategory": "LifestyleApplication", "operatingSystem": "Web, iOS, Android", "description": "Record your scuba dives, track depth and bottom time, add photos, explore dive sites, and share your underwater adventures with dive buddies."}|tojson }}</script>
 {% endblock %}
 {% block content %}
 <div class="welcome-page">
     <header class="welcome-nav">
         <a class="welcome-wordmark" href="{{ url_for('landing') }}" aria-label="Pelagia home"><img src="{{ url_for('static', filename='img/pelagia-mark.svg') }}" width="32" height="32" alt="">Pelagia</a>
         <nav aria-label="Welcome navigation">
-            <button class="welcome-download" type="button" data-pwa-guide aria-haspopup="dialog">Download <span aria-hidden="true">↓</span></button>
-            <a class="welcome-login" href="{{ url_for('login', next=auth_next) }}">Log in</a>
-            <a class="welcome-button welcome-button-small" href="{{ url_for('signup', next=auth_next) }}">Sign up</a>
+            <button class="welcome-download" type="button" data-pwa-guide aria-haspopup="dialog"><span data-nosnippet>Download <span aria-hidden="true">↓</span></span></button>
+            <a class="welcome-login" href="{{ url_for('login', next=auth_next) }}"><span data-nosnippet>Log in</span></a>
+            <a class="welcome-button welcome-button-small" href="{{ url_for('signup', next=auth_next) }}"><span data-nosnippet>Sign up</span></a>
         </nav>
     </header>
     <section class="welcome-hero" aria-labelledby="welcomeTitle">
         <div class="welcome-hero-content">
             <h1 id="welcomeTitle">Pelagia</h1>
             <p class="welcome-tagline">Log your dive.<br>Find your buddy.</p>
-            <div class="welcome-actions">
+            <div class="welcome-actions" data-nosnippet>
                 <a class="welcome-button" href="{{ url_for('signup', next=auth_next) }}">Sign up <span aria-hidden="true">↗</span></a>
                 <a class="welcome-secondary" href="{{ url_for('login', next=auth_next) }}">Log in <span aria-hidden="true">→</span></a>
             </div>

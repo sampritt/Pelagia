@@ -176,7 +176,7 @@ def register_routes(app):
 
     @app.get("/robots.txt")
     def robots():
-        return Response("User-agent: *\nAllow: /$\nAllow: /terms$\nAllow: /privacy$\nAllow: /static/\nDisallow: /auth/\nDisallow: /api/\nDisallow: /uploads/\nDisallow: /login\nDisallow: /signup\nSitemap: " + public_url("sitemap") + "\n", mimetype="text/plain")
+        return Response("User-agent: *\nAllow: /$\nAllow: /terms$\nAllow: /privacy$\nAllow: /static/\nDisallow: /auth/\nDisallow: /api/\nDisallow: /uploads/\nSitemap: " + public_url("sitemap") + "\n", mimetype="text/plain")
 
     @app.get("/sitemap.xml")
     def sitemap():
@@ -759,9 +759,31 @@ def render_user_profile(user, is_owner):
     )
 
 
+def enforce_dive_limits(db, user_id, dive_date, existing_dive=None):
+    # Keep deleted entries in these counts so deletion cannot reset safety limits.
+    daily_count = db.execute(
+        "SELECT COUNT(*) FROM dives WHERE user_id = ? "
+        "AND created_at >= date('now') AND created_at < date('now', '+1 day')",
+        (user_id,),
+    ).fetchone()[0]
+    date_count = db.execute(
+        "SELECT COUNT(*) FROM dives WHERE user_id = ? AND date = ?",
+        (user_id, dive_date),
+    ).fetchone()[0]
+    if (existing_dive is None and daily_count >= 20) or (
+        (existing_dive is None or existing_dive["date"] != dive_date) and date_count >= 5
+    ):
+        db.rollback()
+        # Deliberately return no limit details or UI messaging.
+        abort(429, response=current_app.response_class(status=429))
+
+
 def create_dive_from_request(user_id, form_request):
-    values = dive_values_from_request(form_request, user_id)
     db = database.get_db()
+    # Serialize counting and insertion across workers, before form resolution writes.
+    db.execute("BEGIN IMMEDIATE")
+    values = dive_values_from_request(form_request, user_id)
+    enforce_dive_limits(db, user_id, values["date"])
     cur = db.execute(
         """
         INSERT INTO dives (
@@ -813,10 +835,12 @@ def create_dive_from_request(user_id, form_request):
 
 
 def update_dive_from_request(dive_id, user_id, form_request):
+    db = database.get_db()
+    db.execute("BEGIN IMMEDIATE")
     existing_dive = fetch_owned_dive(dive_id, user_id)
     default_tank_size_l = sac_tank_size(existing_dive) if existing_dive else 12
     values = dive_values_from_request(form_request, user_id, default_tank_size_l)
-    db = database.get_db()
+    enforce_dive_limits(db, user_id, values["date"], existing_dive)
     db.execute(
         """
         UPDATE dives
@@ -926,7 +950,10 @@ def dive_values_from_request(form_request, user_id, default_tank_size_l=12):
     current_strength = form.get("current_strength") if form.get("current_strength") in CURRENT_STRENGTHS else "none"
     if current == "none":
         current_strength = "none"
-    date_value = form.get("date") or date.today().isoformat()
+    try:
+        date_value = date.fromisoformat(form.get("date") or date.today().isoformat()).isoformat()
+    except ValueError:
+        abort(400)
     site_name = form.get("site_name", "").strip() or "Unlisted site"
     country = form.get("country_or_area", "").strip()
     latitude = maybe_float(form.get("latitude"))

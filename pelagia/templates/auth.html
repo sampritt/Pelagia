@@ -7,7 +7,7 @@
     <a class="welcome-wordmark auth-brand" href="{{ url_for('landing') }}"><img src="{{ url_for('static', filename='img/pelagia-mark.svg') }}" width="32" height="32" alt="">Pelagia</a>
     <div class="auth-layout">
         <div class="auth-intro"><p>Log your dive.<br>Find your buddy.</p></div>
-        <section class="signin-card" aria-labelledby="signinTitle">
+        <section class="signin-card" aria-labelledby="signinTitle" data-nosnippet>
             {% block auth_content %}
             <h1 id="signinTitle">{{ 'Sign up for Pelagia' if auth_mode == 'signup' else 'Log in to Pelagia' }}</h1>
             {% if google_login_available %}

@@ -64,6 +64,7 @@ def init_db():
     _normalize_current_values(db)
     _ensure_dive_site_counts(db)
     db.execute("CREATE INDEX IF NOT EXISTS idx_dives_buddy_user ON dives(buddy_user_id)")
+    db.execute("CREATE INDEX IF NOT EXISTS idx_dives_user_date ON dives(user_id, date)")
     db.execute("CREATE INDEX IF NOT EXISTS idx_dive_sites_logged_dive_count ON dive_sites(logged_dive_count DESC)")
     db.commit()
 

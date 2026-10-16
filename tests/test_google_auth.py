@@ -61,6 +61,10 @@ class GoogleAuthTest(unittest.TestCase):
         landing = client.get("/").get_data(as_text=True)
         self.assertIn('<h1 id="welcomeTitle">Pelagia</h1>', landing)
         self.assertIn('rel="canonical" href="https://pelagia.example/"', landing)
+        self.assertIn('<title>Pelagia Dive Log — Scuba Logbook & Dive Buddies</title>', landing)
+        self.assertIn('Record your scuba dives, track depth and bottom time', landing)
+        self.assertIn('<span data-nosnippet>Log in</span>', landing)
+        self.assertIn('<div class="welcome-actions" data-nosnippet>', landing)
         self.assertIn('application/ld+json', landing)
         self.assertIn('data-pwa-guide', landing)
         self.assertNotIn('name="username"', landing)
@@ -74,7 +78,11 @@ class GoogleAuthTest(unittest.TestCase):
         root = ElementTree.fromstring(client.get("/sitemap.xml").data)
         locations = [node.text for node in root.iter('{http://www.sitemaps.org/schemas/sitemap/0.9}loc')]
         self.assertEqual(locations, ['https://pelagia.example/', 'https://pelagia.example/terms', 'https://pelagia.example/privacy'])
-        self.assertIn(b'Sitemap: https://pelagia.example/sitemap.xml', client.get('/robots.txt').data)
+        robots = client.get('/robots.txt').data
+        self.assertIn(b'Sitemap: https://pelagia.example/sitemap.xml', robots)
+        self.assertNotIn(b'Disallow: /login', robots)
+        self.assertNotIn(b'Disallow: /signup', robots)
+        self.assertIn(b'Disallow: /auth/', robots)
 
     def test_google_redirect_rejects_external_destinations(self):
         for destination in ('https://evil.example', '//evil.example', '/\\evil.example', 'http://localhost//evil.example'):

@@ -74,13 +74,13 @@
     <section class="profile-metrics" aria-labelledby="profileMetricsTitle">
         <div class="profile-section-heading"><h2 id="profileMetricsTitle">Metrics</h2><span>All time</span></div>
         <div class="diver-metrics-grid">
-            <div><small>Dives</small><span>{{ stats.summary.dive_count }}</span><p>Logged in Pelagia</p></div>
+            <div><small>Dives</small><span>{{ total_dive_count }}</span><p>Total lifetime dives</p></div>
             <div><small>Max depth</small><span>{{ optional_metric(stats.summary.max_depth_m) }} <em>m</em></span><p>Deepest recorded dive</p></div>
         </div>
     </section>
 
     <section class="profile-sac-panel" aria-labelledby="sacHistoryTitle">
-        <div class="profile-section-heading"><div><h2 id="sacHistoryTitle">SAC over time</h2><p>Surface air consumption · Daily median</p></div><span class="sac-chart-legend"><i aria-hidden="true"></i> L/min</span></div>
+        <div class="profile-section-heading"><div><h2 id="sacHistoryTitle">SAC rate (L/min)</h2></div><span class="sac-chart-legend"><i aria-hidden="true"></i> L/min</span></div>
         {% if sac_history.points %}
         <svg class="profile-sac-chart" viewBox="0 0 {{ sac_history.width }} {{ sac_history.height }}" role="img" aria-labelledby="sacChartTitle sacChartDescription">
             <title id="sacChartTitle">SAC rate history for {{ user.username }}</title>
@@ -97,7 +97,7 @@
             {% endfor %}
         </svg>
         <div class="sac-date-labels"><span>{{ sac_history.points[0].label }}</span>{% if sac_history.points|length > 1 %}<span>{{ sac_history.points[-1].label }}</span>{% endif %}</div>
-        <details class="sac-data-table"><summary>View recorded values</summary><table><thead><tr><th scope="col">Date</th><th scope="col">Dives with SAC</th><th scope="col">Daily median (L/min)</th></tr></thead><tbody>{% for point in sac_history.points %}<tr><td>{{ point.label }}</td><td>{{ point.count }}</td><td>{{ point.display }}</td></tr>{% endfor %}</tbody></table></details>
+        <details class="sac-data-table"><summary>View recorded values</summary><table><thead><tr><th scope="col">Date</th><th scope="col">Daily median (L/min)</th></tr></thead><tbody>{% for point in sac_history.points %}<tr><td>{{ point.label }}</td><td>{{ point.display }}</td></tr>{% endfor %}</tbody></table></details>
         {% else %}
         <div class="sac-empty"><svg viewBox="0 0 48 40" aria-hidden="true"><path d="M4 4v30h40M10 26l9-9 9 4 12-14"></path></svg><h3>Your air consumption, over time</h3><p>Record tank pressures, depth and duration on a dive to start your SAC history.</p></div>
         {% endif %}

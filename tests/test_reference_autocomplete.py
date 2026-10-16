@@ -51,6 +51,7 @@ class ReferenceAutocompleteTest(unittest.TestCase):
                 with self.subTest(unit=unit, start=start, end=end):
                     payload = {"site_name": "Alert Rock", "depth_m": "20", "duration_min": "50", "pressure_unit": unit,
                                "starting_pressure_bar": start, "ending_pressure_bar": end}
+                    payload["date"] = (date(2026, 1, 1) + timedelta(days=len(client.get("/api/dives/mine").get_json()))).isoformat()
                     self.assertEqual(client.post("/dive/new", data=payload).status_code, 302)
                     dive = max(client.get("/api/dives/mine").get_json(), key=lambda item: item["id"])
                     self.assertAlmostEqual(dive["starting_pressure_bar"], expected_start, places=8)
@@ -604,7 +605,8 @@ class ReferenceAutocompleteTest(unittest.TestCase):
                                         ({"tank_size_l": "15"}, 15), ({"tank_size_preview": "15"}, 15),
                                         ({"ending_pressure_bar": "200"}, 0), ({"duration_min": "0"}, None)):
                 with self.subTest(overrides=overrides):
-                    client.post("/dive/new", data={**base, **overrides})
+                    dive_date = (date(2026, 1, 1) + timedelta(days=len(client.get("/api/dives/mine").get_json()))).isoformat()
+                    self.assertEqual(client.post("/dive/new", data={**base, **overrides, "date": dive_date}).status_code, 302)
                     dives = client.get("/api/dives/mine").get_json()
                     logged = max(dives, key=lambda dive: dive["id"])
                     self.assertEqual(logged["sac_rate_l_min"], expected)

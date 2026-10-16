@@ -21,7 +21,7 @@ class ProfileTest(unittest.TestCase):
     make_app = fixtures.ReferenceAutocompleteTest.make_app
     signup = fixtures.ReferenceAutocompleteTest.signup
 
-    def test_starting_dive_count_updates_only_headline_and_is_owner_editable(self):
+    def test_starting_dive_count_updates_headline_and_metrics_and_is_owner_editable(self):
         with tempfile.TemporaryDirectory() as directory:
             app, _, _ = self.make_app(Path(directory))
             owner = app.test_client()
@@ -35,7 +35,7 @@ class ProfileTest(unittest.TestCase):
             for path in ("/you", "/users/1"):
                 html = owner.get(path).data
                 self.assertIn(b'<span class="diver-dive-count"><strong>42</strong> dives</span>', html)
-                self.assertIn(b'<small>Dives</small><span>2</span>', html)
+                self.assertIn(b'<small>Dives</small><span>42</span><p>Total lifetime dives</p>', html)
                 self.assertNotIn(b'<small>SAC rate</small>', html)
                 self.assertIn(b'profile-sac-chart', html)
                 self.assertIn(b'value="40" aria-describedby="startingDiveCountHelp"', html)
@@ -47,6 +47,7 @@ class ProfileTest(unittest.TestCase):
             self.signup(viewer, "viewer")
             public = viewer.get("/users/1").data
             self.assertIn(b'<strong>42</strong> dives', public)
+            self.assertIn(b'<small>Dives</small><span>42</span>', public)
             self.assertNotIn(b'name="starting_dive_count"', public)
             self.assertEqual(viewer.post("/users/1", data={"starting_dive_count": "99"}).status_code, 405)
             viewer.post("/you", data={"starting_dive_count": "1", "user_id": "1"})
@@ -54,6 +55,7 @@ class ProfileTest(unittest.TestCase):
             self.assertIn(b'<strong>42</strong> dives', owner.get("/you").data)
             owner.post("/you", data={"starting_dive_count": "0"})
             self.assertIn(b'<strong>2</strong> dives', owner.get("/you").data)
+            self.assertIn(b'<small>Dives</small><span>2</span>', owner.get("/you").data)
 
     def test_profile_sac_handles_even_medians_zero_and_legacy_dates(self):
         with tempfile.TemporaryDirectory() as directory:
