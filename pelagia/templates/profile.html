@@ -135,7 +135,6 @@
                 <button class="primary-button compact" type="submit">Save</button>
             </div>
         </form>
-        {% if email_login_available %}<p><a href="{{ url_for('email_auth.start', next=request.path) }}">Enable or change email sign-in</a></p>{% endif %}
         <nav class="settings-links" aria-label="Legal information">
             <a href="{{ url_for('terms') }}">Terms of Use <span aria-hidden="true">&rsaquo;</span></a>
             <a href="{{ url_for('privacy') }}">Privacy Policy <span aria-hidden="true">&rsaquo;</span></a>

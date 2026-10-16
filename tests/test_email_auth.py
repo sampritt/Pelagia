@@ -88,36 +88,54 @@ class EmailAuthTest(unittest.TestCase):
         response = self.client.post('/auth/email/start', data={'email': 'other@example.com', 'csrf_token': self.csrf()})
         self.assertEqual(response.status_code, 503)
 
-    def test_explicit_link_preserves_google_account(self):
+    def test_email_code_signs_into_existing_google_account(self):
+        with self.app.app_context():
+            db = database.get_db()
+            uid = db.execute("INSERT INTO users (username, google_subject, google_email) VALUES ('original', 'google-id', 'Diver@Example.com')").lastrowid
+            db.commit()
+        code = self.start()
+        with self.client.session_transaction() as session:
+            self.assertNotIn('user_id', session)
+        self.assertEqual(self.verify(code).location, '/dive/42')
+        with self.client.session_transaction() as session:
+            self.assertEqual(session['user_id'], uid)
+        with self.app.app_context():
+            db = database.get_db()
+            row = db.execute('SELECT * FROM users WHERE id = ?', (uid,)).fetchone()
+            self.assertIsNone(row['login_email'])
+            self.assertEqual(row['google_subject'], 'google-id')
+            self.assertEqual(db.execute('SELECT COUNT(*) FROM users').fetchone()[0], 1)
+
+    def test_conflicting_email_does_not_pick_an_account(self):
+        with self.app.app_context():
+            db = database.get_db()
+            db.execute("INSERT INTO users (username, login_email) VALUES ('owner', 'diver@example.com')")
+            db.execute("INSERT INTO users (username, google_subject, google_email) VALUES ('other', 'google-id', 'diver@example.com')")
+            db.commit()
+        self.assertEqual(self.verify(self.start()).location, '/login')
+        with self.client.session_transaction() as session:
+            self.assertNotIn('user_id', session)
+            self.assertNotIn('email_pending', session)
+
+    def test_same_email_on_both_methods_matches_one_account(self):
+        with self.app.app_context():
+            db = database.get_db()
+            uid = db.execute("INSERT INTO users (username, login_email, google_subject, google_email) VALUES ('owner', 'diver@example.com', 'google-id', 'diver@example.com')").lastrowid
+            db.commit()
+        self.assertEqual(self.verify(self.start(destination='https://evil.example')).location, '/home')
+        with self.client.session_transaction() as session:
+            self.assertEqual(session['user_id'], uid)
+
+    def test_google_account_created_while_choosing_username_is_reused(self):
+        self.verify(self.start())
         with self.app.app_context():
             db = database.get_db()
             uid = db.execute("INSERT INTO users (username, google_subject, google_email) VALUES ('original', 'google-id', 'diver@example.com')").lastrowid
             db.commit()
-        self.assertEqual(self.verify(self.start()).location, '/login')
-        with self.client.session_transaction() as s:
-            self.assertNotIn('user_id', s)
-            s['user_id'] = uid
-        with self.app.app_context():
-            db = database.get_db()
-            db.execute('UPDATE email_challenges SET created = created - 61')
-            db.commit()
-        self.assertEqual(self.verify(self.start(destination='https://evil.example')).location, '/home')
-        with self.app.app_context():
-            row = database.get_db().execute('SELECT * FROM users WHERE id = ?', (uid,)).fetchone()
-            self.assertEqual(row['login_email'], 'diver@example.com')
-            self.assertEqual(row['google_subject'], 'google-id')
-
-    def test_cannot_link_email_owned_by_another_account(self):
-        with self.app.app_context():
-            db = database.get_db()
-            db.execute("INSERT INTO users (username, login_email) VALUES ('owner', 'diver@example.com')")
-            uid = db.execute("INSERT INTO users (username) VALUES ('other')").lastrowid
-            db.commit()
-        with self.client.session_transaction() as s:
-            s['user_id'] = uid
-        self.verify(self.start())
-        with self.app.app_context():
-            self.assertIsNone(database.get_db().execute('SELECT login_email FROM users WHERE id = ?', (uid,)).fetchone()[0])
+        response = self.client.post('/auth/email/signup', data={'username': 'new', 'csrf_token': self.csrf()})
+        self.assertEqual(response.location, '/dive/42')
+        with self.client.session_transaction() as session:
+            self.assertEqual(session['user_id'], uid)
 
     def test_resend_payload(self):
         with self.app.app_context(), patch('pelagia.email_auth.requests.post') as post:

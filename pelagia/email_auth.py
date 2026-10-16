@@ -52,6 +52,8 @@ def start():
     if not available():
         abort(404)
     destination = _safe_next_url(request.values.get('next'))
+    if session.get('user_id'):
+        return redirect(destination)
     if request.method == 'GET':
         return render_template('email_start.html', auth_next=destination)
     check_csrf()
@@ -73,8 +75,8 @@ def start():
         return render_template('email_start.html', auth_next=destination, email=email), 429
     challenge = secrets.token_urlsafe(32)
     code = f'{secrets.randbelow(1000000):06d}'
-    db.execute('INSERT INTO email_challenges (id, email, code_hash, created, ip, link_user) VALUES (?, ?, ?, ?, ?, ?)',
-               (challenge, email, digest(challenge + code), now, address, session.get('user_id')))
+    db.execute('INSERT INTO email_challenges (id, email, code_hash, created, ip) VALUES (?, ?, ?, ?, ?)',
+               (challenge, email, digest(challenge + code), now, address))
     db.commit()
     try:
         send_code(email, code)
@@ -111,27 +113,26 @@ def verify():
             flash('That code didn’t match. Try again, or request a new code.')
         else:
             db.execute('UPDATE email_challenges SET consumed = 1 WHERE id = ?', (row['id'],))
-            user = db.execute('SELECT id FROM users WHERE login_email = ?', (row['email'],)).fetchone()
-            if row['link_user']:
-                if user and user['id'] != row['link_user']:
-                    db.commit()
-                    flash('That email is already connected to another account.')
-                    return redirect(url_for('email_auth.start'))
-                db.execute('UPDATE users SET login_email = ? WHERE id = ?', (row['email'], row['link_user']))
-                db.commit()
-                flash('Email sign-in is now enabled for your account.')
-                return finish_login(row['link_user'], flow.get('next'))
+            users = matching_users(db, row['email'])
             db.commit()
-            if user:
-                return finish_login(user['id'], flow.get('next'))
-            # Do not merge accounts based on a potentially stale Google email.
-            if db.execute('SELECT id FROM users WHERE lower(google_email) = ?', (row['email'],)).fetchone():
-                flash('To keep your existing dives, continue with Google first, then enable email sign-in in Profile settings.')
+            if len(users) > 1:
+                flash('This email matches more than one account. Please continue with Google or contact support.')
                 return redirect(url_for('login'))
+            if users:
+                return finish_login(users[0]['id'], flow.get('next'))
             session.clear()
             session['email_pending'] = {'email': row['email'], 'created': time.time(), 'next': flow.get('next')}
             return redirect(url_for('email_auth.signup'))
     return render_template('email_verify.html', email=row['email'], auth_next=flow.get('next'))
+
+
+def matching_users(db, email):
+    # A correct code proves access to this address. Match either sign-in method,
+    # deduplicating the same user; never choose between different accounts.
+    return db.execute(
+        'SELECT id FROM users WHERE lower(login_email) = ? OR lower(google_email) = ? LIMIT 2',
+        (email, email),
+    ).fetchall()
 
 
 @bp.route('/signup', methods=['GET', 'POST'])
@@ -150,6 +151,15 @@ def signup():
             flash('Choose a username between 3 and 40 characters.')
         else:
             db = database.get_db()
+            db.execute('BEGIN IMMEDIATE')
+            users = matching_users(db, pending['email'])
+            if users:
+                db.rollback()
+                if len(users) == 1:
+                    return finish_login(users[0]['id'], pending.get('next'))
+                session.pop('email_pending', None)
+                flash('This email matches more than one account. Please continue with Google or contact support.')
+                return redirect(url_for('login'))
             try:
                 cur = db.execute('INSERT INTO users (username, login_email) VALUES (?, ?)', (username, pending['email']))
                 db.commit()

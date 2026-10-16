@@ -2,7 +2,7 @@
 {% block title %}Continue with email — Pelagia{% endblock %}
 {% block auth_content %}
 <h1 id="signinTitle">Continue with email</h1>
-<p class="signin-description">We’ll send you a code. If you’re signed in, this enables email access to your current account.</p>
+<p class="signin-description">We’ll send you a sign-in code. No password needed.</p>
 <form class="auth-form" method="post">
 <input type="hidden" name="csrf_token" value="{{ google_csrf_token() }}">
 <input type="hidden" name="next" value="{{ auth_next }}">
