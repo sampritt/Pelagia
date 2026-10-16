@@ -28,7 +28,7 @@ export PELAGIA_UPLOAD_FOLDER="$PWD/pelagia/static/uploads"
 
 Set `SECRET_KEY` to a long random value in production. Local development falls back to the value in `app_config.json`.
 
-Successful password and Google login/signup create persistent sessions that survive browser restarts. Sessions expire after 30 days without a request; each request refreshes the expiration for another 30 days. Logout clears the session. Keep the same `SECRET_KEY` across workers, restarts and deployments to preserve existing sessions; changing it invalidates them. Users with older browser-session cookies receive persistent cookies when they next sign in.
+Successful Google login/signup create persistent sessions that survive browser restarts. Sessions expire after 30 days without a request; each request refreshes the expiration for another 30 days. Logout clears the session. Keep the same `SECRET_KEY` across workers, restarts and deployments to preserve existing sessions; changing it invalidates them. Users with older browser-session cookies receive persistent cookies when they next sign in.
 
 For Render, attach a persistent disk at `/var/data`. No database or upload-path environment variables are required there. Configure `SECRET_KEY` and set `SESSION_COOKIE_SECURE=true` for HTTPS deployments.
 
@@ -45,12 +45,20 @@ On first app startup, Pelagia initializes SQLite and imports reference data from
 - `pelagia/schema.sql`: SQLite schema
 - `pelagia/importer.py`: pandas CSV import
 
+## Terms of Use and Privacy Policy
+
+Profile → Settings includes Terms of Use (`/terms`) and Privacy Policy (`/privacy`). Both pages are also accessible without signing in and linked from the authentication screen, including Google signup.
+
+Set `PELAGIA_OPERATOR_NAME` to the person or entity operating the app and `PELAGIA_CONTACT_EMAIL` to a monitored public email address. Defaults are “Pelagia” and a request to contact the operator who provided access. Supply the actual operator and contact before public release; the repo does not identify them. Hosting/log retention and any deployment-specific data practices should also be verified by the operator.
+
+The short documents adapt the account security, availability, third-party services, security, and update boilerplate from [App Privacy Policy Generator’s Privacy Policy and Terms & Conditions templates](https://mobile-privacy.github.io/generator/) (accessed October 16, 2026). Its disclaimer expressly permits using the templates when compiling your own policy. App-specific collection, sharing, cookies, and retention disclosures follow this repository’s implementation. The templates were shortened and do not assert jurisdiction-specific compliance, a governing law, or an unverified business identity. They are template-based drafts, not a legal compliance certification.
+
 ## Install Pelagia on a Phone (PWA)
 
 Pelagia can be installed from its HTTPS website and opened from a home-screen icon in a standalone window. Its manifest, PNG icons, Apple touch icon, service worker and offline page are included in the app; no additional package, build step or database migration is needed.
 
 - **iPhone/iPad:** open Pelagia in Safari, choose Share → Add to Home Screen (under More on some versions), leave Open as Web App enabled if shown, then tap Add. Installation guidance is available on the login page and your own profile. The installed app may need a separate sign-in.
-- **Android:** use the browser's Install app/Add to Home screen action. An Install Pelagia button appears on the login page and your own profile when the browser supplies an installation prompt.
+- **Android:** use the browser's Install app/Add to Home screen action. The landing page’s Download button always opens instructions for iPhone, Android and desktop; the profile also offers native installation when supported.
 
 The service worker caches only explicitly listed public assets and a generic offline screen. Dive pages, account pages, APIs, uploads and external map tiles are not cached. Viewing or saving dives still requires internet access. When the browser reports that it is offline, form submissions are blocked and a notice asks users to keep the page open to preserve their changes. This release does not persist offline dive drafts or sync them later.
 
@@ -65,7 +73,7 @@ Asset cache versions are derived automatically from deployed files. An update no
 5. Redeploy from **`main`** (or allow Render's automatic deployment). Keep the existing Gunicorn command and `/var/data` persistent disk. Database and upload path settings are unchanged; no new environment variables, dependencies or disk storage are required for PWA caching, which lives on each user's device.
 6. If a CDN or proxy overrides cache headers, preserve revalidation for **`/service-worker.js`**, **`/manifest.webmanifest`**, and **`/offline.html`**, and honor the `v` query parameter on static asset URLs. These public routes must be reachable without authentication and must not be rewritten to a login page. A standard Render deployment needs no special routing or cache configuration.
 
-After deployment, install from the public URL on a real iPhone and Android phone. Check standalone launch, password/Google login, closing and reopening the app, photo uploads, dive sharing and navigation. After the first online launch, enable airplane mode and navigate/relaunch: the branded offline screen should appear, and an already-open form should block saving. Reconnect and retry. With an installed app open, deploy a subsequent update and confirm the update notice only reloads after the user selects it.
+After deployment, install from the public URL on a real iPhone and Android phone. Check standalone launch, Google login, closing and reopening the app, photo uploads, dive sharing and navigation. After the first online launch, enable airplane mode and navigate/relaunch: the branded offline screen should appear, and an already-open form should block saving. Reconnect and retry. With an installed app open, deploy a subsequent update and confirm the update notice only reloads after the user selects it.
 
 Automated PWA checks are included in the normal Python and JavaScript test suites:
 
@@ -86,7 +94,7 @@ Every active dive has a permanent public preview at `/share/dive/<id>`. Owners c
 
 On phones that support file sharing, Save opens the image share sheet so the user can select Save Image or another destination. Browsers cannot silently write to the photo library; the available save options depend on the device. The JPEG is prepared before the Save click to preserve the user activation required by native sharing. Unsupported browsers and file-sharing failures fall back to an attachment download at `/share/dive/<id>/preview.jpg?download=1`; cancellation does not trigger a download. Share destinations control how they display the supplied text and URL.
 
-Visitors see the diver's public username and avatar, dive site, location, date, dive type, center, photos, map, depth and duration. The account gate below uses blurred placeholders; notes, marine life, equipment, conditions, buddies and comments are never sent to anonymous visitors. Signed-in visitors go to `/dive/<id>`, and both password and Google authentication retain this destination. Deleted dives return 404 for both the public page and preview image.
+Visitors see the diver's public username and avatar, dive site, location, date, dive type, center, photos, map, depth and duration. The account gate below uses blurred placeholders; notes, marine life, equipment, conditions, buddies and comments are never sent to anonymous visitors. Signed-in visitors go to `/dive/<id>`, and Google authentication retains this destination. Deleted dives return 404 for both the public page and preview image.
 
 Each link includes Open Graph and Twitter metadata and a generated 1200 × 630 JPEG featuring a dive photo, site, location and stats. If no readable photo is attached, the preview uses the dive site's map at the same zoom as the logged dive, with a location pin and OpenStreetMap attribution. Ocean artwork remains the fallback when coordinates are missing or map tiles are unavailable. Preview titles read “username logged a dive”. Messaging apps control whether and when they show or refresh these previews; copies they have already cached cannot be recalled by deleting a dive. Public pages request no search indexing.
 
@@ -100,9 +108,9 @@ Run the sharing and authentication tests with the Python command below, plus the
 node --test tests/test_*.cjs
 ```
 
-## Google Sign-In (Optional)
+## Google Sign-In (Required)
 
-Username/password signup and login remain available. The Google button appears when both `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` are configured; without them, Google routes are disabled.
+Google is the only sign-up and login method. Configure both `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`; without them, the login screen displays an unavailable message and Google routes are disabled. `/login` and `/signup` are GET-only screens; credential POSTs are rejected.
 
 1. In [Google Auth Platform](https://console.cloud.google.com/auth/overview), create/select a project and configure its branding and audience. For a public app, choose an external audience; while in testing, add the Google accounts that will test sign-in.
 2. Create an OAuth client of type **Web application**. Add the exact authorized redirect URI for each environment:
@@ -120,9 +128,9 @@ On Render, add those variables to the service environment, using the production 
 
 Google authentication uses [Authlib's OpenID Connect integration](https://docs.authlib.org/en/latest/oauth2/client/web/flask.html) with state, nonce and PKCE checks. Only `openid email` scopes are requested, and provider tokens are not persisted. Identities are matched by Google's stable `sub` ID, [as Google recommends](https://developers.google.com/identity/openid-connect/openid-connect), rather than by email or public username.
 
-New Google users choose a unique public username before an account is created. Their Google email is stored privately and is not returned by profile or user APIs. Existing users should log in with their username/password, then select **Link Google account** on their own profile. Linking preserves the user ID, dives and password login. Accounts are never automatically merged, and a Google account can belong to only one Pelagia account.
+New Google users choose a unique public username before an account is created. Their Google email is stored privately and is not returned by profile or user APIs. Existing Google users keep their user ID and dives. There is no account-linking flow. Password-only accounts retain their data but cannot sign in until an administrator verifies ownership and assigns their Google subject ID; email and username matches never automatically merge accounts. A Google account can belong to only one Pelagia account.
 
-Startup adds nullable `google_subject`/`google_email` columns and a unique identity index to existing SQLite databases, preserving existing rows and relationships. Google-only accounts use an empty `password_hash` as a disabled-password marker; the password login explicitly rejects these accounts. This avoids rebuilding the existing users table. Back up production SQLite using your normal deployment procedure before rolling out schema changes.
+Startup adds nullable `google_subject`/`google_email` columns and a unique identity index to existing SQLite databases, preserving existing rows and relationships. Startup removes the retired `password_hash` column using SQLite `DROP COLUMN` (SQLite 3.35+), without rebuilding the users table or changing IDs. No direct Werkzeug dependency or imports remain; Flask still uses Werkzeug internally. Back up production SQLite using your normal deployment procedure before rolling out schema changes.
 
 Run the authentication and existing app tests with:
 
@@ -131,3 +139,17 @@ Run the authentication and existing app tests with:
 ```
 
 The tests exercise signed OpenID Connect tokens with local discovery/JWKS data and a mocked token exchange. Before enabling sign-in for everyone, complete a real Google sign-in, logout/re-login, and existing-account link using the deployed callback URL.
+
+## Profiles
+
+User profiles show every active logged dive, newest first. Owners can change their avatar, edit or clear a bio (up to 500 characters), and select one optional certification from autocomplete. The nine certification options are stored in SQLite and validated on save; free-text certifications are rejected. Startup adds the nullable profile fields and seeds the reference options without changing existing users or dives.
+
+Profile metrics show dives logged in Pelagia and maximum depth. In profile settings, owners can save a non-negative integer **Starting dive count** for dives not logged in the app. The headline total adds that starting count to active dives logged in Pelagia; the metrics and logbook continue to reflect logged dives. Existing accounts start at zero.
+
+The chronological SAC chart takes the median recorded SAC in L/min for each day and spaces observations by date. Dives with no recorded SAC remain in the log and do not affect the chart. The chart includes an expandable table of daily values.
+
+Dive site profiles use the site's coordinate map as their header, with a pending state when coordinates are missing. Dive centers use a compact header without a banner image.
+
+## Public landing page and search
+
+The public `/` page introduces Pelagia and links to dedicated Google-only `/login` and `/signup` screens. Set `PELAGIA_PUBLIC_BASE_URL` to the canonical HTTPS origin: canonical, Open Graph, Twitter card, JSON-LD and sitemap URLs all use it. `/sitemap.xml` lists the landing page, terms and privacy policy. `/robots.txt` discourages indexing authentication, APIs and uploads; authentication screens also carry `noindex`. Search directives do not replace access controls.

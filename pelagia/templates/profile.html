@@ -2,76 +2,138 @@
 {% block title %}{{ user.username }} - Pelagia{% endblock %}
 
 {% block content %}
-<section class="profile-layout">
-    <div class="profile-hero">
+<section class="profile-layout diver-profile">
+    <header class="diver-identity">
         {% if is_owner %}
         <form class="profile-photo-form" method="post" action="{{ url_for('profile') }}" enctype="multipart/form-data">
-            <label class="profile-avatar">
-                {% if user.profile_photo %}
-                    <img src="{{ uploaded_file_url(user.profile_photo) }}" alt="">
-                {% else %}
-                    <span>{{ user.username[:1]|upper }}</span>
-                {% endif %}
-                <input type="file" name="profile_photo" accept="image/*" onchange="this.form.requestSubmit()">
+            <label class="profile-avatar" title="Change profile photo">
+                {% if user.profile_photo %}<img src="{{ uploaded_file_url(user.profile_photo) }}" alt="{{ user.username }} profile photo">
+                {% else %}<span>{{ user.username[:1]|upper }}</span>{% endif %}
+                <input type="file" name="profile_photo" accept="image/*" aria-label="Change profile photo" onchange="this.form.requestSubmit()">
+                <span class="avatar-edit" aria-hidden="true">+</span>
             </label>
         </form>
         {% else %}
         <div class="profile-avatar static-avatar">
-            {% if user.profile_photo %}
-                <img src="{{ uploaded_file_url(user.profile_photo) }}" alt="">
-            {% else %}
-                <span>{{ user.username[:1]|upper }}</span>
-            {% endif %}
+            {% if user.profile_photo %}<img src="{{ uploaded_file_url(user.profile_photo) }}" alt="{{ user.username }} profile photo">
+            {% else %}<span>{{ user.username[:1]|upper }}</span>{% endif %}
         </div>
         {% endif %}
-        <div>
+        <div class="diver-identity-content">
+            <p class="diver-eyebrow">Diver profile</p>
             <h1>{{ user.username }}</h1>
-            <p class="profile-meta">
-                <span>{{ stats.summary.account_age_days }} days on Pelagia</span>
-            </p>
-            {% if is_owner %}
-            <div class="profile-actions">
-                <a class="primary-button compact" href="{{ url_for('log_dive') }}"><span aria-hidden="true">+</span> Log dive</a>
-                <button class="ghost-button" type="button" data-pwa-install hidden>Install Pelagia</button>
-                {% if google_login_available %}
-                    {% if google_is_linked %}
-                    <span class="google-linked">Google sign-in linked</span>
-                    {% else %}
-                    <form method="post" action="{{ url_for('google_auth.link') }}">
-                        <input type="hidden" name="csrf_token" value="{{ google_csrf_token() }}">
-                        <button class="google-button" type="submit">
-                            {% include '_google_mark.html' %}
-                            Link Google account
-                        </button>
+            <div class="diver-headline">
+                <span class="diver-dive-count"><strong>{{ total_dive_count }}</strong> {{ 'dive' if total_dive_count == 1 else 'dives' }}</span>
+                {% if user.certification_name %}
+                <div class="certification-tag">{{ user.certification_name }}{% if is_owner %}
+                    <form method="post" action="{{ url_for('profile') }}">
+                        <input type="hidden" name="certification_id" value="">
+                        <button type="submit" aria-label="Remove {{ user.certification_name }}">&times;</button>
+                    </form>{% endif %}
+                </div>
+                {% elif is_owner %}
+                <details class="certification-editor" data-certification-picker>
+                    <summary class="profile-text-button">+ Add certification</summary>
+                    <form class="certification-form autocomplete-field" method="post" action="{{ url_for('profile') }}">
+                        <label for="certificationSearch">Certification level</label>
+                        <input id="certificationSearch" type="text" placeholder="Search certifications" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="certificationOptions" data-certification-input>
+                        <input type="hidden" name="certification_id" data-certification-value>
+                        <div id="certificationOptions" class="autocomplete-menu" role="listbox" data-certification-results hidden></div>
+                        <p class="certification-help" data-certification-status role="status">Choose a certification from the suggestions.</p>
                     </form>
-                    {% endif %}
+                </details>
                 {% endif %}
             </div>
+            <div class="profile-bio-row">
+                {% if user.bio %}<p class="profile-bio">{{ user.bio }}</p>
+                {% elif is_owner %}<p class="profile-bio bio-placeholder">A little about you and your diving.</p>{% endif %}
+                {% if is_owner %}
+                <button class="profile-edit-button" type="button" aria-label="{{ 'Edit' if user.bio else 'Add' }} bio" data-bio-edit>
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 5 4 4M4 20l5-1L20 8a2.8 2.8 0 0 0-4-4L5 15z"></path></svg>
+                </button>
+                {% endif %}
+            </div>
+            {% if is_owner %}
+            <form class="profile-bio-form" method="post" action="{{ url_for('profile') }}" data-bio-form hidden>
+                <label class="sr-only" for="profileBio">Bio</label>
+                <textarea id="profileBio" name="bio" maxlength="500" rows="3" placeholder="A little about you and your diving.">{{ user.bio or '' }}</textarea>
+                <div><button class="primary-button compact" type="submit">Save bio</button><button class="ghost-button" type="button" data-bio-cancel>Cancel</button></div>
+            </form>
             {% endif %}
         </div>
-    </div>
+        {% if is_owner %}
+        <div class="diver-header-actions">
+            <a class="primary-button compact" href="{{ url_for('log_dive') }}"><span aria-hidden="true">+</span> Log dive</a>
+            <button class="profile-settings-button" type="button" aria-label="Profile settings" data-profile-settings-open>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 3-.6 2.3-2 .9-2.1-.6-2 3.4 1.6 1.7v2.6L2.3 15l2 3.4 2.1-.6 2 .9L9 21h4l.6-2.3 2-.9 2.1.6 2-3.4-1.6-1.7v-2.6L19.7 9l-2-3.4-2.1.6-2-.9L13 3z"></path><circle cx="11" cy="12" r="3"></circle></svg>
+            </button>
+        </div>
+        {% endif %}
+    </header>
 
-    <div class="stats-grid">
-        <div><span>{{ stats.summary.dive_count }}</span><small>dives</small></div>
-        <div><span>{{ optional_metric(stats.summary.max_depth_m) }} <em>m</em></span><small>max depth</small></div>
-        <div><span>{{ stats.summary.longest_dive_minutes }} <em>min</em></span><small>longest dive</small></div>
-        <div><span>{{ stats.summary.total_minutes }}</span><small>total minutes</small></div>
-    </div>
+    <section class="profile-metrics" aria-labelledby="profileMetricsTitle">
+        <div class="profile-section-heading"><h2 id="profileMetricsTitle">Metrics</h2><span>All time</span></div>
+        <div class="diver-metrics-grid">
+            <div><small>Dives</small><span>{{ stats.summary.dive_count }}</span><p>Logged in Pelagia</p></div>
+            <div><small>Max depth</small><span>{{ optional_metric(stats.summary.max_depth_m) }} <em>m</em></span><p>Deepest recorded dive</p></div>
+        </div>
+    </section>
 
-    <div class="feed-toolbar">
-        <span>{{ recent_dives|length }} recent {{ 'activity' if recent_dives|length == 1 else 'activities' }}</span>
-    </div>
-    {% if recent_dives %}
-        <div class="feed-list compact-list">
-            {% for dive in recent_dives %}
-                {% include "_dive_card.html" %}
+    <section class="profile-sac-panel" aria-labelledby="sacHistoryTitle">
+        <div class="profile-section-heading"><div><h2 id="sacHistoryTitle">SAC over time</h2><p>Surface air consumption · Daily median</p></div><span class="sac-chart-legend"><i aria-hidden="true"></i> L/min</span></div>
+        {% if sac_history.points %}
+        <svg class="profile-sac-chart" viewBox="0 0 {{ sac_history.width }} {{ sac_history.height }}" role="img" aria-labelledby="sacChartTitle sacChartDescription">
+            <title id="sacChartTitle">SAC rate history for {{ user.username }}</title>
+            <desc id="sacChartDescription">Chronological SAC rates in liters per minute. Multiple recorded dives on a day are combined using their median. {{ sac_history.count }} recorded dives across {{ sac_history.points|length }} days.</desc>
+            {% for tick in sac_history.ticks %}
+            <line class="sac-grid-line" x1="{{ sac_history.left }}" y1="{{ '%g'|format(tick.y) }}" x2="{{ sac_history.width - sac_history.right }}" y2="{{ '%g'|format(tick.y) }}"></line>
+            <text class="sac-axis-label" x="{{ sac_history.left - 12 }}" y="{{ '%g'|format(tick.y + 4) }}" text-anchor="end">{{ tick.value }}</text>
             {% endfor %}
-        </div>
-    {% else %}
-        <div class="empty-state">
-            <h2>No dives logged</h2>
-            <a class="primary-button" href="{{ url_for('log_dive') }}">Log a dive</a>
-        </div>
+            {% if sac_history.points|length > 1 %}<polyline class="sac-series-line" points="{{ sac_history.polyline }}"></polyline>{% endif %}
+            {% for point in sac_history.points %}
+            <circle class="sac-series-point" cx="{{ '%g'|format(point.x) }}" cy="{{ '%g'|format(point.y) }}" r="4" tabindex="0" aria-label="{{ point.label }}: {{ point.display }} L/min">
+                <title>{{ point.label }}: {{ point.display }} L/min · {{ point.count }} {{ 'dive' if point.count == 1 else 'dives' }}</title>
+            </circle>
+            {% endfor %}
+        </svg>
+        <div class="sac-date-labels"><span>{{ sac_history.points[0].label }}</span>{% if sac_history.points|length > 1 %}<span>{{ sac_history.points[-1].label }}</span>{% endif %}</div>
+        <details class="sac-data-table"><summary>View recorded values</summary><table><thead><tr><th scope="col">Date</th><th scope="col">Dives with SAC</th><th scope="col">Daily median (L/min)</th></tr></thead><tbody>{% for point in sac_history.points %}<tr><td>{{ point.label }}</td><td>{{ point.count }}</td><td>{{ point.display }}</td></tr>{% endfor %}</tbody></table></details>
+        {% else %}
+        <div class="sac-empty"><svg viewBox="0 0 48 40" aria-hidden="true"><path d="M4 4v30h40M10 26l9-9 9 4 12-14"></path></svg><h3>Your air consumption, over time</h3><p>Record tank pressures, depth and duration on a dive to start your SAC history.</p></div>
+        {% endif %}
+    </section>
+
+    <section class="profile-logbook" aria-labelledby="profileLogbookTitle">
+        <div class="profile-section-heading"><h2 id="profileLogbookTitle">Dive log</h2><span>{{ dives|length }} {{ 'dive' if dives|length == 1 else 'dives' }} · Newest first</span></div>
+        {% if dives %}
+        <div class="feed-list compact-list">{% for dive in dives %}{% include "_dive_card.html" %}{% endfor %}</div>
+        {% else %}
+        <div class="empty-state"><h3>No dives logged yet</h3>{% if is_owner %}<p>Your next dive starts your story.</p><a class="primary-button" href="{{ url_for('log_dive') }}">Log a dive</a>{% else %}<p>{{ user.username }} hasn’t logged any dives yet.</p>{% endif %}</div>
+        {% endif %}
+    </section>
+    {% if is_owner %}
+    <div class="profile-account-actions">
+        <button class="ghost-button" type="button" data-pwa-install hidden>Install Pelagia</button>
+        <form method="post" action="{{ url_for('logout') }}">
+            <button class="ghost-button" type="submit">Log out</button>
+        </form>
+    </div>
+    <dialog class="profile-settings-dialog" aria-labelledby="profileSettingsTitle" data-profile-settings>
+        <div class="profile-section-heading"><h2 id="profileSettingsTitle">Settings</h2><button class="profile-settings-button" type="button" aria-label="Close settings" data-profile-settings-close>&times;</button></div>
+        <form class="profile-count-form" method="post" action="{{ url_for('profile') }}">
+            <label for="startingDiveCount">Starting dive count</label>
+            <p id="startingDiveCountHelp">Dives you haven’t logged in Pelagia. Your profile total is this number plus your dives logged in Pelagia.</p>
+            <div class="profile-count-controls">
+                <input id="startingDiveCount" name="starting_dive_count" type="number" min="0" max="9223372036854775807" step="1" inputmode="numeric" value="{{ user.starting_dive_count }}" aria-describedby="startingDiveCountHelp" required>
+                <button class="primary-button compact" type="submit">Save</button>
+            </div>
+        </form>
+        <nav class="settings-links" aria-label="Legal information">
+            <a href="{{ url_for('terms') }}">Terms of Use <span aria-hidden="true">&rsaquo;</span></a>
+            <a href="{{ url_for('privacy') }}">Privacy Policy <span aria-hidden="true">&rsaquo;</span></a>
+        </nav>
+        <p class="profile-settings-attribution">&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap contributors</a></p>
+    </dialog>
     {% endif %}
 </section>
 {% endblock %}

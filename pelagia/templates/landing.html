@@ -1,54 +1,47 @@
 {% extends "base.html" %}
-{% block title %}Pelagia{% endblock %}
-{% block body_class %}landing-body{% endblock %}
-
+{% block title %}Pelagia — Scuba Dive Logbook & Diving Community{% endblock %}
+{% block body_class %}welcome-body{% endblock %}
+{% block head %}
+<meta name="description" content="Log scuba dives, track your progress, explore dive sites and connect with dive buddies.">
+<link rel="canonical" href="{{ public_url('landing') }}">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Pelagia">
+<meta property="og:title" content="Pelagia — Log your dive. Find your buddy.">
+<meta property="og:description" content="Your scuba dive logbook and diving community. Log dives, explore dive sites and connect with dive buddies.">
+<meta property="og:url" content="{{ public_url('landing') }}">
+<meta property="og:image" content="{{ public_url('static', filename='img/ocean-hero-v2.jpg') }}">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Pelagia — Log your dive. Find your buddy.">
+<meta name="twitter:description" content="Log scuba dives, explore dive sites and connect with dive buddies.">
+<meta name="twitter:image" content="{{ public_url('static', filename='img/ocean-hero-v2.jpg') }}">
+<link rel="preload" as="image" href="{{ url_for('static', filename='img/ocean-hero-v2.jpg') }}">
+<script type="application/ld+json">{{ {"@context": "https://schema.org", "@type": "WebApplication", "name": "Pelagia", "url": public_url('landing'), "applicationCategory": "LifestyleApplication", "operatingSystem": "Web, iOS, Android", "description": "A scuba dive logbook and community for logging dives, exploring dive sites and connecting with dive buddies."}|tojson }}</script>
+{% endblock %}
 {% block content %}
-<section class="landing-hero">
-    <div class="landing-copy">
-        <div class="landing-brand">
-            <span class="brand-mark large" aria-hidden="true">
-                <svg viewBox="0 0 40 40" focusable="false">
-                    <path d="M4 15.5c4.4 0 4.4-4.5 8.8-4.5s4.4 4.5 8.8 4.5S26 11 30.4 11s4.4 4.5 8.8 4.5"></path>
-                    <path d="M4 24.5c4.4 0 4.4-4.5 8.8-4.5s4.4 4.5 8.8 4.5S26 20 30.4 20s4.4 4.5 8.8 4.5"></path>
-                </svg>
-            </span>
-            <h1>Pelagia</h1>
+<div class="welcome-page">
+    <header class="welcome-nav">
+        <a class="welcome-wordmark" href="{{ url_for('landing') }}" aria-label="Pelagia home"><img src="{{ url_for('static', filename='img/pelagia-mark.svg') }}" width="32" height="32" alt="">Pelagia</a>
+        <nav aria-label="Welcome navigation">
+            <button class="welcome-download" type="button" data-pwa-guide aria-haspopup="dialog">Download <span aria-hidden="true">↓</span></button>
+            <a class="welcome-login" href="{{ url_for('login', next=auth_next) }}">Log in</a>
+            <a class="welcome-button welcome-button-small" href="{{ url_for('signup', next=auth_next) }}">Sign up</a>
+        </nav>
+    </header>
+    <section class="welcome-hero" aria-labelledby="welcomeTitle">
+        <div class="welcome-hero-content">
+            <h1 id="welcomeTitle">Pelagia</h1>
+            <p class="welcome-tagline">Log your dive.<br>Find your buddy.</p>
+            <div class="welcome-actions">
+                <a class="welcome-button" href="{{ url_for('signup', next=auth_next) }}">Sign up <span aria-hidden="true">↗</span></a>
+                <a class="welcome-secondary" href="{{ url_for('login', next=auth_next) }}">Log in <span aria-hidden="true">→</span></a>
+            </div>
         </div>
-        <p class="landing-kicker">Log your dive. Find your buddy.</p>
-        <button class="ghost-button pwa-landing-install" type="button" data-pwa-install hidden>Install Pelagia</button>
-    </div>
-    <div class="auth-grid">
-        <section class="auth-panel auth-card" data-auth-panel data-auth-mode="{{ auth_mode or 'login' }}">
-            {% block auth_content %}
-            <div class="auth-header">
-                <p class="eyebrow">Dive log</p>
-                <h2>{{ 'Create your account' if auth_mode == 'signup' else 'Start your session' }}</h2>
-            </div>
-            {% if google_login_available %}
-            <a class="google-button" href="{{ url_for('google_auth.login', next=auth_next) }}">
-                {% include '_google_mark.html' %}
-                Continue with Google
-            </a>
-            <div class="auth-divider"><span>or use your username</span></div>
-            {% endif %}
-            <div class="auth-toggle" role="tablist" aria-label="Authentication mode">
-                <button class="{{ 'active' if auth_mode != 'signup' else '' }}" type="button" role="tab" aria-selected="{{ 'false' if auth_mode == 'signup' else 'true' }}" data-auth-tab="login" data-auth-action="{{ url_for('login') }}" data-auth-submit="Log in" data-auth-title="Start your session">Log in</button>
-                <button class="{{ 'active' if auth_mode == 'signup' else '' }}" type="button" role="tab" aria-selected="{{ 'true' if auth_mode == 'signup' else 'false' }}" data-auth-tab="signup" data-auth-action="{{ url_for('signup') }}" data-auth-submit="Create account" data-auth-title="Create your account">Sign up</button>
-            </div>
-            <form class="auth-form" method="post" action="{{ url_for('signup' if auth_mode == 'signup' else 'login') }}" data-auth-form>
-                <input type="hidden" name="next" value="{{ auth_next or url_for('home') }}">
-                <label>
-                    Username
-                    <input name="username" autocomplete="username" {% if auth_mode == 'signup' %}minlength="3"{% endif %} required>
-                </label>
-                <label>
-                    Password
-                    <input name="password" type="password" autocomplete="{{ 'new-password' if auth_mode == 'signup' else 'current-password' }}" {% if auth_mode == 'signup' %}minlength="6"{% endif %} required>
-                </label>
-                <button class="primary-button" type="submit" data-auth-submit-button>{{ 'Create account' if auth_mode == 'signup' else 'Log in' }}</button>
-            </form>
-            {% endblock %}
-        </section>
-    </div>
-</section>
+    </section>
+    <section class="welcome-features" id="discover" aria-label="Your scuba diving companion">
+        <article><h2>Dive logbook</h2><p>Record dive sites, depth, duration and photos.</p></article>
+        <article><h2>Dive buddies</h2><p>Tag your buddies and share your dives.</p></article>
+        <article><h2>Dive sites</h2><p>Explore dive sites and local marine life.</p></article>
+    </section>
+    <footer class="welcome-footer"><span>Pelagia</span><div><a href="{{ url_for('terms') }}">Terms of Use</a><a href="{{ url_for('privacy') }}">Privacy Policy</a></div></footer>
+</div>
 {% endblock %}

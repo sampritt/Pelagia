@@ -1,16 +1,22 @@
 PRAGMA foreign_keys = ON;
 
+CREATE TABLE IF NOT EXISTS certifications (
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL UNIQUE,
+    sort_order INTEGER NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     username TEXT NOT NULL UNIQUE COLLATE NOCASE,
-    password_hash TEXT NOT NULL,
     google_subject TEXT,
     google_email TEXT,
     profile_photo TEXT,
+    bio TEXT,
+    starting_dive_count INTEGER NOT NULL DEFAULT 0 CHECK (starting_dive_count >= 0),
+    certification_id INTEGER REFERENCES certifications(id) ON DELETE SET NULL,
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
-
-DROP TABLE IF EXISTS user_certs;
 
 CREATE TABLE IF NOT EXISTS dive_sites (
     id INTEGER PRIMARY KEY,

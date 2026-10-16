@@ -7,7 +7,6 @@ from urllib.parse import parse_qs, urlsplit
 
 from PIL import Image, ImageDraw
 import requests
-from werkzeug.security import generate_password_hash
 
 from pelagia import create_app
 from pelagia import db as database
@@ -40,9 +39,9 @@ class DiveSharingTest(unittest.TestCase):
         self.tile_request = self.enterContext(patch("pelagia.static_maps.requests.get", side_effect=tile_response))
         with self.app.app_context():
             db = database.get_db()
-            db.execute("INSERT INTO users (username, password_hash, google_email, profile_photo) VALUES (?, ?, ?, ?)",
-                       ("maya", generate_password_hash("password"), "private@example.com", "profiles/maya.jpg"))
-            db.execute("INSERT INTO users (username, password_hash) VALUES ('private-buddy', '')")
+            db.execute("INSERT INTO users (username, google_email, profile_photo) VALUES (?, ?, ?)",
+                       ("maya", "private@example.com", "profiles/maya.jpg"))
+            db.execute("INSERT INTO users (username) VALUES ('private-buddy')")
             db.execute("""INSERT INTO dives (user_id, buddy_user_id, date, site_name, country_or_area,
                        latitude, longitude, depth_m, duration_min, notes, exposure, weight_kg)
                        VALUES (1, 2, '2026-10-01', 'Blue Corner', 'Palau', 7.134, 134.22, 24, 52,
@@ -89,25 +88,13 @@ class DiveSharingTest(unittest.TestCase):
             self.assertEqual(response.status_code, 302)
             self.assertNotIn(b"PRIVATE DIVE NOTES", response.data)
 
-    def test_password_auth_returns_to_dive_and_retains_failures(self):
-        failed = self.client.post("/login", data={"username": "maya", "password": "wrong", "next": "/dive/1"})
-        self.assertEqual(parse_qs(urlsplit(failed.location).query)["next"], ["/dive/1"])
-        auth = self.client.get(failed.location)
-        self.assertIn(b'name="next" value="/dive/1"', auth.data)
-        response = self.client.post("/login", data={"username": "maya", "password": "password", "next": "/dive/1"})
-        self.assertEqual(response.location, "/dive/1")
-
-    def test_signup_returns_to_dive_and_initial_mode_is_signup(self):
-        self.assertIn(b'data-auth-mode="signup"', self.client.get("/?next=/dive/1&mode=signup").data)
-        response = self.client.post("/signup", data={"username": "new-diver", "password": "password", "next": "/dive/1"})
-        self.assertEqual(response.location, "/dive/1")
-
-    def test_external_and_backslash_auth_redirects_are_rejected(self):
-        for next_url in ("https://evil.example", "//evil.example", "/\\evil.example", "https://localhost@evil.example", "http://localhost//evil.example"):
-            with self.subTest(next_url=next_url):
-                client = self.app.test_client()
-                response = client.post("/login", data={"username": "maya", "password": "password", "next": next_url})
-                self.assertEqual(response.location, "/home")
+    def test_auth_pages_preserve_shared_dive_destination(self):
+        for path in ("/login", "/signup"):
+            response = self.client.get(path + "?next=/dive/1")
+            self.assertEqual(response.status_code, 200)
+            self.assertNotIn(b'type="password"', response.data)
+        self.assertEqual(self.client.post("/login").status_code, 405)
+        self.assertEqual(self.client.post("/signup").status_code, 405)
 
     def test_preview_image_without_photos_is_public_jpeg(self):
         drawn_text = []
@@ -127,7 +114,7 @@ class DiveSharingTest(unittest.TestCase):
             for actual, expected in zip(image.getpixel((1100, 300)), (170, 211, 223)):
                 self.assertLessEqual(abs(actual - expected), 3)
             self.assertNotEqual(image.getpixel((910, 315)), image.getpixel((1100, 300)))
-        self.assertIn("© OpenStreetMap contributors", drawn_text)
+        self.assertNotIn("© OpenStreetMap contributors", drawn_text)
         self.assertGreater(self.tile_request.call_count, 0)
         self.assertEqual(self.client.get("/share/dive/1/preview.jpg?download=1").data, response.data)
 

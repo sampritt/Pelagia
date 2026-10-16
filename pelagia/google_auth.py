@@ -1,4 +1,4 @@
-"""Optional Google sign-in, using validated OpenID Connect identities."""
+"""Google-only sign-in, using validated OpenID Connect identities."""
 
 import secrets
 import time
@@ -34,13 +34,7 @@ def init_app(app):
 
 
 def template_context():
-    linked = False
-    if is_available() and session.get("user_id"):
-        user = database.get_db().execute(
-            "SELECT google_subject FROM users WHERE id = ?", (session["user_id"],)
-        ).fetchone()
-        linked = bool(user and user["google_subject"])
-    return {"google_login_available": is_available(), "google_is_linked": linked, "google_csrf_token": csrf_token}
+    return {"google_login_available": is_available(), "google_csrf_token": csrf_token}
 
 
 def csrf_token():
@@ -64,7 +58,7 @@ def clear_flow():
             session.pop(key, None)
 
 
-def begin_flow(mode):
+def begin_flow():
     from . import _safe_next_url, auth_landing_url
     if not is_available():
         abort(404)
@@ -72,8 +66,8 @@ def begin_flow(mode):
     session.pop("google_pending", None)
     state = secrets.token_urlsafe(32)
     session["google_flow"] = {
-        "state": state, "mode": mode, "user_id": session.get("user_id"), "started_at": time.time(),
-        "next": _safe_next_url(request.args.get("next")) if mode == "login" else url_for("profile"),
+        "state": state, "user_id": session.get("user_id"), "started_at": time.time(),
+        "next": _safe_next_url(request.args.get("next")),
     }
     redirect_uri = current_app.config.get("GOOGLE_REDIRECT_URI") or url_for("google_auth.callback", _external=True)
     try:
@@ -84,7 +78,7 @@ def begin_flow(mode):
         next_url = session["google_flow"]["next"]
         clear_flow()
         flash("Google sign-in is temporarily unavailable. Please try again.")
-        return redirect(url_for("profile") if mode == "link" else auth_landing_url(next_url))
+        return redirect(auth_landing_url(next_url))
 
 
 @bp.get("/login")
@@ -92,18 +86,7 @@ def login():
     from . import _safe_next_url
     if session.get("user_id"):
         return redirect(_safe_next_url(request.args.get("next")))
-    return begin_flow("login")
-
-
-@bp.post("/link")
-def link():
-    if not is_available():
-        abort(404)
-    user = database.get_db().execute("SELECT id FROM users WHERE id = ?", (session.get("user_id"),)).fetchone()
-    if not user:
-        return redirect(url_for("landing"))
-    check_csrf()
-    return begin_flow("link")
+    return begin_flow()
 
 
 @bp.get("/callback")
@@ -119,11 +102,11 @@ def callback():
         or time.time() - flow["started_at"] > FLOW_TTL_SECONDS
         or flow["user_id"] != session.get("user_id")
     ):
-        destination = url_for("landing") if (flow or {}).get("mode") == "link" else auth_landing_url(_safe_next_url((flow or {}).get("next")))
+        destination = auth_landing_url(_safe_next_url((flow or {}).get("next")))
         clear_flow()
         flash("Your Google sign-in expired. Please start again.")
         return redirect(destination)
-    destination = url_for("profile") if flow["mode"] == "link" else auth_landing_url(_safe_next_url(flow.get("next")))
+    destination = auth_landing_url(_safe_next_url(flow.get("next")))
     try:
         # Authlib checks state and validates the ID token's signature, issuer,
         # audience, expiry and nonce. Do not substitute unverified token data.
@@ -148,8 +131,6 @@ def callback():
 
     db = database.get_db()
     user = db.execute("SELECT id FROM users WHERE google_subject = ?", (identity["sub"],)).fetchone()
-    if flow["mode"] == "link":
-        return link_identity(identity, flow["user_id"], user)
     if user:
         db.execute("UPDATE users SET google_email = ? WHERE id = ?", (identity["email"], user["id"]))
         db.commit()
@@ -158,33 +139,6 @@ def callback():
     session.clear()
     session["google_pending"] = {"sub": identity["sub"], "email": identity["email"], "started_at": time.time(), "next": flow.get("next")}
     return redirect(url_for("google_auth.signup"))
-
-
-def link_identity(identity, user_id, existing_identity):
-    db = database.get_db()
-    user = db.execute("SELECT google_subject FROM users WHERE id = ?", (user_id,)).fetchone()
-    if not user:
-        session.clear()
-        return redirect(url_for("landing"))
-    if existing_identity and existing_identity["id"] != user_id:
-        flash("That Google account is already linked to another Pelagia account.")
-    elif user["google_subject"] and user["google_subject"] != identity["sub"]:
-        flash("Your Pelagia account already has a different Google account linked.")
-    else:
-        try:
-            # The conditional update also protects against concurrent linking.
-            updated = db.execute(
-                "UPDATE users SET google_subject = ?, google_email = ? "
-                "WHERE id = ? AND (google_subject IS NULL OR google_subject = ?)",
-                (identity["sub"], identity["email"], user_id, identity["sub"]),
-            )
-            db.commit()
-        except IntegrityError:
-            db.rollback()
-            flash("That Google account is already linked to another Pelagia account.")
-        else:
-            flash("Google sign-in is now linked to your account." if updated.rowcount else "Your account already has another Google account linked.")
-    return redirect(url_for("profile"))
 
 
 def finish_login(user_id, next_url=None):
@@ -216,10 +170,8 @@ def signup():
         else:
             db = database.get_db()
             try:
-                # An empty hash explicitly disables password login and avoids
-                # rebuilding the legacy users table and its foreign keys.
                 cur = db.execute(
-                    "INSERT INTO users (username, password_hash, google_subject, google_email) VALUES (?, '', ?, ?)",
+                    "INSERT INTO users (username, google_subject, google_email) VALUES (?, ?, ?)",
                     (username, pending["sub"], pending["email"]),
                 )
                 db.commit()

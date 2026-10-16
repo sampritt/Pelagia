@@ -26,6 +26,19 @@ def init_db():
     db = get_db()
     schema = Path(current_app.root_path, "schema.sql").read_text()
     db.executescript(schema)
+    # Remove retired credentials without rebuilding users or changing its IDs.
+    if "password_hash" in {row["name"] for row in db.execute("PRAGMA table_info(users)")}:
+        db.execute("ALTER TABLE users DROP COLUMN password_hash")
+    _ensure_column(db, "users", "bio", "TEXT")
+    _ensure_column(db, "users", "starting_dive_count", "INTEGER NOT NULL DEFAULT 0 CHECK (starting_dive_count >= 0)")
+    _ensure_column(db, "users", "certification_id", "INTEGER REFERENCES certifications(id) ON DELETE SET NULL")
+    db.executemany(
+        "INSERT OR IGNORE INTO certifications (name, sort_order) VALUES (?, ?)",
+        [(name, index) for index, name in enumerate((
+            "Open Water Diver", "Advanced Ocean Water Diver", "Rescue Diver", "Divemaster",
+            "Master Diver", "Assistant Instructor", "Instructor", "Master Scube Dive Trainer", "Course Director",
+        ))],
+    )
     _ensure_column(db, "users", "google_subject", "TEXT")
     _ensure_column(db, "users", "google_email", "TEXT")
     db.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_users_google_subject ON users(google_subject)")

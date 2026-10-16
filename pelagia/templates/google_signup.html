@@ -1,18 +1,13 @@
-{% extends "landing.html" %}
-{% block title %}Choose your username - Pelagia{% endblock %}
+{% extends "auth.html" %}
+{% block title %}Choose your username — Pelagia{% endblock %}
 {% block auth_content %}
-<div class="auth-header">
-    <p class="eyebrow">One more step</p>
-    <h2>Choose your username</h2>
-</div>
-<p class="auth-help">This is the public name shown on your profile and dives. Your Google email stays private.</p>
+<h1 id="signinTitle">Choose your username</h1>
+<p class="signin-description">Your public name on your profile and dives. Your Google email stays private.</p>
 <form class="auth-form" method="post" action="{{ url_for('google_auth.signup') }}">
     <input type="hidden" name="csrf_token" value="{{ google_csrf_token() }}">
-    <label>
-        Username
-        <input name="username" autocomplete="username" minlength="3" maxlength="40" value="{{ username }}" required autofocus>
-    </label>
-    <button class="primary-button" type="submit">Create account</button>
+    <label for="publicUsername">Username</label>
+    <input id="publicUsername" name="username" autocomplete="nickname" minlength="3" maxlength="40" value="{{ username }}" aria-describedby="usernameHelp" required autofocus>
+    <small id="usernameHelp">3–40 characters.</small>
+    <button class="welcome-button" type="submit">Create account <span aria-hidden="true">↗</span></button>
 </form>
-<p class="auth-help">Already have a Pelagia account? <a href="{{ url_for('landing', next=auth_next) }}">Log in with your username</a>, then link Google from your profile to keep your dives.</p>
 {% endblock %}

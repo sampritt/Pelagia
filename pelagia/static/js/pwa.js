@@ -63,6 +63,12 @@
         const rect = dialog.getBoundingClientRect();
         if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) dialog.close();
     });
+    document.querySelectorAll("[data-pwa-guide]").forEach((button) => {
+        button.addEventListener("click", () => {
+            dialogTrigger = button;
+            dialog?.showModal();
+        });
+    });
     syncInstallation();
 
     function syncConnection() {

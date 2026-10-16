@@ -4,7 +4,14 @@
 {% block content %}
 {% set has_coords = site.latitude is not none and site.longitude is not none %}
 <section class="profile-layout">
-    <div class="profile-hero center-profile-hero">
+    <div class="site-profile-header">
+    <div class="mini-map site-map-banner {{ 'map-pending' if not has_coords else '' }}" role="region" aria-label="Map of {{ site.name }}" {% if has_coords %}data-static-map data-map-lat="{{ site.latitude }}" data-map-lng="{{ site.longitude }}" data-map-zoom="11"{% endif %}>
+        {% if has_coords %}<span class="map-pin"></span>{% endif %}
+        <span class="coordinate-label">
+            {% if has_coords %}{{ "%.5f"|format(site.latitude) }}, {{ "%.5f"|format(site.longitude) }}{% else %}Coordinates pending{% endif %}
+        </span>
+    </div>
+    <div class="entity-profile-header site-profile-identity">
         <div class="center-avatar site-avatar">
             <span>{{ site.name[:1]|upper }}</span>
         </div>
@@ -18,6 +25,7 @@
                 </button>
             </div>
         </div>
+    </div>
     </div>
 
     <div class="site-conditions-panel">
@@ -45,17 +53,6 @@
                 <span>{{ optional_metric(conditions.air_temp_c, '°C') }}</span>
             </div>
         </div>
-    </div>
-
-    <div class="mini-map center-map {{ 'map-pending' if not has_coords else '' }}" {% if has_coords %}data-static-map data-map-lat="{{ site.latitude }}" data-map-lng="{{ site.longitude }}" data-map-zoom="11"{% endif %}>
-        <span class="map-pin"></span>
-        <span class="coordinate-label">
-            {% if has_coords %}
-                {{ "%.5f"|format(site.latitude) }}, {{ "%.5f"|format(site.longitude) }}
-            {% else %}
-                Coordinates pending
-            {% endif %}
-        </span>
     </div>
 
     <div class="site-chart-block">

@@ -148,7 +148,7 @@ class ReferenceAutocompleteTest(unittest.TestCase):
                     schema = schema.replace(f"{field} REAL", f"{field} INTEGER")
                 with sqlite3.connect(db_path) as conn:
                     conn.executescript(schema)
-                    conn.execute("INSERT INTO users (id, username, password_hash) VALUES (1, 'legacy', 'hash')")
+                    conn.execute("INSERT INTO users (id, username) VALUES (1, 'legacy')")
                     conn.execute("""INSERT INTO dives (id, user_id, date, site_name, depth_m, average_depth_m, duration_min,
                                    starting_pressure_bar, ending_pressure_bar, visibility_m, air_temp_c, water_temp_c, sac_rate_l_min,
                                    dive_types_json, current_types_json)
@@ -246,7 +246,7 @@ class ReferenceAutocompleteTest(unittest.TestCase):
                 old_schema = schema.replace("    dive_types_json TEXT,\n", "").replace("    current_types_json TEXT,\n", "")
                 with sqlite3.connect(db_path) as conn:
                     conn.executescript(old_schema)
-                    conn.execute("INSERT INTO users (id, username, password_hash) VALUES (1, 'legacy', 'hash')")
+                    conn.execute("INSERT INTO users (id, username) VALUES (1, 'legacy')")
                     conn.execute("""INSERT INTO dives (user_id, date, site_name, dive_type, current, current_strength)
                                     VALUES (1, '2026-10-13', 'Legacy dive', 'wall', 'rip', 'strong')""")
             app, db_path, _ = self.make_app(Path(tmp_dir), prepare_db=prepare_db)
@@ -366,7 +366,7 @@ class ReferenceAutocompleteTest(unittest.TestCase):
                 schema = (Path(__file__).resolve().parents[1] / "pelagia/schema.sql").read_text()
                 with sqlite3.connect(db_path) as conn:
                     conn.executescript(schema.replace("    average_depth_m REAL,\n", ""))
-                    conn.execute("INSERT INTO users (id, username, password_hash) VALUES (1, 'legacy', 'hash')")
+                    conn.execute("INSERT INTO users (id, username) VALUES (1, 'legacy')")
                     conn.execute("""INSERT INTO dives (user_id, date, site_name, depth_m, duration_min, sac_rate_l_min)
                                     VALUES (1, '2026-07-22', 'Legacy dive', 20, 50, 17.5)""")
             app, db_path, _ = self.make_app(Path(tmp_dir), prepare_db=prepare_db)
@@ -480,7 +480,7 @@ class ReferenceAutocompleteTest(unittest.TestCase):
                 schema = (Path(__file__).resolve().parents[1] / "pelagia/schema.sql").read_text()
                 with sqlite3.connect(db_path) as conn:
                     conn.executescript(schema.replace("depth_m REAL NOT NULL", "depth_m INTEGER NOT NULL"))
-                    conn.execute("INSERT INTO users (id, username, password_hash) VALUES (1, 'legacy', 'hash')")
+                    conn.execute("INSERT INTO users (id, username) VALUES (1, 'legacy')")
                     conn.execute("INSERT INTO dive_sites (id, master_site_id, name) VALUES (1, 'DS1', 'Alert Rock')")
                     for depth in (15, 15.3):
                         conn.execute("""INSERT INTO dives (user_id, dive_site_id, date, site_name, depth_m, average_depth_m, duration_min)
@@ -615,7 +615,7 @@ class ReferenceAutocompleteTest(unittest.TestCase):
                 schema = (Path(__file__).resolve().parents[1] / "pelagia/schema.sql").read_text()
                 with sqlite3.connect(db_path) as conn:
                     conn.executescript(schema.replace("    sac_rate_l_min REAL,\n", ""))
-                    conn.execute("INSERT INTO users (id, username, password_hash) VALUES (1, 'legacy', 'hash')")
+                    conn.execute("INSERT INTO users (id, username) VALUES (1, 'legacy')")
                     conn.execute("""INSERT INTO dives (user_id, date, site_name, depth_m, duration_min,
                                    starting_pressure_bar, ending_pressure_bar) VALUES (1, '2026-07-22', 'Legacy dive', 20, 50, 200, 50)""")
             app, db_path, _ = self.make_app(Path(tmp_dir), prepare_db=prepare_db)
@@ -690,7 +690,13 @@ Kelp House,2 Harbor Way,Alaska,https://kelp.example.test
         return app, db_path, config_path
 
     def signup(self, client, username="tester"):
-        client.post("/signup", data={"username": username, "password": "password"})
+        with client.application.app_context():
+            conn = database.get_db()
+            conn.execute("INSERT OR IGNORE INTO users (username, google_subject) VALUES (?, ?)", (username, "test-" + username))
+            conn.commit()
+            user_id = conn.execute("SELECT id FROM users WHERE username = ?", (username,)).fetchone()[0]
+        with client.session_transaction() as session:
+            session["user_id"] = user_id
 
     def test_reference_autocomplete_endpoints_return_imported_data(self):
         with tempfile.TemporaryDirectory() as tmp_dir:
@@ -760,7 +766,7 @@ Kelp House,2 Harbor Way,Alaska,https://kelp.example.test
             client.post("/logout")
             self.signup(client, "buddy")
             client.post("/logout")
-            client.post("/login", data={"username": "tester", "password": "password"})
+            self.signup(client, "tester")
 
             users = client.get("/api/users?q=bud").get_json()
             self.assertEqual(users[0]["username"], "buddy")
@@ -912,13 +918,12 @@ Kelp House,2 Harbor Way,Alaska,https://kelp.example.test
                     CREATE TABLE users (
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
                         username TEXT NOT NULL UNIQUE COLLATE NOCASE,
-                        password_hash TEXT NOT NULL,
                         profile_photo TEXT,
                         created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
                     )
                     """
                 )
-                conn.execute("INSERT INTO users (id, username, password_hash) VALUES (1, 'legacy', 'unused')")
+                conn.execute("INSERT INTO users (id, username) VALUES (1, 'legacy')")
                 conn.execute(
                     """
                     CREATE TABLE dives (
@@ -1421,12 +1426,12 @@ Kelp House,2 Harbor Way,Alaska,https://kelp.example.test
             self.assertIn(b"Alert Rock", edit_response.data)
 
             client.post("/logout")
-            client.post("/signup", data={"username": "viewer", "password": "password"})
+            self.signup(client, "viewer")
             foreign_dive = client.get(f"/api/dives/{dive_id}").get_json()
             self.assertFalse(foreign_dive["is_owner"])
             self.assertEqual(client.get(f"/dive/{dive_id}/edit").status_code, 404)
             client.post("/logout")
-            client.post("/login", data={"username": "tester", "password": "password"})
+            self.signup(client, "tester")
 
             update_response = client.post(
                 f"/dive/{dive_id}/edit",
@@ -1543,12 +1548,10 @@ Kelp House,2 Harbor Way,Alaska,https://kelp.example.test
             profile_response = client.get("/you")
             self.assertEqual(profile_response.status_code, 200)
             profile_html = profile_response.data
-            self.assertLess(profile_html.index(b"<small>dives</small>"), profile_html.index(b"<small>max depth</small>"))
-            self.assertLess(profile_html.index(b"<small>max depth</small>"), profile_html.index(b"<small>longest dive</small>"))
-            self.assertLess(profile_html.index(b"<small>longest dive</small>"), profile_html.index(b"<small>total minutes</small>"))
-            self.assertIn(b"<span>12 <em>m</em></span><small>max depth</small>", profile_html)
-            self.assertIn(b"<span>70 <em>min</em></span><small>longest dive</small>", profile_html)
-            self.assertIn(b"<span>70</span><small>total minutes</small>", profile_html)
+            self.assertLess(profile_html.index(b"<small>Dives</small>"), profile_html.index(b"<small>Max depth</small>"))
+            self.assertNotIn(b"<small>SAC rate</small>", profile_html)
+            self.assertIn(b"<small>Max depth</small><span>12 <em>m</em></span>", profile_html)
+            self.assertIn(b"SAC over time", profile_html)
             self.assertNotIn(b"View map", profile_html)
             self.assertNotIn(b"profile-map", profile_html)
             self.assertNotIn(b"<small>countries</small>", profile_html)

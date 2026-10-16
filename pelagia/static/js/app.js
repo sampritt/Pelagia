@@ -71,16 +71,6 @@ function ensureTileLayer(container, className = "map-tile-layer") {
     return layer;
 }
 
-function ensureAttribution(container) {
-    if (container.querySelector(".map-attribution")) {
-        return;
-    }
-    const attribution = document.createElement("span");
-    attribution.className = "map-attribution";
-    attribution.innerHTML = '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap contributors</a>';
-    container.appendChild(attribution);
-}
-
 function renderTileGrid(layer, { centerPoint, zoom, width, height }) {
     const originX = centerPoint.x - width / 2;
     const originY = centerPoint.y - height / 2;
@@ -138,7 +128,6 @@ function renderMiniTileMap(map) {
         pin.style.left = "50%";
         pin.style.top = "50%";
     }
-    ensureAttribution(map);
 }
 
 function initStaticMaps(root = document) {
@@ -256,56 +245,6 @@ function initDiveInteractions() {
     if (params.has("open")) {
         openDive(params.get("open"));
     }
-}
-
-function initAuthToggle() {
-    const panel = document.querySelector("[data-auth-panel]");
-    if (!panel) {
-        return;
-    }
-    const tabs = Array.from(panel.querySelectorAll("[data-auth-tab]"));
-    const form = panel.querySelector("[data-auth-form]");
-    if (!form || !tabs.length) {
-        return;
-    }
-    const title = panel.querySelector(".auth-header h2");
-    const submitButton = panel.querySelector("[data-auth-submit-button]");
-    const username = form?.querySelector("input[name='username']");
-    const password = form?.querySelector("input[name='password']");
-    const setMode = (mode) => {
-        const activeTab = tabs.find((tab) => tab.dataset.authTab === mode) || tabs[0];
-        tabs.forEach((tab) => {
-            const active = tab === activeTab;
-            tab.classList.toggle("active", active);
-            tab.setAttribute("aria-selected", String(active));
-        });
-        form.action = activeTab.dataset.authAction;
-        if (title) {
-            title.textContent = activeTab.dataset.authTitle;
-        }
-        if (submitButton) {
-            submitButton.textContent = activeTab.dataset.authSubmit;
-        }
-        if (username) {
-            if (activeTab.dataset.authTab === "signup") {
-                username.minLength = 3;
-            } else {
-                username.removeAttribute("minlength");
-            }
-        }
-        if (password) {
-            password.autocomplete = activeTab.dataset.authTab === "signup" ? "new-password" : "current-password";
-            if (activeTab.dataset.authTab === "signup") {
-                password.minLength = 6;
-            } else {
-                password.removeAttribute("minlength");
-            }
-        }
-    };
-    tabs.forEach((tab) => {
-        tab.addEventListener("click", () => setMode(tab.dataset.authTab));
-    });
-    setMode(panel.dataset.authMode || "login");
 }
 
 function initDiveSharing() {
@@ -1323,8 +1262,128 @@ function initArrowNavigation(form) {
     });
 }
 
+function initProfileSettings() {
+    const dialog = document.querySelector("[data-profile-settings]");
+    if (!dialog) return;
+    document.querySelector("[data-profile-settings-open]")?.addEventListener("click", () => dialog.showModal());
+    dialog.querySelector("[data-profile-settings-close]")?.addEventListener("click", () => dialog.close());
+    dialog.addEventListener("click", (event) => {
+        if (event.target !== dialog) return;
+        const bounds = dialog.getBoundingClientRect();
+        if (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom) dialog.close();
+    });
+}
+
+function initCertificationPicker(picker) {
+    const form = picker.querySelector("form");
+    const input = picker.querySelector("[data-certification-input]");
+    const hidden = picker.querySelector("[data-certification-value]");
+    const results = picker.querySelector("[data-certification-results]");
+    const status = picker.querySelector("[data-certification-status]");
+    let options = [];
+    let active = -1;
+    let requestId = 0;
+    let selected = false;
+    const close = () => {
+        results.hidden = true;
+        input.setAttribute("aria-expanded", "false");
+        input.removeAttribute("aria-activedescendant");
+        active = -1;
+    };
+    const choose = (option) => {
+        hidden.value = String(option.id);
+        selected = true;
+        close();
+        form.requestSubmit();
+    };
+    const search = async () => {
+        const id = ++requestId;
+        try {
+            const response = await fetch(`/api/certifications?${new URLSearchParams({ q: input.value.trim() })}`);
+            if (!response.ok) throw new Error("Certification search failed");
+            const matches = await response.json();
+            if (id !== requestId || !picker.open) return;
+            options = matches;
+            active = -1;
+            input.removeAttribute("aria-activedescendant");
+            results.replaceChildren();
+            options.forEach((option, index) => {
+                const button = document.createElement("button");
+                button.type = "button";
+                button.id = `certification-option-${option.id}`;
+                button.setAttribute("role", "option");
+                button.setAttribute("aria-selected", "false");
+                button.tabIndex = -1;
+                button.textContent = option.name;
+                button.addEventListener("click", () => choose(option));
+                results.appendChild(button);
+            });
+            results.hidden = options.length === 0;
+            input.setAttribute("aria-expanded", String(options.length > 0));
+            status.textContent = options.length ? "Choose a certification from the suggestions." : "No matching certifications. Try another search.";
+        } catch (_error) {
+            if (id !== requestId) return;
+            close();
+            status.textContent = "Couldn’t load certifications. Type to try again.";
+        }
+    };
+    picker.addEventListener("toggle", () => {
+        if (picker.open) input.focus();
+        else { requestId += 1; close(); }
+    });
+    input.addEventListener("focus", search);
+    input.addEventListener("input", () => {
+        hidden.value = "";
+        selected = false;
+        requestId += 1;
+        close();
+        queueSearch();
+    });
+    const queueSearch = debounce(search, 120);
+    input.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") { event.preventDefault(); picker.open = false; picker.querySelector("summary").focus(); return; }
+        if (event.key === "Enter") {
+            event.preventDefault();
+            if (!results.hidden && active >= 0) choose(options[active]);
+            return;
+        }
+        if (!["ArrowDown", "ArrowUp"].includes(event.key) || results.hidden) return;
+        event.preventDefault();
+        active = event.key === "ArrowDown" ? (active + 1) % options.length : (active <= 0 ? options.length - 1 : active - 1);
+        Array.from(results.children).forEach((button, index) => button.setAttribute("aria-selected", String(index === active)));
+        input.setAttribute("aria-activedescendant", results.children[active].id);
+        results.children[active].scrollIntoView({ block: "nearest" });
+    });
+    form.addEventListener("submit", (event) => {
+        if (!selected) { event.preventDefault(); status.textContent = "Choose a certification from the suggestions."; }
+    });
+    document.addEventListener("click", (event) => {
+        if (!picker.contains(event.target)) { picker.open = false; close(); }
+    });
+}
+
+function initUserProfile() {
+    document.querySelectorAll("[data-certification-picker]").forEach(initCertificationPicker);
+    const bioForm = document.querySelector("[data-bio-form]");
+    const edit = document.querySelector("[data-bio-edit]");
+    if (bioForm && edit) {
+        edit.setAttribute("aria-expanded", "false");
+        edit.addEventListener("click", () => {
+            bioForm.hidden = !bioForm.hidden;
+            edit.setAttribute("aria-expanded", String(!bioForm.hidden));
+            if (!bioForm.hidden) bioForm.querySelector("textarea").focus();
+        });
+        bioForm.querySelector("[data-bio-cancel]").addEventListener("click", () => {
+            bioForm.reset();
+            bioForm.hidden = true;
+            edit.setAttribute("aria-expanded", "false");
+            edit.focus();
+        });
+    }
+}
+
 document.addEventListener("DOMContentLoaded", () => {
-    initAuthToggle();
+    initProfileSettings();
     initDiveSharing();
     initDiveInteractions();
     initGlobalSearch();
@@ -1332,6 +1391,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const diveForm = document.querySelector("[data-dive-form]");
     if (diveForm) initGasMix(diveForm);
     initStaticMaps(document);
+    initUserProfile();
 });
 
 window.openDive = openDive;

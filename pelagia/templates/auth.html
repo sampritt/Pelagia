@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Sign up' if auth_mode == 'signup' else 'Log in' }} — Pelagia{% endblock %}
+{% block body_class %}welcome-body auth-body{% endblock %}
+{% block head %}<meta name="robots" content="noindex, follow">{% endblock %}
+{% block content %}
+<div class="auth-page">
+    <a class="welcome-wordmark auth-brand" href="{{ url_for('landing') }}"><img src="{{ url_for('static', filename='img/pelagia-mark.svg') }}" width="32" height="32" alt="">Pelagia</a>
+    <div class="auth-layout">
+        <div class="auth-intro"><p>Log your dive.<br>Find your buddy.</p></div>
+        <section class="signin-card" aria-labelledby="signinTitle">
+            {% block auth_content %}
+            <h1 id="signinTitle">{{ 'Sign up for Pelagia' if auth_mode == 'signup' else 'Log in to Pelagia' }}</h1>
+            {% if google_login_available %}
+            <a class="google-button" href="{{ url_for('google_auth.login', next=auth_next) }}">{% include '_google_mark.html' %}Continue with Google</a>
+            {% else %}
+            <p class="signin-unavailable" role="status">Google sign-in is temporarily unavailable. Please try again later.</p>
+            {% endif %}
+            <p class="signin-switch">{{ 'Already have an account?' if auth_mode == 'signup' else 'New to Pelagia?' }} <a href="{{ url_for('login' if auth_mode == 'signup' else 'signup', next=auth_next) }}">{{ 'Log in' if auth_mode == 'signup' else 'Sign up' }}</a></p>
+            {% endblock %}
+            <p class="signin-legal">By continuing, you agree to our <a href="{{ url_for('terms') }}">Terms of Use</a> and <a href="{{ url_for('privacy') }}">Privacy Policy</a>.</p>
+        </section>
+    </div>
+    <a class="auth-back" href="{{ url_for('landing') }}">← Back to Pelagia</a>
+</div>
+{% endblock %}

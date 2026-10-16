@@ -84,7 +84,7 @@ class PWATest(unittest.TestCase):
         anonymous = self.get("/offline.html").data
         with self.app.app_context():
             database = db.get_db()
-            database.execute("INSERT INTO users (username, password_hash, google_email) VALUES ('PRIVATE-USERNAME', '', 'PRIVATE-EMAIL')")
+            database.execute("INSERT INTO users (username, google_email) VALUES ('PRIVATE-USERNAME', 'PRIVATE-EMAIL')")
             database.commit()
         with self.client.session_transaction() as session:
             session["user_id"] = 1
@@ -94,10 +94,10 @@ class PWATest(unittest.TestCase):
         self.assertIn(b"data-pwa-retry", authenticated)
 
     def test_install_guidance_is_available_on_login_and_own_profile(self):
-        self.assertIn(b"data-pwa-install hidden", self.get("/").data)
+        self.assertIn(b"data-pwa-guide", self.get("/").data)
         with self.app.app_context():
             database = db.get_db()
-            database.execute("INSERT INTO users (username, password_hash) VALUES ('diver', '')")
+            database.execute("INSERT INTO users (username) VALUES ('diver')")
             database.commit()
         with self.client.session_transaction() as session:
             session["user_id"] = 1

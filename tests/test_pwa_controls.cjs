@@ -12,6 +12,7 @@ function element() {
 
 async function setup(options = {}) {
     const install = element();
+    const guide = element();
     const close = element();
     const dialog = element();
     dialog.querySelector = () => close;
@@ -21,7 +22,7 @@ async function setup(options = {}) {
     const classes = new Set();
     const document = element();
     document.documentElement = {classList: {toggle(name, enabled) {if (enabled) classes.add(name); else classes.delete(name);}}, style: {setProperty() {}}};
-    document.querySelectorAll = () => [install];
+    document.querySelectorAll = selector => selector === "[data-pwa-guide]" ? [guide] : [install];
     document.querySelector = selector => selector === "[data-pwa-install-dialog]" ? dialog : parts[selector.match(/data-pwa-(.*)\]/)[1]];
     document.referrer = options.referrer || "";
     document.visibilityState = "visible";
@@ -53,7 +54,7 @@ async function setup(options = {}) {
     const warnings = [];
     vm.runInContext(fs.readFileSync(path.join(__dirname, "../pelagia/static/js/pwa.js"), "utf8"), vm.createContext({window, document, navigator, URL, console: {warn: (...args) => warnings.push(args)}}));
     await new Promise(resolve => setImmediate(resolve));
-    return {install, close, dialog, parts, classes, window, document, navigator, serviceWorker, registration, worker, messages, registrations, warnings, displayMode,
+    return {install, guide, close, dialog, parts, classes, window, document, navigator, serviceWorker, registration, worker, messages, registrations, warnings, displayMode,
         get reloads() {return reloads;}, get backs() {return backs;}, get checks() {return checks;}};
 }
 
@@ -173,4 +174,16 @@ test("the mobile navigation clears the keyboard and offline retry reloads the cu
     assert.equal(s.classes.has("pwa-keyboard-open"), false);
     s.parts.retry.handlers.click();
     assert.equal(s.reloads, 1);
+});
+
+
+test("Download opens guidance on every browser and restores focus when closed", async () => {
+    for (const options of [{}, {secure: false}, {standalone: true}, {ios: true}]) {
+        const s = await setup(options);
+        s.guide.handlers.click();
+        assert.equal(s.dialog.open, true);
+        s.close.handlers.click();
+        assert.equal(s.dialog.open, false);
+        assert.equal(s.guide.focused, true);
+    }
 });

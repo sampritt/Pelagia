@@ -152,7 +152,6 @@ def render_share_image(dive):
     # ocean artwork when no readable photo is attached and coordinates exist.
     uploads = Path(current_app.config["UPLOAD_FOLDER"]).resolve()
     media = None
-    is_map = False
     for photo in dive["photos"]:
         candidate = (uploads / photo["filename"].removeprefix("uploads/")).resolve()
         if not candidate.is_relative_to(uploads) or not candidate.is_file():
@@ -165,7 +164,6 @@ def render_share_image(dive):
             continue
     if media is None:
         media = render_static_map(dive["latitude"], dive["longitude"])
-        is_map = media is not None
     if media is None:
         try:
             with Image.open(Path(current_app.static_folder, "img/ocean-hero-v2.jpg")) as artwork:
@@ -183,12 +181,6 @@ def render_share_image(dive):
     mark = _brand_mark()
     image.paste(mark, (56, 48), mark)
     draw = ImageDraw.Draw(image)
-    if is_map:
-        attribution = "© OpenStreetMap contributors"
-        font = _font(16)
-        text_width = draw.textlength(attribution, font=font)
-        draw.rounded_rectangle((1182 - text_width - 10, 591, 1192, 621), radius=6, fill="#062a46")
-        draw.text((1182 - text_width, 598), attribution, font=font, fill="white", anchor="lt")
     draw.text((124, 57), "Pelagia", font=_font(34, bold=True), fill="white", anchor="lt")
     title_font, lines, title_step, title_height = _layout_title(draw, dive["site_name"])
     title_top = round(237 - title_height / 2) if len(lines) > 1 else 197

@@ -1,0 +1,6 @@
+FAIL account username=pelagia_load_20260725121459main_11 signup_http=000 login_http=000
+FAIL account username=pelagia_load_20260725121459main_12 signup_http=000 login_http=000
+FAIL account username=pelagia_load_20260725121459main_13 signup_http=000 login_http=000
+FAIL account username=pelagia_load_20260725121459main_14 signup_http=000 login_http=000
+FAIL account username=pelagia_load_20260725121459main_15 signup_http=000 login_http=000
+SUMMARY run_id=20260725121459main start=11 count=5 accounts_ok=0 dives_ok=0 dives_fail=0

@@ -1,16 +1,18 @@
 import json
 import math
 import os
+import re
+import unicodedata
 import statistics
 import uuid
 from datetime import date, timedelta
 from functools import wraps
 from pathlib import Path
-from sqlite3 import IntegrityError
 from urllib.parse import parse_qs, urlencode, urlsplit
 
 from flask import (
     Flask,
+    Response,
     abort,
     current_app,
     flash,
@@ -23,8 +25,6 @@ from flask import (
     session,
     url_for,
 )
-from werkzeug.security import check_password_hash, generate_password_hash
-from werkzeug.utils import secure_filename
 from PIL import Image, ImageOps, UnidentifiedImageError
 
 from . import db as database
@@ -71,6 +71,8 @@ def create_app(test_config=None):
         SESSION_COOKIE_SAMESITE="Lax",
         PERMANENT_SESSION_LIFETIME=timedelta(days=30),
         SESSION_REFRESH_EACH_REQUEST=True,
+        PELAGIA_OPERATOR_NAME=os.environ.get("PELAGIA_OPERATOR_NAME", "Pelagia"),
+        PELAGIA_CONTACT_EMAIL=os.environ.get("PELAGIA_CONTACT_EMAIL", ""),
     )
     if test_config:
         app.config.update(test_config)
@@ -142,6 +144,14 @@ def register_routes(app):
     app.jinja_env.globals["uploaded_file_url"] = uploaded_file_url
     app.jinja_env.globals["public_url"] = public_url
 
+    @app.get("/terms")
+    def terms():
+        return render_template("terms.html")
+
+    @app.get("/privacy")
+    def privacy():
+        return render_template("privacy.html")
+
     @app.route("/uploads/<path:filename>")
     def uploaded_file(filename):
         return send_from_directory(current_app.config["UPLOAD_FOLDER"], filename)
@@ -149,45 +159,30 @@ def register_routes(app):
     @app.route("/")
     def landing():
         auth_next = _safe_next_url(request.args.get("next"))
-        if session.get("user_id"):
+        if current_user():
             return redirect(auth_next)
-        return render_template("landing.html", auth_next=auth_next, auth_mode="signup" if request.args.get("mode") == "signup" else "login")
+        if request.args.get("mode") in ("login", "signup"):
+            return redirect(url_for("login", next=auth_next) if request.args["mode"] == "login" else "/signup?" + urlencode({"next": auth_next}))
+        return render_template("landing.html", auth_next=auth_next)
 
-    @app.route("/signup", methods=("POST",))
-    def signup():
-        auth_next = _safe_next_url(request.form.get("next"))
-        username = request.form.get("username", "").strip()
-        password = request.form.get("password", "")
-        if len(username) < 3 or len(password) < 6:
-            flash("Use a username of 3+ characters and a password of 6+ characters.")
-            return redirect(auth_landing_url(auth_next, "signup"))
-        try:
-            cur = database.get_db().execute(
-                "INSERT INTO users (username, password_hash) VALUES (?, ?)",
-                (username, generate_password_hash(password)),
-            )
-            database.get_db().commit()
-        except IntegrityError:
-            flash("That username is already taken.")
-            return redirect(auth_landing_url(auth_next, "signup"))
-        session.clear()
-        session["user_id"] = cur.lastrowid
-        session.permanent = True
-        return redirect(auth_next)
+    @app.get("/login", endpoint="login")
+    @app.get("/signup", endpoint="signup")
+    def auth_entry():
+        auth_next = _safe_next_url(request.args.get("next"))
+        if current_user():
+            return redirect(auth_next)
+        return render_template("auth.html", auth_next=auth_next,
+                               auth_mode="signup" if request.path == "/signup" else "login")
 
-    @app.route("/login", methods=("POST",))
-    def login():
-        auth_next = _safe_next_url(request.form.get("next"))
-        username = request.form.get("username", "").strip()
-        password = request.form.get("password", "")
-        user = database.get_db().execute("SELECT * FROM users WHERE username = ?", (username,)).fetchone()
-        if user is None or not user["password_hash"] or not check_password_hash(user["password_hash"], password):
-            flash("Username or password does not match.")
-            return redirect(auth_landing_url(auth_next))
-        session.clear()
-        session["user_id"] = user["id"]
-        session.permanent = True
-        return redirect(auth_next)
+    @app.get("/robots.txt")
+    def robots():
+        return Response("User-agent: *\nAllow: /$\nAllow: /terms$\nAllow: /privacy$\nAllow: /static/\nDisallow: /auth/\nDisallow: /api/\nDisallow: /uploads/\nDisallow: /login\nDisallow: /signup\nSitemap: " + public_url("sitemap") + "\n", mimetype="text/plain")
+
+    @app.get("/sitemap.xml")
+    def sitemap():
+        from xml.sax.saxutils import escape
+        urls = "".join(f"<url><loc>{escape(public_url(endpoint))}</loc></url>" for endpoint in ("landing", "terms", "privacy"))
+        return Response('<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' + urls + '</urlset>', mimetype="application/xml")
 
     @app.route("/logout", methods=("POST",))
     def logout():
@@ -268,7 +263,7 @@ def register_routes(app):
         dive = fetch_public_dive(dive_id)
         if dive is None:
             abort(404)
-        filename = secure_filename(dive["site_name"])[:80] or "logged-dive"
+        filename = _download_name(dive["site_name"])[:80] or "logged-dive"
         response = send_file(
             render_share_image(dive), mimetype="image/jpeg",
             download_name=f"pelagia-{filename}.jpg", as_attachment=request.args.get("download") == "1",
@@ -327,6 +322,34 @@ def register_routes(app):
     @login_required
     def profile():
         if request.method == "POST":
+            db = database.get_db()
+            if "starting_dive_count" in request.form:
+                try:
+                    starting_dive_count = int(request.form["starting_dive_count"].strip())
+                except ValueError:
+                    abort(400, "Starting dive count must be a non-negative whole number.")
+                if not 0 <= starting_dive_count <= 9223372036854775807:
+                    abort(400, "Starting dive count must be a non-negative whole number within the supported range.")
+                db.execute(
+                    "UPDATE users SET starting_dive_count = ? WHERE id = ?",
+                    (starting_dive_count, session["user_id"]),
+                )
+            if "bio" in request.form:
+                bio = request.form["bio"].strip()
+                if len(bio) > 500:
+                    abort(400, "Bio must be 500 characters or fewer.")
+                db.execute("UPDATE users SET bio = ? WHERE id = ?", (bio or None, session["user_id"]))
+            if "certification_id" in request.form:
+                certification_id = request.form["certification_id"].strip()
+                certification = db.execute(
+                    "SELECT id FROM certifications WHERE id = ?", (certification_id,)
+                ).fetchone() if certification_id else None
+                if certification_id and certification is None:
+                    abort(400, "Choose a certification from the suggestions.")
+                db.execute(
+                    "UPDATE users SET certification_id = ? WHERE id = ?",
+                    (certification["id"] if certification else None, session["user_id"]),
+                )
             photo = request.files.get("profile_photo")
             if photo and photo.filename and _allowed_file(photo.filename):
                 filename = _save_upload(photo, "profiles")
@@ -334,7 +357,7 @@ def register_routes(app):
                     "UPDATE users SET profile_photo = ? WHERE id = ?",
                     (filename, session["user_id"]),
                 )
-                database.get_db().commit()
+            db.commit()
             return redirect(url_for("profile"))
 
         user = current_user()
@@ -347,6 +370,15 @@ def register_routes(app):
         if user is None:
             abort(404)
         return render_user_profile(user, is_owner=user["id"] == session.get("user_id"))
+
+    @app.route("/api/certifications", methods=("GET",))
+    @login_required
+    def api_certifications():
+        query = request.args.get("q", "").strip().lower()
+        rows = database.get_db().execute(
+            "SELECT id, name FROM certifications ORDER BY sort_order, id"
+        ).fetchall()
+        return jsonify([dict(row) for row in rows if query in row["name"].lower()])
 
     @app.route("/api/sites", methods=("GET",))
     @login_required
@@ -699,24 +731,30 @@ class InvalidBuddyError(ValueError):
 def fetch_user(user_id):
     return (
         database.get_db()
-        .execute("SELECT id, username, profile_photo, created_at FROM users WHERE id = ?", (user_id,))
+        .execute("""SELECT u.id, u.username, u.profile_photo, u.bio, u.starting_dive_count, u.certification_id, u.created_at,
+                           c.name AS certification_name
+                    FROM users u LEFT JOIN certifications c ON c.id = u.certification_id
+                    WHERE u.id = ?""", (user_id,))
         .fetchone()
     )
 
 
 def render_user_profile(user, is_owner):
     stats = get_profile_stats(user["id"])
-    recent_dives = fetch_dives(
+    dives = fetch_dives(
         scope="mine",
         user_id=user["id"],
         viewer_user_id=session["user_id"],
-        limit=6,
+        limit=None,
     )
+    sac_history = get_profile_sac_history(user["id"])
     return render_template(
         "profile.html",
         user=user,
         stats=stats,
-        recent_dives=recent_dives,
+        total_dive_count=stats["summary"]["dive_count"] + user["starting_dive_count"],
+        dives=dives,
+        sac_history=sac_history,
         is_owner=is_owner,
     )
 
@@ -1160,7 +1198,7 @@ def fetch_dives(scope, user_id, limit=80, center_id=None, site_id=None, viewer_u
         clauses.append("d.dive_site_id = ?")
         params.append(site_id)
     where = "WHERE " + " AND ".join(clauses)
-    params.append(limit)
+    params.append(-1 if limit is None else limit)
     rows = database.get_db().execute(
         f"""
         SELECT
@@ -1263,6 +1301,47 @@ def hydrate_dive(row):
         (row["id"],),
     ).fetchall()
     return dive
+
+
+def get_profile_sac_history(user_id):
+    rows = database.get_db().execute(
+        """SELECT date, sac_rate_l_min FROM dives
+           WHERE user_id = ? AND COALESCE(is_deleted, 0) = 0 AND sac_rate_l_min IS NOT NULL
+           ORDER BY date, id""", (user_id,),
+    ).fetchall()
+    days = {}
+    rates = []
+    for row in rows:
+        rate = row["sac_rate_l_min"]
+        if not isinstance(rate, (int, float)) or not math.isfinite(rate) or rate < 0:
+            continue
+        rates.append(rate)
+        try:
+            day = date.fromisoformat(row["date"][:10])
+        except (TypeError, ValueError):
+            continue
+        days.setdefault(day, []).append(rate)
+    width, height, left, right, top, bottom = 800, 240, 48, 18, 18, 32
+    ceiling = max(5, math.ceil(max(rates, default=0) / 5) * 5)
+    first_day = min(days) if days else None
+    span = max((max(days) - first_day).days, 1) if days else 1
+    points = []
+    for day, day_rates in sorted(days.items()):
+        value = statistics.median(day_rates)
+        x = left + (day - first_day).days / span * (width - left - right) if len(days) > 1 else (width + left - right) / 2
+        points.append({
+            "date": day.isoformat(), "label": day.strftime("%b %d, %Y"),
+            "value": value, "display": f"{value:.1f}".removesuffix(".0"), "count": len(day_rates),
+            "x": round(x, 2), "y": round(height - bottom - value / ceiling * (height - top - bottom), 2),
+        })
+    median = statistics.median(rates) if rates else None
+    return {
+        "median": median, "count": len(rates), "points": points,
+        "width": width, "height": height, "left": left, "right": right,
+        "top": top, "bottom": bottom,
+        "polyline": " ".join(f"{p['x']:g},{p['y']:g}" for p in points),
+        "ticks": [{"value": f"{ceiling * step / 4:g}", "y": height - bottom - step / 4 * (height - top - bottom)} for step in range(5)],
+    }
 
 
 def get_profile_stats(user_id):
@@ -1858,8 +1937,9 @@ def uploaded_file_url(filename):
 
 
 def _save_upload(file_storage, folder):
-    safe_name = secure_filename(file_storage.filename)
-    suffix = safe_name.rsplit(".", 1)[-1].lower()
+    suffix = file_storage.filename.rsplit(".", 1)[-1].lower()
+    if suffix not in ALLOWED_EXTENSIONS:
+        raise ValueError("Unsupported image extension")
     upload_id = uuid.uuid4().hex
     filename = f"{folder}/{upload_id}.jpg"
     target = Path(current_app.config["UPLOAD_FOLDER"], filename)
@@ -1902,3 +1982,8 @@ def _save_resized_image(file_storage, target):
         elif image.mode != "RGB":
             image = image.convert("RGB")
         image.save(target, "JPEG", quality=UPLOAD_IMAGE_JPEG_QUALITY, optimize=True, progressive=True)
+
+
+def _download_name(value):
+    ascii_name = unicodedata.normalize("NFKD", value).encode("ascii", "ignore").decode()
+    return re.sub(r"[^A-Za-z0-9_.-]+", "_", ascii_name).strip("._")
