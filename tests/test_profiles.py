@@ -71,7 +71,7 @@ class ProfileTest(unittest.TestCase):
                 self.assertEqual(history["count"], 2)
                 self.assertEqual(len(history["points"]), 1)
                 self.assertEqual(history["points"][0]["value"], 10)
-                self.assertEqual(history["points"][0]["x"], 48)
+                self.assertEqual(history["points"][0]["x"], 76)
                 _seed_dives(database.get_db(), 1, [("legacy unknown date", 30, 0)])
                 history = get_profile_sac_history(1)
                 self.assertEqual(history["median"], 20)
@@ -98,8 +98,8 @@ class ProfileTest(unittest.TestCase):
             for metric in (b"sac_rate_l_min", b"depth_m", b"duration_min", b"dive_count"):
                 self.assertIn(b'data-history-option="' + metric + b'"', html)
                 self.assertIn(b'data-history-view="' + metric + b'"', html)
-            self.assertIn(b'Max depth (m)', html)
-            self.assertIn(b'Duration (min)', html)
+            self.assertIn(b'Max depth</h3>', html)
+            self.assertIn(b'Duration</h3>', html)
 
     def test_daily_dive_counts_include_missing_metrics_and_exclude_other_or_deleted_dives(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -118,7 +118,7 @@ class ProfileTest(unittest.TestCase):
                 self.assertEqual([p["value"] for p in history["points"]], [6, 2])
                 self.assertEqual(history["ticks"][-1]["value"], "8")
             html = client.get("/you").data
-            self.assertIn(b"Number of dives (dives)", html)
+            self.assertIn(b"# of dives", html)
             self.assertIn(b"Dives per day", html)
             self.assertIn(b"Jan 01, 2026: 6 dives", html)
 

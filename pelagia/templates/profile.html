@@ -82,11 +82,11 @@
     <section class="profile-sac-panel" aria-labelledby="historyTitle" data-profile-history>
         <div class="profile-section-heading"><h2 id="historyTitle">History</h2></div>
         <div class="history-switch" role="group" aria-label="History chart metric">
-            {% for chart in profile_histories %}<button type="button" data-history-option="{{ chart.key }}" aria-pressed="{{ 'true' if loop.first else 'false' }}" aria-controls="history-{{ chart.key }}">{{ chart.title }}</button>{% endfor %}
+            {% for chart in profile_histories %}<button type="button" data-history-option="{{ chart.key }}" aria-pressed="{{ 'true' if loop.first else 'false' }}" aria-controls="history-{{ chart.key }}">{{ "# of dives" if chart.key == "dive_count" else chart.title }}</button>{% endfor %}
         </div>
         {% for chart in profile_histories %}
         <div id="history-{{ chart.key }}" data-history-view="{{ chart.key }}" {% if not loop.first %}hidden{% endif %}>
-        <div class="profile-section-heading"><h3>{{ chart.title }} ({{ chart.unit }})</h3><span class="sac-chart-legend"><i aria-hidden="true"></i> {{ chart.unit }}</span></div>
+        <div class="history-chart-heading"><h3>{{ "Dives per day" if chart.key == "dive_count" else chart.title }}</h3><span class="sac-chart-legend"><i aria-hidden="true"></i> {{ chart.unit }}</span></div>
         {% if chart.history.points %}
         <svg class="profile-sac-chart" viewBox="0 0 {{ chart.history.width }} {{ chart.history.height }}" role="img" aria-labelledby="{{ chart.key }}ChartTitle {{ chart.key }}ChartDescription">
             <title id="{{ chart.key }}ChartTitle">{{ chart.title }} history for {{ user.username }}</title>
@@ -96,7 +96,7 @@
             <text class="sac-axis-label" x="{{ chart.history.left - 12 }}" y="{{ '%g'|format(tick.y + 4) }}" text-anchor="end">{{ tick.value }}</text>
             {% endfor %}
             {% for point in chart.history.points %}
-            <rect class="history-series-bar" x="{{ '%g'|format(point.x - chart.history.bar_width / 2) }}" y="{{ '%g'|format(point.y) }}" width="{{ '%g'|format(chart.history.bar_width) }}" height="{{ '%g'|format(chart.history.height - chart.history.bottom - point.y) }}" tabindex="0" aria-label="{{ point.label }}: {{ point.display }} {{ chart.unit }}">
+            <rect class="history-series-bar" rx="3" x="{{ '%g'|format(point.x - chart.history.bar_width / 2) }}" y="{{ '%g'|format(point.y) }}" width="{{ '%g'|format(chart.history.bar_width) }}" height="{{ '%g'|format(chart.history.height - chart.history.bottom - point.y) }}" tabindex="0" aria-label="{{ point.label }}: {{ point.display }} {{ chart.unit }}">
                 <title>{{ point.label }}: {{ point.display }} {{ chart.unit }} · {{ point.count }} {{ 'dive' if point.count == 1 else 'dives' }}</title>
             </rect>
             {% endfor %}

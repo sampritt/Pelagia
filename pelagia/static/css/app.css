@@ -5530,8 +5530,47 @@ textarea { resize: vertical; }
     text-align: right;
 }
 
-.history-switch { display: flex; flex-wrap: wrap; gap: 4px; padding: 4px; margin-bottom: 24px; border: 1px solid var(--line); border-radius: 10px; width: fit-content; max-width: 100%; }
-.history-switch button { border: 0; border-radius: 7px; padding: 9px 16px; background: transparent; color: var(--muted); font: inherit; font-size: 0.8rem; cursor: pointer; }
-.history-switch button[aria-pressed="true"] { background: var(--accent-deep); color: white; }
+/* Profile history: a compact, single-row segmented control at every size. */
+.history-switch {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 3px;
+    width: 100%;
+    max-width: 520px;
+    padding: 4px;
+    margin: 0 0 24px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: var(--panel-tint);
+}
+.history-switch button {
+    min-width: 0;
+    min-height: 44px;
+    padding: 9px 6px;
+    border: 0;
+    border-radius: 7px;
+    background: transparent;
+    color: var(--muted-strong);
+    font: inherit;
+    font-size: 0.8rem;
+    font-weight: 650;
+    line-height: 1.2;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background 150ms ease, color 150ms ease;
+}
+.history-switch button:hover { background: var(--accent-soft); color: var(--accent-deep); }
+.history-switch button[aria-pressed="true"] { background: var(--accent-deep); color: white; box-shadow: var(--shadow-xs); }
 .history-switch button:focus-visible { outline: 2px solid var(--accent-deep); outline-offset: 2px; }
+.history-chart-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+.history-chart-heading h3 { margin: 0; font-size: 0.9rem; font-weight: 650; letter-spacing: -0.02em; }
+.history-chart-heading .sac-chart-legend { color: var(--muted-strong); font-size: 0.73rem; }
+.history-chart-heading .sac-chart-legend i { width: 10px; height: 10px; border-radius: 2px; }
 [data-history-view][hidden] { display: none; }
+@media (max-width: 600px) {
+    .history-switch { margin-bottom: 20px; gap: 2px; padding: 3px; }
+    .history-switch button { padding-inline: 2px; font-size: 0.7rem; }
+    .history-chart-heading { margin-bottom: 8px; }
+    .history-chart-heading h3 { font-size: 0.85rem; }
+    .sac-data-table { margin-top: 18px; }
+}
