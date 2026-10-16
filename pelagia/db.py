@@ -57,6 +57,8 @@ def init_db():
     _ensure_column(db, "dives", "oxygen_pct", "INTEGER")
     _ensure_column(db, "dives", "helium_pct", "INTEGER")
     _ensure_metric_dive_schema(db)
+    for field in ("effort_rating", "weight_rating", "temperature_rating"):
+        _ensure_column(db, "dives", field, "INTEGER")
     db.execute("""UPDATE dives SET oxygen_pct = CASE
         WHEN gas_mix IN ('30%', '32%', '34%', '36%', '38%', '40%')
         THEN CAST(REPLACE(gas_mix, '%', '') AS INTEGER) ELSE 21 END,

@@ -5451,3 +5451,35 @@ textarea { resize: vertical; }
     .signin-card { padding-inline: 20px; }
     .welcome-actions { flex-wrap: wrap; gap: 12px 24px; }
 }
+
+
+.feeling-controls {
+    display: grid;
+    gap: 24px;
+    max-width: 640px;
+}
+
+.feeling-ticks, .feeling-endpoints {
+    display: flex;
+    justify-content: space-between;
+}
+
+.feeling-ticks {
+    margin: -3px 8px 8px;
+    pointer-events: none;
+}
+
+.feeling-ticks span {
+    height: 5px;
+    border-left: 1px solid var(--muted);
+}
+
+.feeling-endpoints {
+    gap: 16px;
+    color: var(--muted);
+    font-size: 0.85rem;
+}
+
+.feeling-endpoints span:last-child {
+    text-align: right;
+}

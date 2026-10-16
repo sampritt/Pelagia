@@ -790,9 +790,9 @@ def create_dive_from_request(user_id, form_request):
             user_id, buddy_user_id, dive_site_id, dive_center_id, dive_center_name, date, site_name, country_or_area, latitude, longitude,
             depth_m, average_depth_m, duration_min, weight_kg, starting_pressure_bar, ending_pressure_bar, sac_rate_l_min,
             exposure, visibility_m, air_temp_c, water_temp_c,
-            gas_mix, oxygen_pct, helium_pct, dive_type, dive_types_json, current, current_types_json, current_strength, notes
+            gas_mix, oxygen_pct, helium_pct, dive_type, dive_types_json, current, current_types_json, current_strength, notes, effort_rating, weight_rating, temperature_rating
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             user_id,
@@ -825,6 +825,9 @@ def create_dive_from_request(user_id, form_request):
             json.dumps(values["current_types"]),
             values["current_strength"],
             values["notes"],
+            values["effort_rating"],
+            values["weight_rating"],
+            values["temperature_rating"],
         ),
     )
     dive_id = cur.lastrowid
@@ -872,7 +875,10 @@ def update_dive_from_request(dive_id, user_id, form_request):
             current = ?,
             current_types_json = ?,
             current_strength = ?,
-            notes = ?
+            notes = ?,
+            effort_rating = ?,
+            weight_rating = ?,
+            temperature_rating = ?
         WHERE id = ? AND user_id = ? AND COALESCE(is_deleted, 0) = 0
         """,
         (
@@ -905,6 +911,9 @@ def update_dive_from_request(dive_id, user_id, form_request):
             json.dumps(values["current_types"]),
             values["current_strength"],
             values["notes"],
+            values["effort_rating"],
+            values["weight_rating"],
+            values["temperature_rating"],
             dive_id,
             user_id,
         ),
@@ -1026,6 +1035,9 @@ def dive_values_from_request(form_request, user_id, default_tank_size_l=12):
         "depth_m": depth,
         "average_depth_m": average_depth,
         "duration_min": duration,
+        "effort_rating": maybe_clamped_int(form.get("effort_rating"), 1, 5),
+        "weight_rating": maybe_clamped_int(form.get("weight_rating"), 1, 5),
+        "temperature_rating": maybe_clamped_int(form.get("temperature_rating"), 1, 5),
         "weight_kg": weight,
         "starting_pressure_bar": starting_pressure,
         "ending_pressure_bar": ending_pressure,

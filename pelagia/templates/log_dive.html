@@ -271,6 +271,27 @@
 
         <div class="form-section">
             <div class="form-section-title">
+                <h2>How did that feel?</h2>
+            </div>
+            <div class="feeling-controls">
+                {% for field, title, low, high in [
+                    ('effort_rating', 'Effort', 'Hard', 'Easy'),
+                    ('weight_rating', 'Weight', 'Not enough weight', 'Too much weight'),
+                    ('temperature_rating', 'Temperature', 'Too cold', 'Too warm')
+                ] %}
+                    <div class="feeling-control">
+                        <label for="{{ field }}">{{ title }}</label>
+                        <input id="{{ field }}" name="{{ field }}" type="range" min="1" max="5" step="1" value="{{ dive[field] if is_edit and dive[field] is not none else 3 }}" aria-describedby="{{ field }}_ends" list="feelingSteps">
+                        <div class="feeling-ticks" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span></div>
+                        <div class="feeling-endpoints" id="{{ field }}_ends"><span>{{ low }}</span><span>{{ high }}</span></div>
+                    </div>
+                {% endfor %}
+                <datalist id="feelingSteps"><option value="1"></option><option value="2"></option><option value="3"></option><option value="4"></option><option value="5"></option></datalist>
+            </div>
+        </div>
+
+        <div class="form-section">
+            <div class="form-section-title">
                 <h2>Tag a Buddy</h2>
             </div>
             <label class="autocomplete-field buddy-field">

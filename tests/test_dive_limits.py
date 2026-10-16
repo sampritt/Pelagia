@@ -39,6 +39,24 @@ class DiveLimitsTest(unittest.TestCase):
     def post(self, dive_date='2026-01-01', path='/dive/new'):
         return self.client.post(path, data={'date': dive_date, 'site_name': 'Test'})
 
+    def test_feeling_ratings_save_and_edit(self):
+        data = {'date': '2026-01-01', 'site_name': 'Test',
+                'effort_rating': '1', 'weight_rating': '4', 'temperature_rating': '5'}
+        self.assertEqual(self.client.post('/dive/new', data=data).status_code, 302)
+        with self.app.app_context():
+            row = database.get_db().execute('SELECT * FROM dives').fetchone()
+            self.assertEqual(tuple(row[field] for field in
+                             ('effort_rating', 'weight_rating', 'temperature_rating')), (1, 4, 5))
+        page = self.client.get('/dive/1/edit').get_data(as_text=True)
+        self.assertLess(page.index('<h2>Wildlife</h2>'), page.index('<h2>How did that feel?</h2>'))
+        self.assertIn('name="weight_rating" type="range" min="1" max="5" step="1" value="4"', page)
+        data.update(effort_rating='3', weight_rating='2', temperature_rating='1')
+        self.assertEqual(self.client.post('/dive/1/edit', data=data).status_code, 302)
+        with self.app.app_context():
+            row = database.get_db().execute('SELECT * FROM dives').fetchone()
+            self.assertEqual(tuple(row[field] for field in
+                             ('effort_rating', 'weight_rating', 'temperature_rating')), (3, 2, 1))
+
     def test_fifth_allowed_sixth_blocked_without_body(self):
         self.seed(4)
         self.assertEqual(self.post().status_code, 302)
