@@ -14,7 +14,7 @@ function setup(navigator = {}, secure = true, options = {}) {
         select() { this.selected = true; },
         setSelectionRange(start, end) { this.selection = [start, end]; },
     });
-    const parts = Object.fromEntries(["link", "copy", "copy-label", "save", "native", "status", "preview", "close", "carousel", "save-label", "counter", "description", "previous", "next"].map(name => [name, element()]));
+    const parts = Object.fromEntries(["link", "copy", "copy-label", "save", "native", "status", "preview", "close", "carousel", "save-label", "counter", "previous", "next"].map(name => [name, element()]));
     const styles = [element(), element()];
     const dialog = element();
     dialog.querySelector = selector => parts[selector.match(/data-share-([a-z-]+)/)[1]];
@@ -180,20 +180,19 @@ test("an earlier image request cannot overwrite the current dive's image", async
     assert.equal(await payload.files[0].text(), "current image");
 });
 
-test("style buttons and arrows select the preview and correct attachment", async () => {
+test("pagination dots and arrows select the preview and correct attachment", async () => {
     const state = setup();
     state.open();
     assert.equal(state.parts.preview.src, state.trigger.dataset.shareImage);
-    assert.equal(state.parts.counter.textContent, "1 / 2");
+    assert.equal(state.parts.counter.textContent, "Image 1 of 2");
     assert.equal(state.styles[0].attributes["aria-pressed"], "true");
     state.styles[1].handlers.click();
     assert.equal(state.parts.preview.src, state.trigger.dataset.shareTransparentImage);
     assert.equal(state.parts.preview.dataset.transparent, "true");
-    assert.equal(state.parts.counter.textContent, "2 / 2");
+    assert.equal(state.parts.counter.textContent, "Image 2 of 2");
     assert.equal(state.styles[1].attributes["aria-pressed"], "true");
     assert.equal(state.styles[0].attributes["aria-pressed"], "false");
-    assert.match(state.parts.description.textContent, /checkerboard isn't saved/);
-    assert.equal(state.parts["save-label"].textContent, "Save PNG");
+    assert.equal(state.parts["save-label"].textContent, "Save image");
     await state.parts.save.handlers.click();
     assert.equal(state.downloads[0].href, state.trigger.dataset.shareTransparentDownload);
     assert.equal(state.downloads[0].download, "pelagia-dive-transparent.png");
@@ -204,7 +203,7 @@ test("style buttons and arrows select the preview and correct attachment", async
     state.dialog.close();
     state.open();
     assert.equal(state.parts.preview.dataset.transparent, "false");
-    assert.equal(state.parts.counter.textContent, "1 / 2");
+    assert.equal(state.parts.counter.textContent, "Image 1 of 2");
 });
 
 test("horizontal touch swipes and keyboard arrows change styles; vertical scrolling does not", () => {
@@ -213,20 +212,20 @@ test("horizontal touch swipes and keyboard arrows change styles; vertical scroll
     const pointer = (x, y, extra = {}) => ({clientX: x, clientY: y, pointerId: 1, isPrimary: true, pointerType: "touch", target: {closest: () => null}, ...extra});
     state.parts.carousel.handlers.pointerdown(pointer(250, 80));
     state.parts.carousel.handlers.pointerup(pointer(150, 90));
-    assert.equal(state.parts.counter.textContent, "2 / 2");
+    assert.equal(state.parts.counter.textContent, "Image 2 of 2");
     state.parts.carousel.handlers.pointerdown(pointer(150, 80));
     state.parts.carousel.handlers.pointerup(pointer(250, 90));
-    assert.equal(state.parts.counter.textContent, "1 / 2");
+    assert.equal(state.parts.counter.textContent, "Image 1 of 2");
     for (const end of [pointer(245, 82), pointer(200, 200)]) {
         state.parts.carousel.handlers.pointerdown(pointer(250, 80));
         state.parts.carousel.handlers.pointerup(end);
-        assert.equal(state.parts.counter.textContent, "1 / 2");
+        assert.equal(state.parts.counter.textContent, "Image 1 of 2");
     }
     state.parts.carousel.handlers.pointerdown(pointer(250, 80));
     state.parts.carousel.handlers.pointercancel();
     state.parts.carousel.handlers.pointerup(pointer(150, 80));
-    assert.equal(state.parts.counter.textContent, "1 / 2");
-    for (const [key, expected] of [["ArrowRight", "2 / 2"], ["Home", "1 / 2"], ["End", "2 / 2"], ["ArrowLeft", "1 / 2"]]) {
+    assert.equal(state.parts.counter.textContent, "Image 1 of 2");
+    for (const [key, expected] of [["ArrowRight", "Image 2 of 2"], ["Home", "Image 1 of 2"], ["End", "Image 2 of 2"], ["ArrowLeft", "Image 1 of 2"]]) {
         const event = {key, preventDefault() { this.prevented = true; }};
         state.parts.carousel.handlers.keydown(event);
         assert.equal(event.prevented, true);

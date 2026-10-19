@@ -307,9 +307,8 @@ function initDiveSharing() {
         preview.src = style.imageUrl;
         preview.alt = style.alt;
         preview.dataset.transparent = String(selectedStyle === 1);
-        saveLabel.textContent = selectedStyle === 1 ? "Save PNG" : "Save image";
-        dialog.querySelector("[data-share-counter]").textContent = `${selectedStyle + 1} / ${imageStyles.length}`;
-        dialog.querySelector("[data-share-description]").textContent = style.description;
+        saveLabel.textContent = "Save image";
+        dialog.querySelector("[data-share-counter]").textContent = `Image ${selectedStyle + 1} of ${imageStyles.length}`;
         styleButtons.forEach((button, buttonIndex) => button.setAttribute("aria-pressed", String(buttonIndex === selectedStyle)));
         if (supportsNativeSharing() && typeof navigator.canShare === "function" && window.matchMedia("(pointer: coarse)").matches) {
             prepareMobileImage(style, version);
@@ -352,12 +351,10 @@ function initDiveSharing() {
         imageStyles = [
             { imageUrl: button.dataset.shareImage, downloadUrl: button.dataset.shareDownload,
                 filename: "pelagia-dive.jpg", mimeType: "image/jpeg",
-                alt: "Branded dive image with a photo or map",
-                description: "Full image · Photo or map background." },
+                alt: "Branded dive image with a photo or map" },
             { imageUrl: button.dataset.shareTransparentImage, downloadUrl: button.dataset.shareTransparentDownload,
                 filename: "pelagia-dive-transparent.png", mimeType: "image/png",
-                alt: "Transparent overlay with the dive site, max depth, dive time and Pelagia logo",
-                description: "Transparent PNG · The checkerboard isn't saved. Place this over your own photo." },
+                alt: "Transparent overlay with the dive site, max depth, dive time and Pelagia logo" },
         ];
         swipeStart = null;
         link.hidden = true;

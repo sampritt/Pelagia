@@ -1,22 +1,20 @@
 <dialog class="share-dialog" data-share-dialog aria-labelledby="shareDialogTitle">
     <div class="share-dialog-heading">
-        <div><p class="eyebrow">From your dive log</p><h2 id="shareDialogTitle">Share this dive</h2></div>
+        <h2 id="shareDialogTitle">Share this dive</h2>
         <button class="icon-button" type="button" data-share-close aria-label="Close sharing"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"></path></svg></button>
     </div>
-    <div class="share-style-heading"><span>Choose your image</span><span data-share-counter>1 / 2</span></div>
-    <div class="share-style-picker" role="group" aria-label="Image style">
-        <button type="button" data-share-style="0" aria-pressed="true">Full image <span>JPEG</span></button>
-        <button type="button" data-share-style="1" aria-pressed="false">Transparent <span>PNG</span></button>
-    </div>
-    <div class="share-preview-carousel" data-share-carousel role="region" aria-roledescription="carousel" aria-label="Dive image styles" aria-describedby="shareStyleHint" tabindex="0">
+    <div class="share-preview-carousel" data-share-carousel role="region" aria-roledescription="carousel" aria-label="Dive image styles" tabindex="0">
         <img class="share-preview-image" data-share-preview alt="Branded dive image with a photo or map" draggable="false">
         <div class="share-preview-navigation">
             <button class="share-preview-arrow" type="button" data-share-previous aria-label="Previous image style"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14 6-6 6 6 6"></path></svg></button>
-            <p class="share-style-hint" id="shareStyleHint"><span class="share-swipe-hint">Swipe left or right</span><span class="share-click-hint">Click a style or use the arrows</span> to choose your image.</p>
+            <div class="share-preview-dots" role="group" aria-label="Image style">
+                <button class="share-preview-dot" type="button" data-share-style="0" aria-label="Photo or map image" aria-pressed="true"><span aria-hidden="true"></span></button>
+                <button class="share-preview-dot" type="button" data-share-style="1" aria-label="Transparent image" aria-pressed="false"><span aria-hidden="true"></span></button>
+            </div>
             <button class="share-preview-arrow" type="button" data-share-next aria-label="Next image style"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m10 6 6 6-6 6"></path></svg></button>
         </div>
     </div>
-    <p class="share-style-description" data-share-description aria-live="polite">Full image · Photo or map background.</p>
+    <span class="sr-only" data-share-counter role="status" aria-live="polite">Image 1 of 2</span>
     <div class="share-options" aria-label="Share options">
         <button class="share-option" type="button" data-share-copy>
             <span class="share-option-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="5" width="14" height="16" rx="2"></rect><rect x="9" y="3" width="6" height="4" rx="1"></rect><path d="M9 12h6M9 16h6"></path></svg></span>
