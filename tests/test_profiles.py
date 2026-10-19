@@ -57,6 +57,26 @@ class ProfileTest(unittest.TestCase):
             self.assertIn(b'<strong>2</strong> dives', owner.get("/you").data)
             self.assertIn(b'<small>Dives</small><span>2</span>', owner.get("/you").data)
 
+    def test_settings_save_units_and_count_together(self):
+        with tempfile.TemporaryDirectory() as directory:
+            app, _, _ = self.make_app(Path(directory))
+            client = app.test_client()
+            self.signup(client)
+            html = client.get("/you").data
+            settings = html.split(b'<dialog class="profile-settings-dialog"', 1)[1].split(b'</dialog>', 1)[0]
+            form = settings.split(b'<form id="profileSettingsForm"', 1)[1].split(b'</form>', 1)[0]
+            self.assertEqual(form.count(b'>Save</button>'), 1)
+            self.assertLess(form.index(b'>Save</button>'), form.index(b'id="profileUnitsTitle"'))
+            for field in (b'pressure_unit', b'length_unit', b'temperature_unit', b'weight_unit', b'starting_dive_count'):
+                self.assertIn(b'name="' + field + b'"', form)
+            self.assertNotIn(b'data-settings-autosave', settings)
+            self.assertNotIn(b'Changes save automatically', settings)
+            response = client.post("/you", data={"length_unit": "ft", "starting_dive_count": "42"})
+            self.assertEqual(response.status_code, 302)
+            with app.app_context():
+                user = database.get_db().execute("SELECT length_unit, starting_dive_count FROM users WHERE id = 1").fetchone()
+                self.assertEqual(tuple(user), ("ft", 42))
+
     def test_profile_sac_handles_even_medians_zero_and_legacy_dates(self):
         with tempfile.TemporaryDirectory() as directory:
             app, _, _ = self.make_app(Path(directory))

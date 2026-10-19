@@ -127,21 +127,21 @@
         </form>
     </div>
     <dialog class="profile-settings-dialog" aria-labelledby="profileSettingsTitle" data-profile-settings>
-        <div class="profile-section-heading"><h2 id="profileSettingsTitle">Settings</h2><button class="profile-settings-button" type="button" aria-label="Close settings" data-profile-settings-close>&times;</button></div>
-        <form class="profile-units-form" method="post" action="{{ url_for('profile') }}" aria-labelledby="profileUnitsTitle">
-            <h3 id="profileUnitsTitle">Units</h3>
-            <div class="profile-unit-row"><span>Pressure</span>{{ unit_toggle('pressure', 'Pressure', 'bar', 'bar', 'psi', 'psi', units.pressure) }}</div>
-            <div class="profile-unit-row"><span>Distance</span>{{ unit_toggle('length', 'Distance', 'm', 'm', 'ft', 'ft', units.length) }}</div>
-            <div class="profile-unit-row"><span>Temperature</span>{{ unit_toggle('temperature', 'Temperature', 'c', '°C', 'f', '°F', units.temperature) }}</div>
-            <div class="profile-unit-row"><span>Weight</span>{{ unit_toggle('weight', 'Weight', 'kg', 'kg', 'lb', 'lb', units.weight) }}</div>
-            <button class="primary-button compact" type="submit">Save units</button>
-        </form>
-        <form class="profile-count-form" method="post" action="{{ url_for('profile') }}">
-            <label for="startingDiveCount">Starting dive count</label>
-            <p id="startingDiveCountHelp">Dives you haven’t logged in Pelagia. Your profile total is this number plus your dives logged in Pelagia.</p>
-            <div class="profile-count-controls">
-                <input id="startingDiveCount" name="starting_dive_count" type="number" min="0" max="9223372036854775807" step="1" inputmode="numeric" value="{{ user.starting_dive_count }}" aria-describedby="startingDiveCountHelp" required>
-                <button class="primary-button compact" type="submit">Save</button>
+        <form id="profileSettingsForm" method="post" action="{{ url_for('profile') }}">
+            <div class="profile-section-heading"><h2 id="profileSettingsTitle">Settings</h2><button class="primary-button compact profile-settings-save" type="submit">Save</button><button class="profile-settings-button" type="button" aria-label="Close settings" data-profile-settings-close>&times;</button></div>
+            <div class="profile-units-form" aria-labelledby="profileUnitsTitle">
+                <h3 id="profileUnitsTitle">Units</h3>
+                <div class="profile-unit-row"><span>Pressure</span>{{ unit_toggle('pressure', 'Pressure', 'bar', 'bar', 'psi', 'psi', units.pressure) }}</div>
+                <div class="profile-unit-row"><span>Distance</span>{{ unit_toggle('length', 'Distance', 'm', 'm', 'ft', 'ft', units.length) }}</div>
+                <div class="profile-unit-row"><span>Temperature</span>{{ unit_toggle('temperature', 'Temperature', 'c', '°C', 'f', '°F', units.temperature) }}</div>
+                <div class="profile-unit-row"><span>Weight</span>{{ unit_toggle('weight', 'Weight', 'kg', 'kg', 'lb', 'lb', units.weight) }}</div>
+            </div>
+            <div class="profile-count-form">
+                <label for="startingDiveCount">Starting dive count</label>
+                <p id="startingDiveCountHelp">Dives you haven’t logged in Pelagia. Your profile total is this number plus your dives logged in Pelagia.</p>
+                <div class="profile-count-controls">
+                    <input id="startingDiveCount" name="starting_dive_count" type="number" min="0" max="9223372036854775807" step="1" inputmode="numeric" value="{{ user.starting_dive_count }}" aria-describedby="startingDiveCountHelp" required>
+                </div>
             </div>
         </form>
         <nav class="settings-links" aria-label="Legal information">
