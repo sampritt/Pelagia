@@ -32,7 +32,7 @@
         <div class="site-conditions-grid">
             <div>
                 <small>VISIBILITY</small>
-                <span>{{ optional_metric(conditions.visibility_m, ' m') }}</span>
+                <span>{{ display_metric(conditions.visibility_m, 'length') }}</span>
             </div>
             <div>
                 <small>CURRENT</small>
@@ -46,11 +46,11 @@
             </div>
             <div>
                 <small>Water temperature</small>
-                <span>{{ optional_metric(conditions.water_temp_c, '°C') }}</span>
+                <span>{{ display_metric(conditions.water_temp_c, 'temperature') }}</span>
             </div>
             <div>
                 <small>Air temperature</small>
-                <span>{{ optional_metric(conditions.air_temp_c, '°C') }}</span>
+                <span>{{ display_metric(conditions.air_temp_c, 'temperature') }}</span>
             </div>
         </div>
     </div>
@@ -58,16 +58,16 @@
     <div class="site-chart-block">
         <div class="site-chart-head">
             <h2>Visibility</h2>
-            <span class="chart-unit">Meters · 14 days</span>
+            <span class="chart-unit">{{ 'Feet' if units.length == 'ft' else 'Meters' }} · 14 days</span>
         </div>
-        <svg class="site-line-chart" viewBox="0 0 {{ visibility_chart.width }} {{ visibility_chart.height }}" role="img" aria-label="Two weeks ending with the latest documented visibility or currents observation, visibility in meters by day">
+        <svg class="site-line-chart" viewBox="0 0 {{ visibility_chart.width }} {{ visibility_chart.height }}" role="img" aria-label="Two weeks ending with the latest documented visibility or currents observation, visibility in {{ 'feet' if units.length == 'ft' else 'meters' }} by day">
             <line x1="{{ visibility_chart.padding }}" y1="{{ visibility_chart.height - visibility_chart.padding }}" x2="{{ visibility_chart.width - visibility_chart.padding }}" y2="{{ visibility_chart.height - visibility_chart.padding }}"></line>
             {% if visibility_chart.polyline %}
                 <polyline points="{{ visibility_chart.polyline }}"></polyline>
                 {% for point in visibility_chart.points %}
                     {% if point.y is not none %}
                         <circle cx="{{ point.x }}" cy="{{ point.y }}" r="3">
-                            <title>{{ point.label }}: {{ point.value }} m</title>
+                            <title>{{ point.label }}: {{ display_metric(point.value, 'length') }}</title>
                         </circle>
                     {% endif %}
                 {% endfor %}

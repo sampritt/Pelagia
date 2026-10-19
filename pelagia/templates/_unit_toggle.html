@@ -1,11 +1,11 @@
-{% macro unit_toggle(group, title, metric, metric_label, alternate, alternate_label) -%}
+{% macro unit_toggle(group, title, metric, metric_label, alternate, alternate_label, selected=none) -%}
 <div class="unit-toggle" role="group" aria-label="{{ title }} units">
     <label>
-        <input class="sr-only" type="radio" name="{{ group }}_unit" value="{{ metric }}" data-unit-toggle="{{ group }}" checked aria-label="{{ title }} in {{ metric_label }}">
+        <input class="sr-only" type="radio" name="{{ group }}_unit" value="{{ metric }}" data-unit-toggle="{{ group }}"{{ ' checked' if selected is none or selected == metric else '' }} aria-label="{{ title }} in {{ metric_label }}">
         <span>{{ metric_label }}</span>
     </label>
     <label>
-        <input class="sr-only" type="radio" name="{{ group }}_unit" value="{{ alternate }}" data-unit-toggle="{{ group }}" aria-label="{{ title }} in {{ alternate_label }}">
+        <input class="sr-only" type="radio" name="{{ group }}_unit" value="{{ alternate }}" data-unit-toggle="{{ group }}"{{ ' checked' if selected == alternate else '' }} aria-label="{{ title }} in {{ alternate_label }}">
         <span>{{ alternate_label }}</span>
     </label>
 </div>

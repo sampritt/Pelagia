@@ -256,30 +256,37 @@ function initDiveSharing() {
     const save = dialog.querySelector("[data-share-save]");
     const native = dialog.querySelector("[data-share-native]");
     const status = dialog.querySelector("[data-share-status]");
+    const preview = dialog.querySelector("[data-share-preview]");
+    const carousel = dialog.querySelector("[data-share-carousel]");
+    const styleButtons = [...dialog.querySelectorAll("[data-share-style]")];
+    const saveLabel = dialog.querySelector("[data-share-save-label]");
     let trigger;
     let shareData;
     let previewFile;
     let downloadUrl;
+    let imageStyles = [];
+    let selectedStyle = 0;
+    let swipeStart;
     let generation = 0;
 
     const supportsNativeSharing = () => window.isSecureContext && typeof navigator.share === "function";
     const downloadImage = () => {
         const anchor = document.createElement("a");
         anchor.href = downloadUrl;
-        anchor.download = "pelagia-dive.jpg";
+        anchor.download = imageStyles[selectedStyle].filename;
         document.body.appendChild(anchor);
         anchor.click();
         anchor.remove();
         status.textContent = "Image download started.";
     };
 
-    const prepareMobileImage = async (imageUrl, version) => {
+    const prepareMobileImage = async (style, version) => {
         // Load before the Save click so sharing the file retains user activation.
         save.disabled = true;
         try {
-            const response = await fetch(imageUrl, { credentials: "same-origin", signal: AbortSignal.timeout(10000) });
+            const response = await fetch(style.imageUrl, { credentials: "same-origin", signal: AbortSignal.timeout(10000) });
             if (!response.ok) throw new Error("Image unavailable");
-            const file = new File([await response.blob()], "pelagia-dive.jpg", { type: "image/jpeg" });
+            const file = new File([await response.blob()], style.filename, { type: style.mimeType });
             if (version === generation && navigator.canShare({ files: [file] })) previewFile = file;
         } catch {
             // The server's attachment download remains available.
@@ -287,6 +294,52 @@ function initDiveSharing() {
             if (version === generation) save.disabled = false;
         }
     };
+
+    const selectStyle = (index) => {
+        if (!imageStyles.length) return;
+        selectedStyle = (index + imageStyles.length) % imageStyles.length;
+        const style = imageStyles[selectedStyle];
+        const version = ++generation;
+        previewFile = null;
+        save.disabled = false;
+        status.textContent = "";
+        downloadUrl = style.downloadUrl;
+        preview.src = style.imageUrl;
+        preview.alt = style.alt;
+        preview.dataset.transparent = String(selectedStyle === 1);
+        saveLabel.textContent = selectedStyle === 1 ? "Save PNG" : "Save image";
+        dialog.querySelector("[data-share-counter]").textContent = `${selectedStyle + 1} / ${imageStyles.length}`;
+        dialog.querySelector("[data-share-description]").textContent = style.description;
+        styleButtons.forEach((button, buttonIndex) => button.setAttribute("aria-pressed", String(buttonIndex === selectedStyle)));
+        if (supportsNativeSharing() && typeof navigator.canShare === "function" && window.matchMedia("(pointer: coarse)").matches) {
+            prepareMobileImage(style, version);
+        }
+    };
+
+    styleButtons.forEach((button, index) => button.addEventListener("click", () => selectStyle(index)));
+    dialog.querySelector("[data-share-previous]").addEventListener("click", () => selectStyle(selectedStyle - 1));
+    dialog.querySelector("[data-share-next]").addEventListener("click", () => selectStyle(selectedStyle + 1));
+    carousel.addEventListener("keydown", (event) => {
+        const index = { ArrowLeft: selectedStyle - 1, ArrowRight: selectedStyle + 1, Home: 0, End: imageStyles.length - 1 }[event.key];
+        if (index === undefined || event.altKey || event.ctrlKey || event.metaKey) return;
+        event.preventDefault();
+        selectStyle(index);
+    });
+    carousel.addEventListener("pointerdown", (event) => {
+        swipeStart = null;
+        if (event.pointerType === "mouse" || !event.isPrimary || event.target.closest("button")) return;
+        swipeStart = { x: event.clientX, y: event.clientY, pointerId: event.pointerId };
+        carousel.setPointerCapture(event.pointerId);
+    });
+    carousel.addEventListener("pointerup", (event) => {
+        const start = swipeStart;
+        swipeStart = null;
+        if (!start || start.pointerId !== event.pointerId) return;
+        const dx = event.clientX - start.x;
+        const dy = event.clientY - start.y;
+        if (Math.abs(dx) >= 40 && Math.abs(dx) > Math.abs(dy) * 1.25) selectStyle(selectedStyle + (dx < 0 ? 1 : -1));
+    });
+    carousel.addEventListener("pointercancel", () => { swipeStart = null; });
 
     document.addEventListener("click", (event) => {
         const button = event.target.closest("[data-share-dive]");
@@ -296,18 +349,22 @@ function initDiveSharing() {
         link.value = button.dataset.shareUrl;
         const message = `Check out my logged dive at ${button.dataset.shareTitle}`;
         shareData = { title: message, text: message, url: link.value };
-        dialog.querySelector("[data-share-preview]").src = button.dataset.shareImage;
-        downloadUrl = button.dataset.shareDownload;
-        previewFile = null;
-        save.disabled = false;
+        imageStyles = [
+            { imageUrl: button.dataset.shareImage, downloadUrl: button.dataset.shareDownload,
+                filename: "pelagia-dive.jpg", mimeType: "image/jpeg",
+                alt: "Branded dive image with a photo or map",
+                description: "Full image · Photo or map background." },
+            { imageUrl: button.dataset.shareTransparentImage, downloadUrl: button.dataset.shareTransparentDownload,
+                filename: "pelagia-dive-transparent.png", mimeType: "image/png",
+                alt: "Transparent overlay with the dive site, max depth, dive time and Pelagia logo",
+                description: "Transparent PNG · The checkerboard isn't saved. Place this over your own photo." },
+        ];
+        swipeStart = null;
         link.hidden = true;
         status.textContent = "";
         copyLabel.textContent = "Copy link";
         dialog.showModal();
-        const version = ++generation;
-        if (supportsNativeSharing() && typeof navigator.canShare === "function" && window.matchMedia("(pointer: coarse)").matches) {
-            prepareMobileImage(button.dataset.shareImage, version);
-        }
+        selectStyle(0);
     });
     dialog.querySelector("[data-share-close]").addEventListener("click", () => dialog.close());
     dialog.addEventListener("click", (event) => {
@@ -318,6 +375,7 @@ function initDiveSharing() {
     dialog.addEventListener("close", () => {
         generation += 1;
         previewFile = null;
+        swipeStart = null;
         trigger?.focus();
     });
     copy.addEventListener("click", async () => {
@@ -810,7 +868,7 @@ function initDiveForm() {
         pair.number.addEventListener("blur", () => setPair(name, pair.number.value, true, { source: "number", commit: true }));
         setPair(name, pair.number.dataset.metricValue || pair.number.value, false, { commit: true });
     });
-    form.querySelectorAll("[data-unit-toggle]").forEach((input) => input.addEventListener("change", () => {
+    const applyUnit = (input) => {
         if (!input.checked) return;
         const group = input.dataset.unitToggle;
         if (selectedUnits[group] === input.value) return;
@@ -820,7 +878,11 @@ function initDiveForm() {
             form.querySelectorAll("[data-pressure-unit]").forEach((label) => { label.textContent = input.value; });
         }
         updateSacRate();
-    }));
+    };
+    form.querySelectorAll("[data-unit-toggle]").forEach((input) => {
+        input.addEventListener("change", () => applyUnit(input));
+        applyUnit(input);
+    });
     // Serialize full precision in the chosen units after browser validation,
     // leaving the visible inputs unchanged. The server converts these on save.
     form.addEventListener("formdata", (event) => {
@@ -1399,19 +1461,22 @@ document.addEventListener("DOMContentLoaded", () => {
     if (diveForm) initGasMix(diveForm);
     initStaticMaps(document);
     initUserProfile();
+    initProfileHistory();
 });
 
 window.openDive = openDive;
 
-document.querySelectorAll("[data-profile-history]").forEach((section) => {
-    section.querySelectorAll("[data-history-option]").forEach((button) => {
-        button.addEventListener("click", () => {
-            section.querySelectorAll("[data-history-option]").forEach((option) => {
-                option.setAttribute("aria-pressed", String(option === button));
-            });
-            section.querySelectorAll("[data-history-view]").forEach((view) => {
-                view.hidden = view.dataset.historyView !== button.dataset.historyOption;
+function initProfileHistory() {
+    document.querySelectorAll("[data-profile-history]").forEach((section) => {
+        section.querySelectorAll("[data-history-option]").forEach((button) => {
+            button.addEventListener("click", () => {
+                section.querySelectorAll("[data-history-option]").forEach((option) => {
+                    option.setAttribute("aria-pressed", String(option === button));
+                });
+                section.querySelectorAll("[data-history-view]").forEach((view) => {
+                    view.hidden = view.dataset.historyView !== button.dataset.historyOption;
+                });
             });
         });
     });
-});
+}

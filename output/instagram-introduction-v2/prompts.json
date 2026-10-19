@@ -1,0 +1,21 @@
+{
+  "mode": "built-in image_gen",
+  "slide1": "Unchanged from v1",
+  "edits": [
+    {
+      "file": "02-dive-log.png",
+      "copy": "Small eyebrow 'DIVE LOG'. Large headline 'Log your dives'. Supporting text as one sentence over 3 lines: 'Record dive stats, conditions\\nand marine life, with photos\\nand notes from each dive.'",
+      "prompt": "Use case: text-localization. Edit this Pelagia Instagram carousel slide. Preserve the entire underwater photograph, blue/navy color palette, clean white and blue sans serif typography, portrait 4:5 canvas, Pelagia wordmark at top left and original slide number at top right. Replace all other promotional text with only the following exact copy: Small eyebrow 'DIVE LOG'. Large headline 'Log your dives'. Supporting text as one sentence over 3 lines: 'Record dive stats, conditions\\nand marine life, with photos\\nand notes from each dive.' Remove the original headline, original eyebrow, original supporting text, and original bottom slogan completely. Do not add any slogans, additional sentences, UI cards, icons, or extra text. Use generous spacing and large phone-readable typography. Keep divers unobscured. The headline should use the same visual style as the reference, with blue accent words. This is direct feature copy, no wordplay."
+    },
+    {
+      "file": "03-dive-buddies.png",
+      "copy": "Small eyebrow 'COMMUNITY'. Large headline over 2 lines 'Follow the\\ndive community'. Supporting text as one sentence over 3 lines: 'Tag your dive buddies and\\nkeep up with dives from\\nother members of the community.'",
+      "prompt": "Use case: text-localization. Edit this Pelagia Instagram carousel slide. Preserve the entire underwater photograph, blue/navy color palette, clean white and blue sans serif typography, portrait 4:5 canvas, Pelagia wordmark at top left and original slide number at top right. Replace all other promotional text with only the following exact copy: Small eyebrow 'COMMUNITY'. Large headline over 2 lines 'Follow the\\ndive community'. Supporting text as one sentence over 3 lines: 'Tag your dive buddies and\\nkeep up with dives from\\nother members of the community.' Remove the original headline, original eyebrow, original supporting text, and original bottom slogan completely. Do not add any slogans, additional sentences, UI cards, icons, or extra text. Use generous spacing and large phone-readable typography. Keep divers unobscured. The headline should use the same visual style as the reference, with blue accent words. This is direct feature copy, no wordplay."
+    },
+    {
+      "file": "04-join-pelagia.png",
+      "copy": "Small eyebrow 'DIVE SITES'. Large headline over 2 lines 'Explore\\ndive sites'. Supporting text as one sentence over 3 lines: 'Check the latest reported\\nconditions and discover\\nlocal marine life.' Keep the existing small 'Join Pelagia →' blue CTA and 'pelagiadivelog.com' beneath it.",
+      "prompt": "Use case: text-localization. Edit this Pelagia Instagram carousel slide. Preserve the entire underwater photograph, blue/navy color palette, clean white and blue sans serif typography, portrait 4:5 canvas, Pelagia wordmark at top left and original slide number at top right. Replace all other promotional text with only the following exact copy: Small eyebrow 'DIVE SITES'. Large headline over 2 lines 'Explore\\ndive sites'. Supporting text as one sentence over 3 lines: 'Check the latest reported\\nconditions and discover\\nlocal marine life.' Keep the existing small 'Join Pelagia →' blue CTA and 'pelagiadivelog.com' beneath it. Remove the original headline, original eyebrow, original supporting text, and original bottom slogan completely. Do not add any slogans, additional sentences, UI cards, icons, or extra text. Use generous spacing and large phone-readable typography. Keep divers unobscured. The headline should use the same visual style as the reference, with blue accent words. This is direct feature copy, no wordplay."
+    }
+  ]
+}

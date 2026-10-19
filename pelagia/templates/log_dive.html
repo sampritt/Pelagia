@@ -67,7 +67,7 @@
                 <h2>Metrics</h2>
                 <div class="measurement-unit-row">
                     <span>Depth &amp; visibility</span>
-                    {{ unit_toggle('length', 'Depth and visibility', 'm', 'm', 'ft', 'ft') }}
+                    {{ unit_toggle('length', 'Depth and visibility', 'm', 'm', 'ft', 'ft', units.length) }}
                 </div>
             </div>
             <div class="control-panel metrics-panel">
@@ -102,7 +102,7 @@
                         <div class="weight-control-heading">
                             <label for="weightKg"><span data-unit-label="weight">Weight (kg)</span></label>
                             <output id="weightOutput">{{ optional_metric(dive.weight_kg, ' kg', weight=True) if is_edit else '-' }}</output>
-                            {{ unit_toggle('weight', 'Weight', 'kg', 'kg', 'lb', 'lb') }}
+                            {{ unit_toggle('weight', 'Weight', 'kg', 'kg', 'lb', 'lb', units.weight) }}
                         </div>
                         <input type="range" min="0" max="10" step="0.5" value="{{ optional_metric(dive.weight_kg, weight=True) if is_edit and dive.weight_kg is not none else 0 }}" data-range="weight" aria-label="Weight slider (kg)">
                         <input id="weightKg" data-metric-value="{{ dive.weight_kg if is_edit and dive.weight_kg is not none else '' }}" name="weight_kg" type="number" min="0" max="10" step="any" value="{{ optional_metric(dive.weight_kg, weight=True) if is_edit and dive.weight_kg is not none else '' }}" data-number="weight">
@@ -140,7 +140,7 @@
             <div class="air-consumption-control" data-sac-calculator>
                 <div class="air-consumption-head">
                     <h3>Air consumption</h3>
-                    {{ unit_toggle('pressure', 'Pressure', 'bar', 'bar', 'psi', 'psi') }}
+                    {{ unit_toggle('pressure', 'Pressure', 'bar', 'bar', 'psi', 'psi', units.pressure) }}
                 </div>
                 <div class="air-consumption-body">
                     <div class="pressure-controls">
@@ -178,7 +178,7 @@
         <div class="form-section">
             <div class="form-section-title">
                 <h2>Conditions</h2>
-                {{ unit_toggle('temperature', 'Temperature', 'c', '°C', 'f', '°F') }}
+                {{ unit_toggle('temperature', 'Temperature', 'c', '°C', 'f', '°F', units.temperature) }}
             </div>
             <div class="control-panel conditions-panel">
                 <div class="range-control">

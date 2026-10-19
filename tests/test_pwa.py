@@ -94,7 +94,13 @@ class PWATest(unittest.TestCase):
         self.assertIn(b"data-pwa-retry", authenticated)
 
     def test_install_guidance_is_available_on_login_and_own_profile(self):
-        self.assertIn(b"data-pwa-guide", self.get("/").data)
+        landing = self.get("/").data
+        self.assertNotIn(b"Download", landing)
+        self.assertNotIn(b"data-pwa-guide", landing)
+        self.assertNotIn(b"data-pwa-install-dialog", landing)
+        self.assertNotIn(b"data-pwa-install-notice", landing)
+        self.assertNotIn(b"Add to Home Screen", landing)
+        self.assertIn(b"data-pwa-install-dialog", self.get("/login").data)
         with self.app.app_context():
             database = db.get_db()
             database.execute("INSERT INTO users (username) VALUES ('diver')")
@@ -103,6 +109,7 @@ class PWATest(unittest.TestCase):
             session["user_id"] = 1
         profile = self.get("/you").data
         self.assertIn(b"data-pwa-install hidden", profile)
+        self.assertIn(b"data-pwa-install-dialog", profile)
         self.assertIn(b"data-pwa-back", profile)
         self.assertIn(b"data-pwa-update", profile)
 

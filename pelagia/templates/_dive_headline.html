@@ -88,7 +88,7 @@
     <div class="detail-headline-stats" aria-label="Dive stats">
         <div>
             <small>Max depth</small>
-            <span>{{ optional_metric(dive.depth_m) }}<em>m</em></span>
+            <span>{{ display_metric(dive.depth_m, 'length', include_unit=False) }}<em>{{ display_unit('length') }}</em></span>
         </div>
         <div>
             <small>Duration</small>

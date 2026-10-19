@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="theme-color" content="#062a46">
     <title>{% block title %}Pelagia{% endblock %}</title>
-    <link rel="icon" href="{{ url_for('static', filename='img/pelagia-mark.svg') }}" type="image/svg+xml">
+    <link rel="icon" href="{{ url_for('static', filename='img/favicon.png') }}" type="image/png" sizes="32x32">
     <link rel="manifest" href="{{ url_for('pwa_manifest') }}">
     <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='img/apple-touch-icon.png') }}">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -22,10 +22,7 @@
     <header class="topbar {{ 'feed-topbar' if request.endpoint == 'home' else '' }}">
         <a class="brand" href="{{ url_for('home') }}" aria-label="Pelagia Home">
             <span class="brand-mark" aria-hidden="true">
-                <svg viewBox="0 0 40 40" focusable="false">
-                    <path d="M4 15.5c4.4 0 4.4-4.5 8.8-4.5s4.4 4.5 8.8 4.5S26 11 30.4 11s4.4 4.5 8.8 4.5"></path>
-                    <path d="M4 24.5c4.4 0 4.4-4.5 8.8-4.5s4.4 4.5 8.8 4.5S26 20 30.4 20s4.4 4.5 8.8 4.5"></path>
-                </svg>
+                <img src="{{ url_for('static', filename='img/pelagia-mark.png') }}" width="36" height="36" alt="">
             </span>
             <span>Pelagia</span>
         </a>

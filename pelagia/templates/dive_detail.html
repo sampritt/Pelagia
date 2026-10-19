@@ -12,12 +12,12 @@
                 {% if dive.average_depth_m is not none %}
                 <div>
                     <dt>Average depth</dt>
-                    <dd>{{ optional_metric(dive.average_depth_m, ' m') }}</dd>
+                    <dd>{{ display_metric(dive.average_depth_m, 'length') }}</dd>
                 </div>
                 {% endif %}
                 <div>
                     <dt>Weight</dt>
-                    <dd>{{ optional_metric(dive.weight_kg, ' kg', weight=True) }}</dd>
+                    <dd>{{ display_metric(dive.weight_kg, 'weight') }}</dd>
                 </div>
                 <div>
                     <dt>Exposure</dt>
@@ -32,11 +32,11 @@
                 <dl class="detail-metric-list pressure-metric-list">
                     <div>
                         <dt>Starting pressure</dt>
-                        <dd>{{ optional_metric(dive.starting_pressure_bar, ' bar') }}</dd>
+                        <dd>{{ display_metric(dive.starting_pressure_bar, 'pressure') }}</dd>
                     </div>
                     <div>
                         <dt>Ending pressure</dt>
-                        <dd>{{ optional_metric(dive.ending_pressure_bar, ' bar') }}</dd>
+                        <dd>{{ display_metric(dive.ending_pressure_bar, 'pressure') }}</dd>
                     </div>
                     <div class="sac-metric">
                         <dt>SAC rate</dt>
@@ -50,15 +50,15 @@
             <dl class="detail-metric-list">
                 <div>
                     <dt>Visibility</dt>
-                    <dd>{{ optional_metric(dive.visibility_m, ' m') }}</dd>
+                    <dd>{{ display_metric(dive.visibility_m, 'length') }}</dd>
                 </div>
                 <div>
                     <dt>Air temperature</dt>
-                    <dd>{{ optional_metric(dive.air_temp_c, '°C') }}</dd>
+                    <dd>{{ display_metric(dive.air_temp_c, 'temperature') }}</dd>
                 </div>
                 <div>
                     <dt>Water temperature</dt>
-                    <dd>{{ optional_metric(dive.water_temp_c, '°C') }}</dd>
+                    <dd>{{ display_metric(dive.water_temp_c, 'temperature') }}</dd>
                 </div>
                 <div>
                     <dt>Current</dt>

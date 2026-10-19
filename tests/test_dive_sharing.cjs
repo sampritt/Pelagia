@@ -6,15 +6,19 @@ const vm = require("node:vm");
 
 function setup(navigator = {}, secure = true, options = {}) {
     const element = () => ({
-        handlers: {}, hidden: false, textContent: "", value: "",
+        handlers: {}, hidden: false, textContent: "", value: "", dataset: {}, attributes: {},
         addEventListener(name, callback) { this.handlers[name] = callback; },
+        setAttribute(name, value) { this.attributes[name] = value; },
+        setPointerCapture(pointerId) { this.capturedPointer = pointerId; },
         focus() { this.focused = true; },
         select() { this.selected = true; },
         setSelectionRange(start, end) { this.selection = [start, end]; },
     });
-    const parts = Object.fromEntries(["link", "copy", "copy-label", "save", "native", "status", "preview", "close"].map(name => [name, element()]));
+    const parts = Object.fromEntries(["link", "copy", "copy-label", "save", "native", "status", "preview", "close", "carousel", "save-label", "counter", "description", "previous", "next"].map(name => [name, element()]));
+    const styles = [element(), element()];
     const dialog = element();
     dialog.querySelector = selector => parts[selector.match(/data-share-([a-z-]+)/)[1]];
+    dialog.querySelectorAll = () => styles;
     dialog.showModal = () => { dialog.open = true; };
     dialog.close = () => { dialog.open = false; dialog.handlers.close(); };
     const document = element();
@@ -34,11 +38,13 @@ function setup(navigator = {}, secure = true, options = {}) {
         shareUrl: "https://pelagia.example/share/dive/7",
         shareImage: "https://pelagia.example/share/dive/7/preview.jpg",
         shareDownload: "https://pelagia.example/share/dive/7/preview.jpg?download=1",
+        shareTransparentImage: "https://pelagia.example/share/dive/7/transparent.png",
+        shareTransparentDownload: "https://pelagia.example/share/dive/7/transparent.png?download=1",
         shareTitle: "Blue Corner",
     };
     const event = {target: {closest: () => trigger}, preventDefault() { this.prevented = true; }};
     const open = () => document.handlers.click(event);
-    return {parts, dialog, trigger, event, open, downloads};
+    return {parts, styles, dialog, trigger, event, open, downloads};
 }
 
 test("native sharing is invoked immediately with the permanent URL", async () => {
@@ -172,4 +178,89 @@ test("an earlier image request cannot overwrite the current dive's image", async
     await flushPreparation();
     await state.parts.save.handlers.click();
     assert.equal(await payload.files[0].text(), "current image");
+});
+
+test("style buttons and arrows select the preview and correct attachment", async () => {
+    const state = setup();
+    state.open();
+    assert.equal(state.parts.preview.src, state.trigger.dataset.shareImage);
+    assert.equal(state.parts.counter.textContent, "1 / 2");
+    assert.equal(state.styles[0].attributes["aria-pressed"], "true");
+    state.styles[1].handlers.click();
+    assert.equal(state.parts.preview.src, state.trigger.dataset.shareTransparentImage);
+    assert.equal(state.parts.preview.dataset.transparent, "true");
+    assert.equal(state.parts.counter.textContent, "2 / 2");
+    assert.equal(state.styles[1].attributes["aria-pressed"], "true");
+    assert.equal(state.styles[0].attributes["aria-pressed"], "false");
+    assert.match(state.parts.description.textContent, /checkerboard isn't saved/);
+    assert.equal(state.parts["save-label"].textContent, "Save PNG");
+    await state.parts.save.handlers.click();
+    assert.equal(state.downloads[0].href, state.trigger.dataset.shareTransparentDownload);
+    assert.equal(state.downloads[0].download, "pelagia-dive-transparent.png");
+    state.parts.next.handlers.click();
+    assert.equal(state.parts.preview.src, state.trigger.dataset.shareImage);
+    state.parts.previous.handlers.click();
+    assert.equal(state.parts.preview.src, state.trigger.dataset.shareTransparentImage);
+    state.dialog.close();
+    state.open();
+    assert.equal(state.parts.preview.dataset.transparent, "false");
+    assert.equal(state.parts.counter.textContent, "1 / 2");
+});
+
+test("horizontal touch swipes and keyboard arrows change styles; vertical scrolling does not", () => {
+    const state = setup();
+    state.open();
+    const pointer = (x, y, extra = {}) => ({clientX: x, clientY: y, pointerId: 1, isPrimary: true, pointerType: "touch", target: {closest: () => null}, ...extra});
+    state.parts.carousel.handlers.pointerdown(pointer(250, 80));
+    state.parts.carousel.handlers.pointerup(pointer(150, 90));
+    assert.equal(state.parts.counter.textContent, "2 / 2");
+    state.parts.carousel.handlers.pointerdown(pointer(150, 80));
+    state.parts.carousel.handlers.pointerup(pointer(250, 90));
+    assert.equal(state.parts.counter.textContent, "1 / 2");
+    for (const end of [pointer(245, 82), pointer(200, 200)]) {
+        state.parts.carousel.handlers.pointerdown(pointer(250, 80));
+        state.parts.carousel.handlers.pointerup(end);
+        assert.equal(state.parts.counter.textContent, "1 / 2");
+    }
+    state.parts.carousel.handlers.pointerdown(pointer(250, 80));
+    state.parts.carousel.handlers.pointercancel();
+    state.parts.carousel.handlers.pointerup(pointer(150, 80));
+    assert.equal(state.parts.counter.textContent, "1 / 2");
+    for (const [key, expected] of [["ArrowRight", "2 / 2"], ["Home", "1 / 2"], ["End", "2 / 2"], ["ArrowLeft", "1 / 2"]]) {
+        const event = {key, preventDefault() { this.prevented = true; }};
+        state.parts.carousel.handlers.keydown(event);
+        assert.equal(event.prevented, true);
+        assert.equal(state.parts.counter.textContent, expected);
+    }
+});
+
+test("mobile transparent Save shares a PNG immediately with no background conversion", async () => {
+    let payload;
+    const state = setup({canShare: data => data.files[0].type === "image/png", share(data) { payload = data; return Promise.resolve(); }}, true, {mobile: true});
+    state.open();
+    state.styles[1].handlers.click();
+    await flushPreparation();
+    const sharing = state.parts.save.handlers.click();
+    assert.equal(payload.files[0].name, "pelagia-dive-transparent.png");
+    assert.equal(payload.files[0].type, "image/png");
+    await sharing;
+    assert.equal(state.downloads.length, 0);
+});
+
+test("switching styles invalidates an unfinished JPEG preparation", async () => {
+    const responses = [];
+    let payload;
+    const state = setup({canShare: () => true, share(data) { payload = data; return Promise.resolve(); }}, true, {
+        mobile: true, fetch: () => new Promise(resolve => responses.push(resolve)),
+    });
+    state.open();
+    state.styles[1].handlers.click();
+    responses[1]({ok: true, blob: async () => new Blob(["transparent PNG"])});
+    await flushPreparation();
+    responses[0]({ok: true, blob: async () => new Blob(["full JPEG"])});
+    await flushPreparation();
+    assert.equal(state.parts.save.disabled, false);
+    await state.parts.save.handlers.click();
+    assert.equal(payload.files[0].type, "image/png");
+    assert.equal(await payload.files[0].text(), "transparent PNG");
 });

@@ -6,10 +6,13 @@
     <p>An update is ready. Finish saving your changes before reloading.</p>
     <button class="primary-button compact" type="button" data-pwa-update>Reload to update</button>
 </aside>
+{% if request.endpoint != 'landing' %}
 <aside class="pwa-notice" data-pwa-install-notice role="status" aria-live="polite" hidden>
     <p>Use your browser menu to install Pelagia.</p>
 </aside>
+{% endif %}
 </div>
+{% if request.endpoint != 'landing' %}
 <dialog class="share-dialog pwa-install-dialog" data-pwa-install-dialog aria-labelledby="pwaInstallTitle">
     <div class="share-dialog-heading">
         <div>
@@ -26,3 +29,4 @@
     </div>
     <p>Visit Pelagia over HTTPS to install. Open the new icon and sign in with Google. An internet connection is needed to view and save dives.</p>
 </dialog>
+{% endif %}

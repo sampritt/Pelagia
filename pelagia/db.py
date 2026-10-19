@@ -4,6 +4,8 @@ from pathlib import Path
 import click
 from flask import current_app, g
 
+from .units import UNIT_OPTIONS
+
 
 def get_db():
     if "db" not in g:
@@ -30,6 +32,9 @@ def init_db():
     if "password_hash" in {row["name"] for row in db.execute("PRAGMA table_info(users)")}:
         db.execute("ALTER TABLE users DROP COLUMN password_hash")
     _ensure_column(db, "users", "bio", "TEXT")
+    for group, (metric, alternate) in UNIT_OPTIONS.items():
+        _ensure_column(db, "users", f"{group}_unit",
+                       f"TEXT NOT NULL DEFAULT '{metric}' CHECK ({group}_unit IN ('{metric}', '{alternate}'))")
     _ensure_column(db, "users", "starting_dive_count", "INTEGER NOT NULL DEFAULT 0 CHECK (starting_dive_count >= 0)")
     _ensure_column(db, "users", "certification_id", "INTEGER REFERENCES certifications(id) ON DELETE SET NULL")
     db.executemany(

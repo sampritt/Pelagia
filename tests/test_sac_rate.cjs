@@ -8,11 +8,11 @@ const context = vm.createContext({ document: { addEventListener() {} }, window: 
 vm.runInContext(fs.readFileSync(path.join(__dirname, "../pelagia/static/js/app.js"), "utf8"), context);
 
 test("SAC volume uses the selected tank size and rounds only the final result", () => {
-    assert.equal(vm.runInContext("formatSacRate(1)", context), "12.0 L/min");
-    assert.equal(vm.runInContext("formatSacRate(1, 15)", context), "15.0 L/min");
-    assert.equal(vm.runInContext("formatSacRate(1.25, 12)", context), "15.0 L/min");
-    assert.equal(vm.runInContext("formatSacRate(1.25, 15)", context), "18.8 L/min");
-    assert.equal(vm.runInContext("formatSacRate(0)", context), "0.0 L/min");
+    assert.equal(vm.runInContext("formatSacRate(1)", context), "12 L/min");
+    assert.equal(vm.runInContext("formatSacRate(1, 15)", context), "15 L/min");
+    assert.equal(vm.runInContext("formatSacRate(1.25, 12)", context), "15 L/min");
+    assert.equal(vm.runInContext("formatSacRate(1.25, 15)", context), "19 L/min");
+    assert.equal(vm.runInContext("formatSacRate(0)", context), "0 L/min");
 });
 
 test("Missing pressure data never displays a fabricated volume", () => {
@@ -34,10 +34,10 @@ test("The display reads the current radio selection without changing the pressur
     };
     context.calculator = calculator;
     vm.runInContext("renderSacRate(calculator, 1)", context);
-    assert.equal(output.textContent, "12.0 L/min");
+    assert.equal(output.textContent, "12 L/min");
     tankSize = "15";
     vm.runInContext("renderSacRate(calculator, 1)", context);
-    assert.equal(output.textContent, "15.0 L/min");
+    assert.equal(output.textContent, "15 L/min");
     vm.runInContext("renderSacRate(calculator, null)", context);
     assert.equal(output.textContent, "-");
     assert.deepEqual(unset, [false, false, true]);

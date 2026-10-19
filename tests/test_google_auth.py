@@ -66,7 +66,7 @@ class GoogleAuthTest(unittest.TestCase):
         self.assertIn('<span data-nosnippet>Log in</span>', landing)
         self.assertIn('<div class="welcome-actions" data-nosnippet>', landing)
         self.assertIn('application/ld+json', landing)
-        self.assertIn('data-pwa-guide', landing)
+        self.assertNotIn('data-pwa-guide', landing)
         self.assertNotIn('name="username"', landing)
         for path in ("/login", "/signup"):
             page = client.get(path + "?next=/dive/42").get_data(as_text=True)

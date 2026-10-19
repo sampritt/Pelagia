@@ -16,6 +16,7 @@ from flask import (
     abort,
     current_app,
     flash,
+    g,
     jsonify,
     redirect,
     render_template,
@@ -30,11 +31,11 @@ from PIL import Image, ImageOps, UnidentifiedImageError
 from . import db as database
 from .importer import import_reference_data
 from .metrics import format_metric
-from .units import metric_measurement
+from .units import UNIT_OPTIONS, display_measurement, metric_measurement
 from .dive_options import DIVE_TYPES, CURRENT_TYPES, normalize_options, dive_type_options, current_type_options
 from . import google_auth, email_auth
 from . import pwa
-from .sharing import fetch_public_dive, render_share_image, share_description
+from .sharing import fetch_public_dive, render_share_image, render_transparent_share_image, share_description
 
 
 EXPOSURES = ("swimsuit", "shorty", "2mm", "3mm", "4mm", "5mm", "6mm", "7mm", "dry suit")
@@ -74,7 +75,7 @@ def create_app(test_config=None):
         PERMANENT_SESSION_LIFETIME=timedelta(days=30),
         SESSION_REFRESH_EACH_REQUEST=True,
         PELAGIA_OPERATOR_NAME=os.environ.get("PELAGIA_OPERATOR_NAME", "Pelagia"),
-        PELAGIA_CONTACT_EMAIL=os.environ.get("PELAGIA_CONTACT_EMAIL", ""),
+        PELAGIA_CONTACT_EMAIL=os.environ.get("PELAGIA_CONTACT_EMAIL") or "info@pelagiadivelog.com",
     )
     if test_config:
         app.config.update(test_config)
@@ -136,6 +137,27 @@ def current_user():
     return fetch_user(user_id)
 
 
+def unit_preferences():
+    if "unit_preferences" not in g:
+        user = current_user()
+        g.unit_preferences = {
+            group: user[f"{group}_unit"] if user else options[0]
+            for group, options in UNIT_OPTIONS.items()
+        }
+    return g.unit_preferences
+
+
+def display_unit(group):
+    unit = unit_preferences()[group]
+    return f"°{unit.upper()}" if group == "temperature" else unit
+
+
+def display_metric(value, group, *, include_unit=True):
+    converted = display_measurement(value, unit_preferences()[group])
+    suffix = ("" if group == "temperature" else " ") + display_unit(group) if include_unit else ""
+    return optional_metric(converted, suffix, weight=group == "weight")
+
+
 def register_routes(app):
     app.jinja_env.globals["current_user"] = current_user
     app.jinja_env.globals["dive_type_label"] = dive_type_label
@@ -143,9 +165,15 @@ def register_routes(app):
     app.jinja_env.globals["current_label"] = current_label
     app.jinja_env.globals["current_strength_label"] = current_strength_label
     app.jinja_env.globals["optional_metric"] = optional_metric
+    app.jinja_env.globals["display_metric"] = display_metric
+    app.jinja_env.globals["display_unit"] = display_unit
     app.jinja_env.globals["sac_rate_display"] = sac_rate_display
     app.jinja_env.globals["uploaded_file_url"] = uploaded_file_url
     app.jinja_env.globals["public_url"] = public_url
+
+    @app.context_processor
+    def display_preferences():
+        return {"units": unit_preferences()}
 
     @app.get("/terms")
     def terms():
@@ -268,11 +296,28 @@ def register_routes(app):
             abort(404)
         filename = _download_name(dive["site_name"])[:80] or "logged-dive"
         response = send_file(
-            render_share_image(dive), mimetype="image/jpeg",
+            render_share_image(dive, length_unit=unit_preferences()["length"]), mimetype="image/jpeg",
             download_name=f"pelagia-{filename}.jpg", as_attachment=request.args.get("download") == "1",
         )
         response.headers["Cache-Control"] = "no-store"
         response.headers["X-Robots-Tag"] = "noindex"
+        response.vary.add("Cookie")
+        return response
+
+    @app.get("/share/dive/<int:dive_id>/transparent.png")
+    def shared_dive_transparent_image(dive_id):
+        dive = fetch_public_dive(dive_id)
+        if dive is None:
+            abort(404)
+        filename = _download_name(dive["site_name"])[:80] or "logged-dive"
+        response = send_file(
+            render_transparent_share_image(dive, length_unit=unit_preferences()["length"]),
+            mimetype="image/png", download_name=f"pelagia-{filename}-transparent.png",
+            as_attachment=request.args.get("download") == "1",
+        )
+        response.headers["Cache-Control"] = "no-store"
+        response.headers["X-Robots-Tag"] = "noindex"
+        response.vary.add("Cookie")
         return response
 
     @app.route("/dive/<int:dive_id>/edit", methods=("GET", "POST"))
@@ -326,6 +371,15 @@ def register_routes(app):
     def profile():
         if request.method == "POST":
             db = database.get_db()
+            submitted_units = {}
+            for group, options in UNIT_OPTIONS.items():
+                field = f"{group}_unit"
+                if field in request.form:
+                    if request.form[field] not in options:
+                        abort(400, "Choose a supported unit.")
+                    submitted_units[field] = request.form[field]
+            for field, unit in submitted_units.items():
+                db.execute(f"UPDATE users SET {field} = ? WHERE id = ?", (unit, session["user_id"]))
             if "starting_dive_count" in request.form:
                 try:
                     starting_dive_count = int(request.form["starting_dive_count"].strip())
@@ -735,6 +789,7 @@ def fetch_user(user_id):
     return (
         database.get_db()
         .execute("""SELECT u.id, u.username, u.profile_photo, u.bio, u.starting_dive_count, u.certification_id, u.created_at,
+                           u.pressure_unit, u.length_unit, u.temperature_unit, u.weight_unit,
                            c.name AS certification_name
                     FROM users u LEFT JOIN certifications c ON c.id = u.certification_id
                     WHERE u.id = ?""", (user_id,))
@@ -743,6 +798,12 @@ def fetch_user(user_id):
 
 
 def render_user_profile(user, is_owner):
+    login_email = None
+    if is_owner:
+        account = database.get_db().execute(
+            "SELECT login_email, google_email FROM users WHERE id = ?", (user["id"],)
+        ).fetchone()
+        login_email = account["login_email"] or account["google_email"]
     stats = get_profile_stats(user["id"])
     dives = fetch_dives(
         scope="mine",
@@ -753,15 +814,16 @@ def render_user_profile(user, is_owner):
     return render_template(
         "profile.html",
         user=user,
+        login_email=login_email,
         stats=stats,
         total_dive_count=stats["summary"]["dive_count"] + user["starting_dive_count"],
         dives=dives,
         profile_histories=[
             dict(key=key, title=title, unit=unit,
-                 history=get_profile_sac_history(user["id"], key))
+                 history=get_profile_sac_history(user["id"], key, length_unit=unit_preferences()["length"]))
             for key, title, unit in (
                 ("sac_rate_l_min", "SAC rate", "L/min"),
-                ("depth_m", "Max depth", "m"),
+                ("depth_m", "Max depth", display_unit("length")),
                 ("duration_min", "Duration", "min"),
                 ("dive_count", "Number of dives", "dives"),
             )
@@ -1353,7 +1415,7 @@ def hydrate_dive(row):
     return dive
 
 
-def get_profile_sac_history(user_id, metric="sac_rate_l_min"):
+def get_profile_sac_history(user_id, metric="sac_rate_l_min", *, length_unit="m"):
     if metric not in {"sac_rate_l_min", "depth_m", "duration_min", "dive_count"}:
         raise ValueError("Unsupported history metric")
     value_expression = "1" if metric == "dive_count" else metric
@@ -1373,6 +1435,8 @@ def get_profile_sac_history(user_id, metric="sac_rate_l_min"):
         rate = row["value"]
         if not isinstance(rate, (int, float)) or not math.isfinite(rate) or rate < 0:
             continue
+        if metric == "depth_m":
+            rate = display_measurement(rate, length_unit)
         rates.append(rate)
         try:
             day = date.fromisoformat(row["date"][:10])
@@ -1394,7 +1458,7 @@ def get_profile_sac_history(user_id, metric="sac_rate_l_min"):
         x = left + bar_width / 2 + (day - first_day).days / span * (width - left - right - bar_width) if len(axis_days) > 1 else (width + left - right) / 2
         points.append({
             "date": day.isoformat(), "label": day.strftime("%b %d, %Y"),
-            "value": value, "display": f"{value:.1f}".removesuffix(".0"), "count": len(day_rates),
+            "value": value, "display": format_metric(value), "count": len(day_rates),
             "x": round(x, 2), "y": round(height - bottom - value / ceiling * (height - top - bottom), 2),
         })
     median = statistics.median(rates) if rates else None
@@ -1551,11 +1615,11 @@ def dive_site_recent_conditions(site_id):
         current_type = "none"
     return {
         "date": latest["date"],
-        "visibility_m": median_int(row["visibility_m"] for row in rows),
+        "visibility_m": optional_median(row["visibility_m"] for row in rows),
         "current": current_type,
         "current_strength": current_strength,
-        "water_temp_c": median_int(row["water_temp_c"] for row in rows),
-        "air_temp_c": median_int(row["air_temp_c"] for row in rows),
+        "water_temp_c": optional_median(row["water_temp_c"] for row in rows),
+        "air_temp_c": optional_median(row["air_temp_c"] for row in rows),
     }
 
 
@@ -1607,7 +1671,7 @@ def dive_site_condition_series(site_id):
         visibility_value = None
         current_value = None
         if bucket["visibility"]:
-            visibility_value = round_half_up(statistics.median(bucket["visibility"]))
+            visibility_value = statistics.median(bucket["visibility"])
         if bucket["current"]:
             current_value = round_half_up(statistics.median(bucket["current"]))
         label = day.strftime("%b %-d") if os.name != "nt" else day.strftime("%b %#d")
@@ -1632,11 +1696,11 @@ def dive_site_species_sightings(site_id, limit=10):
     ).fetchall()
 
 
-def median_int(values):
+def optional_median(values):
     clean = [value for value in values if value is not None]
     if not clean:
         return None
-    return round_half_up(statistics.median(clean))
+    return statistics.median(clean)
 
 
 def median_current_strength(rows):

@@ -4,7 +4,7 @@ const path = require("node:path");
 const test = require("node:test");
 const vm = require("node:vm");
 
-function setup(initial = {}, stored = {}) {
+function setup(initial = {}, stored = {}, preferred = {}) {
     const element = (value = "") => ({
         value, textContent: "", handlers: {}, dataset: {},
         classList: {toggle() {}},
@@ -24,7 +24,7 @@ function setup(initial = {}, stored = {}) {
         if (name in stored) pairs[name].number.dataset.metricValue = stored[name];
     }
     const unitInputs = Object.entries({length: ["m", "ft"], weight: ["kg", "lb"], pressure: ["bar", "psi"], temperature: ["c", "f"]})
-        .flatMap(([group, units]) => units.map((unit, index) => Object.assign(element(unit), {checked: index === 0, dataset: {unitToggle: group}})));
+        .flatMap(([group, units]) => units.map((unit) => Object.assign(element(unit), {checked: unit === (preferred[group] || units[0]), dataset: {unitToggle: group}})));
     const labels = Object.fromEntries(names.map(name => [name, element()]));
     const calculator = { querySelector: selector => selector === "[data-tank-size]:checked" ? { value: "12" } : selector === "[data-sac-output]" ? sacOutput : null };
     const sacOutput = element();
@@ -84,6 +84,36 @@ test("typed depths round on blur and reopening; sliders use whole meters", () =>
     pairs.depth.range.handlers.input();
     assert.equal(pairs.depth.number.value, "16");
     assert.equal(pairs.depth.output.textContent, "16 m");
+});
+
+test("preferred units initialize the form while retaining exact measurements and allowing overrides", () => {
+    const state = setup({depth: "31", averageDepth: "11", weight: "7.5", visibility: "15", airTemp: "24", startingPressure: "195", endingPressure: "47", duration: "50"},
+        {depth: "31.1234", averageDepth: "10.668", weight: "7.25747792", visibility: "15.3", airTemp: "23.7", startingPressure: "195.3"},
+        {length: "ft", weight: "lb", pressure: "psi", temperature: "f"});
+    assert.equal(state.pairs.depth.output.textContent, "102 ft");
+    assert.equal(state.pairs.averageDepth.output.textContent, "35 ft");
+    assert.equal(state.pairs.weight.output.textContent, "16 lb");
+    assert.equal(state.pairs.visibility.output.textContent, "50 ft");
+    assert.equal(state.pairs.airTemp.output.textContent, "75°F");
+    assert.equal(state.pairs.waterTemp.output.textContent, "-");
+    assert.equal(state.pairs.startingPressure.output.textContent, "2833 psi");
+    assert.equal(state.pairs.depth.range.max, "148");
+    assert.equal(state.pairs.startingPressure.range.max, "3000");
+    const sac = state.sacOutput.textContent;
+    assert.ok(Math.abs(Number(state.submitted().depth_m) * 0.3048 - 31.1234) < 1e-10);
+    assert.ok(Math.abs(Number(state.submitted().weight_kg) - 16) < 1e-10);
+    for (const name of ["depth", "averageDepth", "weight", "visibility", "airTemp", "startingPressure"]) {
+        state.pairs[name].number.handlers.blur();
+    }
+    state.setUnit("length", "m");
+    state.setUnit("weight", "kg");
+    state.setUnit("pressure", "bar");
+    state.setUnit("temperature", "c");
+    assert.equal(state.submitted().depth_m, "31.1234");
+    assert.equal(state.submitted().average_depth_m, "10.668");
+    assert.equal(state.submitted().weight_kg, "7.25747792");
+    assert.equal(state.submitted().starting_pressure_bar, "195.3");
+    assert.equal(state.sacOutput.textContent, sac);
 });
 
 test("pressure inputs retain off-step integers and SAC uses the exact entered depth and pressure", () => {

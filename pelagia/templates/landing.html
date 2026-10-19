@@ -20,9 +20,8 @@
 {% block content %}
 <div class="welcome-page">
     <header class="welcome-nav">
-        <a class="welcome-wordmark" href="{{ url_for('landing') }}" aria-label="Pelagia home"><img src="{{ url_for('static', filename='img/pelagia-mark.svg') }}" width="32" height="32" alt="">Pelagia</a>
+        <a class="welcome-wordmark" href="{{ url_for('landing') }}" aria-label="Pelagia home"><img src="{{ url_for('static', filename='img/pelagia-mark.png') }}" width="32" height="32" alt="">Pelagia</a>
         <nav aria-label="Welcome navigation">
-            <button class="welcome-download" type="button" data-pwa-guide aria-haspopup="dialog"><span data-nosnippet>Download <span aria-hidden="true">↓</span></span></button>
             <a class="welcome-login" href="{{ url_for('login', next=auth_next) }}"><span data-nosnippet>Log in</span></a>
             <a class="welcome-button welcome-button-small" href="{{ url_for('signup', next=auth_next) }}"><span data-nosnippet>Sign up</span></a>
         </nav>

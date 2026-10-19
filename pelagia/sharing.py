@@ -2,6 +2,7 @@
 
 from io import BytesIO
 from datetime import date
+from functools import lru_cache
 from pathlib import Path
 
 from flask import current_app
@@ -9,6 +10,7 @@ from PIL import Image, ImageDraw, ImageFont, ImageOps, UnidentifiedImageError
 
 from .db import get_db
 from .metrics import format_metric
+from .units import display_measurement
 from .dive_options import dive_type_options
 from .static_maps import render_static_map
 
@@ -57,35 +59,22 @@ def _font(size, bold=False):
 
 
 def _brand_mark(size=52):
-    # Rasterize the same rounded square and cubic waves as pelagia-mark.svg.
-    # Supersampling keeps the small mark crisp without another dependency.
-    pixels = size * 4
-    scale = pixels / 64
-    mark = Image.new("RGBA", (pixels, pixels))
-    draw = ImageDraw.Draw(mark)
-    for y in range(pixels):
-        progress = y / (pixels - 1)
-        color = tuple(round(start + (end - start) * progress) for start, end in zip((21, 151, 255), (7, 86, 216)))
-        draw.line((0, y, pixels, y), fill=color)
-    for baseline in (25, 39):
-        points = []
-        for segment in range(4):
-            x = 5 + segment * 14
-            start_y = baseline if segment % 2 == 0 else baseline - 7
-            end_y = baseline - 7 if segment % 2 == 0 else baseline
-            for step in range(17):
-                t = step / 16
-                px = (1-t)**3 * x + 3*(1-t)**2*t*(x+7) + 3*(1-t)*t**2*(x+7) + t**3*(x+14)
-                py = (1-t)**3 * start_y + 3*(1-t)**2*t*start_y + 3*(1-t)*t**2*end_y + t**3*end_y
-                points.append((px * scale, py * scale))
-        draw.line(points, fill="white", width=round(5 * scale), joint="curve")
-        radius = 2.5 * scale
-        for x, y in (points[0], points[-1]):
-            draw.ellipse((x-radius, y-radius, x+radius, y+radius), fill="white")
-    mask = Image.new("L", mark.size)
-    ImageDraw.Draw(mask).rounded_rectangle((0, 0, pixels-1, pixels-1), radius=18 * scale, fill=255)
-    mark.putalpha(mask)
-    return mark.resize((size, size), Image.Resampling.LANCZOS)
+    with Image.open(Path(__file__).parent / "static" / "img" / "pelagia-mark.png") as logo:
+        return logo.convert("RGBA").resize((size, size), Image.Resampling.LANCZOS)
+
+
+@lru_cache(maxsize=1)
+def _brand_lockup():
+    # Keep the supplied fin and wordmark outlines exactly. The source has a
+    # blue background (low red) and white artwork (high red), so its red channel
+    # provides a clean alpha mask, including the counters inside the letters.
+    with Image.open(Path(__file__).parent / "static" / "img" / "pelagia-lockup-source.png") as source:
+        alpha = source.convert("RGB").getchannel("R").point(
+            lambda value: max(0, min(255, round((value - 32) * 255 / 213)))
+        )
+    logo = Image.new("RGBA", alpha.size, "white")
+    logo.putalpha(alpha)
+    return logo.crop(alpha.getbbox())
 
 
 def _fit_line(draw, text, font, width):
@@ -146,7 +135,33 @@ def _display_date(value):
     return f"{months[logged_on.month - 1]} {logged_on.day}, {logged_on.year}"
 
 
-def render_share_image(dive):
+def render_transparent_share_image(dive, *, length_unit="m"):
+    """A white site/stats/brand overlay with real transparency and no media."""
+    image = Image.new("RGBA", (1200, 630), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(image)
+    title_font, lines, step, height = _layout_title(draw, dive["site_name"], width=1000, height=152)
+    title_top = round(153 - height / 2)
+    for index, line in enumerate(lines):
+        draw.text((600, title_top + index * step), line, font=title_font,
+                  fill="white", anchor="mt")
+
+    depth = format_metric(display_measurement(dive["depth_m"], length_unit))
+    duration = format_metric(dive["duration_min"])
+    for center, value, label in ((430, f"{depth} {length_unit}", "MAX DEPTH"),
+                                 (770, f"{duration} min", "DIVE TIME")):
+        draw.text((center, 278), value, font=_font(56, bold=True), fill="white", anchor="mt")
+        draw.text((center, 349), label, font=_font(18), fill="white", anchor="mt")
+
+    logo = _brand_lockup()
+    logo = logo.resize((280, round(280 * logo.height / logo.width)), Image.Resampling.LANCZOS)
+    image.alpha_composite(logo, ((image.width - logo.width) // 2, 414))
+    stream = BytesIO()
+    image.save(stream, "PNG")
+    stream.seek(0)
+    return stream
+
+
+def render_share_image(dive, *, length_unit="m"):
     image = Image.new("RGB", (1200, 630), "#062a46")
     # Gallery order determines the primary photo. The site map replaces the
     # ocean artwork when no readable photo is attached and coordinates exist.
@@ -192,10 +207,12 @@ def render_share_image(dive):
     draw.text((56, location_top), _fit_line(draw, dive["country_or_area"] or "Dive log", location_font, 540), font=location_font, fill="#b7d1e1", anchor="lt")
     draw.line((56, 396, 555, 396), fill="#31546e", width=1)
     metric_font, unit_font = _font(56, bold=True), _font(26)
-    metrics = ((56, dive["depth_m"], "m", "MAX DEPTH"), (303, dive["duration_min"], "min", "DURATION"))
+    metrics = ((56, display_measurement(dive["depth_m"], length_unit), length_unit, "MAX DEPTH"),
+               (303, dive["duration_min"], "min", "DURATION"))
     if dive.get("average_depth_m") is not None:
         metric_font, unit_font = _font(44, bold=True), _font(20)
-        metrics = ((56, dive["depth_m"], "m", "MAX DEPTH"), (245, dive["average_depth_m"], "m", "AVG DEPTH"),
+        metrics = ((56, display_measurement(dive["depth_m"], length_unit), length_unit, "MAX DEPTH"),
+                   (245, display_measurement(dive["average_depth_m"], length_unit), length_unit, "AVG DEPTH"),
                    (435, dive["duration_min"], "min", "DURATION"))
     for x, value, unit, label in metrics:
         value = format_metric(value)

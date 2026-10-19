@@ -229,12 +229,85 @@ class DiveSharingTest(unittest.TestCase):
         with Image.open(io.BytesIO(response.data)) as image:
             self.assertEqual(image.size, (1200, 630))
 
+    def test_transparent_image_is_a_public_png_with_only_site_stats_and_brand(self):
+        drawn = []
+        original_text = ImageDraw.ImageDraw.text
+
+        def record_text(draw, xy, text, *args, **kwargs):
+            drawn.append(text)
+            return original_text(draw, xy, text, *args, **kwargs)
+
+        with patch.object(ImageDraw.ImageDraw, "text", new=record_text):
+            response = self.client.get("/share/dive/1/transparent.png")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.mimetype, "image/png")
+        self.assertEqual(drawn, ["Blue Corner", "24 m", "MAX DEPTH", "52 min", "DIVE TIME"])
+        self.tile_request.assert_not_called()
+        self.assertIn("no-store", response.headers["Cache-Control"])
+        self.assertIn("Cookie", response.headers["Vary"])
+        with Image.open(io.BytesIO(response.data)) as image:
+            self.assertEqual(image.size, (1200, 630))
+            self.assertEqual(image.mode, "RGBA")
+            alpha = image.getchannel("A")
+            self.assertEqual(alpha.getextrema(), (0, 255))
+            # Empty margins and the gaps between rows are actually transparent.
+            for position in ((0, 0), (1199, 629), (600, 250), (600, 390), (600, 300)):
+                self.assertEqual(alpha.getpixel(position), 0)
+            self.assertIsNotNone(alpha.crop((100, 60, 1100, 235)).getbbox())
+            self.assertIsNotNone(alpha.crop((250, 270, 950, 375)).getbbox())
+            self.assertIsNotNone(alpha.crop((450, 410, 750, 610)).getbbox())
+
+    def test_transparent_save_downloads_png_attachment_and_respects_depth_units(self):
+        self.login_session()
+        with self.app.app_context():
+            database.get_db().execute("UPDATE users SET length_unit = 'ft' WHERE id = 1")
+            database.get_db().commit()
+        drawn = []
+        original_text = ImageDraw.ImageDraw.text
+
+        def record_text(draw, xy, text, *args, **kwargs):
+            drawn.append(text)
+            return original_text(draw, xy, text, *args, **kwargs)
+
+        with patch.object(ImageDraw.ImageDraw, "text", new=record_text):
+            response = self.client.get("/share/dive/1/transparent.png?download=1")
+        self.assertEqual(response.mimetype, "image/png")
+        self.assertIn("attachment;", response.headers["Content-Disposition"])
+        self.assertIn("pelagia-Blue_Corner-transparent.png", response.headers["Content-Disposition"])
+        self.assertIn("79 ft", drawn)
+        self.assertEqual(response.data, self.client.get("/share/dive/1/transparent.png").data)
+
+    def test_transparent_titles_fit_without_losing_words(self):
+        original_text = ImageDraw.ImageDraw.text
+        for title in ("Kicker Rock (Leon Dormido)", "Very long dive site name " * 15,
+                      "AReallyLongUnbrokenDiveSiteName" * 4):
+            with self.subTest(title=title):
+                drawn = []
+
+                def record_text(draw, xy, text, *args, **kwargs):
+                    if xy[0] == 600:
+                        drawn.append((text, draw.textbbox(xy, text, font=kwargs["font"], anchor=kwargs["anchor"])))
+                    return original_text(draw, xy, text, *args, **kwargs)
+
+                with self.app.app_context():
+                    database.get_db().execute("UPDATE dives SET site_name = ? WHERE id = 1", (title,))
+                    database.get_db().commit()
+                with patch.object(ImageDraw.ImageDraw, "text", new=record_text):
+                    response = self.client.get("/share/dive/1/transparent.png")
+                self.assertEqual(response.status_code, 200)
+                self.assertEqual("".join(text for text, _ in drawn).replace(" ", ""), title.replace(" ", ""))
+                for _, (left, top, right, bottom) in drawn:
+                    self.assertGreaterEqual(left, 95)
+                    self.assertLessEqual(right, 1105)
+                    self.assertGreaterEqual(top, 65)
+                    self.assertLessEqual(bottom, 240)
+
     def test_deleted_and_missing_dives_have_no_public_page_or_image(self):
         self.login_session()
         self.client.post("/dive/1/delete")
         for client in (self.client, self.app.test_client()):
             for dive_id in (1, 999):
-                for suffix in ("", "/preview.jpg"):
+                for suffix in ("", "/preview.jpg", "/transparent.png"):
                     self.assertEqual(client.get(f"/share/dive/{dive_id}{suffix}").status_code, 404)
 
     def test_no_coordinates_and_long_escaped_titles(self):

@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "_unit_toggle.html" import unit_toggle %}
 {% block title %}{{ user.username }} - Pelagia{% endblock %}
 
 {% block content %}
@@ -75,7 +76,7 @@
         <div class="profile-section-heading"><h2 id="profileMetricsTitle">Metrics</h2><span>All time</span></div>
         <div class="diver-metrics-grid">
             <div><small>Dives</small><span>{{ total_dive_count }}</span><p>Total lifetime dives</p></div>
-            <div><small>Max depth</small><span>{{ optional_metric(stats.summary.max_depth_m) }} <em>m</em></span><p>Deepest recorded dive</p></div>
+            <div><small>Max depth</small><span>{{ display_metric(stats.summary.max_depth_m, 'length', include_unit=False) }} <em>{{ display_unit('length') }}</em></span><p>Deepest recorded dive</p></div>
         </div>
     </section>
 
@@ -127,6 +128,14 @@
     </div>
     <dialog class="profile-settings-dialog" aria-labelledby="profileSettingsTitle" data-profile-settings>
         <div class="profile-section-heading"><h2 id="profileSettingsTitle">Settings</h2><button class="profile-settings-button" type="button" aria-label="Close settings" data-profile-settings-close>&times;</button></div>
+        <form class="profile-units-form" method="post" action="{{ url_for('profile') }}" aria-labelledby="profileUnitsTitle">
+            <h3 id="profileUnitsTitle">Units</h3>
+            <div class="profile-unit-row"><span>Pressure</span>{{ unit_toggle('pressure', 'Pressure', 'bar', 'bar', 'psi', 'psi', units.pressure) }}</div>
+            <div class="profile-unit-row"><span>Distance</span>{{ unit_toggle('length', 'Distance', 'm', 'm', 'ft', 'ft', units.length) }}</div>
+            <div class="profile-unit-row"><span>Temperature</span>{{ unit_toggle('temperature', 'Temperature', 'c', '°C', 'f', '°F', units.temperature) }}</div>
+            <div class="profile-unit-row"><span>Weight</span>{{ unit_toggle('weight', 'Weight', 'kg', 'kg', 'lb', 'lb', units.weight) }}</div>
+            <button class="primary-button compact" type="submit">Save units</button>
+        </form>
         <form class="profile-count-form" method="post" action="{{ url_for('profile') }}">
             <label for="startingDiveCount">Starting dive count</label>
             <p id="startingDiveCountHelp">Dives you haven’t logged in Pelagia. Your profile total is this number plus your dives logged in Pelagia.</p>
@@ -141,6 +150,9 @@
         </nav>
         <p class="profile-settings-attribution">&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap contributors</a></p>
         <form class="profile-settings-logout" method="post" action="{{ url_for('logout') }}">
+            {% if login_email %}
+            <p class="profile-settings-email">logged in as {{ login_email }}</p>
+            {% endif %}
             <button class="ghost-button" type="submit">Log out</button>
         </form>
     </dialog>

@@ -1,4 +1,4 @@
-"""Convert submitted form measurements to the application's metric units."""
+"""Convert measurements between stored metric values and display units."""
 
 import math
 
@@ -6,6 +6,28 @@ import math
 FEET_TO_METERS = 0.3048
 POUNDS_TO_KILOGRAMS = 0.45359237
 PSI_TO_BAR = POUNDS_TO_KILOGRAMS * 9.80665 / 0.0254 ** 2 / 100000
+UNIT_OPTIONS = {
+    "pressure": ("bar", "psi"),
+    "length": ("m", "ft"),
+    "temperature": ("c", "f"),
+    "weight": ("kg", "lb"),
+}
+
+
+def display_measurement(value, unit):
+    """Convert without rounding or modifying the stored measurement."""
+    if value is None or value == "":
+        return None
+    value = float(value)
+    if unit == "ft":
+        return value / FEET_TO_METERS
+    if unit == "lb":
+        return value / POUNDS_TO_KILOGRAMS
+    if unit == "psi":
+        return value / PSI_TO_BAR
+    if unit == "f":
+        return value * 9 / 5 + 32
+    return value
 
 
 def metric_measurement(value, unit, minimum, maximum):

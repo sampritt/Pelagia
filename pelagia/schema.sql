@@ -13,6 +13,10 @@ CREATE TABLE IF NOT EXISTS users (
     google_email TEXT,
     profile_photo TEXT,
     bio TEXT,
+    pressure_unit TEXT NOT NULL DEFAULT 'bar' CHECK (pressure_unit IN ('bar', 'psi')),
+    length_unit TEXT NOT NULL DEFAULT 'm' CHECK (length_unit IN ('m', 'ft')),
+    temperature_unit TEXT NOT NULL DEFAULT 'c' CHECK (temperature_unit IN ('c', 'f')),
+    weight_unit TEXT NOT NULL DEFAULT 'kg' CHECK (weight_unit IN ('kg', 'lb')),
     starting_dive_count INTEGER NOT NULL DEFAULT 0 CHECK (starting_dive_count >= 0),
     certification_id INTEGER REFERENCES certifications(id) ON DELETE SET NULL,
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP

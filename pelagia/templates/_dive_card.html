@@ -77,7 +77,7 @@
     </div>
 
     <div class="stat-stack">
-        <div><span>{{ optional_metric(dive.depth_m) }} <em>m</em></span><small>Max depth</small></div>
+        <div><span>{{ display_metric(dive.depth_m, 'length', include_unit=False) }} <em>{{ display_unit('length') }}</em></span><small>Max depth</small></div>
         <div><span>{{ dive.duration_min }} <em>min</em></span><small>Duration</small></div>
     </div>
 
