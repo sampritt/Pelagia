@@ -4815,7 +4815,8 @@ input[type="range"] {
 }
 
 .share-dialog-heading h2 { margin: 0; font-size: 1.5rem; }
-.share-dialog-heading .icon-button { flex: 0 0 44px; width: 44px; height: 44px; }
+.dialog-close-button { display: inline-flex; flex: 0 0 44px; align-items: center; justify-content: center; width: 44px; height: 44px; min-height: 44px; padding: 0; line-height: 1; }
+.dialog-close-button svg { display: block; flex: none; width: 18px; height: 18px; }
 .share-preview-carousel { border-radius: 14px; touch-action: pan-y pinch-zoom; }
 .share-preview-image { display: block; width: 100%; aspect-ratio: 1200 / 630; border-radius: 14px; object-fit: contain; background: var(--navy); user-select: none; -webkit-user-drag: none; }
 .share-preview-image[data-transparent="true"] { background-color: #647582; background-image: conic-gradient(#566875 25%, transparent 0 50%, #566875 0 75%, transparent 0); background-size: 24px 24px; }
@@ -5192,7 +5193,8 @@ body:has(.pwa-install-dialog[open]) { overflow: hidden; }
 .diver-dive-count strong { color: var(--ink); font-weight: 700; }
 .certification-tag { display: inline-flex; align-items: center; gap: 7px; max-width: 100%; padding: 5px 11px; border: 1px solid var(--accent-line); border-radius: 6px; color: var(--accent-deep); background: var(--accent-soft); font-size: 0.73rem; font-weight: 700; }
 .certification-tag form { display: inline-flex; margin: -5px -6px -5px 0; }
-.certification-tag button { min-width: 32px; min-height: 32px; border: 0; color: inherit; background: transparent; font-size: 20px; }
+.certification-tag button { display: inline-flex; align-items: center; justify-content: center; min-width: 32px; min-height: 32px; padding: 0; border: 0; color: inherit; background: transparent; line-height: 1; }
+.certification-tag button svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
 .profile-text-button { border: 0; color: var(--muted); background: transparent; font-size: 0.8rem; cursor: pointer; }
 .profile-text-button:hover { color: var(--accent-deep); }
 .certification-editor { position: relative; }
@@ -5253,7 +5255,8 @@ body:has(.pwa-install-dialog[open]) { overflow: hidden; }
 .profile-settings-dialog { width: min(420px, calc(100% - 32px)); padding: 24px; border: 1px solid var(--line); border-radius: 16px; color: var(--ink); background: var(--panel); box-shadow: var(--shadow-lg); }
 .profile-settings-dialog::backdrop { background: rgba(3, 22, 37, 0.45); backdrop-filter: blur(3px); }
 .profile-settings-dialog p { font-size: 0.85rem; }
-.profile-settings-save { margin-left: auto; }
+.profile-settings-dialog .profile-settings-heading { flex-wrap: nowrap; }
+.profile-settings-heading .profile-settings-save { min-height: 44px; margin-left: auto; }
 .profile-units-form { display: grid; gap: 12px; margin-bottom: 20px; padding-bottom: 20px; border-bottom: 1px solid var(--line); }
 .profile-units-form h3 { margin: 0; font-size: 0.95rem; }
 .profile-unit-row { display: flex; justify-content: space-between; align-items: center; gap: 16px; font-size: 0.85rem; }
@@ -5344,17 +5347,17 @@ body:has(.pwa-install-dialog[open]) { overflow: hidden; }
 .signin-card { min-width: 0; padding: 36px; border-radius: 12px; color: #14363d; background: #f7f8f6; box-shadow: 0 24px 64px #00182033; }
 .signin-eyebrow { margin: 0 0 16px; font-size: 11px; text-transform: uppercase; letter-spacing: 1.6px; color: #577476; }
 .signin-card h1 { color: #14363d; margin: 0 0 28px; font-size: 34px; font-weight: 600; letter-spacing: -1.4px; line-height: 1.15; }
-.signin-description { font-size: 14px; color: #597276; line-height: 1.75; margin: 0 0 30px; }
+.signin-description { overflow-wrap: anywhere; font-size: 14px; color: #597276; line-height: 1.75; margin: 0 0 30px; }
 .signin-card .google-button { display: flex; width: 100%; min-height: 54px; border: 1px solid #b9c9c8; border-radius: 5px; background: white; color: #14363d; box-shadow: none; font-size: 14px; }
 .signin-card .google-button:hover { background: #edf3ef; }
 .signin-switch { font-size: 13px; text-align: center; color: #597276; margin: 24px 0 0; }
 .signin-switch a { color: #14363d; font-weight: 700; }
 .signin-legal { border-top: 1px solid #dce4e2; padding-top: 22px; margin: 26px 0 0; color: #597276; font-size: 11px; line-height: 1.8; }
 .signin-legal a { text-decoration: underline; text-underline-offset: 3px; }
-.signin-card .auth-form { gap: 12px; }
+.signin-card .auth-form { grid-template-columns: minmax(0, 1fr); gap: 12px; }
 .signin-card label, .signin-card small { color: #597276; }
 .signin-card input { color: #14363d; background: white; border: 1px solid #b9c9c8; border-radius: 5px; }
-.signin-card .auth-form .welcome-button { margin-top: 12px; }
+.signin-card .auth-form .welcome-button { min-width: 0; gap: 12px; margin-top: 12px; padding-inline: 16px; }
 .signin-card small { font-size: 11px; line-height: 1.6; }
 .auth-back { align-self: flex-start; padding: 12px 0; font-size: 12px; color: #d7e3e4; }
 .signin-unavailable { color: #597276; line-height: 1.7; }

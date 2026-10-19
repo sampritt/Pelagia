@@ -29,7 +29,7 @@
                 <div class="certification-tag">{{ user.certification_name }}{% if is_owner %}
                     <form method="post" action="{{ url_for('profile') }}">
                         <input type="hidden" name="certification_id" value="">
-                        <button type="submit" aria-label="Remove {{ user.certification_name }}">&times;</button>
+                        <button type="submit" aria-label="Remove {{ user.certification_name }}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"></path></svg></button>
                     </form>{% endif %}
                 </div>
                 {% elif is_owner %}
@@ -128,7 +128,11 @@
     </div>
     <dialog class="profile-settings-dialog" aria-labelledby="profileSettingsTitle" data-profile-settings>
         <form id="profileSettingsForm" method="post" action="{{ url_for('profile') }}">
-            <div class="profile-section-heading"><h2 id="profileSettingsTitle">Settings</h2><button class="primary-button compact profile-settings-save" type="submit">Save</button><button class="profile-settings-button" type="button" aria-label="Close settings" data-profile-settings-close>&times;</button></div>
+            <div class="profile-section-heading profile-settings-heading">
+                <h2 id="profileSettingsTitle">Settings</h2>
+                <button class="primary-button compact profile-settings-save" type="submit">Save</button>
+                <button class="icon-button dialog-close-button" type="button" aria-label="Close settings" data-profile-settings-close><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"></path></svg></button>
+            </div>
             <div class="profile-units-form" aria-labelledby="profileUnitsTitle">
                 <h3 id="profileUnitsTitle">Units</h3>
                 <div class="profile-unit-row"><span>Pressure</span>{{ unit_toggle('pressure', 'Pressure', 'bar', 'bar', 'psi', 'psi', units.pressure) }}</div>
