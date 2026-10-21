@@ -11,6 +11,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-title" content="Pelagia">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css', v=pwa_asset_version) }}">
+    <script defer src="{{ url_for('static', filename='js/loading.js', v=pwa_asset_version) }}"></script>
     <script defer src="{{ url_for('static', filename='js/app.js', v=pwa_asset_version) }}"></script>
     <script defer src="{{ url_for('static', filename='js/pwa.js', v=pwa_asset_version) }}"></script>
     {% block head %}{% endblock %}
@@ -75,6 +76,7 @@
         <a class="pwa-back-link" href="{{ url_for('home') }}" data-pwa-back>&larr; Back</a>
         {% endif %}
         {% block content %}{% endblock %}
+        <div class="navigation-skeleton" data-navigation-skeleton aria-hidden="true" hidden></div>
     </main>
 
     {% if me %}
@@ -92,6 +94,7 @@
     {% endif %}
 
     {% if me %}{% include '_share_dialog.html' %}{% endif %}
+    <div class="sr-only" role="status" aria-live="polite" data-loading-status></div>
     {% block scripts %}{% endblock %}
 </body>
 </html>

@@ -82,6 +82,14 @@ Automated PWA checks are included in the normal Python and JavaScript test suite
 node --test tests/test_*.cjs
 ```
 
+## Loading feedback
+
+Pelagia shares one skeleton system across page navigation, autocomplete searches (global search, dive sites, centers, buddies, marine life and certifications), species suggestions, photos, map tiles, share previews and save/like/comment actions. Navigation placeholders follow the destination's feed, profile, detail, form or authentication layout while the navigation bars remain available. Already-rendered server content and instant local interactions appear immediately.
+
+Placeholders appear only after 160 ms and clear as soon as their own work finishes. Search input cancels stale requests; empty and failed searches show useful messages. Loading respects reduced-motion preferences, announces busy states to assistive technology, restores pages after history navigation, and releases stalled navigation or media states after 15 seconds. Native submissions preserve the form while showing feedback on the submit button. The loading script participates in the versioned public PWA asset cache.
+
+Behavior checks run with `node --test tests/test_loading.cjs` alongside the existing JavaScript suite.
+
 ## Sharing Logged Dives
 
 The log/edit form stores max depth and an optional average depth in meters. Both accept decimals and display whole values without `.0`. Average depth starts unset; when supplied it is used for SAC calculation, otherwise SAC uses max depth. Clearing average depth restores that fallback. Logged cards and dive headlines show max depth and duration. Average depth appears in the logged dive’s detailed metrics and full share image when available. Existing dives keep an unset average depth and their saved SAC rate.

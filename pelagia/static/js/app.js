@@ -146,12 +146,94 @@ async function fetchJson(url, options = {}) {
     const response = await fetch(url, {
         credentials: "same-origin",
         headers: { "X-Requested-With": "fetch" },
+        ...(typeof AbortSignal !== "undefined" && typeof AbortSignal.timeout === "function" ? { signal: AbortSignal.timeout(15000) } : {}),
         ...options,
     });
     if (!response.ok) {
         throw new Error(`Request failed: ${response.status}`);
     }
     return response.json();
+}
+
+const suggestionRequests = new WeakMap();
+
+function cancelSuggestionLoad(menu) {
+    const pending = suggestionRequests.get(menu);
+    if (!pending) return;
+    suggestionRequests.delete(menu);
+    pending.end();
+    pending.controller?.abort();
+}
+
+function createSuggestionLoader(input, menu) {
+    let dismissed = false;
+    input.addEventListener("input", () => { dismissed = false; hideMenu(menu); });
+    input.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") { dismissed = true; hideMenu(menu); }
+    });
+    input.addEventListener("blur", () => {
+        window.setTimeout(() => {
+            if (!input.closest(".autocomplete-field")?.contains(document.activeElement)) {
+                dismissed = true;
+                hideMenu(menu);
+            }
+        }, 0);
+    });
+    document.addEventListener("click", (event) => {
+        if (!input.closest(".autocomplete-field")?.contains(event.target)) { dismissed = true; hideMenu(menu); }
+    });
+    return (url, render) => {
+        if (dismissed || document.activeElement !== input) return;
+        return loadSuggestionRegion(menu, url, render, () => !dismissed && document.activeElement === input);
+    };
+}
+
+async function loadSuggestionRegion(menu, url, render, isCurrent = () => true) {
+    cancelSuggestionLoad(menu);
+    menu.innerHTML = "";
+    menu.hidden = true;
+    const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
+    const end = window.PelagiaLoading?.begin(menu, "Loading suggestions", undefined, { reveal: true }) || (() => {});
+    const timeout = controller ? window.setTimeout(() => controller.abort(), 15000) : null;
+    const pending = { end, controller };
+    suggestionRequests.set(menu, pending);
+    try {
+        const items = await fetchJson(url, controller ? { signal: controller.signal } : {});
+        if (suggestionRequests.get(menu) !== pending || !isCurrent()) return;
+        end();
+        suggestionRequests.delete(menu);
+        render(items);
+        if (!items.length) {
+            menu.innerHTML = '<p class="suggestion-message" role="status">No matches found. Try another search.</p>';
+            menu.hidden = false;
+        }
+    } catch (error) {
+        if (suggestionRequests.get(menu) !== pending || !isCurrent()) return;
+        menu.innerHTML = '<p class="suggestion-message" role="status">Couldn’t load suggestions. Type to try again.</p>';
+        menu.hidden = false;
+    } finally {
+        if (timeout !== null) window.clearTimeout(timeout);
+        if (suggestionRequests.get(menu) === pending) {
+            end();
+            suggestionRequests.delete(menu);
+        }
+    }
+}
+
+async function withPendingAction(elements, task) {
+    const targets = Array.from(elements).filter(Boolean);
+    if (targets.some((target) => target.disabled)) return;
+    const finish = targets.map((target) => {
+        target.disabled = true;
+        return window.PelagiaLoading?.begin(target, "Saving") || (() => {});
+    });
+    try {
+        await task();
+    } catch (error) {
+        window.PelagiaLoading?.announce("Couldn’t save that change. Please try again.", true);
+    } finally {
+        targets.forEach((target, index) => { finish[index](); target.disabled = false; });
+    }
 }
 
 function initDiveInteractions() {
@@ -211,33 +293,36 @@ function initDiveInteractions() {
         if (!body) {
             return;
         }
-        if (siteForm) {
-            const data = await fetchJson(`/api/dive-sites/${siteForm.dataset.siteId}/comments`, {
+        const activeForm = form || centerForm || siteForm;
+        await withPendingAction(activeForm.querySelectorAll("button[type='submit']"), async () => {
+            if (siteForm) {
+                const data = await fetchJson(`/api/dive-sites/${siteForm.dataset.siteId}/comments`, {
+                    method: "POST",
+                    body: new FormData(siteForm),
+                });
+                if (input.value.trim() === body) input.value = "";
+                renderComments(document.querySelector("[data-site-comments]"), data.comments);
+                return;
+            }
+            if (centerForm) {
+                const data = await fetchJson(`/api/dive-centers/${centerForm.dataset.centerId}/comments`, {
+                    method: "POST",
+                    body: new FormData(centerForm),
+                });
+                if (input.value.trim() === body) input.value = "";
+                renderComments(document.querySelector("[data-center-comments]"), data.comments);
+                return;
+            }
+            const data = await fetchJson(`/api/dives/${form.dataset.diveId}/comments`, {
                 method: "POST",
-                body: new FormData(siteForm),
+                body: new FormData(form),
             });
-            input.value = "";
-            renderComments(document.querySelector("[data-site-comments]"), data.comments);
-            return;
-        }
-        if (centerForm) {
-            const data = await fetchJson(`/api/dive-centers/${centerForm.dataset.centerId}/comments`, {
-                method: "POST",
-                body: new FormData(centerForm),
+            if (input.value.trim() === body) input.value = "";
+            const commentsContainer = form.closest("[data-dive-detail]")?.querySelector("[data-comments]");
+            renderComments(commentsContainer, data.comments);
+            document.querySelectorAll(`[data-open-dive='${form.dataset.diveId}'] [data-comment-count], [data-dive-detail] [data-comment-count]`).forEach((span) => {
+                span.textContent = data.comments.length;
             });
-            input.value = "";
-            renderComments(document.querySelector("[data-center-comments]"), data.comments);
-            return;
-        }
-        const data = await fetchJson(`/api/dives/${form.dataset.diveId}/comments`, {
-            method: "POST",
-            body: new FormData(form),
-        });
-        input.value = "";
-        const commentsContainer = form.closest("[data-dive-detail]")?.querySelector("[data-comments]");
-        renderComments(commentsContainer, data.comments);
-        document.querySelectorAll(`[data-open-dive='${form.dataset.diveId}'] [data-comment-count], [data-dive-detail] [data-comment-count]`).forEach((span) => {
-            span.textContent = data.comments.length;
         });
     });
 
@@ -423,40 +508,48 @@ function initDiveSharing() {
 }
 
 async function toggleLike(diveId) {
-    const data = await fetchJson(`/api/dives/${diveId}/like`, { method: "POST" });
-    document.querySelectorAll(`[data-like][data-dive-id='${diveId}']`).forEach((button) => {
-        button.classList.toggle("liked", data.liked);
-        const count = button.querySelector("[data-like-count]");
-        if (count) {
-            count.textContent = data.count;
-        }
+    await withPendingAction(document.querySelectorAll(`[data-like][data-dive-id='${diveId}']`), async () => {
+        const data = await fetchJson(`/api/dives/${diveId}/like`, { method: "POST" });
+        document.querySelectorAll(`[data-like][data-dive-id='${diveId}']`).forEach((button) => {
+            button.classList.toggle("liked", data.liked);
+            const count = button.querySelector("[data-like-count]");
+            if (count) {
+                count.textContent = data.count;
+            }
+        });
     });
 }
 
 async function toggleCenterLike(centerId) {
-    const data = await fetchJson(`/api/dive-centers/${centerId}/like`, { method: "POST" });
-    document.querySelectorAll(`[data-center-like][data-center-id='${centerId}']`).forEach((button) => {
-        button.classList.toggle("liked", data.liked);
-        const count = button.querySelector("[data-center-like-count]");
-        if (count) {
-            count.textContent = data.count;
-        }
+    await withPendingAction(document.querySelectorAll(`[data-center-like][data-center-id='${centerId}']`), async () => {
+        const data = await fetchJson(`/api/dive-centers/${centerId}/like`, { method: "POST" });
+        document.querySelectorAll(`[data-center-like][data-center-id='${centerId}']`).forEach((button) => {
+            button.classList.toggle("liked", data.liked);
+            const count = button.querySelector("[data-center-like-count]");
+            if (count) {
+                count.textContent = data.count;
+            }
+        });
     });
 }
 
 async function toggleSiteLike(siteId) {
-    const data = await fetchJson(`/api/dive-sites/${siteId}/like`, { method: "POST" });
-    document.querySelectorAll(`[data-site-like][data-site-id='${siteId}']`).forEach((button) => {
-        button.classList.toggle("liked", data.liked);
-        const count = button.querySelector("[data-site-like-count]");
-        if (count) {
-            count.textContent = data.count;
-        }
+    await withPendingAction(document.querySelectorAll(`[data-site-like][data-site-id='${siteId}']`), async () => {
+        const data = await fetchJson(`/api/dive-sites/${siteId}/like`, { method: "POST" });
+        document.querySelectorAll(`[data-site-like][data-site-id='${siteId}']`).forEach((button) => {
+            button.classList.toggle("liked", data.liked);
+            const count = button.querySelector("[data-site-like-count]");
+            if (count) {
+                count.textContent = data.count;
+            }
+        });
     });
 }
 
 async function openDive(diveId) {
-    window.location.assign(`/dive/${encodeURIComponent(diveId)}`);
+    const url = `/dive/${encodeURIComponent(diveId)}`;
+    if (window.PelagiaLoading) window.PelagiaLoading.navigate(url);
+    else window.location.assign(url);
 }
 
 function commentsMarkup(comments) {
@@ -498,9 +591,11 @@ function initGlobalSearch() {
         return;
     }
 
+    const searchSuggestions = createSuggestionLoader(input, results);
     const selectResult = (item) => {
         if (item?.url) {
-            window.location.assign(item.url);
+            if (window.PelagiaLoading) window.PelagiaLoading.navigate(item.url);
+            else window.location.assign(item.url);
         }
     };
 
@@ -532,7 +627,7 @@ function initGlobalSearch() {
                 hideMenu(results);
                 return;
             }
-            renderResults(await fetchJson(`/api/search?q=${encodeURIComponent(query)}`));
+            await searchSuggestions(`/api/search?q=${encodeURIComponent(query)}`, renderResults);
         }, 160),
     );
 
@@ -632,6 +727,8 @@ function initDiveForm() {
     const country = document.getElementById("country");
     const latitude = document.getElementById("latitude");
     const longitude = document.getElementById("longitude");
+    const searchSites = createSuggestionLoader(siteInput, siteResults);
+    const searchCenters = createSuggestionLoader(centerInput, centerResults);
     let durationTouched = form.dataset.isEdit === "true";
 
     const pairs = {
@@ -900,8 +997,7 @@ function initDiveForm() {
                 hideMenu(siteResults);
                 return;
             }
-            const sites = await fetchJson(`/api/sites?q=${encodeURIComponent(query)}`);
-            renderSiteResults(sites);
+            await searchSites(`/api/sites?q=${encodeURIComponent(query)}`, renderSiteResults);
         }, 160),
     );
 
@@ -914,8 +1010,7 @@ function initDiveForm() {
                 hideMenu(centerResults);
                 return;
             }
-            const centers = await fetchJson(`/api/dive-centers?q=${encodeURIComponent(query)}`);
-            renderCenterResults(centers);
+            await searchCenters(`/api/dive-centers?q=${encodeURIComponent(query)}`, renderCenterResults);
         }, 160),
     );
 
@@ -991,6 +1086,7 @@ function initBuddyAutocomplete({ input, results, hidden }) {
     if (!input || !results || !hidden) {
         return;
     }
+    const searchUsers = createSuggestionLoader(input, results);
 
     hidden.dataset.selectedUsername = hidden.value ? input.value.trim() : "";
 
@@ -1036,7 +1132,7 @@ function initBuddyAutocomplete({ input, results, hidden }) {
                 hideMenu(results);
                 return;
             }
-            renderUsers(await fetchJson(`/api/users?q=${encodeURIComponent(query)}`));
+            await searchUsers(`/api/users?q=${encodeURIComponent(query)}`, renderUsers);
         }, 160),
     );
 
@@ -1152,6 +1248,7 @@ function hideMenu(menu) {
     if (!menu) {
         return;
     }
+    cancelSuggestionLoad(menu);
     menu.hidden = true;
     menu.innerHTML = "";
 }
@@ -1162,6 +1259,7 @@ function initSpeciesPicker(form, getCountry) {
     const suggestions = form.querySelector("[data-species-suggestions]");
     const tags = form.querySelector("[data-species-tags]");
     const hidden = document.getElementById("speciesJson");
+    const searchSpecies = createSuggestionLoader(input, results);
     let selected = [];
     try {
         const preloaded = JSON.parse(hidden.value || "[]");
@@ -1177,21 +1275,24 @@ function initSpeciesPicker(form, getCountry) {
         } else if (country) {
             params.set("country", country);
         } else {
+            cancelSuggestionLoad(suggestions);
             suggestions.innerHTML = "";
             return;
         }
-        const names = await fetchJson(`/api/species-suggestions?${params.toString()}`);
-        suggestions.innerHTML = "";
-        names.forEach((name) => {
-            const button = document.createElement("button");
-            button.type = "button";
-            button.className = "suggestion-pill";
-            button.textContent = name;
-            button.addEventListener("click", () => {
-                addSpecies(name);
-                button.classList.add("is-selected");
+        await loadSuggestionRegion(suggestions, `/api/species-suggestions?${params.toString()}`, (names) => {
+            suggestions.hidden = false;
+            suggestions.innerHTML = "";
+            names.forEach((name) => {
+                const button = document.createElement("button");
+                button.type = "button";
+                button.className = "suggestion-pill";
+                button.textContent = name;
+                button.addEventListener("click", () => {
+                    addSpecies(name);
+                    button.classList.add("is-selected");
+                });
+                suggestions.appendChild(button);
             });
-            suggestions.appendChild(button);
         });
     };
 
@@ -1208,20 +1309,21 @@ function initSpeciesPicker(form, getCountry) {
             if (country) {
                 params.set("country", country);
             }
-            const species = await fetchJson(`/api/species?${params.toString()}`);
-            results.innerHTML = "";
-            species.forEach((item) => {
-                const button = document.createElement("button");
-                button.type = "button";
-                button.innerHTML = `<strong>${escapeHtml(item.common_name)}</strong><small>${escapeHtml(item.country_or_area || "")}</small>`;
-                button.addEventListener("click", () => {
-                    addSpecies(item.common_name);
-                    input.value = "";
-                    hideMenu(results);
+            await searchSpecies(`/api/species?${params.toString()}`, (species) => {
+                results.innerHTML = "";
+                species.forEach((item) => {
+                    const button = document.createElement("button");
+                    button.type = "button";
+                    button.innerHTML = `<strong>${escapeHtml(item.common_name)}</strong><small>${escapeHtml(item.country_or_area || "")}</small>`;
+                    button.addEventListener("click", () => {
+                        addSpecies(item.common_name);
+                        input.value = "";
+                        hideMenu(results);
+                    });
+                    results.appendChild(button);
                 });
-                results.appendChild(button);
+                results.hidden = !species.length;
             });
-            results.hidden = !species.length;
         }, 160),
     );
 
@@ -1350,7 +1452,9 @@ function initCertificationPicker(picker) {
     let active = -1;
     let requestId = 0;
     let selected = false;
+    let endLoading = () => {};
     const close = () => {
+        endLoading();
         results.hidden = true;
         input.setAttribute("aria-expanded", "false");
         input.removeAttribute("aria-activedescendant");
@@ -1364,10 +1468,14 @@ function initCertificationPicker(picker) {
     };
     const search = async () => {
         const id = ++requestId;
+        endLoading();
+        results.replaceChildren();
+        results.hidden = true;
+        input.setAttribute("aria-expanded", "false");
+        const finish = window.PelagiaLoading?.begin(results, "Loading certifications", undefined, { reveal: true }) || (() => {});
+        endLoading = finish;
         try {
-            const response = await fetch(`/api/certifications?${new URLSearchParams({ q: input.value.trim() })}`);
-            if (!response.ok) throw new Error("Certification search failed");
-            const matches = await response.json();
+            const matches = await fetchJson(`/api/certifications?${new URLSearchParams({ q: input.value.trim() })}`);
             if (id !== requestId || !picker.open) return;
             options = matches;
             active = -1;
@@ -1391,6 +1499,8 @@ function initCertificationPicker(picker) {
             if (id !== requestId) return;
             close();
             status.textContent = "Couldn’t load certifications. Type to try again.";
+        } finally {
+            finish();
         }
     };
     picker.addEventListener("toggle", () => {
