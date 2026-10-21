@@ -10,7 +10,7 @@
     function pageKind(path) {
         if (path === "/home") return "feed";
         if (/^\/(you|users\/\d+)$/.test(path)) return "profile";
-        if (/^\/dive\/(new|\d+\/edit)$/.test(path)) return "form";
+        if (path === "/you/settings" || /^\/dive\/(new|\d+\/edit)$/.test(path)) return "form";
         if (/^\/(dive\/\d+|share\/dive\/\d+|dive-sites\/\d+|dive-centers\/\d+)$/.test(path)) return "detail";
         if (/^\/(login|signup|auth\/(email|google))/.test(path)) return "auth";
         return "page";

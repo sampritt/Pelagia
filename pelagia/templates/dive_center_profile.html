@@ -4,21 +4,18 @@
 {% block content %}
 <section class="profile-layout">
     <div class="entity-profile-header">
-        <div class="center-avatar">
-            <span>{{ center.name[:1]|upper }}</span>
-        </div>
-        <div>
+        <div class="entity-profile-copy">
             <h1>{{ center.name }}</h1>
             <p class="profile-meta">{{ center.location or "Location pending" }}</p>
-            <div class="profile-actions">
-                <button class="chip-button like-button {{ 'liked' if center.liked_by_me else '' }}" type="button" data-center-like data-center-id="{{ center.id }}">
-                    <span class="heart-icon"></span>
-                    <span data-center-like-count>{{ center.like_count }}</span>
-                </button>
-                {% if center.website %}
-                    <a class="ghost-button" href="{{ center.website }}" target="_blank" rel="noopener">Website</a>
-                {% endif %}
-            </div>
+        </div>
+        <div class="profile-actions">
+            <button class="chip-button like-button {{ 'liked' if center.liked_by_me else '' }}" type="button" data-center-like data-center-id="{{ center.id }}">
+                <span class="heart-icon"></span>
+                <span data-center-like-count>{{ center.like_count }}</span>
+            </button>
+            {% if center.website %}
+                <a class="ghost-button" href="{{ center.website }}" target="_blank" rel="noopener">Website</a>
+            {% endif %}
         </div>
     </div>
 

@@ -1,5 +1,4 @@
 {% extends "base.html" %}
-{% from "_unit_toggle.html" import unit_toggle %}
 {% block title %}{{ user.username }} - Pelagia{% endblock %}
 
 {% block content %}
@@ -65,9 +64,9 @@
         {% if is_owner %}
         <div class="diver-header-actions">
             <a class="primary-button compact" href="{{ url_for('log_dive') }}"><span aria-hidden="true">+</span> Log dive</a>
-            <button class="profile-settings-button" type="button" aria-label="Profile settings" data-profile-settings-open>
+            <a class="profile-settings-button" href="{{ url_for('profile_settings') }}" aria-label="Profile settings">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 3-.6 2.3-2 .9-2.1-.6-2 3.4 1.6 1.7v2.6L2.3 15l2 3.4 2.1-.6 2 .9L9 21h4l.6-2.3 2-.9 2.1.6 2-3.4-1.6-1.7v-2.6L19.7 9l-2-3.4-2.1.6-2-.9L13 3z"></path><circle cx="11" cy="12" r="3"></circle></svg>
-            </button>
+            </a>
         </div>
         {% endif %}
     </header>
@@ -126,40 +125,6 @@
             <button class="ghost-button" type="submit">Log out</button>
         </form>
     </div>
-    <dialog class="profile-settings-dialog" aria-labelledby="profileSettingsTitle" data-profile-settings>
-        <form id="profileSettingsForm" method="post" action="{{ url_for('profile') }}">
-            <div class="profile-section-heading profile-settings-heading">
-                <h2 id="profileSettingsTitle">Settings</h2>
-                <button class="primary-button compact profile-settings-save" type="submit">Save</button>
-                <button class="icon-button dialog-close-button" type="button" aria-label="Close settings" data-profile-settings-close><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"></path></svg></button>
-            </div>
-            <div class="profile-units-form" aria-labelledby="profileUnitsTitle">
-                <h3 id="profileUnitsTitle">Units</h3>
-                <div class="profile-unit-row"><span>Pressure</span>{{ unit_toggle('pressure', 'Pressure', 'bar', 'bar', 'psi', 'psi', units.pressure) }}</div>
-                <div class="profile-unit-row"><span>Distance</span>{{ unit_toggle('length', 'Distance', 'm', 'm', 'ft', 'ft', units.length) }}</div>
-                <div class="profile-unit-row"><span>Temperature</span>{{ unit_toggle('temperature', 'Temperature', 'c', '°C', 'f', '°F', units.temperature) }}</div>
-                <div class="profile-unit-row"><span>Weight</span>{{ unit_toggle('weight', 'Weight', 'kg', 'kg', 'lb', 'lb', units.weight) }}</div>
-            </div>
-            <div class="profile-count-form">
-                <label for="startingDiveCount">Starting dive count</label>
-                <p id="startingDiveCountHelp">Dives you haven’t logged in Pelagia. Your profile total is this number plus your dives logged in Pelagia.</p>
-                <div class="profile-count-controls">
-                    <input id="startingDiveCount" name="starting_dive_count" type="number" min="0" max="9223372036854775807" step="1" inputmode="numeric" value="{{ user.starting_dive_count }}" aria-describedby="startingDiveCountHelp" required>
-                </div>
-            </div>
-        </form>
-        <nav class="settings-links" aria-label="Legal information">
-            <a href="{{ url_for('terms') }}">Terms of Use <span aria-hidden="true">&rsaquo;</span></a>
-            <a href="{{ url_for('privacy') }}">Privacy Policy <span aria-hidden="true">&rsaquo;</span></a>
-        </nav>
-        <p class="profile-settings-attribution">&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap contributors</a></p>
-        <form class="profile-settings-logout" method="post" action="{{ url_for('logout') }}">
-            {% if login_email %}
-            <p class="profile-settings-email">logged in as {{ login_email }}</p>
-            {% endif %}
-            <button class="ghost-button" type="submit">Log out</button>
-        </form>
-    </dialog>
     {% endif %}
 </section>
 {% endblock %}

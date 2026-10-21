@@ -18,18 +18,16 @@ async function setup(options = {}) {
     dialog.querySelector = () => close;
     dialog.showModal = () => {dialog.open = true;};
     dialog.close = () => {dialog.open = false; dialog.handlers.close();};
-    const parts = Object.fromEntries(["offline-notice", "update-notice", "install-notice", "update", "retry", "back"].map(name => [name, element()]));
+    const parts = Object.fromEntries(["offline-notice", "update-notice", "install-notice", "update", "retry"].map(name => [name, element()]));
     const classes = new Set();
     const document = element();
     document.documentElement = {classList: {toggle(name, enabled) {if (enabled) classes.add(name); else classes.delete(name);}}, style: {setProperty() {}}};
     document.querySelectorAll = selector => selector === "[data-pwa-guide]" ? [guide] : [install];
     document.querySelector = selector => selector === "[data-pwa-install-dialog]" ? dialog : parts[selector.match(/data-pwa-(.*)\]/)[1]];
-    document.referrer = options.referrer || "";
     document.visibilityState = "visible";
     const displayMode = element();
     displayMode.matches = !!options.standalone;
     let reloads = 0;
-    let backs = 0;
     let checks = 0;
     const messages = [];
     const window = element();
@@ -37,7 +35,6 @@ async function setup(options = {}) {
     window.isSecureContext = options.secure !== false;
     window.innerHeight = 844;
     window.location = {origin: "https://pelagia.example", reload() {reloads++;}};
-    window.history = {length: 2, back() {backs++;}};
     window.visualViewport = element();
     window.visualViewport.height = 844;
     const registration = element();
@@ -55,7 +52,7 @@ async function setup(options = {}) {
     vm.runInContext(fs.readFileSync(path.join(__dirname, "../pelagia/static/js/pwa.js"), "utf8"), vm.createContext({window, document, navigator, URL, console: {warn: (...args) => warnings.push(args)}}));
     await new Promise(resolve => setImmediate(resolve));
     return {install, guide, close, dialog, parts, classes, window, document, navigator, serviceWorker, registration, worker, messages, registrations, warnings, displayMode,
-        get reloads() {return reloads;}, get backs() {return backs;}, get checks() {return checks;}};
+        get reloads() {return reloads;}, get checks() {return checks;}};
 }
 
 test("install UI stays hidden until supported, is hidden standalone, and does not register on insecure origins", async () => {
@@ -151,16 +148,6 @@ test("updates detected after load show a notice and install prompt failures offe
     await s.install.handlers.click();
     assert.equal(s.parts["install-notice"].hidden, false);
     assert.equal(s.install.disabled, false);
-});
-
-test("standalone Back uses local history and retains the home fallback after external entry", async () => {
-    for (const [referrer, expected] of [["https://pelagia.example/dive/1", 1], ["https://accounts.google.com/", 0], ["", 0]]) {
-        const s = await setup({referrer, standalone: true});
-        let prevented = false;
-        s.parts.back.handlers.click({button: 0, preventDefault() {prevented = true;}});
-        assert.equal(s.backs, expected);
-        assert.equal(prevented, expected === 1);
-    }
 });
 
 test("the mobile navigation clears the keyboard and offline retry reloads the current destination", async () => {

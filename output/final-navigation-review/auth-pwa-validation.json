@@ -1,0 +1,9 @@
+{
+  "checks": [
+    "google local authentication flow reaches profile and settings",
+    "email local authentication flow reaches profile and settings",
+    "verify local authentication flow reaches profile and settings",
+    "Actual PWA service worker controls the page, avoids caching private settings, and serves its branded offline fallback"
+  ],
+  "errors": []
+}

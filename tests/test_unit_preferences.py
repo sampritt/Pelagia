@@ -43,19 +43,19 @@ class UnitPreferencesTest(unittest.TestCase):
         return self.client.get("/api/dives/mine").get_json()[0]
 
     def test_defaults_persistence_partial_updates_and_account_isolation(self):
-        self.assert_selected(self.client.get("/you").get_data(as_text=True), METRIC)
+        self.assert_selected(self.client.get("/you/settings").get_data(as_text=True), METRIC)
         self.assert_selected(self.client.get("/dive/new").get_data(as_text=True), METRIC)
-        self.assertEqual(self.client.post("/you", data=IMPERIAL).status_code, 302)
+        self.assertEqual(self.client.post("/you/settings", data=IMPERIAL).status_code, 302)
         self.client.post("/you", data={"bio": "Diver", "starting_dive_count": "12"})
-        self.assert_selected(self.client.get("/you").get_data(as_text=True), IMPERIAL)
+        self.assert_selected(self.client.get("/you/settings").get_data(as_text=True), IMPERIAL)
         other = self.app.test_client()
         self.signup(other, "other")
-        self.assert_selected(other.get("/you").get_data(as_text=True), METRIC)
+        self.assert_selected(other.get("/you/settings").get_data(as_text=True), METRIC)
         self.assertNotIn('id="profileUnitsTitle"', other.get("/users/1").get_data(as_text=True))
-        self.client.post("/you", data={"temperature_unit": "c", "user_id": "2"})
+        self.client.post("/you/settings", data={"temperature_unit": "c", "user_id": "2"})
         mixed = {**IMPERIAL, "temperature_unit": "c"}
-        self.assert_selected(self.client.get("/you").get_data(as_text=True), mixed)
-        self.assert_selected(other.get("/you").get_data(as_text=True), METRIC)
+        self.assert_selected(self.client.get("/you/settings").get_data(as_text=True), mixed)
+        self.assert_selected(other.get("/you/settings").get_data(as_text=True), METRIC)
         self.client.post("/logout")
         self.signup(self.client)
         self.assert_selected(self.client.get("/dive/new").get_data(as_text=True), mixed)
@@ -64,14 +64,14 @@ class UnitPreferencesTest(unittest.TestCase):
         for field in METRIC:
             for invalid in ("", "unknown", "FT", "0"):
                 with self.subTest(field=field, invalid=invalid):
-                    self.assertEqual(self.client.post("/you", data={**IMPERIAL, field: invalid}).status_code, 400)
-                    self.assert_selected(self.client.get("/you").get_data(as_text=True), METRIC)
-        self.assertEqual(self.app.test_client().post("/you", data=IMPERIAL).status_code, 302)
-        self.assert_selected(self.client.get("/you").get_data(as_text=True), METRIC)
+                    self.assertEqual(self.client.post("/you/settings", data={**IMPERIAL, field: invalid}).status_code, 400)
+                    self.assert_selected(self.client.get("/you/settings").get_data(as_text=True), METRIC)
+        self.assertEqual(self.app.test_client().post("/you/settings", data=IMPERIAL).status_code, 302)
+        self.assert_selected(self.client.get("/you/settings").get_data(as_text=True), METRIC)
 
     def test_display_conversions_cover_feeds_details_profiles_sites_and_charts(self):
         original = self.seed_dive()
-        self.client.post("/you", data=IMPERIAL)
+        self.client.post("/you/settings", data=IMPERIAL)
         for path in ("/home", "/you", "/users/1", "/dive-sites/1", "/dive-centers/1"):
             with self.subTest(path=path):
                 html = self.client.get(path).get_data(as_text=True)
@@ -90,14 +90,14 @@ class UnitPreferencesTest(unittest.TestCase):
         self.signup(viewer, "metric-viewer")
         self.assertIn('15 <em>m</em>', viewer.get("/users/1").get_data(as_text=True))
         self.assertEqual(original, self.client.get("/api/dives/1").get_json())
-        self.client.post("/you", data={"length_unit": "m", "weight_unit": "kg"})
+        self.client.post("/you/settings", data={"length_unit": "m", "weight_unit": "kg"})
         mixed = self.client.get("/dive/1").get_data(as_text=True)
         for expected in ("15<em>m</em>", "11 m", "7.5 kg", "2833 psi", "75°F"):
             self.assertIn(expected, mixed)
 
     def test_form_preferences_are_defaults_and_do_not_override_submitted_units(self):
         self.seed_dive()
-        self.client.post("/you", data=IMPERIAL)
+        self.client.post("/you/settings", data=IMPERIAL)
         for path in ("/dive/new", "/dive/1/edit"):
             self.assert_selected(self.client.get(path).get_data(as_text=True), IMPERIAL)
         self.client.post("/dive/1/edit", data={"site_name": "Alert Rock", "depth_m": "20", "weight_kg": "8.5",
@@ -110,7 +110,7 @@ class UnitPreferencesTest(unittest.TestCase):
 
     def test_share_images_use_viewer_units_and_guests_keep_metric_defaults(self):
         self.seed_dive()
-        self.client.post("/you", data=IMPERIAL)
+        self.client.post("/you/settings", data=IMPERIAL)
         drawn = []
         original_text = ImageDraw.ImageDraw.text
 
@@ -145,11 +145,11 @@ class UnitPreferencesTest(unittest.TestCase):
             client = app.test_client()
             with client.session_transaction() as session:
                 session["user_id"] = 1
-            self.assert_selected(client.get("/you").get_data(as_text=True), METRIC)
-            client.post("/you", data=IMPERIAL)
+            self.assert_selected(client.get("/you/settings").get_data(as_text=True), METRIC)
+            client.post("/you/settings", data=IMPERIAL)
             with app.app_context():
                 database.init_db()
                 database.init_db()
                 dive = database.get_db().execute("SELECT depth_m, weight_kg FROM dives").fetchone()
                 self.assertEqual(tuple(dive), (15.3, 7.25747792))
-            self.assert_selected(client.get("/you").get_data(as_text=True), IMPERIAL)
+            self.assert_selected(client.get("/you/settings").get_data(as_text=True), IMPERIAL)

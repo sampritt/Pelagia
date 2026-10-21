@@ -1,0 +1,13 @@
+{
+  "checks": [
+    "Settings navigation, active Profile tab, no popup or horizontal overflow at 320px",
+    "Settings navigation, active Profile tab, no popup or horizontal overflow at 390px",
+    "Settings navigation, active Profile tab, no popup or horizontal overflow at 768px",
+    "Settings navigation, active Profile tab, no popup or horizontal overflow at 1440px",
+    "Settings save together, persist on reload and update profile; leaving without Save discards edits",
+    "Legal links use normal page navigation and browser history returns to settings",
+    "Settings uses the shared form navigation skeleton",
+    "Logout clears access to settings"
+  ],
+  "errors": []
+}

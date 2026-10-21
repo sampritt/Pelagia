@@ -1,0 +1,23 @@
+{
+  "date": "2026-10-21",
+  "python": {
+    "passed": 112,
+    "failed": 0
+  },
+  "javascript": {
+    "passed": 55,
+    "failed": 0
+  },
+  "responsiveLayouts": 178,
+  "browserReports": [
+    "auth-pwa-validation.json",
+    "capture-validation.json",
+    "extra-validation.json",
+    "headers-validation.json",
+    "interaction-validation.json",
+    "layout-validation.json",
+    "settings-validation.json"
+  ],
+  "appRegressions": [],
+  "scope": "Local disposable fixtures; desktop/mobile/tablet/landscape and installed-mode simulation; external identity/email providers and physical-device native sheets excluded"
+}

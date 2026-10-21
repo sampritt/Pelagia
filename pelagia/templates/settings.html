@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% from "_unit_toggle.html" import unit_toggle %}
+{% block title %}Settings - Pelagia{% endblock %}
+
+{% block content %}
+<section class="settings-page" aria-labelledby="profileSettingsTitle">
+    <form id="profileSettingsForm" method="post" action="{{ url_for('profile_settings') }}">
+        <header class="settings-page-heading">
+            <div>
+                <p class="eyebrow">Your preferences</p>
+                <h1 id="profileSettingsTitle">Settings</h1>
+            </div>
+            <button class="primary-button compact" type="submit">Save</button>
+        </header>
+        <section class="settings-card" aria-labelledby="profileUnitsTitle">
+            <h2 id="profileUnitsTitle">Units</h2>
+            <p class="settings-description">Choose how your dive measurements appear.</p>
+            <div class="settings-unit-list">
+                <div class="profile-unit-row"><span>Pressure</span>{{ unit_toggle('pressure', 'Pressure', 'bar', 'bar', 'psi', 'psi', units.pressure) }}</div>
+                <div class="profile-unit-row"><span>Distance</span>{{ unit_toggle('length', 'Distance', 'm', 'm', 'ft', 'ft', units.length) }}</div>
+                <div class="profile-unit-row"><span>Temperature</span>{{ unit_toggle('temperature', 'Temperature', 'c', '°C', 'f', '°F', units.temperature) }}</div>
+                <div class="profile-unit-row"><span>Weight</span>{{ unit_toggle('weight', 'Weight', 'kg', 'kg', 'lb', 'lb', units.weight) }}</div>
+            </div>
+        </section>
+        <section class="settings-card" aria-labelledby="startingDiveCountTitle">
+            <h2 id="startingDiveCountTitle"><label for="startingDiveCount">Starting dive count</label></h2>
+            <p class="settings-description" id="startingDiveCountHelp">Dives you haven’t logged in Pelagia. Your profile total is this number plus your dives logged in Pelagia.</p>
+            <input class="settings-dive-count" id="startingDiveCount" name="starting_dive_count" type="number" min="0" max="9223372036854775807" step="1" inputmode="numeric" value="{{ user.starting_dive_count }}" aria-describedby="startingDiveCountHelp" required>
+        </section>
+    </form>
+    <section class="settings-card" aria-labelledby="settingsAccountTitle">
+        <h2 id="settingsAccountTitle">Account</h2>
+        {% if login_email %}<p class="settings-description settings-account-email">Logged in as <strong>{{ login_email }}</strong></p>{% endif %}
+        <nav class="settings-links" aria-label="Legal information">
+            <a href="{{ url_for('terms') }}">Terms of Use <span aria-hidden="true">&rsaquo;</span></a>
+            <a href="{{ url_for('privacy') }}">Privacy Policy <span aria-hidden="true">&rsaquo;</span></a>
+        </nav>
+        <form class="settings-logout" method="post" action="{{ url_for('logout') }}">
+            <button class="ghost-button" type="submit">Log out</button>
+        </form>
+    </section>
+    <p class="profile-settings-attribution">&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap contributors</a></p>
+</section>
+{% endblock %}

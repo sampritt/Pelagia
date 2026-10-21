@@ -1,0 +1,16 @@
+{
+  "checks": [
+    "Profile charts, table, bio cancel, settings, sharing carousel, search and primary navigation at 1440px",
+    "Profile charts, table, bio cancel, settings, sharing carousel, search and primary navigation at 390px",
+    "Profile charts, table, bio cancel, settings, sharing carousel, search and primary navigation at 320px",
+    "Profile charts, table, bio cancel, settings, sharing carousel, search and primary navigation at 844px",
+    "Bio save, unit preference conversion, starting dive count, certification removal and selection",
+    "Site, center, buddy and species selection; unit and gas controls; multi-select types/current; exposure; photo upload/removal; new and edit saves land on their detail view; delete dive",
+    "Dive, site and center likes and comments",
+    "Share link copying, JPEG/PNG downloads and native-sharing fallback",
+    "Offline notice, submission blocking and reconnect preserve unsaved form",
+    "Navigation skeleton start/reset",
+    "Installation guide and logo navigation from auth and public legal pages"
+  ],
+  "errors": []
+}

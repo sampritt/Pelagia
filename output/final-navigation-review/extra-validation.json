@@ -1,0 +1,8 @@
+{
+  "checks": [
+    "Keyboard skip link/unit control, delayed Settings navigation and recoverable search errors at 390px",
+    "Keyboard skip link/unit control, delayed Settings navigation and recoverable search errors at 1440px",
+    "Automatic profile photo upload returns to the profile and renders its image"
+  ],
+  "errors": []
+}

@@ -110,7 +110,7 @@ class PWATest(unittest.TestCase):
         profile = self.get("/you").data
         self.assertIn(b"data-pwa-install hidden", profile)
         self.assertIn(b"data-pwa-install-dialog", profile)
-        self.assertIn(b"data-pwa-back", profile)
+        self.assertNotIn(b"data-pwa-back", profile)
         self.assertIn(b"data-pwa-update", profile)
 
 

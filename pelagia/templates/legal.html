@@ -2,9 +2,8 @@
 {% block title %}{{ self.legal_title() }} - Pelagia{% endblock %}
 {% block content %}
 <article class="legal-page" aria-labelledby="legalTitle">
-    <a class="legal-back" href="{{ url_for('profile') if me else url_for('landing') }}">&larr; {{ 'Back to profile' if me else 'Back to Pelagia' }}</a>
     <header>
-        <p class="eyebrow">Pelagia</p>
+        <p class="eyebrow"><a href="{{ url_for('home') if me else url_for('landing') }}">Pelagia</a></p>
         <h1 id="legalTitle">{% block legal_title %}{% endblock %}</h1>
         <p class="muted">Last updated: October 18, 2026</p>
     </header>

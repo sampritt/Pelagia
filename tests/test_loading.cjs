@@ -93,6 +93,9 @@ test('navigation keeps chrome usable, resets on history restore, and recovers fr
     window.dispatch('pageshow');
     assert.equal(shell.hidden, true);
     assert.equal(main.inert, false);
+    loading.startNavigation('/you/settings'); tick(160);
+    assert.equal(shell.dataset.layout, 'form');
+    window.dispatch('pageshow');
     loading.startNavigation('/dive/new'); tick(160);
     assert.equal(shell.dataset.layout, 'form');
     tick(15000);

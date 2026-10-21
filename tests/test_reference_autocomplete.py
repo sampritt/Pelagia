@@ -1362,7 +1362,7 @@ Kelp House,2 Harbor Way,Alaska,https://kelp.example.test
             self.assertIn(b'<input name="current_strength" type="hidden" value="none"', new_response.data)
             self.assertIn(b"Very Strong", new_response.data)
 
-            client.post(
+            create_response = client.post(
                 "/dive/new",
                 data={
                     "date": "2026-07-22",
@@ -1389,6 +1389,8 @@ Kelp House,2 Harbor Way,Alaska,https://kelp.example.test
                 },
             )
             dive_id = client.get("/api/dives/mine").get_json()[0]["id"]
+            self.assertEqual(create_response.status_code, 302)
+            self.assertEqual(create_response.location, f"/dive/{dive_id}")
             logged = client.get(f"/api/dives/{dive_id}").get_json()
             self.assertEqual(logged["visibility_m"], 17)
             self.assertEqual(logged["air_temp_c"], 28)

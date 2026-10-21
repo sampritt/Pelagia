@@ -12,18 +12,15 @@
         </span>
     </div>
     <div class="entity-profile-header site-profile-identity">
-        <div class="center-avatar site-avatar">
-            <span>{{ site.name[:1]|upper }}</span>
-        </div>
-        <div>
+        <div class="entity-profile-copy">
             <h1>{{ site.name }}</h1>
             <p class="profile-meta">{{ site.country_or_area or "Location pending" }}</p>
-            <div class="profile-actions">
-                <button class="chip-button like-button {{ 'liked' if site.liked_by_me else '' }}" type="button" data-site-like data-site-id="{{ site.id }}">
-                    <span class="heart-icon"></span>
-                    <span data-site-like-count>{{ site.like_count }}</span>
-                </button>
-            </div>
+        </div>
+        <div class="profile-actions">
+            <button class="chip-button like-button {{ 'liked' if site.liked_by_me else '' }}" type="button" data-site-like data-site-id="{{ site.id }}">
+                <span class="heart-icon"></span>
+                <span data-site-like-count>{{ site.like_count }}</span>
+            </button>
         </div>
     </div>
     </div>

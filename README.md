@@ -150,7 +150,7 @@ The tests exercise signed OpenID Connect tokens with local discovery/JWKS data a
 
 ## Profiles
 
-Profile → Settings → Units saves independent pressure (bar/psi), distance (m/ft), temperature (°C/°F), and weight (kg/lb) preferences for each account. New and existing accounts default to metric. Preferences control display conversions across feeds, dive details, profiles, site conditions, charts, and signed-in share image previews. Displays round to whole numbers, except weight rounds to the nearest half unit. Stored dive measurements and API values remain metric and retain their precision. Anonymous share previews use metric defaults.
+Profile → Settings opens a dedicated page at `/you/settings`. Save keeps you on this page and confirms your changes. Units lets you save independent pressure (bar/psi), distance (m/ft), temperature (°C/°F), and weight (kg/lb) preferences for each account. New and existing accounts default to metric. Preferences control display conversions across feeds, dive details, profiles, site conditions, charts, and signed-in share image previews. Displays round to whole numbers, except weight rounds to the nearest half unit. Stored dive measurements and API values remain metric and retain their precision. Anonymous share previews use metric defaults.
 
 Log a Dive and Edit Dive start their existing unit toggles in the account’s preferred units. Users can override any toggle for that form without changing their saved preferences; calculations, limits, and submission conversions keep their existing behavior.
 

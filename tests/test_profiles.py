@@ -38,8 +38,9 @@ class ProfileTest(unittest.TestCase):
                 self.assertIn(b'<small>Dives</small><span>42</span><p>Total lifetime dives</p>', html)
                 self.assertNotIn(b'<small>SAC rate</small>', html)
                 self.assertIn(b'profile-sac-chart', html)
-                self.assertIn(b'value="40" aria-describedby="startingDiveCountHelp"', html)
+                self.assertNotIn(b'name="starting_dive_count"', html)
                 self.assertEqual(html.count(b'<article class="dive-card"'), 2)
+            self.assertIn(b'value="40" aria-describedby="startingDiveCountHelp"', owner.get("/you/settings").data)
             for invalid in ("-1", "1.5", "1e2", "", "diver", "9223372036854775808"):
                 with self.subTest(invalid=invalid):
                     self.assertEqual(owner.post("/you", data={"starting_dive_count": invalid}).status_code, 400)
@@ -63,7 +64,9 @@ class ProfileTest(unittest.TestCase):
             client = app.test_client()
             self.signup(client)
             html = client.get("/you").data
-            settings = html.split(b'<dialog class="profile-settings-dialog"', 1)[1].split(b'</dialog>', 1)[0]
+            self.assertIn(b'href="/you/settings" aria-label="Profile settings"', html)
+            self.assertNotIn(b'profile-settings-dialog', html)
+            settings = client.get("/you/settings").data
             form = settings.split(b'<form id="profileSettingsForm"', 1)[1].split(b'</form>', 1)[0]
             self.assertEqual(form.count(b'>Save</button>'), 1)
             self.assertLess(form.index(b'>Save</button>'), form.index(b'id="profileUnitsTitle"'))
@@ -71,11 +74,49 @@ class ProfileTest(unittest.TestCase):
                 self.assertIn(b'name="' + field + b'"', form)
             self.assertNotIn(b'data-settings-autosave', settings)
             self.assertNotIn(b'Changes save automatically', settings)
-            response = client.post("/you", data={"length_unit": "ft", "starting_dive_count": "42"})
+            response = client.post("/you/settings", data={"length_unit": "ft", "starting_dive_count": "42"})
             self.assertEqual(response.status_code, 302)
+            self.assertEqual(response.location, "/you/settings")
+            self.assertIn(b"Settings saved.", client.get(response.location).data)
             with app.app_context():
                 user = database.get_db().execute("SELECT length_unit, starting_dive_count FROM users WHERE id = 1").fetchone()
                 self.assertEqual(tuple(user), ("ft", 42))
+
+    def test_settings_require_login_and_only_update_the_current_account(self):
+        with tempfile.TemporaryDirectory() as directory:
+            app, _, _ = self.make_app(Path(directory))
+            guest = app.test_client()
+            for method, destination in ((guest.get, "/?next=/you/settings"), (guest.post, "/")):
+                response = method("/you/settings")
+                self.assertEqual(response.status_code, 302)
+                self.assertEqual(response.location, destination)
+            owner, other = app.test_client(), app.test_client()
+            self.signup(owner, "owner")
+            self.signup(other, "other")
+            with app.app_context():
+                db = database.get_db()
+                db.execute("UPDATE users SET google_email = 'owner@example.test' WHERE id = 1")
+                db.commit()
+            self.assertIn(b"owner@example.test", owner.get("/you/settings").data)
+            for page in (owner.get("/you"), other.get("/users/1"), other.get("/you/settings")):
+                self.assertNotIn(b"owner@example.test", page.data)
+            other.post("/you/settings", data={"starting_dive_count": "15", "length_unit": "ft", "user_id": "1", "bio": "Unexpected edit"})
+            with app.app_context():
+                users = database.get_db().execute("SELECT starting_dive_count, length_unit, bio FROM users ORDER BY id").fetchall()
+                self.assertEqual(tuple(users[0]), (0, "m", None))
+                self.assertEqual(tuple(users[1]), (15, "ft", None))
+
+    def test_invalid_settings_do_not_save_other_preferences(self):
+        with tempfile.TemporaryDirectory() as directory:
+            app, _, _ = self.make_app(Path(directory))
+            client = app.test_client()
+            self.signup(client)
+            for invalid in ("-1", "1.5", "", "9223372036854775808"):
+                response = client.post("/you/settings", data={"length_unit": "ft", "starting_dive_count": invalid})
+                self.assertEqual(response.status_code, 400)
+                with app.app_context():
+                    user = database.get_db().execute("SELECT length_unit, starting_dive_count FROM users").fetchone()
+                    self.assertEqual(tuple(user), ("m", 0))
 
     def test_profile_sac_handles_even_medians_zero_and_legacy_dates(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -157,7 +198,7 @@ class ProfileTest(unittest.TestCase):
             with client.session_transaction() as session:
                 session["user_id"] = 1
             self.assertEqual(client.get("/you").status_code, 200)
-            self.assertIn(b'name="starting_dive_count"', client.get("/you").data)
+            self.assertIn(b'name="starting_dive_count"', client.get("/you/settings").data)
             client.post("/you", data={"bio": "My existing account", "certification_id": 1, "starting_dive_count": 25})
             self.assertIn(b"My existing account", client.get("/you").data)
             self.assertIn(b"Open Water Diver", client.get("/you").data)

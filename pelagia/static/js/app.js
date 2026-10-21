@@ -1430,18 +1430,6 @@ function initArrowNavigation(form) {
     });
 }
 
-function initProfileSettings() {
-    const dialog = document.querySelector("[data-profile-settings]");
-    if (!dialog) return;
-    document.querySelector("[data-profile-settings-open]")?.addEventListener("click", () => dialog.showModal());
-    dialog.querySelector("[data-profile-settings-close]")?.addEventListener("click", () => dialog.close());
-    dialog.addEventListener("click", (event) => {
-        if (event.target !== dialog) return;
-        const bounds = dialog.getBoundingClientRect();
-        if (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom) dialog.close();
-    });
-}
-
 function initCertificationPicker(picker) {
     const form = picker.querySelector("form");
     const input = picker.querySelector("[data-certification-input]");
@@ -1559,7 +1547,6 @@ function initUserProfile() {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-    initProfileSettings();
     initDiveSharing();
     initDiveInteractions();
     initGlobalSearch();

@@ -86,13 +86,6 @@
         syncConnection();
     }, true);
     document.querySelector("[data-pwa-retry]")?.addEventListener("click", () => window.location.reload());
-    document.querySelector("[data-pwa-back]")?.addEventListener("click", (event) => {
-        if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) return;
-        if (window.history.length > 1 && document.referrer && new URL(document.referrer).origin === window.location.origin) {
-            event.preventDefault();
-            window.history.back();
-        }
-    });
 
     function syncKeyboard() {
         const editing = document.activeElement?.matches("input:not([type=range]):not([type=checkbox]):not([type=radio]), textarea, [contenteditable=true]");

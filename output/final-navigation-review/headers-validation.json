@@ -1,0 +1,69 @@
+{
+  "checks": [
+    {
+      "name": "site",
+      "width": 320,
+      "avatarRemoved": true,
+      "headingAligned": true,
+      "likeWorks": true,
+      "longNameFits": true
+    },
+    {
+      "name": "center",
+      "width": 320,
+      "avatarRemoved": true,
+      "headingAligned": true,
+      "likeWorks": true,
+      "longNameFits": true
+    },
+    {
+      "name": "site",
+      "width": 390,
+      "avatarRemoved": true,
+      "headingAligned": true,
+      "likeWorks": true,
+      "longNameFits": true
+    },
+    {
+      "name": "center",
+      "width": 390,
+      "avatarRemoved": true,
+      "headingAligned": true,
+      "likeWorks": true,
+      "longNameFits": true
+    },
+    {
+      "name": "site",
+      "width": 768,
+      "avatarRemoved": true,
+      "headingAligned": true,
+      "likeWorks": true,
+      "longNameFits": true
+    },
+    {
+      "name": "center",
+      "width": 768,
+      "avatarRemoved": true,
+      "headingAligned": true,
+      "likeWorks": true,
+      "longNameFits": true
+    },
+    {
+      "name": "site",
+      "width": 1440,
+      "avatarRemoved": true,
+      "headingAligned": true,
+      "likeWorks": true,
+      "longNameFits": true
+    },
+    {
+      "name": "center",
+      "width": 1440,
+      "avatarRemoved": true,
+      "headingAligned": true,
+      "likeWorks": true,
+      "longNameFits": true
+    }
+  ],
+  "errors": []
+}

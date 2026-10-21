@@ -239,11 +239,11 @@ def register_routes(app):
     def log_dive():
         if request.method == "POST":
             try:
-                create_dive_from_request(session["user_id"], request)
+                dive_id = create_dive_from_request(session["user_id"], request)
             except InvalidBuddyError as error:
                 flash(str(error))
                 return redirect(url_for("log_dive"))
-            return redirect(url_for("home"))
+            return redirect(url_for("dive_detail", dive_id=dive_id))
         return render_template(
             "log_dive.html",
             exposures=EXPOSURES,
@@ -371,26 +371,7 @@ def register_routes(app):
     def profile():
         if request.method == "POST":
             db = database.get_db()
-            submitted_units = {}
-            for group, options in UNIT_OPTIONS.items():
-                field = f"{group}_unit"
-                if field in request.form:
-                    if request.form[field] not in options:
-                        abort(400, "Choose a supported unit.")
-                    submitted_units[field] = request.form[field]
-            for field, unit in submitted_units.items():
-                db.execute(f"UPDATE users SET {field} = ? WHERE id = ?", (unit, session["user_id"]))
-            if "starting_dive_count" in request.form:
-                try:
-                    starting_dive_count = int(request.form["starting_dive_count"].strip())
-                except ValueError:
-                    abort(400, "Starting dive count must be a non-negative whole number.")
-                if not 0 <= starting_dive_count <= 9223372036854775807:
-                    abort(400, "Starting dive count must be a non-negative whole number within the supported range.")
-                db.execute(
-                    "UPDATE users SET starting_dive_count = ? WHERE id = ?",
-                    (starting_dive_count, session["user_id"]),
-                )
+            update_profile_settings(db, session["user_id"], request.form)
             if "bio" in request.form:
                 bio = request.form["bio"].strip()
                 if len(bio) > 500:
@@ -419,6 +400,24 @@ def register_routes(app):
 
         user = current_user()
         return render_user_profile(user, is_owner=True)
+
+    @app.route("/you/settings", methods=("GET", "POST"))
+    @login_required
+    def profile_settings():
+        user = current_user()
+        db = database.get_db()
+        if request.method == "POST":
+            update_profile_settings(db, user["id"], request.form)
+            db.commit()
+            flash("Settings saved.")
+            return redirect(url_for("profile_settings"))
+        account = db.execute(
+            "SELECT login_email, google_email FROM users WHERE id = ?", (user["id"],)
+        ).fetchone()
+        return render_template(
+            "settings.html", user=user,
+            login_email=account["login_email"] or account["google_email"],
+        )
 
     @app.route("/users/<int:user_id>")
     @login_required
@@ -797,13 +796,27 @@ def fetch_user(user_id):
     )
 
 
+def update_profile_settings(db, user_id, form):
+    updates = {}
+    for group, options in UNIT_OPTIONS.items():
+        field = f"{group}_unit"
+        if field in form:
+            if form[field] not in options:
+                abort(400, "Choose a supported unit.")
+            updates[field] = form[field]
+    if "starting_dive_count" in form:
+        try:
+            count = int(form["starting_dive_count"].strip())
+        except ValueError:
+            abort(400, "Starting dive count must be a non-negative whole number.")
+        if not 0 <= count <= 9223372036854775807:
+            abort(400, "Starting dive count must be a non-negative whole number within the supported range.")
+        updates["starting_dive_count"] = count
+    for field, value in updates.items():
+        db.execute(f"UPDATE users SET {field} = ? WHERE id = ?", (value, user_id))
+
+
 def render_user_profile(user, is_owner):
-    login_email = None
-    if is_owner:
-        account = database.get_db().execute(
-            "SELECT login_email, google_email FROM users WHERE id = ?", (user["id"],)
-        ).fetchone()
-        login_email = account["login_email"] or account["google_email"]
     stats = get_profile_stats(user["id"])
     dives = fetch_dives(
         scope="mine",
@@ -814,7 +827,6 @@ def render_user_profile(user, is_owner):
     return render_template(
         "profile.html",
         user=user,
-        login_email=login_email,
         stats=stats,
         total_dive_count=stats["summary"]["dive_count"] + user["starting_dive_count"],
         dives=dives,
