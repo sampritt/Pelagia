@@ -31,7 +31,7 @@ from PIL import Image, ImageOps, UnidentifiedImageError
 from . import db as database
 from .importer import import_reference_data
 from .metrics import format_metric
-from .units import UNIT_OPTIONS, display_measurement, metric_measurement
+from .units import UNIT_OPTIONS, display_measurement, metric_measurement, pressure_display
 from .dive_options import DIVE_TYPES, CURRENT_TYPES, normalize_options, dive_type_options, current_type_options
 from . import google_auth, email_auth
 from . import pwa
@@ -153,9 +153,16 @@ def display_unit(group):
 
 
 def display_metric(value, group, *, include_unit=True):
-    converted = display_measurement(value, unit_preferences()[group])
-    suffix = ("" if group == "temperature" else " ") + display_unit(group) if include_unit else ""
-    return optional_metric(converted, suffix, weight=group == "weight")
+    # Visibility has its own display rule: imperial visibility is expressed in
+    # five-foot increments, without affecting depth or other length values.
+    preference_group = "length" if group == "visibility" else group
+    converted = display_measurement(value, unit_preferences()[preference_group])
+    if group == "pressure":
+        converted = pressure_display(value, unit_preferences()["pressure"])
+    if converted is not None and group == "visibility" and unit_preferences()["length"] == "ft":
+        converted = math.floor(converted / 5 + 0.5) * 5
+    suffix = ("" if preference_group == "temperature" else " ") + display_unit(preference_group) if include_unit else ""
+    return optional_metric(converted, suffix, weight=preference_group == "weight")
 
 
 def register_routes(app):
@@ -874,10 +881,10 @@ def create_dive_from_request(user_id, form_request):
         INSERT INTO dives (
             user_id, buddy_user_id, dive_site_id, dive_center_id, dive_center_name, date, site_name, country_or_area, latitude, longitude,
             depth_m, average_depth_m, duration_min, weight_kg, starting_pressure_bar, ending_pressure_bar, sac_rate_l_min,
-            exposure, visibility_m, air_temp_c, water_temp_c,
+            exposure, visibility_m, air_temp_c, water_temp_c, water_type,
             gas_mix, oxygen_pct, helium_pct, dive_type, dive_types_json, current, current_types_json, current_strength, notes, effort_rating, weight_rating, temperature_rating
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             user_id,
@@ -901,6 +908,7 @@ def create_dive_from_request(user_id, form_request):
             values["visibility_m"],
             values["air_temp_c"],
             values["water_temp_c"],
+            values["water_type"],
             values["gas_mix"],
             values["oxygen_pct"],
             values["helium_pct"],
@@ -952,6 +960,7 @@ def update_dive_from_request(dive_id, user_id, form_request):
             visibility_m = ?,
             air_temp_c = ?,
             water_temp_c = ?,
+            water_type = ?,
             gas_mix = ?,
             oxygen_pct = ?,
             helium_pct = ?,
@@ -987,6 +996,7 @@ def update_dive_from_request(dive_id, user_id, form_request):
             values["visibility_m"],
             values["air_temp_c"],
             values["water_temp_c"],
+            values["water_type"],
             values["gas_mix"],
             values["oxygen_pct"],
             values["helium_pct"],
@@ -1030,6 +1040,7 @@ def dive_values_from_request(form_request, user_id, default_tank_size_l=12):
     visibility = metric_measurement(form.get("visibility_m"), length_unit, 0, math.inf)
     air_temp = metric_measurement(form.get("air_temp_c"), temperature_unit, -20, 40)
     water_temp = metric_measurement(form.get("water_temp_c"), temperature_unit, -20, 40)
+    water_type = form.get("water_type") if form.get("water_type") in {"fresh", "salt"} else "none"
     gas_mix = form.get("gas_mix") if form.get("gas_mix") in GAS_MIXES else "Air"
     oxygen, helium = gas_composition(gas_mix)
     if "oxygen_pct" in form or "helium_pct" in form:
@@ -1130,6 +1141,7 @@ def dive_values_from_request(form_request, user_id, default_tank_size_l=12):
         "visibility_m": visibility,
         "air_temp_c": air_temp,
         "water_temp_c": water_temp,
+        "water_type": water_type,
         "gas_mix": gas_mix,
         "oxygen_pct": oxygen,
         "helium_pct": helium,
@@ -1801,6 +1813,7 @@ def dive_to_json(dive):
         "visibility_m": dive["visibility_m"],
         "air_temp_c": dive["air_temp_c"],
         "water_temp_c": dive["water_temp_c"],
+        "water_type": dive["water_type"],
         "gas_mix": dive["gas_mix"],
         "oxygen_pct": dive["oxygen_pct"],
         "helium_pct": dive["helium_pct"],

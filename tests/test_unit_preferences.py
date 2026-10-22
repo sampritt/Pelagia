@@ -108,6 +108,41 @@ class UnitPreferencesTest(unittest.TestCase):
         self.assert_selected(self.client.get("/dive/new").get_data(as_text=True), IMPERIAL)
         self.assertIn('<dd>-</dd>', self.client.get("/dive/1").get_data(as_text=True))
 
+    def test_water_type_defaults_to_none_and_is_saved(self):
+        form = self.client.get("/dive/new").get_data(as_text=True)
+        self.assertIn('name="water_type" value="none" checked', form)
+        self.assertIn('name="water_type" value="fresh"', form)
+        self.assertIn('name="water_type" value="salt"', form)
+        response = self.client.post("/dive/new", data={
+            "date": date.today().isoformat(), "site_name": "Freshwater Point", "depth_m": "10",
+            "duration_min": "45", "water_type": "fresh",
+        })
+        self.assertEqual(response.status_code, 302)
+        dive = self.client.get("/api/dives/mine").get_json()[0]
+        self.assertEqual(dive["water_type"], "fresh")
+        self.assertIn("Fresh", self.client.get(f"/dive/{dive['id']}").get_data(as_text=True))
+        for value, expected in (("salt", "salt"), ("none", "none"), ("invalid", "none")):
+            self.client.post(f"/dive/{dive['id']}/edit", data={
+                "site_name": "Freshwater Point", "depth_m": "10", "duration_min": "45", "water_type": value,
+            })
+            self.assertEqual(self.client.get(f"/api/dives/{dive['id']}").get_json()["water_type"], expected)
+
+    def test_full_cylinder_pressure_labels_preserve_exact_measurements(self):
+        from pelagia.units import PSI_TO_BAR
+
+        self.assertAlmostEqual(PSI_TO_BAR, 0.06894757293168361)
+        for unit, entered, expected in (("psi", "3000", 3000 * PSI_TO_BAR), ("bar", "200", 200)):
+            response = self.client.post("/dive/new", data={
+                "site_name": "Alert Rock", "date": "2026-10-01", "depth_m": "15", "duration_min": "45",
+                "starting_pressure_bar": entered, "pressure_unit": unit,
+            })
+            self.assertEqual(response.status_code, 302)
+            dive = max(self.client.get("/api/dives/mine").get_json(), key=lambda item: item["id"])
+            self.assertAlmostEqual(dive["starting_pressure_bar"], expected, places=8)
+            for preference, label in (("bar", "200 bar"), ("psi", "3000 psi")):
+                self.client.post("/you/settings", data={"pressure_unit": preference})
+                self.assertIn(label, self.client.get(f"/dive/{dive['id']}").get_data(as_text=True))
+
     def test_share_images_use_viewer_units_and_guests_keep_metric_defaults(self):
         self.seed_dive()
         self.client.post("/you/settings", data=IMPERIAL)

@@ -30,6 +30,18 @@ def display_measurement(value, unit):
     return value
 
 
+def pressure_display(value, unit):
+    """Use the requested full-cylinder labels without altering measurements."""
+    converted = display_measurement(value, unit)
+    if converted is None:
+        return None
+    if unit == "psi" and math.isclose(float(value), 200, abs_tol=1e-7):
+        return 3000
+    if unit == "bar" and math.isclose(float(value), 3000 * PSI_TO_BAR, abs_tol=1e-7):
+        return 200
+    return converted
+
+
 def metric_measurement(value, unit, minimum, maximum):
     if value is None or str(value).strip() == "":
         return None

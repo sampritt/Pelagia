@@ -205,6 +205,15 @@
                     <input type="range" min="-20" max="40" step="1" value="{{ dive.water_temp_c if is_edit and dive.water_temp_c is not none else 20 }}" data-range="waterTemp" aria-label="Water temperature slider (°C)">
                     <input id="waterTempC" data-metric-value="{{ dive.water_temp_c if is_edit and dive.water_temp_c is not none else '' }}" name="water_temp_c" type="number" min="-20" max="40" step="any" value="{{ optional_metric(dive.water_temp_c) if is_edit and dive.water_temp_c is not none else '' }}" data-number="waterTemp">
                 </div>
+                {% set selected_water_type = dive.water_type if is_edit and dive.water_type in ['fresh', 'salt'] else 'none' %}
+                <div class="water-type-control" role="group" aria-labelledby="waterTypeLabel">
+                    <span id="waterTypeLabel">Water type</span>
+                    <div class="water-type-options">
+                        {% for value, label in [('none', '-'), ('fresh', 'Fresh'), ('salt', 'Salt')] %}
+                            <label><input class="sr-only" type="radio" name="water_type" value="{{ value }}" {{ 'checked' if value == selected_water_type else '' }}><span>{{ label }}</span></label>
+                        {% endfor %}
+                    </div>
+                </div>
                 <div class="condition-options">
                     {% set selected_dive_types = dive.dive_types if is_edit else ['open water'] %}
                     <div class="multi-select-field">

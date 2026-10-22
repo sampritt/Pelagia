@@ -183,7 +183,7 @@ test("unit toggles update values, bounds, labels and slider steps without changi
     state.setUnit("temperature", "f");
     assert.equal(state.pairs.depth.number.value, "66");
     assert.equal(state.pairs.averageDepth.number.value, "34");
-    assert.equal(state.pairs.visibility.number.value, "49");
+    assert.equal(state.pairs.visibility.number.value, "50");
     assert.equal(state.labels.depth.textContent, "Max depth (ft)");
     assert.equal(state.pairs.depth.number.max, "148");
     assert.equal(state.pairs.weight.number.max, "22");
@@ -367,8 +367,9 @@ test("visibility slider caps at 30 m or 100 ft while numeric entries can exceed 
     assert.equal(state.pairs.visibility.number.value, "60");
     state.setUnit("length", "ft");
     assert.equal(state.pairs.visibility.range.max, "100");
+    assert.equal(state.pairs.visibility.range.step, "5");
     assert.equal(state.pairs.visibility.range.value, 100);
-    assert.equal(state.pairs.visibility.number.value, "197");
+    assert.equal(state.pairs.visibility.number.value, "195");
     state.pairs.visibility.number.value = "150";
     state.pairs.visibility.number.handlers.input();
     state.pairs.visibility.number.handlers.blur();
@@ -383,6 +384,23 @@ test("visibility slider caps at 30 m or 100 ft while numeric entries can exceed 
     state.pairs.visibility.range.handlers.input();
     assert.equal(state.pairs.visibility.number.value, "100");
     assert.ok(Math.abs(Number(state.submitted().visibility_m) - 100) < 1e-8);
+});
+
+test("pressure unit switches use the standard 200 bar and 3000 psi pairing", () => {
+    const state = setup({startingPressure: "200"});
+    state.setUnit("pressure", "psi");
+    assert.equal(state.pairs.startingPressure.number.value, "3000");
+    state.setUnit("pressure", "bar");
+    assert.equal(state.pairs.startingPressure.number.value, "200");
+    assert.equal(state.submitted().starting_pressure_bar, "200");
+    state.setUnit("pressure", "psi");
+    state.pairs.startingPressure.number.value = "3000";
+    state.pairs.startingPressure.number.handlers.input();
+    state.pairs.startingPressure.number.handlers.blur();
+    state.setUnit("pressure", "bar");
+    assert.equal(state.pairs.startingPressure.number.value, "200");
+    state.pairs.startingPressure.number.handlers.blur();
+    assert.ok(Math.abs(Number(state.submitted().starting_pressure_bar) - 206.8427187951) < 1e-7);
 });
 
 

@@ -170,6 +170,7 @@ def _ensure_metric_dive_schema(db):
     _ensure_column(db, "dives", "visibility_m", "REAL")
     _ensure_column(db, "dives", "air_temp_c", "REAL")
     _ensure_column(db, "dives", "water_temp_c", "REAL")
+    _ensure_column(db, "dives", "water_type", "TEXT NOT NULL DEFAULT 'none'")
     columns = {
         row["name"]: row
         for row in db.execute("PRAGMA table_info(dives)").fetchall()
@@ -257,6 +258,7 @@ def _ensure_metric_dive_schema(db):
                 visibility_m REAL,
                 air_temp_c REAL,
                 water_temp_c REAL,
+                water_type TEXT NOT NULL DEFAULT 'none',
                 gas_mix TEXT NOT NULL DEFAULT 'Air',
                 oxygen_pct INTEGER CHECK (oxygen_pct BETWEEN 0 AND 100),
                 helium_pct INTEGER CHECK (helium_pct BETWEEN 0 AND 100 AND oxygen_pct + helium_pct <= 100),
@@ -278,14 +280,14 @@ def _ensure_metric_dive_schema(db):
                 id, user_id, buddy_user_id, dive_site_id, dive_center_id, dive_center_name, date, site_name,
                 country_or_area, latitude, longitude, depth_m, average_depth_m, duration_min, weight_kg,
                 starting_pressure_bar, ending_pressure_bar, sac_rate_l_min,
-                exposure, visibility_m, air_temp_c, water_temp_c, gas_mix, oxygen_pct, helium_pct, dive_type, dive_types_json,
+                exposure, visibility_m, air_temp_c, water_temp_c, water_type, gas_mix, oxygen_pct, helium_pct, dive_type, dive_types_json,
                 current, current_types_json, current_strength, notes, is_deleted, created_at
             )
             SELECT
                 id, user_id, buddy_user_id, dive_site_id, dive_center_id, dive_center_name, date, site_name,
                 country_or_area, latitude, longitude, {depth_expression}, average_depth_m, duration_min, {weight_expression},
                 starting_pressure_bar, ending_pressure_bar, sac_rate_l_min,
-                exposure, {visibility_expression}, {air_temp_expression}, {water_temp_expression}, gas_mix, oxygen_pct, helium_pct, dive_type, dive_types_json,
+                exposure, {visibility_expression}, {air_temp_expression}, {water_temp_expression}, COALESCE(water_type, 'none'), gas_mix, oxygen_pct, helium_pct, dive_type, dive_types_json,
                 current, current_types_json, current_strength, notes, is_deleted, created_at
             FROM dives;
 

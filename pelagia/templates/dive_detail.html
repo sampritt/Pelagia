@@ -50,7 +50,7 @@
             <dl class="detail-metric-list">
                 <div>
                     <dt>Visibility</dt>
-                    <dd>{{ display_metric(dive.visibility_m, 'length') }}</dd>
+                    <dd>{{ display_metric(dive.visibility_m, 'visibility') }}</dd>
                 </div>
                 <div>
                     <dt>Air temperature</dt>
@@ -59,6 +59,10 @@
                 <div>
                     <dt>Water temperature</dt>
                     <dd>{{ display_metric(dive.water_temp_c, 'temperature') }}</dd>
+                </div>
+                <div>
+                    <dt>Water type</dt>
+                    <dd>{{ '-' if dive.water_type == 'none' else dive.water_type|title }}</dd>
                 </div>
                 <div>
                     <dt>Current</dt>

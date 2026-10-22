@@ -855,6 +855,12 @@ function initDiveForm() {
     const snapToStep = (value, pair) => clamp(pair.min + Math.round((Number(value) - pair.min) / pair.step) * pair.step, pair.min, pair.rangeMax);
     const displayDigits = (pair) => pair.name === "weight" ? 1 : 0;
     const roundedDisplay = (value, pair) => {
+        if (pair.name === "visibility" && usesAlternate(pair)) return Math.round(value / 5) * 5;
+        if (pair.group === "pressure") {
+            const psiPerBar = FORM_UNITS.pressure.factor;
+            if (usesAlternate(pair) && Math.abs(value - 200 * psiPerBar) < 1e-5) return 3000;
+            if (!usesAlternate(pair) && Math.abs(value - 3000 / psiPerBar) < 1e-5) return 200;
+        }
         const scale = pair.name === "weight" ? 2 : 1;
         return Math.round(value * scale) / scale;
     };
@@ -868,7 +874,7 @@ function initDiveForm() {
         pair.max = alternate ? Math.round(toDisplay(pair.metricMax, pair)) : Math.ceil(pair.metricMax * scale) / scale;
         pair.rangeMax = pair.group === "pressure" ? (alternate ? 3000 : pair.metricRangeMax)
             : pair.name === "visibility" ? (alternate ? 100 : pair.metricRangeMax) : pair.max;
-        pair.step = alternate ? config.step : pair.metricStep;
+        pair.step = pair.name === "visibility" && alternate ? 5 : (alternate ? config.step : pair.metricStep);
         pair.range.min = pair.number.min = String(pair.min);
         pair.range.max = String(pair.rangeMax);
         pair.number.max = Number.isFinite(pair.max) ? String(pair.max) : "";
@@ -880,7 +886,7 @@ function initDiveForm() {
         }
         const metric = pair.metricValue ?? pair.rangeMetric;
         const display = toDisplay(metric, pair);
-        pair.range.value = snapToStep(display, pair);
+        pair.range.value = snapToStep(roundedDisplay(display, pair), pair);
         if (pair.metricValue === null) {
             pair.number.value = "";
             pair.output.textContent = "-";

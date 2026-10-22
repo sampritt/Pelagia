@@ -29,7 +29,7 @@
         <div class="site-conditions-grid">
             <div>
                 <small>VISIBILITY</small>
-                <span>{{ display_metric(conditions.visibility_m, 'length') }}</span>
+                <span>{{ display_metric(conditions.visibility_m, 'visibility') }}</span>
             </div>
             <div>
                 <small>CURRENT</small>
@@ -64,7 +64,7 @@
                 {% for point in visibility_chart.points %}
                     {% if point.y is not none %}
                         <circle cx="{{ point.x }}" cy="{{ point.y }}" r="3">
-                            <title>{{ point.label }}: {{ display_metric(point.value, 'length') }}</title>
+                            <title>{{ point.label }}: {{ display_metric(point.value, 'visibility') }}</title>
                         </circle>
                     {% endif %}
                 {% endfor %}
