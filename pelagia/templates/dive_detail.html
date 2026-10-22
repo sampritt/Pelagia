@@ -65,13 +65,12 @@
                     <dd>{{ '-' if dive.water_type == 'none' else dive.water_type|title }}</dd>
                 </div>
                 <div>
-                    <dt>Current</dt>
-                    <dd>
-                        {{ current_label(dive.current_types) }}
-                        {% if 'none' not in dive.current_types and dive.current_strength != "none" %}
-                            - {{ current_strength_label(dive.current_strength) }}
-                        {% endif %}
-                    </dd>
+                    <dt>Current type</dt>
+                    <dd>{{ current_label(dive.current_types) }}</dd>
+                </div>
+                <div>
+                    <dt>Current strength</dt>
+                    <dd>{{ current_strength_label(dive.current_strength) }}</dd>
                 </div>
             </dl>
         </div>
