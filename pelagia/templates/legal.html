@@ -10,7 +10,7 @@
     {% block legal_content %}{% endblock %}
     <section>
         <h2>Questions</h2>
-        <p>Pelagia is operated by {{ config.PELAGIA_OPERATOR_NAME }}.
+        <p>Operated by {{ config.PELAGIA_OPERATOR_NAME }}.
         {% if config.PELAGIA_CONTACT_EMAIL %}
         Contact <a href="mailto:{{ config.PELAGIA_CONTACT_EMAIL }}">{{ config.PELAGIA_CONTACT_EMAIL }}</a> for questions{% if request.endpoint == 'privacy' %} or requests about your personal information{% endif %}.
         {% else %}
