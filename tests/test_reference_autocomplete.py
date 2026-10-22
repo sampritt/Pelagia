@@ -209,17 +209,18 @@ class ReferenceAutocompleteTest(unittest.TestCase):
                 selected = edit_selections()
                 self.assertEqual(selected, {"dive_type": payload["dive_type"], "current": payload["current"]})
                 self.assertEqual(client.post(f"/dive/{dive_id}/edit", data={**payload, **selected}).status_code, 302)
-            updated = {**payload, "dive_type": ["wall", "night"], "current": ["surge", "rip"]}
+            updated = {**payload, "dive_type": ["wall", "deep", "drift", "night"], "current": ["upwelling", "downdraft"]}
             client.post(f"/dive/{dive_id}/edit", data=updated)
-            self.assertEqual(edit_selections(), {"dive_type": ["wall", "night"], "current": ["surge", "rip"]})
+            self.assertEqual(edit_selections(), {"dive_type": updated["dive_type"], "current": updated["current"]})
             with app.app_context():
                 database.init_db()
                 database.init_db()
-            self.assertEqual(edit_selections(), {"dive_type": ["wall", "night"], "current": ["surge", "rip"]})
+            self.assertEqual(edit_selections(), {"dive_type": updated["dive_type"], "current": updated["current"]})
+            self.assertEqual(client.get(f"/api/dives/{dive_id}").get_json()["current"], "upwelling")
             with sqlite3.connect(db_path) as conn:
                 row = conn.execute("SELECT dive_types_json, current_types_json FROM dives").fetchone()
-                self.assertEqual(json.loads(row[0]), ["wall", "night"])
-                self.assertEqual(json.loads(row[1]), ["surge", "rip"])
+                self.assertEqual(json.loads(row[0]), updated["dive_type"])
+                self.assertEqual(json.loads(row[1]), updated["current"])
 
     def test_multiple_type_validation_and_none_current(self):
         with tempfile.TemporaryDirectory() as tmp_dir:
@@ -230,7 +231,7 @@ class ReferenceAutocompleteTest(unittest.TestCase):
             for dive_types, currents, expected_dives, expected_currents, strength in (
                 (["wall", "reef", "wall", "bad"], ["none", "drift", "tidal", "drift", "bad"], ["reef", "wall"], ["tidal", "drift"], "strong"),
                 ([], [], ["open water"], ["none"], "none"),
-                (["bad"], ["bad"], ["open water"], ["none"], "none"),
+                (["bad"], ["bad", "vertical"], ["open water"], ["none"], "none"),
                 (["wreck"], ["none"], ["wreck"], ["none"], "none"),
             ):
                 with self.subTest(dive_types=dive_types, currents=currents):
@@ -1351,10 +1352,14 @@ Kelp House,2 Harbor Way,Alaska,https://kelp.example.test
             new_response = client.get("/dive/new")
             self.assertIn(b'name="dive_type" value="open water" data-option-label="Open Water" checked', new_response.data)
             self.assertIn(b'name="dive_type" value="shore dive" data-option-label="Shore Dive" ', new_response.data)
+            self.assertIn(b'name="dive_type" value="drift" data-option-label="Drift" ', new_response.data)
+            self.assertLess(new_response.data.index(b'name="dive_type" value="deep"'), new_response.data.index(b'name="dive_type" value="drift"'))
+            self.assertLess(new_response.data.index(b'name="dive_type" value="drift"'), new_response.data.index(b'name="dive_type" value="night"'))
             self.assertIn(b'name="current" value="none" data-option-label="-" checked', new_response.data)
             self.assertIn(b"Current type", new_response.data)
-            for current in ("slack", "tidal", "rip", "vertical"):
+            for current in ("slack", "tidal", "rip", "upwelling", "downdraft"):
                 self.assertIn(f'name="current" value="{current}" data-option-label="{current.title()}" '.encode(), new_response.data)
+            self.assertNotIn(b'name="current" value="vertical"', new_response.data)
             self.assertIn(b"Current strength", new_response.data)
             self.assertIn(b"current-strength-control is-disabled", new_response.data)
             self.assertIn(b"data-current-type-select", new_response.data)

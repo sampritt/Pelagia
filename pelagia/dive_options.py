@@ -3,8 +3,8 @@
 import json
 
 
-DIVE_TYPES = ("open water", "shore dive", "reef", "wall", "deep", "night", "wreck", "cavern", "cave")
-CURRENT_TYPES = ("none", "slack", "tidal", "surge", "drift", "rip", "vertical")
+DIVE_TYPES = ("open water", "shore dive", "reef", "wall", "deep", "drift", "night", "wreck", "cavern", "cave")
+CURRENT_TYPES = ("none", "slack", "tidal", "surge", "drift", "rip", "upwelling", "downdraft")
 
 
 def normalize_options(values, choices, default):

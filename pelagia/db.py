@@ -5,6 +5,7 @@ import click
 from flask import current_app, g
 
 from .units import UNIT_OPTIONS
+from .dive_options import CURRENT_TYPES
 
 
 def get_db():
@@ -94,7 +95,8 @@ def _ensure_column(db, table_name, column_name, column_type):
 
 
 def _normalize_current_values(db):
-    db.execute("UPDATE dives SET current = 'none' WHERE current NOT IN ('none', 'slack', 'tidal', 'surge', 'drift', 'rip', 'vertical')")
+    placeholders = ", ".join("?" for _ in CURRENT_TYPES)
+    db.execute(f"UPDATE dives SET current = 'none' WHERE current NOT IN ({placeholders})", CURRENT_TYPES)
     db.execute(
         "UPDATE dives SET current_strength = 'none' "
         "WHERE current_strength NOT IN ('none', 'light', 'moderate', 'strong', 'very strong')"
