@@ -715,6 +715,13 @@ function initDiveForm() {
         });
     });
 
+    const waterTypeLabel = form.querySelector("[data-water-type-label]");
+    form.querySelectorAll("[data-water-type-option]").forEach((input) => {
+        input.addEventListener("change", () => {
+            if (waterTypeLabel) waterTypeLabel.textContent = input.dataset.optionLabel;
+        });
+    });
+
     const siteInput = form.querySelector("[data-site-input]");
     const siteResults = form.querySelector("[data-site-results]");
     const centerInput = form.querySelector("[data-center-input]");

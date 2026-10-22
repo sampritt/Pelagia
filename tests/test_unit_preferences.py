@@ -110,7 +110,8 @@ class UnitPreferencesTest(unittest.TestCase):
 
     def test_water_type_defaults_to_none_and_is_saved(self):
         form = self.client.get("/dive/new").get_data(as_text=True)
-        self.assertIn('name="water_type" value="none" checked', form)
+        self.assertNotIn('name="water_type" value="none"', form)
+        self.assertIn('data-water-type-label aria-live="polite">-</output>', form)
         self.assertIn('name="water_type" value="fresh"', form)
         self.assertIn('name="water_type" value="salt"', form)
         response = self.client.post("/dive/new", data={

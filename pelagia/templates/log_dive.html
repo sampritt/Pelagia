@@ -207,10 +207,10 @@
                 </div>
                 {% set selected_water_type = dive.water_type if is_edit and dive.water_type in ['fresh', 'salt'] else 'none' %}
                 <div class="water-type-control" role="group" aria-labelledby="waterTypeLabel">
-                    <span id="waterTypeLabel">Water type</span>
-                    <div class="water-type-options">
-                        {% for value, label in [('none', '-'), ('fresh', 'Fresh'), ('salt', 'Salt')] %}
-                            <label><input class="sr-only" type="radio" name="water_type" value="{{ value }}" {{ 'checked' if value == selected_water_type else '' }}><span>{{ label }}</span></label>
+                    <div class="exposure-heading" id="waterTypeLabel">Water type: <output data-water-type-label aria-live="polite">{{ selected_water_type|title if selected_water_type != 'none' else '-' }}</output></div>
+                    <div class="exposure-options">
+                        {% for value, label in [('fresh', 'Fresh'), ('salt', 'Salt')] %}
+                            <label><input class="sr-only" type="radio" name="water_type" value="{{ value }}" data-water-type-option data-option-label="{{ label }}" {{ 'checked' if value == selected_water_type else '' }}><span>{{ label }}</span></label>
                         {% endfor %}
                     </div>
                 </div>

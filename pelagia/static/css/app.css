@@ -3820,35 +3820,9 @@ input[type="range"] {
     grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
-.water-type-control {
-    display: grid;
-    gap: 10px;
-    min-width: 0;
-    font-size: 0.78rem;
-    font-weight: 650;
+.water-type-control .exposure-options {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
 }
-
-.water-type-options {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    min-height: 46px;
-    overflow: hidden;
-    border: 1px solid var(--line);
-    border-radius: 10px;
-    background: var(--panel);
-}
-
-.water-type-options label { cursor: pointer; }
-.water-type-options span {
-    display: grid;
-    height: 100%;
-    place-items: center;
-    padding: 8px 5px;
-    color: var(--muted-strong);
-}
-.water-type-options label + label { border-left: 1px solid var(--line); }
-.water-type-options input:checked + span { background: var(--accent); color: white; }
-.water-type-options input:focus-visible + span { outline: 2px solid var(--accent-deep); outline-offset: -2px; }
 
 .conditions-panel > .range-control,
 .equipment-controls .range-control {
