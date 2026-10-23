@@ -1600,7 +1600,6 @@ function initDiveBrief() {
     // refresh/navigation. A standalone reader marks its edition as read on exit.
     window.addEventListener("pagehide", () => rememberCollapsed(disclosure ? !disclosure.open : true));
     const scroller = reader.querySelector("[data-brief-scroll]");
-    const progress = reader.querySelector("[data-brief-progress]");
     let returnFocus;
     let feedUrl;
     let swipeStart;
@@ -1622,10 +1621,6 @@ function initDiveBrief() {
         if (event.pointerType === "mouse" && !event.sourceCapabilities?.firesTouchEvents) swipeClickUntil = 0;
     }, true);
     const hasSelection = () => window.getSelection?.()?.isCollapsed === false;
-    const updateProgress = () => {
-        const total = scroller.scrollHeight - scroller.clientHeight;
-        progress.style.transform = `scaleX(${total > 0 ? Math.max(0, Math.min(1, scroller.scrollTop / total)) : 1})`;
-    };
     const restoreFeed = () => {
         if (!dialog?.open) return;
         dialog.close();
@@ -1671,7 +1666,6 @@ function initDiveBrief() {
             document.body.classList.add("brief-is-open");
             trigger.setAttribute("aria-expanded", "true");
             scroller.scrollTop = 0;
-            updateProgress();
         });
         dialog.addEventListener("cancel", (event) => {
             event.preventDefault();
@@ -1683,7 +1677,6 @@ function initDiveBrief() {
                     dialog.showModal();
                     document.body.classList.add("brief-is-open");
                     trigger.setAttribute("aria-expanded", "true");
-                    updateProgress();
                 }
             } else restoreFeed();
         });
@@ -1758,9 +1751,6 @@ function initDiveBrief() {
         wheelDistance += distance;
         if (Math.abs(wheelDistance) >= 120) close();
     }, { passive: false });
-    scroller.addEventListener("scroll", updateProgress, { passive: true });
-    window.addEventListener("resize", updateProgress);
-    updateProgress();
 }
 
 function initProfileHistory() {

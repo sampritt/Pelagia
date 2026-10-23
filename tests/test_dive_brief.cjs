@@ -28,12 +28,12 @@ function setup(standalone = false, options = {}) {
     const disclosure = element(), summary = element();
     reader.dataset = {briefEdition: options.edition || "2026-09-04"};
     disclosure.open = true;
-    const scroller = element(), progress = element();
+    const scroller = element();
     scroller.scrollHeight = 2000; scroller.clientHeight = 800; scroller.clientWidth = 390; scroller.scrollTop = 0;
     trigger.href = "https://pelagia.test/brief/2026-09-04";
     dialog.showModal = () => { dialog.open = true; };
     dialog.close = () => { dialog.open = false; dialog.handlers.close(); };
-    reader.querySelector = selector => selector.includes("progress") ? progress : scroller;
+    reader.querySelector = () => scroller;
     reader.querySelectorAll = () => [closeLink];
     const classes = new Set();
     const document = element();
@@ -56,7 +56,7 @@ function setup(standalone = false, options = {}) {
         target: {closest: () => targetLink},
     });
     const end = (x, y) => ({touches: [], changedTouches: [{clientX: x, clientY: y}], preventDefault() { this.prevented = true; }});
-    return {window, document, reader, dialog, trigger, closeLink, disclosure, summary, storage, scroller, progress, classes, open, click, touch, end, backCount: () => backCount};
+    return {window, document, reader, dialog, trigger, closeLink, disclosure, summary, storage, scroller, classes, open, click, touch, end, backCount: () => backCount};
 }
 
 test("brief opens immediately and browser Back restores focus and scroll lock", () => {
@@ -109,17 +109,8 @@ test("close and Escape consume only one history entry; modified clicks keep nati
     assert.equal(state.backCount(), 1);
 });
 
-test("reader progress tracks its own scroll and standalone editions return to home", () => {
+test("standalone editions return to home", () => {
     const state = setup(true);
-    state.scroller.scrollTop = 600;
-    state.scroller.handlers.scroll();
-    assert.equal(state.progress.style.transform, "scaleX(0.5)");
-    state.scroller.scrollTop = -50;
-    state.scroller.handlers.scroll();
-    assert.equal(state.progress.style.transform, "scaleX(0)");
-    state.scroller.scrollTop = 3000;
-    state.scroller.handlers.scroll();
-    assert.equal(state.progress.style.transform, "scaleX(1)");
     state.reader.handlers.keydown({key:"Escape"});
     assert.equal(state.window.location.destination, "/home");
     state.reader.handlers.touchstart(state.touch(180, 400));
