@@ -416,8 +416,7 @@ def register_routes(app):
         if request.method == "POST":
             update_profile_settings(db, user["id"], request.form)
             db.commit()
-            flash("Settings saved.")
-            return redirect(url_for("profile_settings"))
+            return redirect(url_for("profile"))
         account = db.execute(
             "SELECT login_email, google_email FROM users WHERE id = ?", (user["id"],)
         ).fetchone()

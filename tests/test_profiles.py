@@ -76,8 +76,8 @@ class ProfileTest(unittest.TestCase):
             self.assertNotIn(b'Changes save automatically', settings)
             response = client.post("/you/settings", data={"length_unit": "ft", "starting_dive_count": "42"})
             self.assertEqual(response.status_code, 302)
-            self.assertEqual(response.location, "/you/settings")
-            self.assertIn(b"Settings saved.", client.get(response.location).data)
+            self.assertEqual(response.location, "/you")
+            self.assertNotIn(b"Settings saved.", client.get(response.location).data)
             with app.app_context():
                 user = database.get_db().execute("SELECT length_unit, starting_dive_count FROM users WHERE id = 1").fetchone()
                 self.assertEqual(tuple(user), ("ft", 42))
