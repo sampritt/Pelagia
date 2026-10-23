@@ -22,7 +22,7 @@ function setup(standalone = false) {
     };
     const reader = element(), dialog = element(), trigger = element(), closeLink = element();
     const scroller = element(), progress = element();
-    scroller.scrollHeight = 2000; scroller.clientHeight = 800; scroller.scrollTop = 0;
+    scroller.scrollHeight = 2000; scroller.clientHeight = 800; scroller.clientWidth = 390; scroller.scrollTop = 0;
     trigger.href = "https://pelagia.test/brief/2026-09-04";
     dialog.showModal = () => { dialog.open = true; };
     dialog.close = () => { dialog.open = false; dialog.handlers.close(); };
@@ -104,9 +104,51 @@ test("reader progress tracks its own scroll and standalone editions return to ho
     state.scroller.scrollTop = 600;
     state.scroller.handlers.scroll();
     assert.equal(state.progress.style.transform, "scaleX(0.5)");
+    state.scroller.scrollTop = -50;
+    state.scroller.handlers.scroll();
+    assert.equal(state.progress.style.transform, "scaleX(0)");
+    state.scroller.scrollTop = 3000;
+    state.scroller.handlers.scroll();
+    assert.equal(state.progress.style.transform, "scaleX(1)");
     state.reader.handlers.keydown({key:"Escape"});
     assert.equal(state.window.location.destination, "/home");
     state.reader.handlers.touchstart(state.touch(180, 400));
     state.reader.handlers.touchend(state.end(50, 405));
     assert.equal(state.window.location.destination, "/home");
+});
+
+test("trackpad swipes close in either direction and vertical scroll, zoom and content scrolling remain native", () => {
+    const wheel = (deltaX, deltaY = 0, extra = {}) => ({
+        deltaX, deltaY, deltaMode: 0, target: {closest: () => false},
+        preventDefault() { this.prevented = true; }, ...extra,
+    });
+    for (const direction of [-1, 1]) {
+        const state = setup(); state.open();
+        for (let i = 0; i < 3; i++) state.reader.handlers.wheel(wheel(direction * 45, 2));
+        assert.equal(state.backCount(), 1);
+        assert.equal(state.dialog.open, false);
+    }
+    for (const event of [wheel(2, 100), wheel(50, 40), wheel(150, 0, {ctrlKey:true}), wheel(150, 0, {target:{closest:()=>true}})]) {
+        const state = setup(); state.open();
+        state.reader.handlers.wheel(event);
+        assert.equal(event.prevented, undefined);
+        assert.equal(state.dialog.open, true);
+    }
+    const state = setup(); state.open();
+    state.reader.handlers.wheel(wheel(80));
+    state.reader.handlers.wheel(wheel(-80));
+    assert.equal(state.dialog.open, true, "opposite gestures do not combine");
+    state.reader.handlers.wheel(wheel(-4, 0, {deltaMode:1}));
+    assert.equal(state.dialog.open, false, "line-based wheel deltas are normalized");
+});
+
+test("selecting story text never dismisses the reader on a horizontal gesture", () => {
+    const state = setup(); state.open();
+    state.window.getSelection = () => ({isCollapsed:false});
+    state.reader.handlers.touchstart(state.touch(180, 400));
+    state.reader.handlers.touchend(state.end(50, 405));
+    const event = {deltaX:150, deltaY:0, target:{closest:()=>false}, preventDefault() { this.prevented = true; }};
+    state.reader.handlers.wheel(event);
+    assert.equal(event.prevented, undefined);
+    assert.equal(state.dialog.open, true);
 });

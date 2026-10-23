@@ -1,13 +1,12 @@
 <div class="brief-reader" data-brief-reader>
     <header class="brief-toolbar">
-        <a class="brief-back" href="{{ url_for('home') }}" data-brief-close autofocus>
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H5m6-6-6 6 6 6"></path></svg>
-            <span>Feed</span>
-        </a>
+        <span class="brief-toolbar-label">The daily dispatch</span>
         <a class="brief-pelagia" href="{{ url_for('home') }}" aria-label="Pelagia home" data-brief-close>
             <img src="{{ url_for('static', filename='img/pelagia-mark.png') }}" alt="" width="26" height="26">Pelagia
         </a>
-        <span class="brief-toolbar-label">The daily dispatch</span>
+        <button class="brief-close" type="button" data-brief-close aria-label="Close briefing" autofocus>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"></path></svg>
+        </button>
         <div class="brief-progress" aria-hidden="true"><span data-brief-progress></span></div>
     </header>
     <div class="brief-scroll" data-brief-scroll tabindex="0" role="region" aria-label="The Dive Brief newsletter">
@@ -25,7 +24,10 @@
             <footer class="brief-endnote">
                 <span class="brief-endmark" aria-hidden="true">≈</span>
                 <p>You’re all caught up.<br><strong>See you below the surface.</strong></p>
-                <a class="brief-read-more" href="{{ url_for('home') }}" data-brief-close>Back to feed <span aria-hidden="true">↗</span></a>
+                <a class="brief-read-more" href="{{ url_for('home') }}" data-brief-close>
+                    <span class="brief-link-label">Back to feed</span>
+                    <span class="brief-arrow" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12h14m-6-6 6 6-6 6"></path></svg></span>
+                </a>
             </footer>
         </article>
     </div>

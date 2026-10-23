@@ -1584,10 +1584,13 @@ function initDiveBrief() {
     let returnFocus;
     let feedUrl;
     let swipeStart;
+    let wheelDistance = 0;
+    let wheelAt = 0;
     let closing = false;
+    const hasSelection = () => window.getSelection?.()?.isCollapsed === false;
     const updateProgress = () => {
         const total = scroller.scrollHeight - scroller.clientHeight;
-        progress.style.transform = `scaleX(${total > 0 ? Math.min(1, scroller.scrollTop / total) : 1})`;
+        progress.style.transform = `scaleX(${total > 0 ? Math.max(0, Math.min(1, scroller.scrollTop / total)) : 1})`;
     };
     const restoreFeed = () => {
         if (!dialog?.open) return;
@@ -1597,6 +1600,7 @@ function initDiveBrief() {
         returnFocus?.focus({ preventScroll: true });
         closing = false;
         swipeStart = null;
+        wheelDistance = 0;
     };
     const close = () => {
         if (!dialog) {
@@ -1662,7 +1666,7 @@ function initDiveBrief() {
     // reading keep their native behavior. Diagonal/multitouch gestures cancel.
     reader.addEventListener("touchstart", (event) => {
         swipeStart = null;
-        if (event.touches.length !== 1 || event.target.closest("a, button, pre, table")) return;
+        if (event.touches.length !== 1 || hasSelection() || event.target.closest("a, button, pre, table")) return;
         const touch = event.touches[0];
         swipeStart = { x: touch.clientX, y: touch.clientY, at: Date.now() };
     }, { passive: true });
@@ -1673,13 +1677,31 @@ function initDiveBrief() {
     reader.addEventListener("touchend", (event) => {
         const start = swipeStart;
         swipeStart = null;
-        if (!start || event.touches.length || !event.changedTouches.length) return;
+        if (!start || hasSelection() || event.touches.length || !event.changedTouches.length) return;
         const touch = event.changedTouches[0];
         const dx = touch.clientX - start.x;
         const dy = touch.clientY - start.y;
         if (Math.abs(dx) >= 80 && Math.abs(dx) > Math.abs(dy) * 2 && Date.now() - start.at < 1000) close();
     }, { passive: true });
     reader.addEventListener("touchcancel", () => { swipeStart = null; }, { passive: true });
+    // Trackpad swipes dismiss in either direction; ordinary reading, zoom and
+    // horizontal code/table scrolling retain their native behavior.
+    reader.addEventListener("wheel", (event) => {
+        if (event.ctrlKey || hasSelection() || event.target.closest("a, button, pre, table") ||
+            Math.abs(event.deltaX) <= Math.abs(event.deltaY) * 2) {
+            wheelDistance = 0;
+            return;
+        }
+        if (dialog && !dialog.open) return;
+        event.preventDefault();
+        const now = Date.now();
+        const scale = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? scroller.clientWidth : 1;
+        const distance = event.deltaX * scale;
+        if (now - wheelAt > 250 || Math.sign(distance) !== Math.sign(wheelDistance)) wheelDistance = 0;
+        wheelAt = now;
+        wheelDistance += distance;
+        if (Math.abs(wheelDistance) >= 120) close();
+    }, { passive: false });
     scroller.addEventListener("scroll", updateProgress, { passive: true });
     window.addEventListener("resize", updateProgress);
     updateProgress();
