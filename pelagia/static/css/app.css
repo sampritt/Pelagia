@@ -5598,7 +5598,7 @@ textarea { resize: vertical; }
 .brief-link-label { position: relative; }
 .brief-link-label::after { content: ""; position: absolute; inset: auto 0 -3px; height: 1px; background: currentColor; transform: scaleX(0); transform-origin: left; transition: transform .22s cubic-bezier(.16, 1, .3, 1); }
 .brief-arrow { display: grid; place-items: center; width: 20px; height: 20px; flex-shrink: 0; transition: transform .22s cubic-bezier(.16, 1, .3, 1); }
-.brief-arrow svg, .brief-close svg { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.brief-arrow svg { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
 .brief-read-more:focus-visible { outline: 2px solid #007e88; outline-offset: 5px; border-radius: 2px; }
 .brief-read-more:focus-visible .brief-link-label::after, .brief-read-more:active .brief-link-label::after { transform: scaleX(1); }
 .brief-read-more:focus-visible .brief-arrow { transform: translateX(4px); }
@@ -5641,10 +5641,6 @@ textarea { resize: vertical; }
     border-bottom: 1px solid var(--line);
     background: #fff;
 }
-.brief-close { display: grid; place-items: center; justify-self: end; width: 44px; height: 44px; padding: 0; border: 0; border-radius: 50%; color: var(--muted-strong); background: transparent; -webkit-tap-highlight-color: transparent; transition: color .16s ease, background .16s ease; }
-.brief-close:hover, .brief-close:focus-visible { color: var(--navy); background: var(--bg-wash); }
-.brief-close:focus-visible { outline: 2px solid #007e88; outline-offset: 2px; }
-.brief-close:active { background: #dfedf0; }
 .brief-pelagia { display: inline-flex; align-items: center; gap: 7px; min-height: 44px; color: var(--navy); font-size: 1.15rem; font-weight: 700; letter-spacing: -.035em; }
 .brief-pelagia img { width: 25px; height: 25px; object-fit: contain; }
 .brief-toolbar-label { justify-self: start; color: var(--muted-strong); font-size: .65rem; font-weight: 600; text-transform: uppercase; letter-spacing: .15em; }
@@ -5710,7 +5706,7 @@ textarea { resize: vertical; }
 }
 @media (prefers-reduced-motion: reduce) {
     .brief-dialog[open] .brief-edition { animation: none; }
-    .brief-read-more, .brief-link-label::after, .brief-arrow, .brief-close, .brief-prose .brief-source-link, .brief-source-link::after { transition: none; }
+    .brief-read-more, .brief-link-label::after, .brief-arrow, .brief-prose .brief-source-link, .brief-source-link::after { transition: none; }
 }
 .skeleton {
     display: block;
