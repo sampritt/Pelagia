@@ -5558,7 +5558,7 @@ textarea { resize: vertical; }
 .brief-card {
     position: relative;
     overflow: hidden;
-    padding: 25px 28px 20px;
+    padding: 0;
     border: 1px solid var(--line);
     border-radius: var(--radius);
     background: linear-gradient(125deg, #edf8f8 0, #fff 58%);
@@ -5571,7 +5571,14 @@ textarea { resize: vertical; }
     height: 3px;
     background: linear-gradient(90deg, #007f89, #0878f9);
 }
-.brief-card-masthead { display: flex; align-items: center; gap: 12px; }
+.brief-card-masthead { display: flex; align-items: center; gap: 12px; min-height: 84px; padding: 25px 28px 20px; list-style: none; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.brief-card-masthead::-webkit-details-marker { display: none; }
+.brief-card-masthead:focus-visible { outline: 2px solid #007e88; outline-offset: -5px; border-radius: var(--radius); }
+.brief-card-disclosure[open] .brief-card-masthead { padding-bottom: 0; min-height: 0; }
+.brief-card-content { display: flow-root; padding: 0 28px 20px; }
+@media (hover: hover) and (pointer: fine) {
+    .brief-card-masthead:hover h2 { color: #007e88; }
+}
 .brief-mark {
     display: grid;
     place-items: center;
@@ -5689,7 +5696,8 @@ textarea { resize: vertical; }
 .brief-page .page-shell { width: 100%; padding: 0; }
 @keyframes brief-reveal { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
 @media (max-width: 600px) {
-    .brief-card { padding: 22px 20px 16px; }
+    .brief-card-masthead { padding: 22px 20px 16px; }
+    .brief-card-content { padding-inline: 20px; padding-bottom: 16px; }
     .brief-card-masthead h2 { font-size: 1.4rem; }
     .brief-card-headline { margin-top: 18px; font-size: 1.13rem; }
     .brief-toolbar { min-height: 62px; padding-inline: max(18px, env(safe-area-inset-left)) max(18px, env(safe-area-inset-right)); gap: 10px; }

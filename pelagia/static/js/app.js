@@ -1579,6 +1579,26 @@ function initDiveBrief() {
     if (!reader) return;
     const dialog = document.querySelector("[data-brief-dialog]");
     const trigger = document.querySelector("[data-brief-open]");
+    const disclosure = document.querySelector("[data-brief-disclosure]");
+    const summary = document.querySelector("[data-brief-toggle]");
+    const collapseKey = `pelagia:brief:collapsed:${reader.dataset.briefEdition}`;
+    const rememberCollapsed = (collapsed) => {
+        try { window.sessionStorage?.setItem(collapseKey, String(collapsed)); } catch (_error) { /* Storage can be disabled. */ }
+    };
+    const wasCollapsed = () => {
+        try { return window.sessionStorage?.getItem(collapseKey) === "true"; } catch (_error) { return false; }
+    };
+    const collapseCard = () => {
+        if (disclosure) disclosure.open = false;
+        rememberCollapsed(true);
+    };
+    if (disclosure) {
+        disclosure.open = !wasCollapsed();
+        disclosure.addEventListener("toggle", () => rememberCollapsed(!disclosure.open));
+    }
+    // Native toggle events are queued: persist the current state before a fast
+    // refresh/navigation. A standalone reader marks its edition as read on exit.
+    window.addEventListener("pagehide", () => rememberCollapsed(disclosure ? !disclosure.open : true));
     const scroller = reader.querySelector("[data-brief-scroll]");
     const progress = reader.querySelector("[data-brief-progress]");
     let returnFocus;
@@ -1597,13 +1617,15 @@ function initDiveBrief() {
         dialog.close();
         document.body.classList.remove("brief-is-open");
         trigger?.setAttribute("aria-expanded", "false");
-        returnFocus?.focus({ preventScroll: true });
+        collapseCard();
+        (summary || returnFocus)?.focus({ preventScroll: true });
         closing = false;
         swipeStart = null;
         wheelDistance = 0;
     };
     const close = () => {
         if (!dialog) {
+            collapseCard();
             window.location.assign("/home");
             return;
         }
@@ -1613,6 +1635,16 @@ function initDiveBrief() {
         if (window.history.state?.pelagiaBrief) window.history.back();
         else restoreFeed();
     };
+    if (!dialog) {
+        // Reloading a pushed reader URL can leave the feed history entry bound
+        // to this document. Fetch the feed when Back changes only its URL.
+        window.addEventListener("popstate", () => {
+            if (window.location.pathname === "/home") {
+                collapseCard();
+                window.location.replace("/home");
+            }
+        });
+    }
     if (dialog && trigger && typeof dialog.showModal === "function") {
         trigger.setAttribute("aria-expanded", "false");
         trigger.addEventListener("click", (event) => {
@@ -1643,7 +1675,11 @@ function initDiveBrief() {
         });
         // A restored bfcache snapshot must not leave a hidden feed scroll-locked.
         window.addEventListener("pageshow", () => {
-            if (!dialog.open) document.body.classList.remove("brief-is-open");
+            if (dialog.open && !window.history.state?.pelagiaBrief) restoreFeed();
+            if (!dialog.open) {
+                document.body.classList.remove("brief-is-open");
+                if (disclosure && wasCollapsed()) disclosure.open = false;
+            }
         });
         dialog.addEventListener("close", () => {
             document.body.classList.remove("brief-is-open");

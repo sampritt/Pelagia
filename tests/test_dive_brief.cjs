@@ -4,7 +4,7 @@ const path = require("node:path");
 const test = require("node:test");
 const vm = require("node:vm");
 
-function setup(standalone = false) {
+function setup(standalone = false, options = {}) {
     const element = () => ({
         handlers: {}, attributes: {}, style: {},
         addEventListener(name, callback) { this.handlers[name] = callback; },
@@ -12,8 +12,12 @@ function setup(standalone = false) {
         focus() { this.focused = true; },
     });
     const window = element();
+    const storage = options.storage || new Map();
+    window.sessionStorage = options.blockedStorage ? {
+        getItem() { throw new Error("Storage is disabled"); }, setItem() { throw new Error("Storage is disabled"); },
+    } : {getItem: key => storage.get(key) ?? null, setItem: (key, value) => storage.set(key, value)};
     let backCount = 0;
-    window.location = { href: "https://pelagia.test/home", assign(url) { this.destination = url; } };
+    window.location = { href: "https://pelagia.test/home", pathname: "/home", assign(url) { this.destination = url; }, replace(url) { this.replaced = url; } };
     window.history = {
         state: null,
         pushState(state, _, url) { this.state = state; window.location.href = url; },
@@ -21,6 +25,9 @@ function setup(standalone = false) {
         back() { backCount++; this.state = null; window.handlers.popstate(); },
     };
     const reader = element(), dialog = element(), trigger = element(), closeLink = element();
+    const disclosure = element(), summary = element();
+    reader.dataset = {briefEdition: options.edition || "2026-09-04"};
+    disclosure.open = true;
     const scroller = element(), progress = element();
     scroller.scrollHeight = 2000; scroller.clientHeight = 800; scroller.clientWidth = 390; scroller.scrollTop = 0;
     trigger.href = "https://pelagia.test/brief/2026-09-04";
@@ -34,6 +41,8 @@ function setup(standalone = false) {
         "[data-brief-reader]": reader,
         "[data-brief-dialog]": standalone ? null : dialog,
         "[data-brief-open]": standalone ? null : trigger,
+        "[data-brief-disclosure]": standalone ? null : disclosure,
+        "[data-brief-toggle]": standalone ? null : summary,
     })[selector];
     document.body = { classList: { add: name => classes.add(name), remove: name => classes.delete(name) } };
     const context = vm.createContext({window, document});
@@ -47,7 +56,7 @@ function setup(standalone = false) {
         target: {closest: () => targetLink},
     });
     const end = (x, y) => ({touches: [], changedTouches: [{clientX: x, clientY: y}]});
-    return {window, reader, dialog, trigger, closeLink, scroller, progress, classes, open, click, touch, end, backCount: () => backCount};
+    return {window, reader, dialog, trigger, closeLink, disclosure, summary, storage, scroller, progress, classes, open, click, touch, end, backCount: () => backCount};
 }
 
 test("brief opens immediately and browser Back restores focus and scroll lock", () => {
@@ -58,7 +67,8 @@ test("brief opens immediately and browser Back restores focus and scroll lock", 
     assert.equal(state.classes.has("brief-is-open"), true);
     state.window.history.back();
     assert.equal(state.dialog.open, false);
-    assert.equal(state.trigger.focused, true);
+    assert.equal(state.summary.focused, true);
+    assert.equal(state.disclosure.open, false);
     assert.equal(state.classes.size, 0);
     state.window.history.state = {pelagiaBrief: true};
     state.window.handlers.popstate();
@@ -151,4 +161,52 @@ test("selecting story text never dismisses the reader on a horizontal gesture", 
     state.reader.handlers.wheel(event);
     assert.equal(event.prevented, undefined);
     assert.equal(state.dialog.open, true);
+});
+
+test("exiting the reader collapses the card; expanding the header restores the preview without reopening the reader", () => {
+    const state = setup();
+    assert.equal(state.disclosure.open, true);
+    state.open();
+    state.closeLink.handlers.click(state.click());
+    assert.equal(state.disclosure.open, false);
+    assert.equal(state.summary.focused, true);
+    assert.equal(state.storage.get("pelagia:brief:collapsed:2026-09-04"), "true");
+    state.disclosure.open = true; // Native details behavior on summary activation.
+    state.disclosure.handlers.toggle();
+    assert.equal(state.dialog.open, false);
+    assert.equal(state.storage.get("pelagia:brief:collapsed:2026-09-04"), "false");
+    state.open();
+    assert.equal(state.dialog.open, true);
+});
+
+test("collapsed state survives reloads and standalone returns, while a new edition starts expanded", () => {
+    const standalone = setup(true);
+    standalone.closeLink.handlers.click(standalone.click());
+    assert.equal(standalone.window.location.destination, "/home");
+    const returned = setup(false, {storage: standalone.storage});
+    assert.equal(returned.disclosure.open, false);
+    returned.disclosure.open = true;
+    returned.window.handlers.pagehide(); // Refresh before the native toggle event fires.
+    assert.equal(setup(false, {storage: returned.storage}).disclosure.open, true);
+    returned.disclosure.open = false;
+    returned.disclosure.handlers.toggle();
+    assert.equal(setup(false, {storage: returned.storage, edition:"2026-09-05"}).disclosure.open, true);
+});
+
+test("browser Back from a standalone reader marks the edition read and blocked storage never prevents closing", () => {
+    const standalone = setup(true);
+    standalone.window.handlers.pagehide();
+    assert.equal(setup(false, {storage:standalone.storage}).disclosure.open, false);
+    const state = setup(false, {blockedStorage:true});
+    state.open();
+    state.window.history.back();
+    assert.equal(state.dialog.open, false);
+    assert.equal(state.disclosure.open, false);
+});
+
+test("browser Back after refreshing a modal reader fetches the actual feed document", () => {
+    const standalone = setup(true);
+    standalone.window.handlers.popstate();
+    assert.equal(standalone.window.location.replaced, "/home");
+    assert.equal(setup(false, {storage:standalone.storage}).disclosure.open, false);
 });
