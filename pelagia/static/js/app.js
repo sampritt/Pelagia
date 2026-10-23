@@ -1607,6 +1607,20 @@ function initDiveBrief() {
     let wheelDistance = 0;
     let wheelAt = 0;
     let closing = false;
+    let swipeClickUntil = 0;
+    // Some touch browsers deliver a compatibility click after touchend. Once
+    // the reader closes, its target can be a feed card exposed underneath.
+    document.addEventListener("click", (event) => {
+        if (Date.now() >= swipeClickUntil || event.detail === 0) return;
+        swipeClickUntil = 0;
+        event.preventDefault();
+        event.stopImmediatePropagation();
+    }, true);
+    // A new physical gesture is intentional and must remain immediately usable.
+    document.addEventListener("touchstart", () => { swipeClickUntil = 0; }, { capture: true, passive: true });
+    document.addEventListener("pointerdown", (event) => {
+        if (event.pointerType === "mouse" && !event.sourceCapabilities?.firesTouchEvents) swipeClickUntil = 0;
+    }, true);
     const hasSelection = () => window.getSelection?.()?.isCollapsed === false;
     const updateProgress = () => {
         const total = scroller.scrollHeight - scroller.clientHeight;
@@ -1717,8 +1731,14 @@ function initDiveBrief() {
         const touch = event.changedTouches[0];
         const dx = touch.clientX - start.x;
         const dy = touch.clientY - start.y;
-        if (Math.abs(dx) >= 80 && Math.abs(dx) > Math.abs(dy) * 2 && Date.now() - start.at < 1000) close();
-    }, { passive: true });
+        if (Math.abs(dx) >= 80 && Math.abs(dx) > Math.abs(dy) * 2 && Date.now() - start.at < 1000) {
+            // Cancel only a consumed dismissal swipe, preserving ordinary taps
+            // and vertical reading. The capture guard covers delayed clicks too.
+            event.preventDefault();
+            swipeClickUntil = Date.now() + 700;
+            close();
+        }
+    }, { passive: false });
     reader.addEventListener("touchcancel", () => { swipeStart = null; }, { passive: true });
     // Trackpad swipes dismiss in either direction; ordinary reading, zoom and
     // horizontal code/table scrolling retain their native behavior.

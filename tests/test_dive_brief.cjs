@@ -48,15 +48,15 @@ function setup(standalone = false, options = {}) {
     const context = vm.createContext({window, document});
     vm.runInContext(fs.readFileSync(path.join(__dirname, "../pelagia/static/js/app.js"), "utf8"), context);
     vm.runInContext("initDiveBrief()", context);
-    const click = (overrides = {}) => ({button: 0, preventDefault() { this.prevented = true; }, ...overrides});
+    const click = (overrides = {}) => ({button: 0, detail: 1, preventDefault() { this.prevented = true; }, stopImmediatePropagation() { this.stopped = true; }, ...overrides});
     const open = () => trigger.handlers.click(click());
     const touch = (x, y, targetLink = false) => ({
         touches: [{clientX: x, clientY: y}],
         changedTouches: [{clientX: x, clientY: y}],
         target: {closest: () => targetLink},
     });
-    const end = (x, y) => ({touches: [], changedTouches: [{clientX: x, clientY: y}]});
-    return {window, reader, dialog, trigger, closeLink, disclosure, summary, storage, scroller, progress, classes, open, click, touch, end, backCount: () => backCount};
+    const end = (x, y) => ({touches: [], changedTouches: [{clientX: x, clientY: y}], preventDefault() { this.prevented = true; }});
+    return {window, document, reader, dialog, trigger, closeLink, disclosure, summary, storage, scroller, progress, classes, open, click, touch, end, backCount: () => backCount};
 }
 
 test("brief opens immediately and browser Back restores focus and scroll lock", () => {
@@ -209,4 +209,49 @@ test("browser Back after refreshing a modal reader fetches the actual feed docum
     standalone.window.handlers.popstate();
     assert.equal(standalone.window.location.replaced, "/home");
     assert.equal(setup(false, {storage:standalone.storage}).disclosure.open, false);
+});
+
+test("dismissal swipes cancel compatibility clicks before they can activate a logged dive", () => {
+    for (const dx of [-130, 130]) {
+        const state = setup(); state.open();
+        state.reader.handlers.touchstart(state.touch(200, 500));
+        const end = state.end(200 + dx, 500);
+        state.reader.handlers.touchend(end);
+        assert.equal(end.prevented, true);
+        assert.equal(state.dialog.open, false);
+        const compatibilityClick = state.click();
+        state.document.handlers.click(compatibilityClick);
+        assert.equal(compatibilityClick.prevented, true);
+        assert.equal(compatibilityClick.stopped, true);
+        const laterClick = state.click();
+        state.document.handlers.click(laterClick);
+        assert.equal(laterClick.prevented, undefined, "the guard consumes only the leftover click");
+    }
+});
+
+test("fresh touch, mouse and keyboard actions remain usable immediately after a swipe", () => {
+    for (const kind of ["touch", "mouse", "keyboard"]) {
+        const state = setup(); state.open();
+        state.reader.handlers.touchstart(state.touch(200, 500));
+        state.reader.handlers.touchend(state.end(70, 500));
+        if (kind === "touch") state.document.handlers.touchstart();
+        if (kind === "mouse") state.document.handlers.pointerdown({pointerType:"mouse"});
+        const click = state.click({detail: kind === "keyboard" ? 0 : 1});
+        state.document.handlers.click(click);
+        assert.equal(click.prevented, undefined, kind);
+    }
+});
+
+test("vertical gestures and taps never cancel or suppress subsequent feed clicks", () => {
+    for (const [dx, dy] of [[3, -150], [2, 1], [90, 80]]) {
+        const state = setup(); state.open();
+        state.reader.handlers.touchstart(state.touch(200, 500));
+        state.reader.handlers.touchmove(state.touch(200 + dx, 500 + dy));
+        const end = state.end(200 + dx, 500 + dy);
+        state.reader.handlers.touchend(end);
+        assert.equal(end.prevented, undefined);
+        const click = state.click();
+        state.document.handlers.click(click);
+        assert.equal(click.prevented, undefined);
+    }
 });
