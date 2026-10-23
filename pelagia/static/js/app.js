@@ -1560,6 +1560,7 @@ function initUserProfile() {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
+    initInteractionFocus();
     initDiveBrief();
     initDiveSharing();
     initDiveInteractions();
@@ -1573,6 +1574,17 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 window.openDive = openDive;
+
+function initInteractionFocus() {
+    const root = document.documentElement;
+    root.dataset.inputModality = "pointer";
+    const pointer = () => { root.dataset.inputModality = "pointer"; };
+    document.addEventListener("pointerdown", pointer, true);
+    document.addEventListener("touchstart", pointer, { capture: true, passive: true });
+    document.addEventListener("keydown", (event) => {
+        if (!event.metaKey && !event.ctrlKey && !event.altKey) root.dataset.inputModality = "keyboard";
+    }, true);
+}
 
 function initDiveBrief() {
     const reader = document.querySelector("[data-brief-reader]");
@@ -1600,8 +1612,12 @@ function initDiveBrief() {
     // refresh/navigation. A standalone reader marks its edition as read on exit.
     window.addEventListener("pagehide", () => rememberCollapsed(disclosure ? !disclosure.open : true));
     const scroller = reader.querySelector("[data-brief-scroll]");
+    const heading = reader.querySelector("[data-brief-heading]");
+    const feedTitle = document.title;
     let returnFocus;
     let feedUrl;
+    let feedScroll;
+    let previousBodyTop;
     let swipeStart;
     let wheelDistance = 0;
     let wheelAt = 0;
@@ -1621,24 +1637,51 @@ function initDiveBrief() {
         if (event.pointerType === "mouse" && !event.sourceCapabilities?.firesTouchEvents) swipeClickUntil = 0;
     }, true);
     const hasSelection = () => window.getSelection?.()?.isCollapsed === false;
+    const lockFeed = () => {
+        if (feedScroll) return;
+        feedScroll = { x: window.scrollX, y: window.scrollY };
+        previousBodyTop = document.body.style.top;
+        document.body.style.top = `-${feedScroll.y}px`;
+        document.body.classList.add("brief-is-open");
+    };
+    const unlockFeed = () => {
+        document.body.classList.remove("brief-is-open");
+        if (!feedScroll) return;
+        document.body.style.top = previousBodyTop;
+        window.scrollTo({ left: feedScroll.x, top: feedScroll.y, behavior: "instant" });
+        feedScroll = null;
+    };
+    const showReader = () => {
+        lockFeed();
+        dialog.showModal();
+        trigger.setAttribute("aria-expanded", "true");
+        document.title = `${heading.textContent} · Pelagia`;
+        heading.focus({ preventScroll: true });
+    };
     const restoreFeed = () => {
         if (!dialog?.open) return;
         dialog.close();
-        document.body.classList.remove("brief-is-open");
-        trigger?.setAttribute("aria-expanded", "false");
+        // Change the card height while the feed is still fixed, so scroll
+        // anchoring cannot move the page during focus and position restoration.
         collapseCard();
+        unlockFeed();
+        document.title = feedTitle;
+        trigger?.setAttribute("aria-expanded", "false");
         (summary || returnFocus)?.focus({ preventScroll: true });
         closing = false;
         swipeStart = null;
         wheelDistance = 0;
     };
     const close = () => {
+        if (closing) return;
         if (!dialog) {
+            closing = true;
             collapseCard();
-            window.location.assign("/home");
+            if (window.history.state?.pelagiaBrief) window.history.back();
+            else window.location.assign("/home");
             return;
         }
-        if (!dialog.open || closing) return;
+        if (!dialog.open) return;
         closing = true;
         // One history entry belongs to this reader. Back restores feed scroll.
         if (window.history.state?.pelagiaBrief) window.history.back();
@@ -1659,12 +1702,11 @@ function initDiveBrief() {
         trigger.addEventListener("click", (event) => {
             if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button > 0) return;
             event.preventDefault();
+            if (dialog.open) return;
             returnFocus = trigger;
             feedUrl = window.location.href;
             window.history.pushState({ pelagiaBrief: true }, "", trigger.href);
-            dialog.showModal();
-            document.body.classList.add("brief-is-open");
-            trigger.setAttribute("aria-expanded", "true");
+            showReader();
             scroller.scrollTop = 0;
         });
         dialog.addEventListener("cancel", (event) => {
@@ -1674,9 +1716,7 @@ function initDiveBrief() {
         window.addEventListener("popstate", () => {
             if (window.history.state?.pelagiaBrief) {
                 if (!dialog.open) {
-                    dialog.showModal();
-                    document.body.classList.add("brief-is-open");
-                    trigger.setAttribute("aria-expanded", "true");
+                    showReader();
                 }
             } else restoreFeed();
         });
@@ -1684,12 +1724,17 @@ function initDiveBrief() {
         window.addEventListener("pageshow", () => {
             if (dialog.open && !window.history.state?.pelagiaBrief) restoreFeed();
             if (!dialog.open) {
-                document.body.classList.remove("brief-is-open");
+                unlockFeed();
                 if (disclosure && wasCollapsed()) disclosure.open = false;
             }
         });
         dialog.addEventListener("close", () => {
-            document.body.classList.remove("brief-is-open");
+            // Native close events are queued and can arrive after Forward has
+            // reopened the reader. Ignore a stale event from the previous visit.
+            if (dialog.open) return;
+            unlockFeed();
+            document.title = feedTitle;
+            trigger.setAttribute("aria-expanded", "false");
             if (window.history.state?.pelagiaBrief && feedUrl) {
                 window.history.replaceState(null, "", feedUrl);
             }

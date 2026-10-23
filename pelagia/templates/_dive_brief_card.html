@@ -8,13 +8,17 @@
                 <h2 id="briefCardTitle">{{ brief.title }}</h2>
                 <time datetime="{{ brief.effective_date.isoformat() }}">{{ brief.date_label }}</time>
             </div>
+            <span class="brief-disclosure-chevron" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m7 10 5 5 5-5"></path></svg></span>
         </summary>
         <div class="brief-card-content">
             <p class="brief-card-headline">{{ brief.headline }}</p>
-            <a class="brief-read-more" href="{{ url_for('read_dive_brief', edition=brief.effective_date.isoformat()) }}" data-brief-open aria-haspopup="dialog" aria-controls="diveBriefDialog">
-                <span class="brief-link-label">Read more</span>
-                <span class="brief-arrow" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12h14m-6-6 6 6-6 6"></path></svg></span>
-            </a>
+            <div class="brief-card-actions">
+                <a class="brief-read-more" href="{{ url_for('read_dive_brief', edition=brief.effective_date.isoformat()) }}" data-brief-open aria-haspopup="dialog" aria-controls="diveBriefDialog">
+                    <span class="brief-link-label">Read the brief</span>
+                    <span class="brief-arrow" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12h14m-6-6 6 6-6 6"></path></svg></span>
+                </a>
+                <span class="brief-card-duration">{{ brief.read_minutes }} min read</span>
+            </div>
         </div>
     </details>
 </article>

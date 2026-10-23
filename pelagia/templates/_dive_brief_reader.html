@@ -1,9 +1,17 @@
 <div class="brief-reader" data-brief-reader data-brief-edition="{{ brief.effective_date.isoformat() }}">
+    <nav class="brief-toolbar" aria-label="Dive Brief navigation">
+        <a class="brief-back" href="{{ url_for('home') }}" data-brief-close>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14 6-6 6 6 6"></path></svg>
+            <span>Feed</span>
+        </a>
+        <span class="brief-toolbar-title" aria-hidden="true">{{ brief.title }}</span>
+        <span class="brief-toolbar-duration">{{ brief.read_minutes }} min read</span>
+    </nav>
     <div class="brief-scroll" data-brief-scroll tabindex="0" role="region" aria-label="The Dive Brief newsletter">
         <article class="brief-edition">
             <header class="brief-edition-head">
                 <p class="brief-eyebrow"><span aria-hidden="true"></span>Your daily surface interval</p>
-                <h1 id="briefTitle">{{ brief.title }}</h1>
+                <h1 id="briefTitle" tabindex="-1" data-brief-heading autofocus>{{ brief.title }}</h1>
                 <div class="brief-edition-meta">
                     <time datetime="{{ brief.effective_date.isoformat() }}">{{ brief.date_label }}</time>
                     <span>{{ brief.read_minutes }} min read</span>

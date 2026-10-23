@@ -12,6 +12,8 @@ function setup(standalone = false, options = {}) {
         focus() { this.focused = true; },
     });
     const window = element();
+    window.scrollX = 0; window.scrollY = options.scrollY || 0;
+    window.scrollTo = ({left, top}) => { window.scrollX = left; window.scrollY = top; };
     const storage = options.storage || new Map();
     window.sessionStorage = options.blockedStorage ? {
         getItem() { throw new Error("Storage is disabled"); }, setItem() { throw new Error("Storage is disabled"); },
@@ -24,7 +26,8 @@ function setup(standalone = false, options = {}) {
         replaceState(state, _, url) { this.state = state; window.location.href = url; },
         back() { backCount++; this.state = null; window.handlers.popstate(); },
     };
-    const reader = element(), dialog = element(), trigger = element(), closeLink = element();
+    const reader = element(), dialog = element(), trigger = element(), closeLink = element(), heading = element();
+    heading.textContent = "The Dive Brief";
     const disclosure = element(), summary = element();
     reader.dataset = {briefEdition: options.edition || "2026-09-04"};
     disclosure.open = true;
@@ -33,7 +36,7 @@ function setup(standalone = false, options = {}) {
     trigger.href = "https://pelagia.test/brief/2026-09-04";
     dialog.showModal = () => { dialog.open = true; };
     dialog.close = () => { dialog.open = false; dialog.handlers.close(); };
-    reader.querySelector = () => scroller;
+    reader.querySelector = selector => selector === "[data-brief-heading]" ? heading : scroller;
     reader.querySelectorAll = () => [closeLink];
     const classes = new Set();
     const document = element();
@@ -44,7 +47,9 @@ function setup(standalone = false, options = {}) {
         "[data-brief-disclosure]": standalone ? null : disclosure,
         "[data-brief-toggle]": standalone ? null : summary,
     })[selector];
-    document.body = { classList: { add: name => classes.add(name), remove: name => classes.delete(name) } };
+    document.title = "Home - Pelagia";
+    document.documentElement = {dataset: {}};
+    document.body = { style: {top: ""}, classList: { add: name => classes.add(name), remove: name => classes.delete(name) } };
     const context = vm.createContext({window, document});
     vm.runInContext(fs.readFileSync(path.join(__dirname, "../pelagia/static/js/app.js"), "utf8"), context);
     vm.runInContext("initDiveBrief()", context);
@@ -56,8 +61,60 @@ function setup(standalone = false, options = {}) {
         target: {closest: () => targetLink},
     });
     const end = (x, y) => ({touches: [], changedTouches: [{clientX: x, clientY: y}], preventDefault() { this.prevented = true; }});
-    return {window, document, reader, dialog, trigger, closeLink, disclosure, summary, storage, scroller, classes, open, click, touch, end, backCount: () => backCount};
+    return {window, document, reader, dialog, trigger, closeLink, heading, disclosure, summary, storage, scroller, classes, open, click, touch, end, context, backCount: () => backCount};
 }
+
+test("reader focus starts at its heading and returning restores the feed scroll and title", () => {
+    const state = setup(false, {scrollY: 240});
+    state.open();
+    assert.equal(state.heading.focused, true);
+    assert.equal(state.document.title, "The Dive Brief · Pelagia");
+    assert.equal(state.document.body.style.top, "-240px");
+    state.window.scrollY = 0; // A fixed body moves the document scroll to zero.
+    state.closeLink.handlers.click(state.click());
+    assert.equal(state.window.scrollY, 240);
+    assert.equal(state.document.body.style.top, "");
+    assert.equal(state.document.title, "Home - Pelagia");
+});
+
+test("repeated open activation and queued close events cannot corrupt a reopened reader", () => {
+    const state = setup();
+    state.open(); state.open();
+    state.window.history.back();
+    assert.equal(state.backCount(), 1);
+    state.window.history.state = {pelagiaBrief: true};
+    state.window.handlers.popstate();
+    state.dialog.handlers.close();
+    assert.equal(state.dialog.open, true);
+    assert.equal(state.classes.has("brief-is-open"), true);
+    assert.equal(state.trigger.attributes["aria-expanded"], "true");
+    assert.equal(state.document.title, "The Dive Brief · Pelagia");
+});
+
+test("touch focus stays quiet while keyboard interaction restores visible focus styling", () => {
+    const state = setup();
+    vm.runInContext("initInteractionFocus()", state.context);
+    const modality = () => state.document.documentElement.dataset.inputModality;
+    assert.equal(modality(), "pointer");
+    state.document.handlers.keydown({key: "Tab"});
+    assert.equal(modality(), "keyboard");
+    state.document.handlers.pointerdown({pointerType: "touch"});
+    assert.equal(modality(), "pointer");
+    state.document.handlers.keydown({key: "Escape"});
+    assert.equal(modality(), "keyboard");
+    state.document.handlers.touchstart();
+    assert.equal(modality(), "pointer");
+});
+
+test("the Feed button after a reader refresh consumes the existing history entry", () => {
+    const state = setup(true);
+    state.window.history.state = {pelagiaBrief: true};
+    state.window.location.pathname = "/home"; // The prior entry is the same document after a modal refresh.
+    state.closeLink.handlers.click(state.click());
+    state.closeLink.handlers.click(state.click());
+    assert.equal(state.backCount(), 1);
+    assert.equal(state.window.location.replaced, "/home");
+});
 
 test("brief opens immediately and browser Back restores focus and scroll lock", () => {
     const state = setup();
