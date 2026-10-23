@@ -45,6 +45,62 @@ On first app startup, Pelagia initializes SQLite and imports reference data from
 - `pelagia/schema.sql`: SQLite schema
 - `pelagia/importer.py`: pandas CSV import
 
+## The Dive Brief
+
+The main feed starts with a compact daily newsletter card. Read more opens a full-screen Markdown reader; swipe left or right, press Escape, use browser Back, or select Feed to return to the same feed position. Editions also have signed-in deep links at `/brief/YYYY-MM-DD`. The reader supports headings, emphasis, links, lists, blockquotes, code and tables, with escaped raw HTML and safe link protocols. External sources open in a separate tab.
+
+Editions live on disk as `the_dive_brief_YYYY-MM-DD.md`. `PELAGIA_DIVE_BRIEF_DIR` defaults to `dive_briefs/` beside the SQLite database (`/var/data/dive_briefs` in production). The filename and feed selection use **today's publication date** in `PELAGIA_DIVE_BRIEF_TIMEZONE` (default `America/New_York`); the digest can cover T−1 news. File changes are picked up without restarting. The feed shows the brief only when today's valid edition exists. There is no sample, previous-day, or latest-edition fallback. Historical signed-in deep links still work; future editions remain unavailable.
+
+The supplied September 4 example in `data/dive_briefs/` is a format reference only. `PELAGIA_DIVE_BRIEF_SAMPLE_PATH` is retired and ignored.
+
+### Upload API
+
+Send `POST /api/dive-brief` with `Authorization: Bearer <API_KEY>` and the Markdown file as the raw UTF-8 request body (`Content-Type: text/markdown`; `text/plain` is also accepted). Use HTTPS in production. The API does not use login cookies, query-string credentials, client filenames or client-supplied publication dates.
+
+Provision a key on the app host, using the same database/path configuration as the running app:
+
+```bash
+.venv312/bin/flask --app wsgi create-dive-brief-key
+```
+
+Copy the printed key once. The command generates a random 256-bit secret and stores only its SHA-256 digest in `dive_brief_api_key.sha256` beside the database (mode `0600`). `PELAGIA_DIVE_BRIEF_API_KEY_FILE` overrides that path. All workers read that file per upload, so `create-dive-brief-key --rotate` revokes the old key immediately without restarting. Creating a second key without `--rotate` fails.
+
+For managed deployments, set the secret environment variable **`PELAGIA_DIVE_BRIEF_API_KEY_SHA256`** to the generated digest instead; it takes precedence over the file. Keep the raw API key in the publishing client's secret store. Environment-based rotation requires updating the digest and restarting/redeploying all workers. The CLI refuses to generate a file key while an environment digest takes precedence. Never commit keys or credential files. Missing or invalid server authentication configuration disables uploads with HTTP 503.
+
+```bash
+# Set PELAGIA_DIVE_BRIEF_API_KEY in your publishing environment.
+curl --fail-with-body --request POST 'https://YOUR-DOMAIN/api/dive-brief' \
+  --header "Authorization: Bearer $PELAGIA_DIVE_BRIEF_API_KEY" \
+  --header 'Content-Type: text/markdown; charset=utf-8' \
+  --data-binary @'/path/to/edition.md'
+```
+
+The written date inside the Markdown **must match today's publication date**. A mismatched date returns 422 with `expected_date`; the server does not silently rewrite editorial content. Valid uploads are atomically saved as `the_dive_brief_YYYY-MM-DD.md` with mode `0600`, replacing that day's previous edition. An invalid upload or failed replacement leaves the existing edition intact. A successful upload appears on the next feed request, without restarting the app. The authenticated reader remains signed-in only.
+
+Responses are JSON with `Cache-Control: no-store`: 201 includes `date`, `filename`, `url` and a `Location` header; 401 means an absent/invalid API key; 413 means the 256 KiB payload limit was exceeded; 415 means unsupported media type/charset; 422 means invalid UTF-8 or Markdown structure/date; 503 means authentication or disk storage is unavailable. Multipart uploads are not accepted; use `--data-binary` as shown above.
+
+Use this Markdown structure (the written date must match the filename):
+
+```markdown
+# The Dive Brief
+
+**Friday, September 4, 2026**
+
+**A one-sentence summary of today's ocean news.**
+
+---
+
+## THE BIG STORY
+
+### A story headline
+
+Story paragraphs, with **bold** and *italic* text as needed.
+
+[Read more](https://example.com/source)
+```
+
+Repeat the section heading, story headline, paragraphs and source link for each story. Horizontal rules between sections are optional. Install the updated `requirements.txt` for the Mistune Markdown renderer.
+
 ## Terms of Use and Privacy Policy
 
 Profile → Settings includes Terms of Use (`/terms`) and Privacy Policy (`/privacy`). Both pages are also accessible without signing in and linked from the authentication screen, including Google signup.

@@ -35,6 +35,7 @@ from .units import UNIT_OPTIONS, display_measurement, metric_measurement, pressu
 from .dive_options import DIVE_TYPES, CURRENT_TYPES, normalize_options, dive_type_options, current_type_options
 from . import google_auth, email_auth
 from . import pwa
+from . import dive_brief
 from .sharing import fetch_public_dive, render_share_image, render_transparent_share_image, share_description
 
 
@@ -76,9 +77,17 @@ def create_app(test_config=None):
         SESSION_REFRESH_EACH_REQUEST=True,
         PELAGIA_OPERATOR_NAME=os.environ.get("PELAGIA_OPERATOR_NAME", "Pelagia"),
         PELAGIA_CONTACT_EMAIL=os.environ.get("PELAGIA_CONTACT_EMAIL") or "info@pelagiadivelog.com",
+        DIVE_BRIEF_DIR=os.environ.get("PELAGIA_DIVE_BRIEF_DIR"),
+        DIVE_BRIEF_TIMEZONE=os.environ.get("PELAGIA_DIVE_BRIEF_TIMEZONE", "America/New_York"),
+        DIVE_BRIEF_API_KEY_SHA256=os.environ.get("PELAGIA_DIVE_BRIEF_API_KEY_SHA256", ""),
+        DIVE_BRIEF_API_KEY_FILE=os.environ.get("PELAGIA_DIVE_BRIEF_API_KEY_FILE"),
     )
     if test_config:
         app.config.update(test_config)
+    if not app.config["DIVE_BRIEF_DIR"]:
+        app.config["DIVE_BRIEF_DIR"] = str(Path(app.config["DATABASE"]).parent / "dive_briefs")
+    if not app.config["DIVE_BRIEF_API_KEY_FILE"]:
+        app.config["DIVE_BRIEF_API_KEY_FILE"] = str(Path(app.config["DATABASE"]).parent / "dive_brief_api_key.sha256")
 
     Path(app.config["UPLOAD_FOLDER"], "dives").mkdir(parents=True, exist_ok=True)
     Path(app.config["UPLOAD_FOLDER"], "profiles").mkdir(parents=True, exist_ok=True)
@@ -89,6 +98,7 @@ def create_app(test_config=None):
         _ensure_reference_data(app)
 
     register_routes(app)
+    dive_brief.init_app(app)
     pwa.init_app(app)
     google_auth.init_app(app)
     email_auth.init_app(app)
@@ -239,7 +249,22 @@ def register_routes(app):
             latest_my_dive=latest_my_dives[0] if latest_my_dives else None,
             stats=stats,
             user=current_user(),
+            brief=dive_brief.load_brief(),
         )
+
+    @app.get("/brief/<edition>")
+    @login_required
+    def read_dive_brief(edition):
+        try:
+            day = date.fromisoformat(edition)
+            if day.isoformat() != edition:
+                abort(404)
+        except ValueError:
+            abort(404)
+        brief = dive_brief.load_brief(day)
+        if brief is None:
+            abort(404)
+        return render_template("dive_brief.html", brief=brief)
 
     @app.route("/dive/new", methods=("GET", "POST"))
     @login_required

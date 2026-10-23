@@ -6,6 +6,9 @@ __pycache__/
 instance/*.sqlite3
 instance/*.sqlite3-*
 instance/map_tiles/
+instance/dive_briefs/
+instance/dive_brief_api_key.sha256
+instance/dive-brief-api-key.env
 pelagia/static/uploads/dives/*
 pelagia/static/uploads/profiles/*
 !pelagia/static/uploads/dives/.gitkeep

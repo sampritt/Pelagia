@@ -1,0 +1,16 @@
+<article class="brief-card" aria-labelledby="briefCardTitle">
+    <header class="brief-card-masthead">
+        <span class="brief-mark" aria-hidden="true">
+            <svg viewBox="0 0 32 32" fill="none"><circle cx="16" cy="12" r="4"></circle><path d="M16 3v2M7 6l1.5 1.5M25 6l-1.5 1.5M4 13h2M26 13h2M5 20c4-4 7 4 11 0s7 4 11 0M5 25c4-4 7 4 11 0s7 4 11 0"></path></svg>
+        </span>
+        <div>
+            <h2 id="briefCardTitle">{{ brief.title }}</h2>
+            <time datetime="{{ brief.effective_date.isoformat() }}">{{ brief.date_label }}</time>
+        </div>
+    </header>
+    <p class="brief-card-headline">{{ brief.headline }}</p>
+    <a class="brief-read-more" href="{{ url_for('read_dive_brief', edition=brief.effective_date.isoformat()) }}" data-brief-open aria-haspopup="dialog" aria-controls="diveBriefDialog">
+        Read more
+        <span class="brief-arrow" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12h14m-6-6 6 6-6 6"></path></svg></span>
+    </a>
+</article>

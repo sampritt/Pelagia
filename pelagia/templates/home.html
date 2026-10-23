@@ -4,19 +4,22 @@
 {% block content %}
 <section class="activity-layout">
     <div class="feed-main">
-        {% if dives %}
-            <div class="feed-list">
+        <div class="feed-list">
+            {% if brief %}
+                {% include "_dive_brief_card.html" %}
+            {% endif %}
+            {% if dives %}
                 {% for dive in dives %}
                     {% include "_dive_card.html" %}
                 {% endfor %}
-            </div>
-        {% else %}
-            <div class="empty-state">
-                <h2>No dives yet</h2>
-                <p>Log your first dive to start your underwater story.</p>
-                <a class="primary-button" href="{{ url_for('log_dive') }}">Log dive</a>
-            </div>
-        {% endif %}
+            {% else %}
+                <div class="empty-state">
+                    <h2>No dives yet</h2>
+                    <p>Log your first dive to start your underwater story.</p>
+                    <a class="primary-button" href="{{ url_for('log_dive') }}">Log dive</a>
+                </div>
+            {% endif %}
+        </div>
     </div>
 
     <aside class="feed-rail" aria-label="Your dive summary">
@@ -48,4 +51,9 @@
         {% endif %}
     </aside>
 </section>
+{% if brief %}
+<dialog id="diveBriefDialog" class="brief-dialog" data-brief-dialog aria-labelledby="briefTitle">
+    {% include "_dive_brief_reader.html" %}
+</dialog>
+{% endif %}
 {% endblock %}

@@ -1560,6 +1560,7 @@ function initUserProfile() {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
+    initDiveBrief();
     initDiveSharing();
     initDiveInteractions();
     initGlobalSearch();
@@ -1572,6 +1573,117 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 window.openDive = openDive;
+
+function initDiveBrief() {
+    const reader = document.querySelector("[data-brief-reader]");
+    if (!reader) return;
+    const dialog = document.querySelector("[data-brief-dialog]");
+    const trigger = document.querySelector("[data-brief-open]");
+    const scroller = reader.querySelector("[data-brief-scroll]");
+    const progress = reader.querySelector("[data-brief-progress]");
+    let returnFocus;
+    let feedUrl;
+    let swipeStart;
+    let closing = false;
+    const updateProgress = () => {
+        const total = scroller.scrollHeight - scroller.clientHeight;
+        progress.style.transform = `scaleX(${total > 0 ? Math.min(1, scroller.scrollTop / total) : 1})`;
+    };
+    const restoreFeed = () => {
+        if (!dialog?.open) return;
+        dialog.close();
+        document.body.classList.remove("brief-is-open");
+        trigger?.setAttribute("aria-expanded", "false");
+        returnFocus?.focus({ preventScroll: true });
+        closing = false;
+        swipeStart = null;
+    };
+    const close = () => {
+        if (!dialog) {
+            window.location.assign("/home");
+            return;
+        }
+        if (!dialog.open || closing) return;
+        closing = true;
+        // One history entry belongs to this reader. Back restores feed scroll.
+        if (window.history.state?.pelagiaBrief) window.history.back();
+        else restoreFeed();
+    };
+    if (dialog && trigger && typeof dialog.showModal === "function") {
+        trigger.setAttribute("aria-expanded", "false");
+        trigger.addEventListener("click", (event) => {
+            if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button > 0) return;
+            event.preventDefault();
+            returnFocus = trigger;
+            feedUrl = window.location.href;
+            window.history.pushState({ pelagiaBrief: true }, "", trigger.href);
+            dialog.showModal();
+            document.body.classList.add("brief-is-open");
+            trigger.setAttribute("aria-expanded", "true");
+            scroller.scrollTop = 0;
+            updateProgress();
+        });
+        dialog.addEventListener("cancel", (event) => {
+            event.preventDefault();
+            close();
+        });
+        window.addEventListener("popstate", () => {
+            if (window.history.state?.pelagiaBrief) {
+                if (!dialog.open) {
+                    dialog.showModal();
+                    document.body.classList.add("brief-is-open");
+                    trigger.setAttribute("aria-expanded", "true");
+                    updateProgress();
+                }
+            } else restoreFeed();
+        });
+        // A restored bfcache snapshot must not leave a hidden feed scroll-locked.
+        window.addEventListener("pageshow", () => {
+            if (!dialog.open) document.body.classList.remove("brief-is-open");
+        });
+        dialog.addEventListener("close", () => {
+            document.body.classList.remove("brief-is-open");
+            if (window.history.state?.pelagiaBrief && feedUrl) {
+                window.history.replaceState(null, "", feedUrl);
+            }
+        });
+    }
+    reader.querySelectorAll("[data-brief-close]").forEach((link) => {
+        link.addEventListener("click", (event) => {
+            if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button > 0) return;
+            event.preventDefault();
+            close();
+        });
+    });
+    reader.addEventListener("keydown", (event) => {
+        if (event.key === "Escape" && !dialog) close();
+    });
+    // Track touch gestures without capturing pointers, so links and vertical
+    // reading keep their native behavior. Diagonal/multitouch gestures cancel.
+    reader.addEventListener("touchstart", (event) => {
+        swipeStart = null;
+        if (event.touches.length !== 1 || event.target.closest("a, button, pre, table")) return;
+        const touch = event.touches[0];
+        swipeStart = { x: touch.clientX, y: touch.clientY, at: Date.now() };
+    }, { passive: true });
+    reader.addEventListener("touchmove", (event) => {
+        if (!swipeStart) return;
+        if (event.touches.length !== 1 || Math.abs(event.touches[0].clientY - swipeStart.y) > 45) swipeStart = null;
+    }, { passive: true });
+    reader.addEventListener("touchend", (event) => {
+        const start = swipeStart;
+        swipeStart = null;
+        if (!start || event.touches.length || !event.changedTouches.length) return;
+        const touch = event.changedTouches[0];
+        const dx = touch.clientX - start.x;
+        const dy = touch.clientY - start.y;
+        if (Math.abs(dx) >= 80 && Math.abs(dx) > Math.abs(dy) * 2 && Date.now() - start.at < 1000) close();
+    }, { passive: true });
+    reader.addEventListener("touchcancel", () => { swipeStart = null; }, { passive: true });
+    scroller.addEventListener("scroll", updateProgress, { passive: true });
+    window.addEventListener("resize", updateProgress);
+    updateProgress();
+}
 
 function initProfileHistory() {
     document.querySelectorAll("[data-profile-history]").forEach((section) => {
