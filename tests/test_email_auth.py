@@ -122,9 +122,25 @@ class EmailAuthTest(unittest.TestCase):
             db = database.get_db()
             uid = db.execute("INSERT INTO users (username, login_email, google_subject, google_email) VALUES ('owner', 'diver@example.com', 'google-id', 'diver@example.com')").lastrowid
             db.commit()
-        self.assertEqual(self.verify(self.start(destination='https://evil.example')).location, '/home')
+        self.assertEqual(self.verify(self.start(destination='https://evil.example')).location, '/welcome')
         with self.client.session_transaction() as session:
             self.assertEqual(session['user_id'], uid)
+
+    def test_default_signup_and_returning_login_show_welcome(self):
+        self.verify(self.start(destination='/home'))
+        response = self.client.post('/auth/email/signup', data={'username': 'welcome-diver', 'csrf_token': self.csrf()})
+        self.assertEqual(response.location, '/welcome')
+        page = self.client.get(response.location)
+        self.assertIn(b'data-welcome-splash', page.data)
+        self.assertIn(b'No dives yet', page.data)
+        self.assertEqual(page.headers['Cache-Control'], 'no-store')
+        self.assertNotIn(b'data-welcome-splash', self.client.get('/home').data)
+        self.client.post('/logout')
+        with self.app.app_context():
+            db = database.get_db()
+            db.execute('UPDATE email_challenges SET created = created - 61')
+            db.commit()
+        self.assertEqual(self.verify(self.start(destination='/home')).location, '/welcome')
 
     def test_google_account_created_while_choosing_username_is_reused(self):
         self.verify(self.start())

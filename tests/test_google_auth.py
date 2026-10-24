@@ -99,6 +99,18 @@ class GoogleAuthTest(unittest.TestCase):
         response = self.complete_signup("shared-diver")
         self.assertEqual(response.location, "/dive/42")
 
+    def test_welcome_requires_an_account_and_keeps_feed_navigation(self):
+        self.assertEqual(self.client.get('/welcome').status_code, 302)
+        self.seed_account('welcome-diver')
+        response = self.client.get('/welcome')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.headers['Cache-Control'], 'no-store')
+        self.assertIn(b'data-welcome-splash', response.data)
+        self.assertIn(b'id="globalSearch"', response.data)
+        self.assertIn(b'aria-label="Primary mobile"', response.data)
+        self.assertIn(b'noindex, nofollow', response.data)
+        self.assertNotIn(b'data-welcome-splash', self.client.get('/home').data)
+
     def test_shared_dive_destination_survives_existing_google_login(self):
         with self.app.app_context():
             database.get_db().execute("INSERT INTO users (username, google_subject) VALUES ('returning-diver', 'google-123')")
@@ -219,7 +231,7 @@ class GoogleAuthTest(unittest.TestCase):
         page = self.client.get(response.location)
         self.assertIn(b"Choose your username", page.data)
         self.assertNotIn(b"diver@example.com", page.data)
-        self.assertEqual(self.complete_signup("new-diver").location, "/home")
+        self.assertEqual(self.complete_signup("new-diver").location, "/welcome")
         self.assertIsNotNone(self.client.get_cookie("session").expires)
         with self.client.session_transaction() as session:
             user_id = session["user_id"]
@@ -232,7 +244,7 @@ class GoogleAuthTest(unittest.TestCase):
             self.client.post("/login", data={"username": "new-diver", "password": password})
             with self.client.session_transaction() as session:
                 self.assertNotIn("user_id", session)
-        self.assertEqual(self.callback(self.start(), email="new-address@example.com").location, "/home")
+        self.assertEqual(self.callback(self.start(), email="new-address@example.com").location, "/welcome")
         self.assertIsNotNone(self.client.get_cookie("session").expires)
         with self.client.session_transaction() as session:
             self.assertEqual(session["user_id"], user_id)
@@ -250,7 +262,7 @@ class GoogleAuthTest(unittest.TestCase):
             self.assertEqual(self.complete_signup(username).status_code, 200)
             with self.client.session_transaction() as session:
                 self.assertNotIn("user_id", session)
-        self.assertEqual(self.complete_signup("available").location, "/home")
+        self.assertEqual(self.complete_signup("available").location, "/welcome")
 
     def test_bad_state_expired_flow_and_logout_reject_callback(self):
         for kind in ("bad-state", "expired", "logout", "missing-provider-state"):
@@ -330,7 +342,7 @@ class GoogleAuthTest(unittest.TestCase):
         self.callback(self.start())
         with sqlite3.connect(self.db_path) as conn:
             user_id = conn.execute("INSERT INTO users (username, google_subject, google_email) VALUES ('other-tab', 'google-123', 'diver@example.com')").lastrowid
-        self.assertEqual(self.complete_signup("new-name").location, "/home")
+        self.assertEqual(self.complete_signup("new-name").location, "/welcome")
         with self.client.session_transaction() as session:
             self.assertEqual(session["user_id"], user_id)
         for path in ("/you", f"/users/{user_id}", "/api/users?q=other", "/api/search?q=other"):

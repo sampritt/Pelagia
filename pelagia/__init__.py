@@ -240,6 +240,7 @@ def register_routes(app):
         session.clear()
         return redirect(url_for("landing"))
 
+    @app.route("/welcome", endpoint="welcome")
     @app.route("/home")
     @login_required
     def home():
@@ -253,6 +254,7 @@ def register_routes(app):
             stats=stats,
             user=current_user(),
             brief=dive_brief.load_brief(),
+            show_welcome=request.endpoint == "welcome",
         )
 
     @app.get("/brief/<edition>")

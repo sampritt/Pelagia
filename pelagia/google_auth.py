@@ -147,7 +147,7 @@ def finish_login(user_id, next_url=None):
     session.clear()
     session["user_id"] = user_id
     session.permanent = True
-    return redirect(destination)
+    return redirect(url_for("welcome") if destination == url_for("home") else destination)
 
 
 @bp.route("/signup", methods=("GET", "POST"))

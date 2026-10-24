@@ -25,7 +25,7 @@ def init_app(app):
     app.context_processor(lambda: {'email_login_available': available()})
     @app.after_request
     def private_auth(response):
-        if request.path.startswith('/auth/') or request.path in ('/login', '/signup'):
+        if request.path.startswith('/auth/') or request.path in ('/login', '/signup', '/welcome'):
             response.headers['Cache-Control'] = 'no-store'
         return response
 

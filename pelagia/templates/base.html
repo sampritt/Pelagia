@@ -17,17 +17,18 @@
     {% block head %}{% endblock %}
 </head>
 <body class="{% block body_class %}{% endblock %}">
+    {% if show_welcome %}{% include '_welcome_splash.html' %}{% endif %}
     <a class="skip-link" href="#mainContent">Skip to content</a>
     {% set me = none if public_brief else current_user() %}
     {% if me %}
-    <header class="topbar {{ 'feed-topbar' if request.endpoint == 'home' else '' }}">
+    <header class="topbar {{ 'feed-topbar' if request.endpoint in ('home', 'welcome') else '' }}">
         <a class="brand" href="{{ url_for('home') }}" aria-label="Pelagia Home">
             <span class="brand-mark" aria-hidden="true">
                 <img src="{{ url_for('static', filename='img/pelagia-mark.png') }}" width="36" height="36" alt="">
             </span>
             <span>Pelagia</span>
         </a>
-        {% if request.endpoint == 'home' %}
+        {% if request.endpoint in ('home', 'welcome') %}
             <form class="topbar-search autocomplete-field" data-global-search role="search">
                 <label class="sr-only" for="globalSearch">Search Pelagia</label>
                 <input id="globalSearch" type="text" autocomplete="off" placeholder="Search Pelagia" data-global-search-input>
@@ -35,7 +36,7 @@
             </form>
         {% endif %}
         <nav class="desktop-nav" aria-label="Primary">
-            <a class="{{ 'active' if request.endpoint in ('home', 'dive_detail') else '' }}" href="{{ url_for('home') }}">
+            <a class="{{ 'active' if request.endpoint in ('home', 'welcome', 'dive_detail') else '' }}" href="{{ url_for('home') }}">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 13.5 12 5l8 8.5"></path><path d="M6.5 11.5V20h11v-8.5"></path></svg>
                 Feed
             </a>
@@ -78,7 +79,7 @@
 
     {% if me %}
     <nav class="mobile-nav" aria-label="Primary mobile">
-        <a class="{{ 'active' if request.endpoint in ('home', 'dive_detail') else '' }}" href="{{ url_for('home') }}">
+        <a class="{{ 'active' if request.endpoint in ('home', 'welcome', 'dive_detail') else '' }}" href="{{ url_for('home') }}">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 13.5 12 5l8 8.5"></path><path d="M6.5 11.5V20h11v-8.5"></path></svg>
             <span>Feed</span>
         </a>

@@ -5276,6 +5276,89 @@ body:has(.pwa-install-dialog[open]) { overflow: hidden; }
     .site-map-banner { min-height: 220px; height: 220px; }
 }
 
+/* A brief ocean welcome, with the feed already rendered beneath it. */
+.welcome-pending { overflow: hidden; }
+.welcome-splash {
+    position: fixed;
+    z-index: 10000;
+    inset: 0;
+    min-height: 100svh;
+    display: grid;
+    place-items: center;
+    overflow: hidden;
+    isolation: isolate;
+    color: #f3faf8;
+    color-scheme: dark;
+    background: #062a36;
+    outline: none;
+    clip-path: inset(0 0 0 round 0);
+    transition: transform 850ms cubic-bezier(.76, 0, .24, 1), clip-path 850ms cubic-bezier(.76, 0, .24, 1);
+}
+.splash-water {
+    position: absolute;
+    z-index: -1;
+    inset: -12%;
+    background:
+        radial-gradient(ellipse at 50% 0%, #448f8738, transparent 52%),
+        radial-gradient(ellipse at 8% 78%, #0a777b40, transparent 46%),
+        radial-gradient(ellipse at 93% 54%, #16667e38, transparent 43%),
+        linear-gradient(160deg, #0b3842, #062a36 48%, #041e2b);
+    animation: splash-water-drift 5s ease-in-out both;
+}
+.welcome-splash::before, .welcome-splash::after {
+    content: "";
+    position: absolute;
+    z-index: -1;
+    width: 150%;
+    height: 72%;
+    left: -25%;
+    bottom: -53%;
+    border: 1px solid #a5dacf12;
+    border-radius: 50%;
+    transform: rotate(-8deg);
+}
+.welcome-splash::after { bottom: -46%; transform: rotate(9deg); border-color: #a5dacf0b; }
+.splash-content { width: 100%; padding: 32px 24px 48px; text-align: center; }
+.splash-emblem { position: relative; display: grid; place-items: center; width: 160px; height: 160px; margin: 0 auto 25px; }
+.splash-mark {
+    width: 88px;
+    height: 88px;
+    border-radius: 25px;
+    box-shadow: 0 14px 50px #00171f40, 0 0 45px #0876b51a;
+    animation: splash-mark-arrive 900ms cubic-bezier(.16, 1, .3, 1) both;
+}
+.splash-ripple { position: absolute; inset: 7px; border: 1px solid #a2d6d12b; border-radius: 50%; animation: splash-ripple-arrive 1600ms cubic-bezier(.16, 1, .3, 1) both; }
+.splash-ripple-outer { inset: -18px; border-color: #a2d6d112; animation-delay: 160ms; }
+.splash-content h1 { color: #f3faf8; font-family: var(--font-brand); font-size: clamp(52px, 7vw, 72px); font-weight: 550; line-height: 1.08; letter-spacing: -.065em; animation: splash-copy-arrive 850ms 160ms both; }
+.splash-content h1 > span { display: block; margin-bottom: 13px; font-family: var(--font-ui); font-size: 15px; font-weight: 450; line-height: 1.5; letter-spacing: .03em; color: #b1cbc9; }
+.splash-content > p { margin: 20px 0 0; color: #a3bfbe; font-size: 14px; line-height: 1.6; animation: splash-copy-arrive 850ms 260ms both; }
+.splash-continue { display: inline-flex; align-items: center; justify-content: center; gap: 24px; min-height: 44px; margin-top: 36px; padding: 8px 20px; border: 1px solid #b4e5dd2b; border-radius: 30px; color: #d6f38a; font-size: 12px; font-weight: 550; background: #b4e5dd06; animation: splash-copy-arrive 850ms 360ms both; transition: background 180ms, border-color 180ms; }
+.splash-continue:hover { background: #b4e5dd12; border-color: #b4e5dd66; }
+.splash-continue:focus-visible { outline: 2px solid #d6f38a; outline-offset: 5px; }
+.splash-continue > span { font-size: 17px; }
+.welcome-pending > :is(.topbar, .page-shell, .mobile-nav) { opacity: 0; transform: translateY(18px); }
+.welcome-revealing > :is(.topbar, .page-shell, .mobile-nav) { opacity: 1; transform: none; transition: opacity 700ms 160ms ease, transform 850ms cubic-bezier(.16, 1, .3, 1); }
+.welcome-revealing .welcome-splash { transform: translateY(-100%); clip-path: inset(0 0 0 round 0 0 56px 56px); }
+@keyframes splash-mark-arrive { from { opacity: 0; transform: translateY(14px) scale(.84) rotate(-7deg); } to { opacity: 1; transform: none; } }
+@keyframes splash-copy-arrive { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+@keyframes splash-ripple-arrive { from { opacity: 0; transform: scale(.65); } to { opacity: 1; transform: scale(1); } }
+@keyframes splash-water-drift { from { transform: scale(1.08) translateY(-1%); } to { transform: scale(1) translateY(1%); } }
+@media (max-height: 540px) {
+    .splash-content { padding-block: 16px 40px; }
+    .splash-emblem { width: 100px; height: 100px; margin-bottom: 12px; }
+    .splash-mark { width: 64px; height: 64px; border-radius: 18px; }
+    .splash-content h1 { font-size: 44px; }
+    .splash-content h1 > span { margin-bottom: 4px; }
+    .splash-content > p { margin-top: 10px; }
+    .splash-continue { margin-top: 16px; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .welcome-splash, .welcome-splash * { animation: none; }
+    .welcome-splash { transition: opacity 160ms ease; }
+    .welcome-revealing .welcome-splash { opacity: 0; transform: none; clip-path: none; }
+    .welcome-pending > :is(.topbar, .page-shell, .mobile-nav), .welcome-revealing > :is(.topbar, .page-shell, .mobile-nav) { transform: none; transition: none; }
+}
+
 /* Public welcome and Google sign-in */
 .welcome-body { background: #f7f8f6; color: #14363d; color-scheme: light; }
 .welcome-body::before { display: none; }

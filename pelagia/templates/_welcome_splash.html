@@ -1,0 +1,13 @@
+<section class="welcome-splash" data-welcome-splash data-feed-url="{{ url_for('home') }}" role="dialog" aria-modal="true" aria-labelledby="splashTitle" aria-describedby="splashDescription" tabindex="-1">
+    <div class="splash-water" aria-hidden="true"></div>
+    <div class="splash-content">
+        <div class="splash-emblem">
+            <span class="splash-ripple" aria-hidden="true"></span>
+            <span class="splash-ripple splash-ripple-outer" aria-hidden="true"></span>
+            <img class="splash-mark" src="{{ url_for('static', filename='img/pelagia-mark.png') }}" width="88" height="88" alt="" fetchpriority="high">
+        </div>
+        <h1 id="splashTitle"><span>Welcome to</span> Pelagia</h1>
+        <p id="splashDescription">Log your dive. Find your buddy.</p>
+        <a class="splash-continue" href="{{ url_for('home') }}" data-welcome-continue>Dive in <span aria-hidden="true">↗</span></a>
+    </div>
+</section>
