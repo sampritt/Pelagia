@@ -248,9 +248,17 @@ function initDiveInteractions() {
 
         const openButton = event.target.closest("[data-open-dive]");
         if (openButton) {
+            if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
             event.preventDefault();
             event.stopPropagation();
-            openDive(openButton.dataset.openDive);
+            openDive(openButton.dataset.openDive, openButton.hasAttribute("data-comment-link"));
+            return;
+        }
+
+        if (event.target.closest("[data-focus-comment]")) {
+            if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+            event.preventDefault();
+            focusDiveComment();
             return;
         }
 
@@ -325,6 +333,10 @@ function initDiveInteractions() {
             });
         });
     });
+
+    if (window.location.hash === "#comments") {
+        window.requestAnimationFrame(focusDiveComment);
+    }
 
     const params = new URLSearchParams(window.location.search);
     if (params.has("open")) {
@@ -512,6 +524,7 @@ async function toggleLike(diveId) {
         const data = await fetchJson(`/api/dives/${diveId}/like`, { method: "POST" });
         document.querySelectorAll(`[data-like][data-dive-id='${diveId}']`).forEach((button) => {
             button.classList.toggle("liked", data.liked);
+            button.setAttribute("aria-pressed", String(data.liked));
             const count = button.querySelector("[data-like-count]");
             if (count) {
                 count.textContent = data.count;
@@ -525,6 +538,7 @@ async function toggleCenterLike(centerId) {
         const data = await fetchJson(`/api/dive-centers/${centerId}/like`, { method: "POST" });
         document.querySelectorAll(`[data-center-like][data-center-id='${centerId}']`).forEach((button) => {
             button.classList.toggle("liked", data.liked);
+            button.setAttribute("aria-pressed", String(data.liked));
             const count = button.querySelector("[data-center-like-count]");
             if (count) {
                 count.textContent = data.count;
@@ -538,6 +552,7 @@ async function toggleSiteLike(siteId) {
         const data = await fetchJson(`/api/dive-sites/${siteId}/like`, { method: "POST" });
         document.querySelectorAll(`[data-site-like][data-site-id='${siteId}']`).forEach((button) => {
             button.classList.toggle("liked", data.liked);
+            button.setAttribute("aria-pressed", String(data.liked));
             const count = button.querySelector("[data-site-like-count]");
             if (count) {
                 count.textContent = data.count;
@@ -546,8 +561,15 @@ async function toggleSiteLike(siteId) {
     });
 }
 
-async function openDive(diveId) {
-    const url = `/dive/${encodeURIComponent(diveId)}`;
+function focusDiveComment() {
+    const form = document.querySelector("[data-comment-form]");
+    if (!form) return;
+    form.querySelector("input[name='body']")?.focus({ preventScroll: true });
+    form.scrollIntoView({ block: "center" });
+}
+
+async function openDive(diveId, focusComments = false) {
+    const url = `/dive/${encodeURIComponent(diveId)}${focusComments ? "#comments" : ""}`;
     if (window.PelagiaLoading) window.PelagiaLoading.navigate(url);
     else window.location.assign(url);
 }

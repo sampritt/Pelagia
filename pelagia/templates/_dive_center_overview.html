@@ -1,3 +1,4 @@
+{% from "_action_icons.html" import action_icon %}
 <div class="center-overview" data-center-sharing>
     <div class="entity-profile-header center-profile-identity">
         <div class="entity-profile-copy">
@@ -6,17 +7,17 @@
         </div>
         <div class="profile-actions">
             {% if public_preview %}
-            <span class="chip-button entity-public-likes" aria-label="{{ center.like_count }} likes">
-                <span class="heart-icon" aria-hidden="true"></span><span>{{ center.like_count }}</span>
+            <span class="chip-button social-action entity-public-likes" aria-label="{{ center.like_count }} likes">
+                {{ action_icon("like") }}<span>{{ center.like_count }}</span>
             </span>
             {% else %}
-            <button class="chip-button like-button {{ 'liked' if center.liked_by_me else '' }}" type="button" data-center-like data-center-id="{{ center.id }}">
-                <span class="heart-icon"></span>
-                <span data-center-like-count>{{ center.like_count }}</span>
+            <button class="chip-button social-action like-button {{ 'liked' if center.liked_by_me else '' }}" type="button" aria-pressed="{{ 'true' if center.liked_by_me else 'false' }}" data-center-like data-center-id="{{ center.id }}">
+                {{ action_icon("like") }}
+                <span class="sr-only">Like dive center. Likes:</span><span data-center-like-count>{{ center.like_count }}</span>
             </button>
             {% endif %}
-            <a class="chip-button share-button entity-share-button" href="{{ public_url('shared_dive_center', center_id=center.id) }}" data-center-share data-share-title="{{ center.name }} · Dive center on Pelagia" aria-label="Share dive center {{ center.name }}" title="Share dive center">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V3m-4 4 4-4 4 4M6 12H4v9h16v-9h-2"></path></svg>
+            <a class="chip-button social-action share-button entity-share-button" href="{{ public_url('shared_dive_center', center_id=center.id) }}" data-center-share data-share-title="{{ center.name }} · Dive center on Pelagia" aria-label="Share dive center {{ center.name }}" title="Share dive center">
+                {{ action_icon("share") }}
             </a>
             {% if center.website %}
                 <a class="ghost-button" href="{{ center.website }}" target="_blank" rel="noopener">Website</a>

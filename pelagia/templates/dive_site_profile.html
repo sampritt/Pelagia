@@ -94,8 +94,8 @@
         {% endif %}
     </div>
     <form class="comment-form" data-site-comment-form data-site-id="{{ site.id }}">
-        <input name="body" maxlength="600" autocomplete="off" aria-label="Add a comment" placeholder="Add a comment">
-        <button class="primary-button compact" type="submit">Post</button>
+        <input name="body" required maxlength="600" autocomplete="off" aria-label="Add a comment" placeholder="Add a comment">
+        <button class="primary-button compact" type="submit" aria-label="Post comment">Post</button>
     </form>
 
     <div class="feed-toolbar">

@@ -1,3 +1,4 @@
+{% from "_action_icons.html" import action_icon %}
 <!doctype html>
 <html lang="en">
 <head>
@@ -45,7 +46,7 @@
                 <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5"></circle><path d="M5 20c.7-4 3-6 7-6s6.3 2 7 6"></path></svg>
                 Profile
             </a>
-            <a class="nav-cta {{ 'active' if request.endpoint == 'log_dive' else '' }}" href="{{ url_for('log_dive') }}"><span aria-hidden="true">+</span> Log dive</a>
+            <a class="nav-cta {{ 'active' if request.endpoint == 'log_dive' else '' }}" href="{{ url_for('log_dive') }}">{{ action_icon("plus") }} Log dive</a>
         </nav>
         <div class="user-corner">
             <a class="mini-avatar" href="{{ url_for('profile') }}" aria-label="Profile">
@@ -84,7 +85,7 @@
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 13.5 12 5l8 8.5"></path><path d="M6.5 11.5V20h11v-8.5"></path></svg>
             <span>Feed</span>
         </a>
-        <a class="mobile-log {{ 'active' if request.endpoint == 'log_dive' else '' }}" href="{{ url_for('log_dive') }}" aria-label="Log dive">+</a>
+        <a class="mobile-log {{ 'active' if request.endpoint == 'log_dive' else '' }}" href="{{ url_for('log_dive') }}" aria-label="Log dive">{{ action_icon("plus") }}</a>
         <a class="{{ 'active' if request.endpoint in ('profile', 'user_profile', 'profile_settings', 'delete_account') else '' }}" href="{{ url_for('profile') }}">
             <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5"></circle><path d="M5 20c.7-4 3-6 7-6s6.3 2 7 6"></path></svg>
             <span>Profile</span>

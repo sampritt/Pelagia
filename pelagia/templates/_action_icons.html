@@ -1,0 +1,8 @@
+{% macro action_icon(name) -%}
+<svg class="action-icon" viewBox="0 0 24 24" aria-hidden="true">
+    {% if name == 'like' %}<path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8L12 21l8.8-8.6a5.5 5.5 0 0 0 0-7.8Z"></path>
+    {% elif name == 'comment' %}<path d="M21 11.5a8.5 8.5 0 0 1-8.5 8.5 9.7 9.7 0 0 1-4-.9L3 21l1.9-5.5a9.7 9.7 0 0 1-.9-4A8.5 8.5 0 0 1 12.5 3 8.5 8.5 0 0 1 21 11.5Z"></path>
+    {% elif name == 'share' %}<path d="M12 15V3m-4 4 4-4 4 4M7 11H5v10h14V11h-2"></path>
+    {% elif name == 'plus' %}<path d="M12 5v14M5 12h14"></path>{% endif %}
+</svg>
+{%- endmacro %}

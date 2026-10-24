@@ -1,3 +1,4 @@
+{% from "_action_icons.html" import action_icon %}
 <div class="brief-reader" data-brief-reader data-brief-edition="{{ brief.effective_date.isoformat() }}"{% if public_brief %} data-brief-public="true"{% endif %}>
     {% if not public_brief %}
     <nav class="brief-toolbar" aria-label="Dive Brief navigation">
@@ -18,7 +19,7 @@
                     <time datetime="{{ brief.effective_date.isoformat() }}">{{ brief.date_label }}</time>
                     <span>{{ brief.read_minutes }} min read</span>
                     <a class="brief-share" href="{{ public_url('shared_dive_brief', edition=brief.effective_date.isoformat()) }}" data-brief-share data-share-title="{{ brief.title }} · {{ brief.date_label }}" aria-label="Share {{ brief.title }} for {{ brief.date_label }}" title="Share brief">
-                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V3m-4 4 4-4 4 4M8 11H5v10h14V11h-3"></path></svg>
+                        {{ action_icon("share") }}
                     </a>
                 </div>
                 <p class="brief-share-status" role="status" aria-live="polite" data-brief-share-status></p>

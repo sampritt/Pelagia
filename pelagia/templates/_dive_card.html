@@ -1,3 +1,4 @@
+{% from "_action_icons.html" import action_icon %}
 {% set has_coords = dive.latitude is not none and dive.longitude is not none %}
 <article class="dive-card" data-dive-card data-dive-id="{{ dive.id }}" tabindex="0">
     <div class="dive-card-head">
@@ -90,14 +91,14 @@
     {% endif %}
 
     <div class="dive-actions">
-        {% if dive.user_id == session.get('user_id') %}{% include '_share_button.html' %}{% endif %}
-        <button class="chip-button like-button {{ 'liked' if dive.liked_by_me else '' }}" type="button" data-like data-dive-id="{{ dive.id }}">
-            <span class="heart-icon"></span>
-            <span data-like-count>{{ dive.like_count }}</span>
+        <button class="chip-button social-action like-button {{ 'liked' if dive.liked_by_me else '' }}" type="button" aria-pressed="{{ 'true' if dive.liked_by_me else 'false' }}" data-like data-dive-id="{{ dive.id }}">
+            {{ action_icon("like") }}
+            <span class="sr-only">Like dive. Likes:</span><span data-like-count>{{ dive.like_count }}</span>
         </button>
-        <a class="chip-button" href="{{ url_for('dive_detail', dive_id=dive.id) }}" data-open-dive="{{ dive.id }}">
-            <span class="comment-icon"></span>
-            <span data-comment-count>{{ dive.comment_count }}</span>
+        <a class="chip-button social-action" href="{{ url_for('dive_detail', dive_id=dive.id) }}#comments" data-open-dive="{{ dive.id }}" data-comment-link>
+            {{ action_icon("comment") }}
+            <span class="sr-only">Comment on dive. Comments:</span><span data-comment-count>{{ dive.comment_count }}</span>
         </a>
+        {% if dive.user_id == session.get('user_id') %}{% include '_share_button.html' %}{% endif %}
     </div>
 </article>

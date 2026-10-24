@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "_action_icons.html" import action_icon %}
 {% block title %}{{ user.username }} - Pelagia{% endblock %}
 
 {% block content %}
@@ -63,7 +64,7 @@
         </div>
         {% if is_owner %}
         <div class="diver-header-actions">
-            <a class="primary-button compact" href="{{ url_for('log_dive') }}"><span aria-hidden="true">+</span> Log dive</a>
+            <a class="primary-button compact" href="{{ url_for('log_dive') }}">{{ action_icon("plus") }} Log dive</a>
             <a class="profile-settings-button" href="{{ url_for('profile_settings') }}" aria-label="Profile settings">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 3-.6 2.3-2 .9-2.1-.6-2 3.4 1.6 1.7v2.6L2.3 15l2 3.4 2.1-.6 2 .9L9 21h4l.6-2.3 2-.9 2.1.6 2-3.4-1.6-1.7v-2.6L19.7 9l-2-3.4-2.1.6-2-.9L13 3z"></path><circle cx="11" cy="12" r="3"></circle></svg>
             </a>

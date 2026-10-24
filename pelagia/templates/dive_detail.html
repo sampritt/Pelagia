@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "_action_icons.html" import action_icon %}
 {% block title %}{{ dive.site_name }} - Pelagia{% endblock %}
 
 {% block content %}
@@ -96,11 +97,11 @@
 
     <div class="detail-social">
         <div class="dive-actions">
-            <button class="chip-button like-button {{ 'liked' if dive.liked_by_me else '' }}" type="button" data-like data-dive-id="{{ dive.id }}">
-                <span class="heart-icon"></span>
-                <span data-like-count>{{ dive.like_count }}</span>
+            <button class="chip-button social-action like-button {{ 'liked' if dive.liked_by_me else '' }}" type="button" aria-pressed="{{ 'true' if dive.liked_by_me else 'false' }}" data-like data-dive-id="{{ dive.id }}">
+                {{ action_icon("like") }}
+                <span class="sr-only">Like dive. Likes:</span><span data-like-count>{{ dive.like_count }}</span>
             </button>
-            <span class="chip-button"><span data-comment-count>{{ dive.comment_count }}</span> comments</span>
+            <a class="chip-button social-action" href="#comments" data-focus-comment>{{ action_icon("comment") }}<span class="sr-only">Comment on dive. Comments:</span><span data-comment-count>{{ dive.comment_count }}</span></a>
         </div>
         <div class="comments-block" data-comments>
             {% if dive.comments %}
@@ -114,9 +115,9 @@
                 <p class="muted">No comments yet.</p>
             {% endif %}
         </div>
-        <form class="comment-form" data-comment-form data-dive-id="{{ dive.id }}">
-            <input name="body" maxlength="600" autocomplete="off" aria-label="Add a comment" placeholder="Add a comment">
-            <button class="primary-button compact" type="submit">Post</button>
+        <form id="comments" class="comment-form" data-comment-form data-dive-id="{{ dive.id }}">
+            <input name="body" required maxlength="600" autocomplete="off" aria-label="Add a comment" placeholder="Add a comment">
+            <button class="primary-button compact" type="submit" aria-label="Post comment">Post</button>
         </form>
     </div>
 </section>

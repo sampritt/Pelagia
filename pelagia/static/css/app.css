@@ -1251,55 +1251,6 @@ textarea:focus {
     background: var(--accent-soft);
 }
 
-.heart-icon {
-    position: relative;
-    width: 14px;
-    height: 14px;
-    transform: rotate(-45deg);
-    background: currentColor;
-}
-
-.heart-icon::before,
-.heart-icon::after {
-    content: "";
-    position: absolute;
-    width: 14px;
-    height: 14px;
-    border-radius: 50%;
-    background: currentColor;
-}
-
-.heart-icon::before {
-    top: -7px;
-    left: 0;
-}
-
-.heart-icon::after {
-    top: 0;
-    left: 7px;
-}
-
-.comment-icon {
-    position: relative;
-    width: 16px;
-    height: 13px;
-    border: 2px solid currentColor;
-    border-radius: 5px;
-}
-
-.comment-icon::after {
-    content: "";
-    position: absolute;
-    right: 2px;
-    bottom: -5px;
-    width: 6px;
-    height: 6px;
-    border-right: 2px solid currentColor;
-    border-bottom: 2px solid currentColor;
-    background: transparent;
-    transform: rotate(45deg);
-}
-
 .empty-state {
     display: grid;
     justify-items: start;
@@ -3251,25 +3202,6 @@ textarea:focus {
     color: #e94450;
     border-color: transparent;
     background: rgba(255, 95, 87, 0.1);
-}
-
-.heart-icon {
-    width: 12px;
-    height: 12px;
-}
-
-.heart-icon::before,
-.heart-icon::after {
-    width: 12px;
-    height: 12px;
-}
-
-.heart-icon::before {
-    top: -6px;
-}
-
-.heart-icon::after {
-    left: 6px;
 }
 
 .empty-state {
@@ -5927,4 +5859,123 @@ img.is-media-loading {
     .settings-dive-count { max-width: none; }
     .settings-logout .ghost-button { width: 100%; }
     .settings-delete-account, .account-deletion-actions > * { width: 100%; }
+}
+
+/* Shared actions: consistent icon weight, touch targets and quiet surfaces. */
+.action-icon {
+    display: block;
+    flex: 0 0 auto;
+    width: 20px;
+    height: 20px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.social-action {
+    min-width: 62px;
+    min-height: 44px;
+    gap: 8px;
+    padding: 0 12px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    color: var(--muted-strong);
+    background: #f4f7f9;
+    font-variant-numeric: tabular-nums;
+    touch-action: manipulation;
+}
+
+.social-action.site-share-button,
+.social-action.entity-share-button {
+    width: 44px;
+    min-width: 44px;
+    padding: 0;
+}
+
+.social-action:hover {
+    border-color: var(--accent-line);
+    background: var(--accent-soft);
+}
+
+.social-action:active {
+    background: #e4edf4;
+}
+
+.social-action.liked {
+    color: #d83b50;
+    border-color: rgba(216, 59, 80, .16);
+    background: #fff0f2;
+}
+
+.social-action.liked .action-icon {
+    fill: currentColor;
+}
+
+.social-action:disabled {
+    cursor: wait;
+    opacity: .6;
+}
+
+.dive-actions {
+    justify-content: flex-start;
+    gap: 8px;
+}
+
+.dive-actions .share-button {
+    margin-left: auto;
+}
+
+.entity-profile-header .profile-actions {
+    width: 100%;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.entity-profile-header .profile-actions > .primary-button {
+    min-height: 44px;
+    margin-left: auto;
+    padding-inline: 14px;
+    border-radius: 12px;
+    box-shadow: none;
+}
+
+.entity-profile-header .profile-actions > .ghost-button {
+    min-height: 44px;
+    margin-left: auto;
+    border-radius: 12px;
+    box-shadow: none;
+}
+
+.diver-header-actions .primary-button {
+    min-height: 44px;
+    border-radius: 12px;
+    box-shadow: none;
+}
+
+.site-public-likes:hover,
+.entity-public-likes:hover {
+    color: var(--muted-strong);
+    border-color: var(--line);
+    background: #f4f7f9;
+}
+
+.comment-form {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px;
+    align-items: center;
+    scroll-margin-block: 100px;
+}
+
+.comment-form input,
+.comment-form .primary-button {
+    min-height: 44px;
+    border-radius: 12px;
+}
+
+.comment-form .primary-button {
+    padding-inline: 18px;
+    box-shadow: none;
 }

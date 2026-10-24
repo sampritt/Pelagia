@@ -1,3 +1,4 @@
+{% from "_action_icons.html" import action_icon %}
 {% set has_coords = site.latitude is not none and site.longitude is not none %}
 <div class="site-profile-header" data-site-sharing>
     <div class="mini-map site-map-banner {{ 'map-pending' if not has_coords else '' }}" role="region" aria-label="Map of {{ site.name }}" {% if has_coords %}data-static-map data-map-lat="{{ site.latitude }}" data-map-lng="{{ site.longitude }}" data-map-zoom="11"{% endif %}>
@@ -20,20 +21,20 @@
         </div>
         <div class="profile-actions">
             {% if public_preview %}
-            <span class="chip-button site-public-likes" aria-label="{{ site.like_count }} likes">
-                <span class="heart-icon" aria-hidden="true"></span><span>{{ site.like_count }}</span>
+            <span class="chip-button social-action site-public-likes" aria-label="{{ site.like_count }} likes">
+                {{ action_icon("like") }}<span>{{ site.like_count }}</span>
             </span>
             {% else %}
-            <button class="chip-button like-button {{ 'liked' if site.liked_by_me else '' }}" type="button" data-site-like data-site-id="{{ site.id }}">
-                <span class="heart-icon"></span>
-                <span data-site-like-count>{{ site.like_count }}</span>
+            <button class="chip-button social-action like-button {{ 'liked' if site.liked_by_me else '' }}" type="button" aria-pressed="{{ 'true' if site.liked_by_me else 'false' }}" data-site-like data-site-id="{{ site.id }}">
+                {{ action_icon("like") }}
+                <span class="sr-only">Like dive site. Likes:</span><span data-site-like-count>{{ site.like_count }}</span>
             </button>
             {% endif %}
-            <a class="chip-button share-button site-share-button" href="{{ public_url('shared_dive_site', site_id=site.id) }}" data-site-share data-share-title="{{ site.name }} · Dive site on Pelagia" aria-label="Share dive site {{ site.name }}" title="Share dive site">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V3m-4 4 4-4 4 4M6 12H4v9h16v-9h-2"></path></svg>
+            <a class="chip-button social-action share-button site-share-button" href="{{ public_url('shared_dive_site', site_id=site.id) }}" data-site-share data-share-title="{{ site.name }} · Dive site on Pelagia" aria-label="Share dive site {{ site.name }}" title="Share dive site">
+                {{ action_icon("share") }}
             </a>
             {% if not public_preview %}
-            <a class="primary-button compact" href="{{ url_for('log_dive', dive_site_id=site.id) }}"><span aria-hidden="true">+</span> Log dive</a>
+            <a class="primary-button compact" href="{{ url_for('log_dive', dive_site_id=site.id) }}">{{ action_icon("plus") }} Log dive</a>
             {% endif %}
         </div>
         <p class="site-share-status" role="status" aria-live="polite" data-site-share-status></p>

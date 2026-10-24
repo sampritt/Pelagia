@@ -1,3 +1,4 @@
+{% from "_action_icons.html" import action_icon %}
 <dialog class="share-dialog" data-share-dialog aria-labelledby="shareDialogTitle">
     <div class="share-dialog-heading">
         <h2 id="shareDialogTitle">Share this dive</h2>
@@ -25,7 +26,7 @@
             <span data-share-save-label>Save image</span>
         </button>
         <button class="share-option" type="button" data-share-native>
-            <span class="share-option-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V3m-4 4 4-4 4 4M6 12H4v9h16v-9h-2"></path></svg></span>
+            <span class="share-option-icon">{{ action_icon("share") }}</span>
             <span>More</span>
         </button>
     </div>
