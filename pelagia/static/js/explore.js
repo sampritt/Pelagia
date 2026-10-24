@@ -73,9 +73,19 @@ function initExplore() {
             window.history.pushState(null, "", url);
             rememberLocation(location);
         }
-        loadFeed();
+        if (location) loadFeed();
+        else showEmptyFeed();
         if (location) clear.focus();
         else input.focus();
+    }
+
+    function showEmptyFeed() {
+        feedRequest?.abort();
+        feedRequest = null;
+        count.textContent = "";
+        more.hidden = true;
+        more.dataset.nextPage = "";
+        results.innerHTML = '<div class="explore-empty"><svg class="explore-empty-mark" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"></circle><path d="m16 16 4.5 4.5"></path></svg><h2>Where will you dive next?</h2><p>Choose a country or region to discover dive sites.</p></div>';
     }
 
     async function loadFeed(page = 1) {

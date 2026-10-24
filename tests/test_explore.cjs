@@ -72,11 +72,11 @@ test("clearing a selected location unlocks search and selection locks it again",
     assert.equal(parts.tag.hidden, true);
     assert.equal(document.activeElement, parts.input);
     assert.match(window.location.href, /location=$/);
-    requests[0].resolve({ html: "Choose a location", total: 0, next_page: null });
-    await flush();
+    assert.equal(requests.length, 0);
+    assert.match(parts.results.innerHTML, /Where will you dive next/);
     parts.input.value = "Komodo";
     parts.input.emit("input");
-    requests[1].resolve(["Komodo National Park"]);
+    requests[0].resolve(["Komodo National Park"]);
     await flush();
     assert.equal(parts.suggestions.hidden, false);
     parts.input.emit("keydown", { key: "ArrowDown", preventDefault() {} });
@@ -87,7 +87,7 @@ test("clearing a selected location unlocks search and selection locks it again",
     assert.equal(parts.location.textContent, "Komodo National Park");
     assert.equal(parts.suggestions.hidden, true);
     assert.equal(document.activeElement, parts.clear);
-    requests[2].resolve({ html: "Komodo cards", total: 42, next_page: 2 });
+    requests[1].resolve({ html: "Komodo cards", total: 42, next_page: 2 });
     await flush();
     assert.equal(parts.results.innerHTML, "Komodo cards");
     assert.equal(parts.count.textContent, "42 dive sites in Komodo National Park");
@@ -115,6 +115,8 @@ test("stale search results and Escape cannot reopen dismissed suggestions", asyn
 test("a stale location feed cannot replace current results, and pagination appends", async () => {
     const { parts, requests, window } = setup();
     parts.clear.emit("click");
+    window.location.href = "http://localhost/explore?location=Canada";
+    window.emit("popstate");
     window.location.href = "http://localhost/explore?location=Komodo+National+Park";
     window.emit("popstate");
     assert.equal(requests[0].options.signal.aborted, true);
@@ -132,8 +134,10 @@ test("a stale location feed cannot replace current results, and pagination appen
 });
 
 test("failed feeds offer retry and failed suggestions allow another search", async () => {
-    const { parts, requests } = setup();
+    const { parts, requests, window } = setup();
     parts.clear.emit("click");
+    window.location.href = "http://localhost/explore?location=Canada";
+    window.emit("popstate");
     requests[0].reject(new Error("offline"));
     await flush();
     assert.equal(parts.more.textContent, "Try again");
@@ -141,6 +145,7 @@ test("failed feeds offer retry and failed suggestions allow another search", asy
     parts.more.emit("click");
     requests[1].resolve({ html: "Choose a location", total: 0, next_page: null });
     await flush();
+    parts.clear.emit("click");
     parts.input.value = "Can";
     parts.input.emit("input");
     requests[2].reject(new Error("offline"));
@@ -162,7 +167,7 @@ test("explicit selections and clearing are remembered without saving browser his
     await flush();
     parts.input.value = "Komodo";
     parts.input.emit("input");
-    requests[1].resolve(["Komodo National Park"]);
+    requests[0].resolve(["Komodo National Park"]);
     await flush();
     parts.suggestions.children[0].emit("click");
     assert.deepEqual(JSON.parse(saves[1].options.body), { location: "Komodo National Park" });
