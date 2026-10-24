@@ -58,13 +58,6 @@
     </div>
 
     <div class="activity-media {{ 'no-photos' if not dive.photos else '' }}">
-        {% if dive.photos %}
-            <div class="photo-strip" aria-label="Dive photos">
-                {% for photo in dive.photos %}
-                    <img src="{{ uploaded_file_url(photo.filename) }}" alt="">
-                {% endfor %}
-            </div>
-        {% endif %}
         <div class="mini-map {{ 'map-pending' if not has_coords else '' }}" {% if has_coords %}data-static-map data-map-lat="{{ dive.latitude }}" data-map-lng="{{ dive.longitude }}" data-map-zoom="10"{% endif %}>
             <span class="map-pin"></span>
             <span class="coordinate-label">
@@ -75,6 +68,8 @@
                 {% endif %}
             </span>
         </div>
+        {% set depth_chart = dive.depth_chart %}
+        {% include "_dive_gallery.html" %}
     </div>
 
     <div class="stat-stack">

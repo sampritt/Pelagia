@@ -331,7 +331,7 @@ def register_routes(app):
         if dive is None:
             abort(404)
         return render_template("dive_detail.html", dive=dive,
-                               depth_chart=depth_profile_chart(database.get_db(), dive_id))
+                               depth_chart=dive["depth_chart"])
 
     @app.get("/share/dive/<int:dive_id>")
     def shared_dive(dive_id):
@@ -1592,6 +1592,7 @@ def hydrate_dive(row):
     dive["dive_types"] = dive_type_options(dive)
     dive["current_types"] = current_type_options(dive)
     dive["photos"] = db.execute("SELECT id, filename FROM photos WHERE dive_id = ? ORDER BY id", (row["id"],)).fetchall()
+    dive["depth_chart"] = depth_profile_chart(db, row["id"])
     dive["species"] = db.execute(
         "SELECT common_name FROM dive_species WHERE dive_id = ? ORDER BY common_name",
         (row["id"],),

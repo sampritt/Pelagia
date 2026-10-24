@@ -1,0 +1,24 @@
+{% set has_chart = depth_chart and not public_preview %}
+{% set slide_count = (dive.photos|length) + (1 if has_chart else 0) %}
+{% if slide_count %}
+<div class="detail-media-gallery" data-dive-gallery role="region" aria-label="Dive media">
+    <div class="detail-photo-carousel" data-dive-slides tabindex="0" aria-label="Dive media" aria-roledescription="carousel">
+        {% if has_chart %}{% include "_depth_profile.html" %}{% endif %}
+        {% for photo in dive.photos %}
+        <figure class="detail-photo-slide" role="group" aria-label="Photo {{ loop.index }} of {{ dive.photos|length }}">
+            <img src="{{ uploaded_file_url(photo.filename) }}" alt="Dive photo at {{ dive.site_name }}" loading="lazy">
+        </figure>
+        {% endfor %}
+    </div>
+    {% if slide_count > 1 %}
+    <div class="detail-gallery-dots" aria-label="{{ slide_count }} slides; swipe to browse">
+        {% for index in range(slide_count) %}<span data-gallery-dot class="{{ 'is-active' if index == 0 else '' }}" aria-hidden="true"></span>{% endfor %}
+    </div>
+    <div class="detail-gallery-controls" data-gallery-controls hidden>
+        <button type="button" class="icon-button" data-gallery-prev aria-label="Previous slide">←</button>
+        <span data-gallery-position aria-live="polite" aria-atomic="true">1 / {{ slide_count }}</span>
+        <button type="button" class="icon-button" data-gallery-next aria-label="Next slide">→</button>
+    </div>
+    {% endif %}
+</div>
+{% endif %}

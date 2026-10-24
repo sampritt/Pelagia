@@ -126,7 +126,7 @@ class GarminImportTest(unittest.TestCase):
         self.assertEqual(len(self.stored()), 1)
         self.assertEqual(json.loads(self.stored()[0]["data_json"])["depth_profile"][1]["depth_m"], 18.5)
 
-    def test_detail_chart_precedes_photos_and_map_and_uses_viewer_units(self):
+    def test_chart_follows_map_precedes_photos_and_uses_viewer_units(self):
         self.save(self.import_dive())
         with self.app.app_context():
             db = database.get_db()
@@ -135,7 +135,16 @@ class GarminImportTest(unittest.TestCase):
             db.commit()
         html = self.client.get("/dive/1").get_data(as_text=True)
         self.assertLess(html.index('depth-profile-slide'), html.index('alt="Dive photo'))
-        self.assertLess(html.index('alt="Dive photo'), html.index('mini-map detail-map'))
+        self.assertLess(html.index('mini-map detail-map'), html.index('depth-profile-slide'))
+        self.assertLess(html.index('alt="Dive photo'), html.index('detail-headline-stats'))
+        self.assertIn('data-gallery-dot', html)
+        self.assertIn('>54 min</text>', html)
+        self.assertNotIn('54.2 min</text>', html)
+        feed = self.client.get('/home').get_data(as_text=True)
+        self.assertIn('depth-profile-chart', feed)
+        self.assertIn('depthProfileFill-1', feed)
+        self.assertLess(feed.index('class="mini-map'), feed.index('depth-profile-slide'))
+        self.assertIn('data-gallery-dot', feed)
         self.assertIn('data-gallery-controls', html)
         self.assertIn('1 / 2', html)
         self.assertIn('>ft</text>', html)

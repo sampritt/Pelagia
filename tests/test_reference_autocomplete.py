@@ -1552,7 +1552,8 @@ Kelp House,2 Harbor Way,Alaska,https://kelp.example.test
 
             home_response = client.get("/home")
             self.assertEqual(home_response.status_code, 200)
-            self.assertIn(b'class="photo-strip" aria-label="Dive photos"', home_response.data)
+            self.assertIn(b'data-dive-slides', home_response.data)
+            self.assertEqual(home_response.data.count(b'data-gallery-dot'), 3)
             self.assertEqual(home_response.data.count(b"uploads/dives/"), 3)
 
             profile_response = client.get("/you")
@@ -1568,7 +1569,7 @@ Kelp House,2 Harbor Way,Alaska,https://kelp.example.test
             self.assertNotIn(b"<small>countries</small>", profile_html)
             self.assertNotIn(b"<small>locations</small>", profile_html)
             self.assertEqual(client.get("/map").status_code, 404)
-            self.assertIn(b'class="photo-strip" aria-label="Dive photos"', profile_response.data)
+            self.assertIn(b'data-dive-slides', profile_response.data)
             self.assertEqual(profile_response.data.count(b"uploads/dives/"), 3)
 
             edit_response = client.get(f"/dive/{dive_id}/edit")

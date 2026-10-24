@@ -265,7 +265,7 @@ function initDiveInteractions() {
         }
 
         const card = event.target.closest("[data-dive-card]");
-        if (card && !event.target.closest("a, button, input, select, textarea")) {
+        if (card && !event.target.closest("a, button, input, select, textarea, [data-dive-gallery]")) {
             openDive(card.dataset.diveId);
         }
 
@@ -2132,12 +2132,14 @@ function initDiveGalleries() {
         const previous = controls.querySelector("[data-gallery-prev]");
         const next = controls.querySelector("[data-gallery-next]");
         const position = controls.querySelector("[data-gallery-position]");
+        const dots = gallery.querySelectorAll("[data-gallery-dot]");
         const currentIndex = () => slides.reduce((best, slide, index) =>
             Math.abs(slide.getBoundingClientRect().left - track.getBoundingClientRect().left) <
             Math.abs(slides[best].getBoundingClientRect().left - track.getBoundingClientRect().left) ? index : best, 0);
         const update = () => {
             const index = currentIndex();
             position.textContent = `${index + 1} / ${slides.length}`;
+            dots.forEach((dot, i) => dot.classList.toggle("is-active", i === index));
             previous.disabled = index === 0;
             next.disabled = index === slides.length - 1;
         };

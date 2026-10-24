@@ -6149,8 +6149,13 @@ img.is-media-loading {
     .explore-card { transition: none; }
 }
 
-/* The depth profile and photos share one swipeable frame above the map. */
+/* The depth profile and photos share one swipeable frame below the map. */
 .dive-detail-media { grid-template-columns: minmax(0, 1fr); }
+.activity-media { grid-template-columns: minmax(0, 1fr); }
+.activity-media .detail-media-gallery .detail-photo-carousel { height: 240px; min-height: 240px; max-height: 240px; }
+.detail-gallery-dots { display: flex; flex-wrap: wrap; justify-content: center; gap: 5px; padding-top: 10px; }
+.detail-gallery-dots span { width: 5px; height: 5px; border-radius: 50%; background: var(--muted); opacity: .3; }
+.detail-gallery-dots span.is-active { background: var(--accent); opacity: 1; }
 .detail-media-gallery { min-width: 0; }
 .detail-media-gallery .detail-photo-carousel { height: 320px; min-height: 320px; max-height: 320px; }
 .detail-photo-carousel:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
