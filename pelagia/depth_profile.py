@@ -35,6 +35,6 @@ def depth_profile_chart(db, dive_id):
     coordinates = [(44 + points[i]["elapsed_seconds"] / duration * 716,
                     28 + points[i]["depth_m"] / (max_depth or 1) * 222) for i in indices]
     line = "M " + " L ".join(f"{x:.2f},{y:.2f}" for x, y in coordinates)
-    return {"line": line,
+    return {"line": line, "coordinates": coordinates,
             "fill": f"{line} L {coordinates[-1][0]:.2f},28 L {coordinates[0][0]:.2f},28 Z",
             "max_depth_m": max_depth, "duration_minutes": duration / 60}

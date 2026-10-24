@@ -13,6 +13,7 @@
                 {% for layout in ('vertical', 'horizontal', 'stacked', 'map') %}
                 <button class="share-preview-dot" type="button" data-share-style="{{ loop.index }}" aria-label="Transparent {{ layout }} image" aria-pressed="false"><span aria-hidden="true"></span></button>
                 {% endfor %}
+                <button class="share-preview-dot" type="button" data-share-style="5" aria-label="Transparent depth profile image" aria-pressed="false" hidden><span aria-hidden="true"></span></button>
             </div>
             <button class="share-preview-arrow" type="button" data-share-next aria-label="Next image style"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m10 6 6 6-6 6"></path></svg></button>
         </div>

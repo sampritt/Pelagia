@@ -213,6 +213,7 @@ TRANSPARENT_LAYOUTS = {
     "horizontal": (1600, 600),
     "stacked": (1200, 780),
     "map": (960, 1200),
+    "depth_profile": (960, 1200),
 }
 
 
@@ -234,11 +235,35 @@ def _equal_stat_size(draw, stats, width, unit_size=32, max_size=80):
     return size
 
 
+def _draw_share_depth_profile(image, chart, length_unit):
+    """Outline only: keep the chart interior transparent for photo overlays."""
+    draw = ImageDraw.Draw(image)
+    left, top, right, bottom = 170, 310, 830, 690
+    for y in (top, (top + bottom) / 2, bottom):
+        draw.line((left, y, right, y), fill=(255, 255, 255, 70), width=1)
+    # Supersample the trace so shallow slopes remain smooth in the PNG.
+    trace = Image.new("RGBA", (1520, 1000))
+    points = [((left - 100 + (x - 44) / 716 * (right - left)) * 2,
+               (top - 260 + (y - 28) / 222 * (bottom - top)) * 2)
+              for x, y in chart["coordinates"]]
+    ImageDraw.Draw(trace).line(points, fill="white", width=8, joint="curve")
+    image.alpha_composite(trace.resize((760, 500), Image.Resampling.LANCZOS), (100, 260))
+    font = _font(24)
+    draw.text((left - 18, top), "0", font=font, fill="white", anchor="rm")
+    draw.text((left - 18, bottom),
+              format_metric(display_measurement(chart["max_depth_m"], length_unit)),
+              font=font, fill="white", anchor="rm")
+    draw.text((left, top - 28), length_unit, font=font, fill="white", anchor="ls")
+    draw.text((left, bottom + 24), "0 min", font=font, fill="white", anchor="lt")
+    draw.text((right, bottom + 24), f'{chart["duration_minutes"]:.0f} min',
+              font=font, fill="white", anchor="rt")
+
+
 def render_transparent_share_image(dive, *, length_unit="m", weight_unit="kg", layout="stacked"):
     """Transparent overlays with equal stat emphasis and distinct compositions."""
     image = Image.new("RGBA", TRANSPARENT_LAYOUTS[layout], (0, 0, 0, 0))
     draw = ImageDraw.Draw(image)
-    stats = _select_share_stats(dive, length_unit=length_unit, weight_unit=weight_unit, map_only=layout == "map")
+    stats = _select_share_stats(dive, length_unit=length_unit, weight_unit=weight_unit, map_only=layout in {"map", "depth_profile"})
     count = len(stats)
 
     if layout == "vertical":
@@ -250,18 +275,21 @@ def render_transparent_share_image(dive, *, length_unit="m", weight_unit="kg", l
         column_width = 1480 / max(1, count) - 36
         positions = [(60 + (index + 0.5) * 1480 / count, 220) for index in range(count)]
         _place_lockup(image, 190, 705, 340)
-    elif layout == "map":
+    elif layout in {"map", "depth_profile"}:
         _draw_share_title(draw, dive["site_name"], 480, 130, 800, height=160)
-        map_image = render_static_map(dive["latitude"], dive["longitude"], size=(760, 500))
-        if map_image is not None:
-            mask = Image.new("L", (3040, 2000))
-            ImageDraw.Draw(mask).rounded_rectangle((0, 0, 3039, 1999), radius=128, fill=255)
-            map_image = map_image.convert("RGBA")
-            map_image.putalpha(mask.resize((760, 500), Image.Resampling.LANCZOS))
-            image.alpha_composite(map_image, (100, 260))
+        if layout == "depth_profile":
+            _draw_share_depth_profile(image, dive["depth_chart"], length_unit)
         else:
-            draw.rounded_rectangle((100, 260, 859, 759), radius=32, outline="#b8cecf", width=2)
-            draw.text((480, 510), "Map unavailable", font=_font(30), fill="white", anchor="mm")
+            map_image = render_static_map(dive["latitude"], dive["longitude"], size=(760, 500))
+            if map_image is not None:
+                mask = Image.new("L", (3040, 2000))
+                ImageDraw.Draw(mask).rounded_rectangle((0, 0, 3039, 1999), radius=128, fill=255)
+                map_image = map_image.convert("RGBA")
+                map_image.putalpha(mask.resize((760, 500), Image.Resampling.LANCZOS))
+                image.alpha_composite(map_image, (100, 260))
+            else:
+                draw.rounded_rectangle((100, 260, 859, 759), radius=32, outline="#b8cecf", width=2)
+                draw.text((480, 510), "Map unavailable", font=_font(30), fill="white", anchor="mm")
         positions = [(480, 890)] if count == 1 else [(280, 890), (680, 890)]
         column_width = 330
         _place_lockup(image, 190, 385, 1020)

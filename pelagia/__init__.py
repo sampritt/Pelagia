@@ -375,6 +375,10 @@ def register_routes(app):
         layout = request.args.get("layout", "stacked")
         if layout not in TRANSPARENT_LAYOUTS:
             abort(400)
+        if layout == "depth_profile":
+            dive["depth_chart"] = depth_profile_chart(database.get_db(), dive_id)
+            if dive["depth_chart"] is None:
+                abort(404)
         filename = _download_name(dive["site_name"])[:80] or "logged-dive"
         suffix = f"-{layout}" if "layout" in request.args else ""
         response = send_file(

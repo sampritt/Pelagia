@@ -4765,6 +4765,7 @@ input[type="range"] {
 .share-preview-arrow:hover, .share-preview-dot:hover { background: var(--accent-soft); color: var(--accent); }
 .share-preview-dots { display: flex; }
 .share-preview-dot { flex-basis: 30px; width: 30px; }
+.share-preview-dot[hidden] { display: none; }
 .share-preview-dot span { width: 6px; height: 6px; border-radius: 999px; background: var(--muted-strong); }
 .share-preview-dot[aria-pressed="true"] span { width: 18px; background: var(--accent); }
 .share-preview-carousel:focus-visible, .share-preview-arrow:focus-visible, .share-preview-dot:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }

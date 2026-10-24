@@ -409,7 +409,10 @@ function initDiveSharing() {
         preview.style.aspectRatio = style.aspectRatio;
         saveLabel.textContent = "Save image";
         dialog.querySelector("[data-share-counter]").textContent = `Image ${selectedStyle + 1} of ${imageStyles.length}`;
-        styleButtons.forEach((button, buttonIndex) => button.setAttribute("aria-pressed", String(buttonIndex === selectedStyle)));
+        styleButtons.forEach((button, buttonIndex) => {
+            button.hidden = buttonIndex >= imageStyles.length;
+            button.setAttribute("aria-pressed", String(buttonIndex === selectedStyle));
+        });
         if (supportsNativeSharing() && typeof navigator.canShare === "function" && window.matchMedia("(pointer: coarse)").matches) {
             prepareMobileImage(style, version);
         }
@@ -453,14 +456,16 @@ function initDiveSharing() {
                 filename: "pelagia-dive.jpg", mimeType: "image/jpeg",
                 aspectRatio: "1200 / 630", alt: "Branded dive image with a map" },
             ...[ ["vertical", "720 / 1280"], ["horizontal", "1600 / 600"],
-                ["stacked", "1200 / 780"], ["map", "960 / 1200"] ].map(([layout, aspectRatio]) => {
+                ["stacked", "1200 / 780"], ["map", "960 / 1200"],
+                ...(button.dataset.shareDepthProfile === "true" ? [["depth_profile", "960 / 1200"]] : []) ].map(([layout, aspectRatio]) => {
                 const imageUrl = new URL(button.dataset.shareTransparentImage);
                 const downloadUrl = new URL(button.dataset.shareTransparentDownload);
                 imageUrl.searchParams.set("layout", layout);
                 downloadUrl.searchParams.set("layout", layout);
                 return { imageUrl: imageUrl.href, downloadUrl: downloadUrl.href,
                     filename: `pelagia-dive-transparent-${layout}.png`, mimeType: "image/png", aspectRatio,
-                    alt: layout === "map" ? "Transparent dive-site map with max depth, dive time and Pelagia logo"
+                    alt: layout === "depth_profile" ? "Transparent depth profile with dive site, max depth, dive time and Pelagia logo"
+                        : layout === "map" ? "Transparent dive-site map with max depth, dive time and Pelagia logo"
                         : `Transparent ${layout} dive stats with equally sized values${layout === "stacked" ? ", dive site" : ""} and Pelagia logo` };
             }),
         ];

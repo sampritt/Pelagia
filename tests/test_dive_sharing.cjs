@@ -15,7 +15,7 @@ function setup(navigator = {}, secure = true, options = {}) {
         setSelectionRange(start, end) { this.selection = [start, end]; },
     });
     const parts = Object.fromEntries(["link", "copy", "copy-label", "save", "native", "status", "preview", "close", "carousel", "save-label", "counter", "previous", "next"].map(name => [name, element()]));
-    const styles = Array.from({length: 5}, element);
+    const styles = Array.from({length: 6}, element);
     const dialog = element();
     dialog.querySelector = selector => parts[selector.match(/data-share-([a-z-]+)/)[1]];
     dialog.querySelectorAll = () => styles;
@@ -305,4 +305,40 @@ test("a late vertical PNG cannot replace the selected map PNG", async () => {
     await state.parts.save.handlers.click();
     assert.equal(payload.files[0].name, "pelagia-dive-transparent-map.png");
     assert.equal(await payload.files[0].text(), "map PNG");
+});
+
+
+test("depth chart adds a sixth transparent style and resets for a dive without a chart", () => {
+    const state = setup();
+    state.trigger.dataset.shareDepthProfile = "true";
+    state.open();
+    assert.equal(state.styles[5].hidden, false);
+    state.styles[5].handlers.click();
+    assert.equal(state.parts.preview.src, `${state.trigger.dataset.shareTransparentImage}?layout=depth_profile`);
+    assert.equal(state.parts.preview.dataset.transparent, "true");
+    assert.equal(state.parts.preview.style.aspectRatio, "960 / 1200");
+    assert.equal(state.parts.counter.textContent, "Image 6 of 6");
+    state.parts.save.handlers.click();
+    assert.equal(state.downloads[0].href, `${state.trigger.dataset.shareTransparentDownload}&layout=depth_profile`);
+    assert.equal(state.downloads[0].download, "pelagia-dive-transparent-depth_profile.png");
+    state.parts.next.handlers.click();
+    assert.equal(state.parts.counter.textContent, "Image 1 of 6");
+    state.trigger.dataset.shareDepthProfile = "false";
+    state.open();
+    assert.equal(state.styles[5].hidden, true);
+    assert.equal(state.parts.counter.textContent, "Image 1 of 5");
+    state.parts.previous.handlers.click();
+    assert.equal(state.parts.counter.textContent, "Image 5 of 5");
+});
+
+test("mobile depth profile Save shares the transparent PNG", async () => {
+    let payload;
+    const state = setup({canShare: () => true, share(data) { payload = data; return Promise.resolve(); }}, true, {mobile: true});
+    state.trigger.dataset.shareDepthProfile = "true";
+    state.open();
+    state.styles[5].handlers.click();
+    await new Promise(resolve => setImmediate(resolve));
+    await state.parts.save.handlers.click();
+    assert.equal(payload.files[0].type, "image/png");
+    assert.equal(payload.files[0].name, "pelagia-dive-transparent-depth_profile.png");
 });

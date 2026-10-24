@@ -1,4 +1,5 @@
 import io
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -12,6 +13,7 @@ from pelagia import create_app
 from pelagia import db as database
 from pelagia.sharing import TRANSPARENT_LAYOUTS, _select_share_stats, fetch_public_dive, render_share_image, render_transparent_share_image
 from pelagia.static_maps import render_static_map
+from pelagia.depth_profile import depth_profile_chart
 
 
 class DiveSharingTest(unittest.TestCase):
@@ -50,6 +52,19 @@ class DiveSharingTest(unittest.TestCase):
             db.execute("INSERT INTO comments (dive_id, user_id, body) VALUES (1, 2, 'PRIVATE COMMENT')")
             db.execute("INSERT INTO dive_species (dive_id, common_name) VALUES (1, 'PRIVATE SPECIES')")
             db.commit()
+
+    def add_depth_profile(self, points=None):
+        data = {"version": 1, "source": "garmin", "started_at": "2026-10-01T12:00:00+00:00",
+                "bottom_time_seconds": 1200, "recording_duration_seconds": 1200,
+                "depth_profile": points if points is not None else [
+                    {"elapsed_seconds": t, "depth_m": d}
+                    for t, d in ((0, 0), (120, 20), (600, 18), (1080, 5), (1200, 0))]}
+        with self.app.app_context():
+            db = database.get_db()
+            db.execute("INSERT OR REPLACE INTO dive_computer_data (dive_id, data_json) VALUES (1, ?)",
+                       (json.dumps(data),))
+            db.commit()
+            return depth_profile_chart(db, 1)
 
     def login_session(self, user_id=1):
         with self.client.session_transaction() as session:
@@ -373,10 +388,65 @@ class DiveSharingTest(unittest.TestCase):
                         self.assertEqual(tuple(label for label in ("GAS MIX", "SAC RATE") if label in drawn), labels)
                         self.assertNotIn("-", drawn)
 
+    def test_depth_profile_export_is_conditional_on_a_renderable_chart(self):
+        url = "/share/dive/1/transparent.png?layout=depth_profile"
+        self.login_session()
+        self.assertIn(b'data-share-depth-profile="false"', self.client.get("/dive/1").data)
+        self.assertEqual(self.client.get(url).status_code, 404)
+        for points in ([], [{"elapsed_seconds": 0, "depth_m": 0}],
+                       [{"elapsed_seconds": 0, "depth_m": 0}, {"elapsed_seconds": 0, "depth_m": 20}]):
+            self.add_depth_profile(points)
+            self.assertEqual(self.client.get(url).status_code, 404)
+        self.add_depth_profile()
+        for path in ("/dive/1", "/home", "/you"):
+            self.assertIn(b'data-share-depth-profile="true"', self.client.get(path).data)
+        with self.app.app_context():
+            database.get_db().execute("UPDATE dive_computer_data SET data_json = 'invalid'")
+            database.get_db().commit()
+        self.assertEqual(self.client.get(url).status_code, 404)
+
+    def test_depth_profile_png_has_an_unfilled_trace_and_no_map(self):
+        self.add_depth_profile()
+        self.tile_request.reset_mock()
+        response = self.client.get("/share/dive/1/transparent.png?layout=depth_profile")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.mimetype, "image/png")
+        self.tile_request.assert_not_called()
+        with Image.open(io.BytesIO(response.data)) as image:
+            self.assertEqual(image.size, (960, 1200))
+            self.assertEqual(image.mode, "RGBA")
+            alpha = image.getchannel("A")
+            # Known profile samples map to the same inverted depth geometry.
+            for point in ((170, 310), (236, 690), (500, 652), (830, 310)):
+                self.assertGreater(alpha.getpixel(point), 180)
+            for point in ((0, 0), (400, 400), (400, 600), (900, 750)):
+                self.assertEqual(alpha.getpixel(point), 0)
+            self.assertIsNotNone(alpha.crop((100, 60, 860, 210)).getbbox())
+            self.assertIsNotNone(alpha.crop((100, 800, 860, 960)).getbbox())
+            self.assertIsNotNone(alpha.crop((385, 1020, 575, 1180)).getbbox())
+        self.login_session()
+        with self.app.app_context():
+            database.get_db().execute("UPDATE users SET length_unit = 'ft' WHERE id = 1")
+            database.get_db().commit()
+        drawn = []
+        original_text = ImageDraw.ImageDraw.text
+
+        def record_text(draw, xy, text, *args, **kwargs):
+            drawn.append(text)
+            return original_text(draw, xy, text, *args, **kwargs)
+
+        with patch.object(ImageDraw.ImageDraw, "text", new=record_text):
+            self.assertEqual(self.client.get("/share/dive/1/transparent.png?layout=depth_profile").status_code, 200)
+        for text in ("66", "ft", "20 min", "MAX DEPTH", "DIVE TIME"):
+            self.assertIn(text, drawn)
+        self.assertNotIn("GAS MIX", drawn)
+
     def test_transparent_layouts_keep_equal_stat_sizes_and_all_text_in_bounds(self):
+        chart = self.add_depth_profile()
         original_text = ImageDraw.ImageDraw.text
         with self.app.app_context():
             dive = fetch_public_dive(1)
+            dive["depth_chart"] = chart
             for title in ("Kicker Rock (Leon Dormido)",
                           "Great Blue Hole and Lighthouse Reef National Marine Reserve"):
                 for gas, sac in ((None, None), ("Air", None), (None, 18),
@@ -405,7 +475,7 @@ class DiveSharingTest(unittest.TestCase):
                                 self.assertLessEqual(right, dimensions[0] - 12)
                                 self.assertLessEqual(bottom, dimensions[1] - 12)
                             labels = {text for text, _, _ in drawn}
-                            if layout == "map":
+                            if layout in {"map", "depth_profile"}:
                                 self.assertNotIn("GAS MIX", labels)
                                 self.assertNotIn("SAC RATE", labels)
                             if layout in {"vertical", "horizontal"}:
@@ -414,6 +484,7 @@ class DiveSharingTest(unittest.TestCase):
 
 
     def test_each_png_layout_downloads_with_its_own_name_and_map_fallback(self):
+        self.add_depth_profile()
         self.login_session()
         with self.app.app_context():
             database.get_db().execute("UPDATE users SET length_unit = 'ft' WHERE id = 1")
