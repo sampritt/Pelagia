@@ -258,6 +258,16 @@ def register_routes(app):
     @app.get("/brief/<edition>")
     @login_required
     def read_dive_brief(edition):
+        return render_dive_brief(edition)
+
+    @app.get("/share/brief/<edition>")
+    def shared_dive_brief(edition):
+        response = app.make_response(render_dive_brief(edition, public_brief=True))
+        response.headers["Cache-Control"] = "private, no-store"
+        response.headers["X-Robots-Tag"] = "noindex, nofollow"
+        return response
+
+    def render_dive_brief(edition, public_brief=False):
         try:
             day = date.fromisoformat(edition)
             if day.isoformat() != edition:
@@ -267,7 +277,7 @@ def register_routes(app):
         brief = dive_brief.load_brief(day)
         if brief is None:
             abort(404)
-        return render_template("dive_brief.html", brief=brief)
+        return render_template("dive_brief.html", brief=brief, public_brief=public_brief)
 
     @app.route("/dive/new", methods=("GET", "POST"))
     @login_required

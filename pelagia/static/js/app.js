@@ -1562,6 +1562,7 @@ function initUserProfile() {
 document.addEventListener("DOMContentLoaded", () => {
     initInteractionFocus();
     initDiveBrief();
+    initDiveBriefSharing();
     initDiveSharing();
     initDiveInteractions();
     initGlobalSearch();
@@ -1664,7 +1665,7 @@ function initInteractionFocus() {
 
 function initDiveBrief() {
     const reader = document.querySelector("[data-brief-reader]");
-    if (!reader) return;
+    if (!reader || reader.dataset.briefPublic === "true") return;
     const dialog = document.querySelector("[data-brief-dialog]");
     const trigger = document.querySelector("[data-brief-open]");
     const disclosure = document.querySelector("[data-brief-disclosure]");
@@ -1791,6 +1792,50 @@ function initDiveBrief() {
     });
     reader.addEventListener("keydown", (event) => {
         if (event.key === "Escape" && !dialog) close();
+    });
+}
+
+function initDiveBriefSharing() {
+    const reader = document.querySelector("[data-brief-reader]");
+    const share = reader?.querySelector("[data-brief-share]");
+    if (!share) return;
+    const status = reader.querySelector("[data-brief-share-status]");
+    const fallback = reader.querySelector("[data-brief-share-fallback]");
+    const link = reader.querySelector("[data-brief-share-link]");
+    let sharing = false;
+    share.addEventListener("click", async (event) => {
+        if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button > 0) return;
+        event.preventDefault();
+        if (sharing) return;
+        sharing = true;
+        share.setAttribute("aria-busy", "true");
+        status.textContent = "";
+        fallback.hidden = true;
+        try {
+            if (window.isSecureContext && typeof navigator.share === "function") {
+                try {
+                    await navigator.share({ title: share.dataset.shareTitle, url: share.href });
+                    status.textContent = "Brief shared.";
+                    return;
+                } catch (error) {
+                    if (error.name === "AbortError") return;
+                }
+            }
+            try {
+                if (!navigator.clipboard?.writeText) throw new Error("Clipboard unavailable");
+                await navigator.clipboard.writeText(share.href);
+                status.textContent = "Link copied. Anyone can read this brief.";
+            } catch (error) {
+                fallback.hidden = false;
+                link.focus();
+                link.select();
+                link.setSelectionRange(0, link.value.length);
+                status.textContent = "Copy this link to share the brief. Anyone can read it.";
+            }
+        } finally {
+            sharing = false;
+            share.removeAttribute("aria-busy");
+        }
     });
 }
 

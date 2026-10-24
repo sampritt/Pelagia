@@ -18,7 +18,7 @@
 </head>
 <body class="{% block body_class %}{% endblock %}">
     <a class="skip-link" href="#mainContent">Skip to content</a>
-    {% set me = current_user() %}
+    {% set me = none if public_brief else current_user() %}
     {% if me %}
     <header class="topbar {{ 'feed-topbar' if request.endpoint == 'home' else '' }}">
         <a class="brand" href="{{ url_for('home') }}" aria-label="Pelagia Home">

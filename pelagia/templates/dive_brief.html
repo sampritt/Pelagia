@@ -1,4 +1,17 @@
 {% extends "base.html" %}
 {% block title %}{{ brief.title }} · {{ brief.date_label }} - Pelagia{% endblock %}
 {% block body_class %}brief-page{% endblock %}
+{% block head %}
+{% if public_brief %}
+    <meta name="description" content="{{ brief.headline }}">
+    <meta name="robots" content="noindex, nofollow">
+    <link rel="canonical" href="{{ public_url('shared_dive_brief', edition=brief.effective_date.isoformat()) }}">
+    <meta property="og:type" content="article">
+    <meta property="og:site_name" content="Pelagia">
+    <meta property="og:title" content="{{ brief.title }} · {{ brief.date_label }}">
+    <meta property="og:description" content="{{ brief.headline }}">
+    <meta property="og:url" content="{{ public_url('shared_dive_brief', edition=brief.effective_date.isoformat()) }}">
+    <meta name="twitter:card" content="summary">
+{% endif %}
+{% endblock %}
 {% block content %}{% include "_dive_brief_reader.html" %}{% endblock %}

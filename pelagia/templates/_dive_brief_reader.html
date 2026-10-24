@@ -1,4 +1,5 @@
-<div class="brief-reader" data-brief-reader data-brief-edition="{{ brief.effective_date.isoformat() }}">
+<div class="brief-reader" data-brief-reader data-brief-edition="{{ brief.effective_date.isoformat() }}"{% if public_brief %} data-brief-public="true"{% endif %}>
+    {% if not public_brief %}
     <nav class="brief-toolbar" aria-label="Dive Brief navigation">
         <a class="brief-back" href="{{ url_for('home') }}" data-brief-close>
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14 6-6 6 6 6"></path></svg>
@@ -7,6 +8,7 @@
         <span class="brief-toolbar-title" aria-hidden="true">{{ brief.title }}</span>
         <span class="brief-toolbar-duration">{{ brief.read_minutes }} min read</span>
     </nav>
+    {% endif %}
     <div class="brief-scroll" data-brief-scroll tabindex="0" role="region" aria-label="The Dive Brief newsletter">
         <article class="brief-edition">
             <header class="brief-edition-head">
@@ -15,6 +17,14 @@
                 <div class="brief-edition-meta">
                     <time datetime="{{ brief.effective_date.isoformat() }}">{{ brief.date_label }}</time>
                     <span>{{ brief.read_minutes }} min read</span>
+                    <a class="brief-share" href="{{ public_url('shared_dive_brief', edition=brief.effective_date.isoformat()) }}" data-brief-share data-share-title="{{ brief.title }} · {{ brief.date_label }}" aria-label="Share {{ brief.title }} for {{ brief.date_label }}" title="Share brief">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V3m-4 4 4-4 4 4M8 11H5v10h14V11h-3"></path></svg>
+                    </a>
+                </div>
+                <p class="brief-share-status" role="status" aria-live="polite" data-brief-share-status></p>
+                <div class="brief-share-fallback" data-brief-share-fallback hidden>
+                    <label class="sr-only" for="briefShareLink">Public link to this Dive Brief</label>
+                    <input id="briefShareLink" type="url" readonly value="{{ public_url('shared_dive_brief', edition=brief.effective_date.isoformat()) }}" data-brief-share-link>
                 </div>
                 <p class="brief-edition-headline">{{ brief.headline }}</p>
             </header>
@@ -22,10 +32,12 @@
             <footer class="brief-endnote">
                 <span class="brief-endmark" aria-hidden="true">≈</span>
                 <p>You’re all caught up.<br><strong>See you below the surface.</strong></p>
+                {% if not public_brief %}
                 <a class="brief-read-more" href="{{ url_for('home') }}" data-brief-close>
                     <span class="brief-link-label">Back to feed</span>
                     <span class="brief-arrow" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12h14m-6-6 6 6-6 6"></path></svg></span>
                 </a>
+                {% endif %}
             </footer>
         </article>
     </div>

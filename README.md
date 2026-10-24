@@ -65,6 +65,8 @@ Editions live on disk as `the_dive_brief_YYYY-MM-DD.md`. `PELAGIA_DIVE_BRIEF_DIR
 
 The feed card starts collapsed, showing its icon, title and date. Tap or click the compact header (or use Enter/Space) to reveal the summary and Read the brief link. Returning from the full reader collapses it again, and every feed load starts from the compact state.
 
+The reader's share icon sits beside the edition date and reading time. It opens the device's native share sheet when supported over HTTPS, with a copy-link fallback. Shared links use `/share/brief/YYYY-MM-DD`, where the entire edition can be read and shared again without an account, with no Feed or app navigation controls. The link stays tied to that edition after the publication day changes. Public pages include link-preview metadata; missing, invalid and future editions return 404.
+
 The supplied September 4 example in `data/dive_briefs/` is a format reference only. `PELAGIA_DIVE_BRIEF_SAMPLE_PATH` is retired and ignored.
 
 ### Upload API

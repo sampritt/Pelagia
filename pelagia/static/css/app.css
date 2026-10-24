@@ -5667,8 +5667,16 @@ textarea { resize: vertical; }
 .brief-eyebrow { display: flex; align-items: center; gap: 9px; margin: 0 0 22px; color: #007e88; font-size: .65rem; font-weight: 700; letter-spacing: .17em; text-transform: uppercase; }
 .brief-eyebrow > span { width: 6px; height: 6px; border-radius: 50%; background: #007e88; }
 .brief-edition-head h1 { font-family: Georgia, "Times New Roman", serif; font-size: clamp(2.8rem, 7vw, 4.8rem); font-weight: 400; letter-spacing: -.065em; line-height: 1.08; }
-.brief-edition-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; margin-top: 20px; color: var(--muted-strong); font-size: .76rem; }
-.brief-edition-meta > span { padding-left: 18px; border-left: 1px solid var(--line-strong); }
+.brief-edition-meta { display: flex; align-items: center; gap: 18px; margin-top: 20px; color: var(--muted-strong); font-size: .76rem; }
+.brief-edition-meta > span { padding-left: 18px; border-left: 1px solid var(--line-strong); white-space: nowrap; }
+.brief-share { display: grid; place-items: center; flex-shrink: 0; width: 44px; height: 44px; margin-block: -10px; border-radius: 8px; color: #007e88; -webkit-tap-highlight-color: transparent; }
+.brief-share svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.brief-share:hover { background: #edf7f7; }
+.brief-share:focus-visible { outline: 2px solid #007e88; outline-offset: 2px; }
+.brief-share-status { margin: 10px 0 0; color: var(--muted-strong); font-size: .76rem; }
+.brief-share-status:empty { display: none; }
+.brief-share-fallback { margin-top: 10px; }
+.brief-share-fallback input { width: 100%; min-width: 0; font-size: .8rem; }
 .brief-edition-headline { margin: 30px 0 0; padding-top: 27px; border-top: 1px solid var(--line-strong); color: var(--ink); font-size: clamp(1.35rem, 3vw, 1.8rem); font-weight: 600; line-height: 1.48; letter-spacing: -.025em; overflow-wrap: anywhere; }
 .brief-prose { counter-reset: brief-story; overflow-wrap: anywhere; }
 .brief-story { padding: 29px 0 33px; border-top: 1px solid var(--line); }
@@ -5711,8 +5719,8 @@ textarea { resize: vertical; }
     .brief-card-masthead h2 { font-size: 1.4rem; }
     .brief-card-headline { margin-top: 18px; font-size: 1.13rem; }
     .brief-edition { width: calc(100% - 44px); padding-top: 32px; }
-    .brief-edition-meta { gap: 7px 12px; font-size: .7rem; }
-    .brief-edition-meta > span { padding-left: 12px; }
+    .brief-edition-meta { gap: 8px; font-size: .7rem; }
+    .brief-edition-meta > span { padding-left: 8px; }
     .brief-edition-headline { margin-top: 25px; padding-top: 23px; }
     .brief-prose p, .brief-prose li { font-size: 1rem; line-height: 1.8; }
 }

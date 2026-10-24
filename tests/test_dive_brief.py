@@ -114,6 +114,54 @@ class DiveBriefTest(unittest.TestCase):
         for element in ("&lt;script&gt;", "<strong>Bold</strong>", "<em>italic</em>", "<code>code</code>", "<blockquote>", "<ul>", "<table>"):
             self.assertIn(element, html)
 
+    def test_public_share_renders_the_complete_edition_without_login(self):
+        self.write_edition(date(2026, 10, 22), "## SCIENCE\n\n### A healthy ocean\n\nThe complete public story.\n\n[Read more](https://example.com/story)")
+        self.app.config["PUBLIC_BASE_URL"] = "https://pelagia.example"
+        guest = self.app.test_client()
+        response = guest.get("/share/brief/2026-10-22")
+        self.assertEqual(response.status_code, 200)
+        html = response.get_data(as_text=True)
+        self.assertIn("The complete public story.", html)
+        self.assertIn('href="https://example.com/story"', html)
+        self.assertIn('data-brief-public="true"', html)
+        self.assertNotIn("data-brief-close", html)
+        self.assertNotIn('class="brief-toolbar"', html)
+        self.assertNotIn("Back to feed", html)
+        self.assertNotIn("Explore Pelagia", html)
+        self.assertIn('property="og:url" content="https://pelagia.example/share/brief/2026-10-22"', html)
+        self.assertIn('property="og:title" content="The Dive Brief · Thursday, October 22, 2026"', html)
+        self.assertEqual(response.headers["Cache-Control"], "private, no-store")
+        self.assertEqual(response.headers["X-Robots-Tag"], "noindex, nofollow")
+        self.assertEqual(guest.get("/brief/2026-10-22").status_code, 302)
+        signed_in = self.client.get("/share/brief/2026-10-22")
+        self.assertEqual(signed_in.status_code, 200)
+        for page in (response, signed_in):
+            self.assertNotIn(b'href="/home"', page.data)
+            self.assertNotIn(b'class="mobile-nav"', page.data)
+            self.assertNotIn(b'class="topbar ', page.data)
+        self.edition_clock.return_value = date(2026, 10, 23)
+        self.assertIn(b"The complete public story.", guest.get("/share/brief/2026-10-22").data)
+
+    def test_reader_share_uses_its_own_edition_and_public_origin(self):
+        self.write_edition(date(2026, 10, 21))
+        self.write_edition(date(2026, 10, 22))
+        self.app.config["PUBLIC_BASE_URL"] = "https://pelagia.example"
+        for path, edition in (("/home", "2026-10-22"), ("/brief/2026-10-21", "2026-10-21")):
+            html = self.client.get(path).get_data(as_text=True)
+            meta = html.split('<div class="brief-edition-meta">', 1)[1].split("</div>", 1)[0]
+            self.assertIn(f'href="https://pelagia.example/share/brief/{edition}"', meta)
+            self.assertIn("data-brief-share", meta)
+            self.assertIn('aria-label="Share The Dive Brief for ', meta)
+
+    def test_public_links_reject_missing_invalid_future_and_corrupt_editions(self):
+        self.write_edition(date(2026, 10, 23))
+        corrupt = self.write_edition(date(2026, 10, 21))
+        corrupt.write_text("# Missing metadata")
+        guest = self.app.test_client()
+        for edition in ("2026-10-22", "2026-10-23", "2026-10-21", "bad-date", "2026-02-30", "20261021", ".."):
+            with self.subTest(edition=edition):
+                self.assertEqual(guest.get(f"/share/brief/{edition}").status_code, 404)
+
     def test_invalid_or_unreadable_editions_do_not_break_feed(self):
         path = self.write_edition(date(2026, 10, 22))
         for content in ("# Missing metadata", path.read_text().replace("October 22", "October 20"), "\xff"):
