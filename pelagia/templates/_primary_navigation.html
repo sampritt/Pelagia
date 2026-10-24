@@ -1,0 +1,13 @@
+{% from '_action_icons.html' import action_icon %}
+{% macro primary_navigation(mobile=false) -%}
+    {% set endpoint = request.endpoint %}
+    {% set selected = 'feed' if endpoint in ['home', 'welcome', 'dive_detail'] else 'explore' if endpoint in ['explore.index', 'dive_site_profile', 'dive_center_profile'] else 'log' if endpoint in ['log_dive', 'edit_dive'] else 'profile' if endpoint in ['profile', 'user_profile', 'profile_settings', 'delete_account'] else '' %}
+    <nav class="{{ 'mobile-nav' if mobile else 'desktop-nav' }}" aria-label="{{ 'Primary mobile' if mobile else 'Primary' }}">
+        {% for section, destination, label, icon in [('feed', 'home', 'Feed', 'home'), ('explore', 'explore.index', 'Explore', 'compass'), ('log', 'log_dive', 'Log dive', 'plus'), ('profile', 'profile', 'Profile', 'profile')] %}
+        <a class="{{ 'active' if selected == section else '' }}" href="{{ url_for(destination) }}"{% if selected == section %} aria-current="{{ 'page' if endpoint == destination or endpoint == 'welcome' else 'location' }}"{% endif %}>
+            {{ action_icon(icon) }}
+            <span>{{ label }}</span>
+        </a>
+        {% endfor %}
+    </nav>
+{%- endmacro %}
