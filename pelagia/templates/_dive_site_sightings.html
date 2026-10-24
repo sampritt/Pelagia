@@ -1,0 +1,17 @@
+<div class="site-sightings-panel">
+    <h2>SIGHTINGS</h2>
+    {% if sightings %}
+        <div class="species-row site-sightings-tags">
+            {% for sighting in sightings %}
+                <span>
+                    {{ sighting.common_name }}
+                    {% if sighting.dive_count > 1 %}
+                        <strong>{{ sighting.dive_count }}</strong>
+                    {% endif %}
+                </span>
+            {% endfor %}
+        </div>
+    {% else %}
+        <p class="muted">No marine species observations yet.</p>
+    {% endif %}
+</div>

@@ -1,0 +1,42 @@
+{% set has_coords = site.latitude is not none and site.longitude is not none %}
+<div class="site-profile-header" data-site-sharing>
+    <div class="mini-map site-map-banner {{ 'map-pending' if not has_coords else '' }}" role="region" aria-label="Map of {{ site.name }}" {% if has_coords %}data-static-map data-map-lat="{{ site.latitude }}" data-map-lng="{{ site.longitude }}" data-map-zoom="11"{% endif %}>
+        {% if has_coords %}<span class="map-pin"></span>{% endif %}
+        <span class="coordinate-label">
+            {% if has_coords %}{{ "%.5f"|format(site.latitude) }}, {{ "%.5f"|format(site.longitude) }}{% else %}Coordinates pending{% endif %}
+        </span>
+    </div>
+    <div class="entity-profile-header site-profile-identity">
+        <div class="entity-profile-copy">
+            <h1>{{ site.name }}</h1>
+            <p class="profile-meta">{{ site.country_or_area or "Location pending" }}</p>
+            {% if site_description is none %}
+                {% if not public_preview %}
+                <div class="site-description" data-site-description data-description-url="{{ url_for('api_dive_site_description', site_id=site.id) }}" aria-live="polite" hidden></div>
+                {% endif %}
+            {% elif site_description.description is not none %}
+                <p class="site-description">{% for fragment in site_description.fragments %}{% if fragment.url is defined %}<a class="site-description-source" href="{{ fragment.url }}" title="{{ fragment.title }}" aria-label="Source {{ fragment.text }}: {{ fragment.title }}" target="_blank" rel="noopener noreferrer">{{ fragment.text }}</a>{% else %}{{ fragment.text }}{% endif %}{% endfor %}</p>
+            {% endif %}
+        </div>
+        <div class="profile-actions">
+            {% if public_preview %}
+            <span class="chip-button site-public-likes" aria-label="{{ site.like_count }} likes">
+                <span class="heart-icon" aria-hidden="true"></span><span>{{ site.like_count }}</span>
+            </span>
+            {% else %}
+            <button class="chip-button like-button {{ 'liked' if site.liked_by_me else '' }}" type="button" data-site-like data-site-id="{{ site.id }}">
+                <span class="heart-icon"></span>
+                <span data-site-like-count>{{ site.like_count }}</span>
+            </button>
+            {% endif %}
+            <a class="chip-button share-button site-share-button" href="{{ public_url('shared_dive_site', site_id=site.id) }}" data-site-share data-share-title="{{ site.name }} · Dive site on Pelagia" aria-label="Share dive site {{ site.name }}" title="Share dive site">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V3m-4 4 4-4 4 4M6 12H4v9h16v-9h-2"></path></svg>
+            </a>
+        </div>
+        <p class="site-share-status" role="status" aria-live="polite" data-site-share-status></p>
+        <div class="site-share-fallback" data-site-share-fallback hidden>
+            <label class="sr-only" for="siteShareLink">Public dive site link</label>
+            <input id="siteShareLink" type="url" readonly value="{{ public_url('shared_dive_site', site_id=site.id) }}" data-site-share-link>
+        </div>
+    </div>
+</div>

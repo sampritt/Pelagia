@@ -2,33 +2,8 @@
 {% block title %}{{ site.name }} - Pelagia{% endblock %}
 
 {% block content %}
-{% set has_coords = site.latitude is not none and site.longitude is not none %}
 <section class="profile-layout">
-    <div class="site-profile-header">
-    <div class="mini-map site-map-banner {{ 'map-pending' if not has_coords else '' }}" role="region" aria-label="Map of {{ site.name }}" {% if has_coords %}data-static-map data-map-lat="{{ site.latitude }}" data-map-lng="{{ site.longitude }}" data-map-zoom="11"{% endif %}>
-        {% if has_coords %}<span class="map-pin"></span>{% endif %}
-        <span class="coordinate-label">
-            {% if has_coords %}{{ "%.5f"|format(site.latitude) }}, {{ "%.5f"|format(site.longitude) }}{% else %}Coordinates pending{% endif %}
-        </span>
-    </div>
-    <div class="entity-profile-header site-profile-identity">
-        <div class="entity-profile-copy">
-            <h1>{{ site.name }}</h1>
-            <p class="profile-meta">{{ site.country_or_area or "Location pending" }}</p>
-            {% if site_description is none %}
-                <div class="site-description" data-site-description data-description-url="{{ url_for('api_dive_site_description', site_id=site.id) }}" aria-live="polite" hidden></div>
-            {% elif site_description.description is not none %}
-                <p class="site-description">{% for fragment in site_description.fragments %}{% if fragment.url is defined %}<a class="site-description-source" href="{{ fragment.url }}" title="{{ fragment.title }}" aria-label="Source {{ fragment.text }}: {{ fragment.title }}" target="_blank" rel="noopener noreferrer">{{ fragment.text }}</a>{% else %}{{ fragment.text }}{% endif %}{% endfor %}</p>
-            {% endif %}
-        </div>
-        <div class="profile-actions">
-            <button class="chip-button like-button {{ 'liked' if site.liked_by_me else '' }}" type="button" data-site-like data-site-id="{{ site.id }}">
-                <span class="heart-icon"></span>
-                <span data-site-like-count>{{ site.like_count }}</span>
-            </button>
-        </div>
-    </div>
-    </div>
+    {% include "_dive_site_headline.html" %}
 
     <div class="site-conditions-panel">
         <div class="site-conditions-grid">
@@ -104,23 +79,7 @@
         </div>
     </div>
 
-    <div class="site-sightings-panel">
-        <h2>SIGHTINGS</h2>
-        {% if sightings %}
-            <div class="species-row site-sightings-tags">
-                {% for sighting in sightings %}
-                    <span>
-                        {{ sighting.common_name }}
-                        {% if sighting.dive_count > 1 %}
-                            <strong>{{ sighting.dive_count }}</strong>
-                        {% endif %}
-                    </span>
-                {% endfor %}
-            </div>
-        {% else %}
-            <p class="muted">No marine species observations yet.</p>
-        {% endif %}
-    </div>
+    {% include "_dive_site_sightings.html" %}
 
     <div class="comments-block" data-site-comments>
         {% if site.comments %}

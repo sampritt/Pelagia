@@ -107,6 +107,12 @@ class GoogleAuthTest(unittest.TestCase):
         params = parse_qs(urlsplit(response.location).query)
         self.assertEqual(self.callback(params).location, "/dive/42")
 
+    def test_shared_site_destination_survives_google_signup(self):
+        response = self.client.get("/auth/google/login?next=/dive-sites/42")
+        params = parse_qs(urlsplit(response.location).query)
+        self.assertEqual(self.callback(params).location, "/auth/google/signup")
+        self.assertEqual(self.complete_signup("site-diver").location, "/dive-sites/42")
+
     def start(self):
         response = self.client.get("/auth/google/login")
         self.assertIsNone(self.client.get_cookie("session").expires)

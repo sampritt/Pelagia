@@ -5230,7 +5230,15 @@ body:has(.pwa-install-dialog[open]) { overflow: hidden; }
 .site-map-banner { height: 260px; min-height: 260px; margin: 0; border: 0; border-radius: 0; }
 .site-map-banner::after { display: none; }
 .site-map-banner.map-pending { background: var(--accent-soft); }
-.site-profile-identity { border: 0; border-radius: 0; }
+.site-profile-identity { flex-direction: column; align-items: stretch; gap: 18px; border: 0; border-radius: 0; }
+.site-share-button { justify-content: center; width: 44px; min-width: 44px; height: 44px; padding: 0; }
+.site-public-likes { cursor: default; }
+.site-share-status { margin: 0; color: var(--muted-strong); font-size: .8rem; }
+.site-share-status:empty { display: none; }
+.site-share-fallback { width: 100%; }
+.site-share-fallback input { width: 100%; min-width: 0; }
+.shared-site { display: grid; gap: 24px; }
+.shared-site-body .shared-footer { margin-top: 28px; }
 
 @media (max-width: 640px) {
     .diver-profile { gap: 24px; }

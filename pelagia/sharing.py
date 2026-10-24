@@ -39,6 +39,17 @@ def fetch_public_dive(dive_id):
     return dive
 
 
+def fetch_public_dive_site(site_id):
+    row = get_db().execute(
+        """
+        SELECT ds.id, ds.name, ds.country_or_area, ds.latitude, ds.longitude,
+               (SELECT COUNT(*) FROM dive_site_likes WHERE dive_site_id = ds.id) AS like_count
+        FROM dive_sites ds WHERE ds.id = ?
+        """, (site_id,),
+    ).fetchone()
+    return dict(row) if row is not None else None
+
+
 def share_description(dive):
     location = f" in {dive['country_or_area']}" if dive["country_or_area"] else ""
     average_depth = dive.get("average_depth_m")

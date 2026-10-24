@@ -37,7 +37,7 @@ from . import google_auth, email_auth
 from . import pwa
 from . import dive_brief
 from . import site_descriptions
-from .sharing import fetch_public_dive, render_share_image, render_transparent_share_image, share_description
+from .sharing import fetch_public_dive, fetch_public_dive_site, render_share_image, render_transparent_share_image, share_description
 
 
 EXPOSURES = ("swimsuit", "shorty", "2mm", "3mm", "4mm", "5mm", "6mm", "7mm", "dry suit")
@@ -731,6 +731,30 @@ def register_routes(app):
             current_strength_labels=CURRENT_STRENGTH_LABELS,
             current_strength_index_labels={index: CURRENT_STRENGTH_LABELS[value] for value, index in CURRENT_STRENGTH_INDEXES.items()},
         )
+
+    @app.get("/share/dive-site/<int:site_id>")
+    def shared_dive_site(site_id):
+        site = fetch_public_dive_site(site_id)
+        if site is None:
+            abort(404)
+        if current_user():
+            response = redirect(url_for("dive_site_profile", site_id=site_id))
+        else:
+            site_description = site_descriptions.read_cache(site_id)
+            description = (site_description or {}).get("description") or (
+                f"Explore {site['name']}" + (f" in {site['country_or_area']}" if site['country_or_area'] else "")
+                + ". See marine sightings and discover this dive site on Pelagia."
+            )
+            response = app.make_response(render_template(
+                "shared_dive_site.html", site=site, site_description=site_description,
+                sightings=dive_site_species_sightings(site_id), description=description,
+                share_url=public_url("shared_dive_site", site_id=site_id),
+                site_url=url_for("dive_site_profile", site_id=site_id), public_preview=True,
+            ))
+        response.headers["Cache-Control"] = "private, no-store"
+        response.headers["X-Robots-Tag"] = "noindex, nofollow"
+        response.vary.add("Cookie")
+        return response
 
     @app.route("/api/dive-centers/<int:center_id>/like", methods=("POST",))
     @login_required

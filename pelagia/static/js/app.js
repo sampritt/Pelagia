@@ -1563,6 +1563,7 @@ document.addEventListener("DOMContentLoaded", () => {
     initInteractionFocus();
     initDiveBrief();
     initDiveBriefSharing();
+    initDiveSiteSharing();
     initDiveSharing();
     initDiveInteractions();
     initGlobalSearch();
@@ -1802,6 +1803,27 @@ function initDiveBriefSharing() {
     const status = reader.querySelector("[data-brief-share-status]");
     const fallback = reader.querySelector("[data-brief-share-fallback]");
     const link = reader.querySelector("[data-brief-share-link]");
+    initLinkSharing({share, status, fallback, link}, {
+        shared: "Brief shared.", copied: "Link copied. Anyone can read this brief.",
+        manual: "Copy this link to share the brief. Anyone can read it.",
+    });
+}
+
+function initDiveSiteSharing() {
+    const host = document.querySelector("[data-site-sharing]");
+    const share = host?.querySelector("[data-site-share]");
+    if (!share) return;
+    initLinkSharing({
+        share, status: host.querySelector("[data-site-share-status]"),
+        fallback: host.querySelector("[data-site-share-fallback]"),
+        link: host.querySelector("[data-site-share-link]"),
+    }, {
+        shared: "Dive site shared.", copied: "Link copied. Ready to share this dive site.",
+        manual: "Copy this link to share the dive site.",
+    });
+}
+
+function initLinkSharing({share, status, fallback, link}, messages) {
     let sharing = false;
     share.addEventListener("click", async (event) => {
         if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button > 0) return;
@@ -1815,7 +1837,7 @@ function initDiveBriefSharing() {
             if (window.isSecureContext && typeof navigator.share === "function") {
                 try {
                     await navigator.share({ title: share.dataset.shareTitle, url: share.href });
-                    status.textContent = "Brief shared.";
+                    status.textContent = messages.shared;
                     return;
                 } catch (error) {
                     if (error.name === "AbortError") return;
@@ -1824,13 +1846,13 @@ function initDiveBriefSharing() {
             try {
                 if (!navigator.clipboard?.writeText) throw new Error("Clipboard unavailable");
                 await navigator.clipboard.writeText(share.href);
-                status.textContent = "Link copied. Anyone can read this brief.";
+                status.textContent = messages.copied;
             } catch (error) {
                 fallback.hidden = false;
                 link.focus();
                 link.select();
                 link.setSelectionRange(0, link.value.length);
-                status.textContent = "Copy this link to share the brief. Anyone can read it.";
+                status.textContent = messages.manual;
             }
         } finally {
             sharing = false;
