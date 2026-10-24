@@ -8,6 +8,7 @@ function setup(standalone = false, options = {}) {
     const element = () => ({
         handlers: {}, attributes: {}, style: {},
         addEventListener(name, callback) { this.handlers[name] = callback; },
+        dispatchEvent(event) { this.handlers[event.type]?.(event); return !event.defaultPrevented; },
         setAttribute(name, value) { this.attributes[name] = value; },
         focus() { this.focused = true; },
     });
@@ -133,22 +134,29 @@ test("brief opens immediately and browser Back restores focus and scroll lock", 
     assert.equal(state.trigger.attributes["aria-expanded"], "true");
 });
 
-test("left and right swipes return to feed while vertical, cancelled, and link gestures stay in reader", () => {
-    for (const dx of [-120, 120]) {
-        const state = setup(); state.open();
-        state.reader.handlers.touchstart(state.touch(180, 400));
-        state.reader.handlers.touchend(state.end(180 + dx, 405));
-        assert.equal(state.backCount(), 1);
-        assert.equal(state.dialog.open, false);
-    }
-    for (const gesture of ["vertical", "cancel", "link", "multitouch", "short"]) {
-        const state = setup(); state.open();
-        state.reader.handlers.touchstart(state.touch(180, 400, gesture === "link"));
-        if (gesture === "vertical") state.reader.handlers.touchmove(state.touch(190, 500));
-        if (gesture === "cancel") state.reader.handlers.touchcancel();
-        if (gesture === "multitouch") state.reader.handlers.touchmove({touches: [{clientX:180,clientY:400}, {}]});
-        state.reader.handlers.touchend(state.end(gesture === "short" ? 200 : 310, 405));
-        assert.equal(state.dialog.open, true, gesture);
+test("horizontal touch gestures leave modal and standalone readers open without consuming events", () => {
+    for (const standalone of [false, true]) {
+        for (const dx of [-130, 130]) {
+            const state = setup(standalone);
+            if (!standalone) state.open();
+            for (const [type, event] of [
+                ["touchstart", state.touch(190, 400)],
+                ["touchmove", state.touch(190 + dx / 2, 401)],
+                ["touchend", state.end(190 + dx, 402)],
+            ]) {
+                event.type = type;
+                state.reader.dispatchEvent(event);
+                assert.equal(event.prevented, undefined);
+            }
+            assert.equal(state.backCount(), 0);
+            assert.equal(state.window.location.destination, undefined);
+            if (!standalone) assert.equal(state.dialog.open, true);
+            const click = state.click();
+            click.type = "click";
+            state.document.dispatchEvent(click);
+            assert.equal(click.prevented, undefined);
+            assert.equal(click.stopped, undefined);
+        }
     }
 });
 
@@ -170,45 +178,24 @@ test("standalone editions return to home", () => {
     const state = setup(true);
     state.reader.handlers.keydown({key:"Escape"});
     assert.equal(state.window.location.destination, "/home");
-    state.reader.handlers.touchstart(state.touch(180, 400));
-    state.reader.handlers.touchend(state.end(50, 405));
-    assert.equal(state.window.location.destination, "/home");
 });
 
-test("trackpad swipes close in either direction and vertical scroll, zoom and content scrolling remain native", () => {
-    const wheel = (deltaX, deltaY = 0, extra = {}) => ({
-        deltaX, deltaY, deltaMode: 0, target: {closest: () => false},
-        preventDefault() { this.prevented = true; }, ...extra,
-    });
-    for (const direction of [-1, 1]) {
-        const state = setup(); state.open();
-        for (let i = 0; i < 3; i++) state.reader.handlers.wheel(wheel(direction * 45, 2));
-        assert.equal(state.backCount(), 1);
-        assert.equal(state.dialog.open, false);
+test("horizontal trackpad scrolling leaves readers open and preserves native wheel behavior", () => {
+    for (const standalone of [false, true]) {
+        for (const direction of [-1, 1]) {
+            const state = setup(standalone);
+            if (!standalone) state.open();
+            for (let i = 0; i < 4; i++) {
+                const event = {type: "wheel", deltaX: direction * 60, deltaY: 0, deltaMode: 0,
+                    target: {closest: () => false}, preventDefault() { this.prevented = true; }};
+                state.reader.dispatchEvent(event);
+                assert.equal(event.prevented, undefined);
+            }
+            assert.equal(state.backCount(), 0);
+            assert.equal(state.window.location.destination, undefined);
+            if (!standalone) assert.equal(state.dialog.open, true);
+        }
     }
-    for (const event of [wheel(2, 100), wheel(50, 40), wheel(150, 0, {ctrlKey:true}), wheel(150, 0, {target:{closest:()=>true}})]) {
-        const state = setup(); state.open();
-        state.reader.handlers.wheel(event);
-        assert.equal(event.prevented, undefined);
-        assert.equal(state.dialog.open, true);
-    }
-    const state = setup(); state.open();
-    state.reader.handlers.wheel(wheel(80));
-    state.reader.handlers.wheel(wheel(-80));
-    assert.equal(state.dialog.open, true, "opposite gestures do not combine");
-    state.reader.handlers.wheel(wheel(-4, 0, {deltaMode:1}));
-    assert.equal(state.dialog.open, false, "line-based wheel deltas are normalized");
-});
-
-test("selecting story text never dismisses the reader on a horizontal gesture", () => {
-    const state = setup(); state.open();
-    state.window.getSelection = () => ({isCollapsed:false});
-    state.reader.handlers.touchstart(state.touch(180, 400));
-    state.reader.handlers.touchend(state.end(50, 405));
-    const event = {deltaX:150, deltaY:0, target:{closest:()=>false}, preventDefault() { this.prevented = true; }};
-    state.reader.handlers.wheel(event);
-    assert.equal(event.prevented, undefined);
-    assert.equal(state.dialog.open, true);
 });
 
 test("exiting the reader collapses the card; expanding the header restores the preview without reopening the reader", () => {
@@ -257,49 +244,4 @@ test("browser Back after refreshing a modal reader fetches the actual feed docum
     standalone.window.handlers.popstate();
     assert.equal(standalone.window.location.replaced, "/home");
     assert.equal(setup(false, {storage:standalone.storage}).disclosure.open, false);
-});
-
-test("dismissal swipes cancel compatibility clicks before they can activate a logged dive", () => {
-    for (const dx of [-130, 130]) {
-        const state = setup(); state.open();
-        state.reader.handlers.touchstart(state.touch(200, 500));
-        const end = state.end(200 + dx, 500);
-        state.reader.handlers.touchend(end);
-        assert.equal(end.prevented, true);
-        assert.equal(state.dialog.open, false);
-        const compatibilityClick = state.click();
-        state.document.handlers.click(compatibilityClick);
-        assert.equal(compatibilityClick.prevented, true);
-        assert.equal(compatibilityClick.stopped, true);
-        const laterClick = state.click();
-        state.document.handlers.click(laterClick);
-        assert.equal(laterClick.prevented, undefined, "the guard consumes only the leftover click");
-    }
-});
-
-test("fresh touch, mouse and keyboard actions remain usable immediately after a swipe", () => {
-    for (const kind of ["touch", "mouse", "keyboard"]) {
-        const state = setup(); state.open();
-        state.reader.handlers.touchstart(state.touch(200, 500));
-        state.reader.handlers.touchend(state.end(70, 500));
-        if (kind === "touch") state.document.handlers.touchstart();
-        if (kind === "mouse") state.document.handlers.pointerdown({pointerType:"mouse"});
-        const click = state.click({detail: kind === "keyboard" ? 0 : 1});
-        state.document.handlers.click(click);
-        assert.equal(click.prevented, undefined, kind);
-    }
-});
-
-test("vertical gestures and taps never cancel or suppress subsequent feed clicks", () => {
-    for (const [dx, dy] of [[3, -150], [2, 1], [90, 80]]) {
-        const state = setup(); state.open();
-        state.reader.handlers.touchstart(state.touch(200, 500));
-        state.reader.handlers.touchmove(state.touch(200 + dx, 500 + dy));
-        const end = state.end(200 + dx, 500 + dy);
-        state.reader.handlers.touchend(end);
-        assert.equal(end.prevented, undefined);
-        const click = state.click();
-        state.document.handlers.click(click);
-        assert.equal(click.prevented, undefined);
-    }
 });

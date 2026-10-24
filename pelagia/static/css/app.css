@@ -5650,7 +5650,7 @@ textarea { resize: vertical; }
 .brief-back:active { opacity: .6; transform: translateX(-2px); }
 .brief-toolbar-title { color: var(--ink); font-family: Georgia, "Times New Roman", serif; font-size: 1rem; letter-spacing: -.025em; }
 .brief-toolbar-duration { justify-self: end; color: var(--muted-strong); font-size: .7rem; }
-.brief-scroll { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y pinch-zoom; }
+.brief-scroll { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
 .brief-scroll:focus-visible { outline: 2px solid #007e88; outline-offset: -4px; }
 .brief-edition { width: min(100% - 64px, 660px); margin: 0 auto; padding: 48px 0 calc(64px + env(safe-area-inset-bottom)); }
 .brief-edition-head h1:focus { outline: none; }

@@ -1618,25 +1618,7 @@ function initDiveBrief() {
     let feedUrl;
     let feedScroll;
     let previousBodyTop;
-    let swipeStart;
-    let wheelDistance = 0;
-    let wheelAt = 0;
     let closing = false;
-    let swipeClickUntil = 0;
-    // Some touch browsers deliver a compatibility click after touchend. Once
-    // the reader closes, its target can be a feed card exposed underneath.
-    document.addEventListener("click", (event) => {
-        if (Date.now() >= swipeClickUntil || event.detail === 0) return;
-        swipeClickUntil = 0;
-        event.preventDefault();
-        event.stopImmediatePropagation();
-    }, true);
-    // A new physical gesture is intentional and must remain immediately usable.
-    document.addEventListener("touchstart", () => { swipeClickUntil = 0; }, { capture: true, passive: true });
-    document.addEventListener("pointerdown", (event) => {
-        if (event.pointerType === "mouse" && !event.sourceCapabilities?.firesTouchEvents) swipeClickUntil = 0;
-    }, true);
-    const hasSelection = () => window.getSelection?.()?.isCollapsed === false;
     const lockFeed = () => {
         if (feedScroll) return;
         feedScroll = { x: window.scrollX, y: window.scrollY };
@@ -1669,8 +1651,6 @@ function initDiveBrief() {
         trigger?.setAttribute("aria-expanded", "false");
         (summary || returnFocus)?.focus({ preventScroll: true });
         closing = false;
-        swipeStart = null;
-        wheelDistance = 0;
     };
     const close = () => {
         if (closing) return;
@@ -1750,52 +1730,6 @@ function initDiveBrief() {
     reader.addEventListener("keydown", (event) => {
         if (event.key === "Escape" && !dialog) close();
     });
-    // Track touch gestures without capturing pointers, so links and vertical
-    // reading keep their native behavior. Diagonal/multitouch gestures cancel.
-    reader.addEventListener("touchstart", (event) => {
-        swipeStart = null;
-        if (event.touches.length !== 1 || hasSelection() || event.target.closest("a, button, pre, table")) return;
-        const touch = event.touches[0];
-        swipeStart = { x: touch.clientX, y: touch.clientY, at: Date.now() };
-    }, { passive: true });
-    reader.addEventListener("touchmove", (event) => {
-        if (!swipeStart) return;
-        if (event.touches.length !== 1 || Math.abs(event.touches[0].clientY - swipeStart.y) > 45) swipeStart = null;
-    }, { passive: true });
-    reader.addEventListener("touchend", (event) => {
-        const start = swipeStart;
-        swipeStart = null;
-        if (!start || hasSelection() || event.touches.length || !event.changedTouches.length) return;
-        const touch = event.changedTouches[0];
-        const dx = touch.clientX - start.x;
-        const dy = touch.clientY - start.y;
-        if (Math.abs(dx) >= 80 && Math.abs(dx) > Math.abs(dy) * 2 && Date.now() - start.at < 1000) {
-            // Cancel only a consumed dismissal swipe, preserving ordinary taps
-            // and vertical reading. The capture guard covers delayed clicks too.
-            event.preventDefault();
-            swipeClickUntil = Date.now() + 700;
-            close();
-        }
-    }, { passive: false });
-    reader.addEventListener("touchcancel", () => { swipeStart = null; }, { passive: true });
-    // Trackpad swipes dismiss in either direction; ordinary reading, zoom and
-    // horizontal code/table scrolling retain their native behavior.
-    reader.addEventListener("wheel", (event) => {
-        if (event.ctrlKey || hasSelection() || event.target.closest("a, button, pre, table") ||
-            Math.abs(event.deltaX) <= Math.abs(event.deltaY) * 2) {
-            wheelDistance = 0;
-            return;
-        }
-        if (dialog && !dialog.open) return;
-        event.preventDefault();
-        const now = Date.now();
-        const scale = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? scroller.clientWidth : 1;
-        const distance = event.deltaX * scale;
-        if (now - wheelAt > 250 || Math.sign(distance) !== Math.sign(wheelDistance)) wheelDistance = 0;
-        wheelAt = now;
-        wheelDistance += distance;
-        if (Math.abs(wheelDistance) >= 120) close();
-    }, { passive: false });
 }
 
 function initProfileHistory() {
