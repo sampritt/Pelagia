@@ -10,6 +10,7 @@
     <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='img/apple-touch-icon.png') }}">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-title" content="Pelagia">
+    {% include '_pwa_startup.html' %}
     <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css', v=pwa_asset_version) }}">
     <script defer src="{{ url_for('static', filename='js/loading.js', v=pwa_asset_version) }}"></script>
     <script defer src="{{ url_for('static', filename='js/app.js', v=pwa_asset_version) }}"></script>

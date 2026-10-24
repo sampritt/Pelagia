@@ -12,15 +12,22 @@ def init_app(app):
     templates = Path(app.root_path) / "templates"
     assets = ("css/app.css", "js/app.js", "js/pwa.js", "js/loading.js", "js/welcome.js")
     icons = ("pelagia-mark.png", "favicon.png", "icon-192.png", "icon-512.png", "icon-maskable-512.png", "apple-touch-icon.png")
+    startup_index = static / "img" / "startup" / "screens.json"
+    startup_screens = json.loads(startup_index.read_text())
+    app.jinja_env.globals["pwa_startup_screens"] = startup_screens
     worker = (static / "service-worker.js").read_text()
     digest = hashlib.sha256(worker.encode())
     digest.update(Path(__file__).read_bytes())
     for path in [*(static / asset for asset in assets),
                  *(static / "img" / icon for icon in icons),
-                 static / "manifest.webmanifest", templates / "offline.html"]:
+                 static / "manifest.webmanifest", templates / "offline.html",
+                 templates / "_pwa_startup.html", startup_index,
+                 *(static / screen["filename"] for screen in startup_screens)]:
         digest.update(path.read_bytes())
     version = digest.hexdigest()[:16]
     app.jinja_env.globals["pwa_asset_version"] = version
+    # iOS loads its matching launch image itself; don't make every device
+    # download all phone/tablet sizes into the service worker's asset cache.
     precache = ["/offline.html", "/manifest.webmanifest",
                 *(f"/static/{asset}?v={version}" for asset in assets),
                 *(f"/static/img/{icon}" for icon in icons)]

@@ -140,6 +140,8 @@ The service worker caches only explicitly listed public assets and a generic off
 
 Asset cache versions are derived automatically from deployed files. An update notice offers Reload to update; an open form is never automatically reloaded. Users should save their changes before accepting an update.
 
+Installed launch screens use the Pelagia logo on the manifest's dark blue background. Android generates its screen from the existing manifest; iPhone/iPad use bundled `apple-touch-startup-image` PNGs for matching screen sizes in portrait and landscape. An inline dark background also prevents a white flash before CSS loads. The OS controls how long the launch screen stays visible; no artificial loading delay is added. Startup images are public static assets, fetched by iOS as needed rather than all precached by the service worker. To regenerate them after changing the app icon, run `.venv312/bin/python scripts/generate_pwa_startup_images.py` and commit the generated `pelagia/static/img/startup/` files. After deployment, open the installed app online, fully close it, then relaunch to check the startup screen on a real device. iOS may retain an older launch image until the Home Screen app is re-added.
+
 ### Deployment configuration
 
 1. Serve the app at a stable **HTTPS origin**. Render's HTTPS URL or an HTTPS custom domain works. Phone testing also needs HTTPS; plain HTTP on a computer's LAN IP is not equivalent to localhost on the phone.

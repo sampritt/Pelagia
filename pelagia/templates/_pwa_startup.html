@@ -1,0 +1,6 @@
+{# Paint the launch background even before the external stylesheet arrives. #}
+<meta name="color-scheme" content="dark">
+<style>html { background: #031e33; color-scheme: dark; }</style>
+{% for screen in pwa_startup_screens %}
+<link rel="apple-touch-startup-image" href="{{ url_for('static', filename=screen.filename) }}" media="{{ screen.media }}">
+{% endfor %}
