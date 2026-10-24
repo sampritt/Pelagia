@@ -166,6 +166,10 @@ Behavior checks run with `node --test tests/test_loading.cjs` alongside the exis
 
 Dive site pages have a small share icon beside the like button beneath the description. It opens native sharing over HTTPS (or localhost), with a copy-link fallback. Public links use `/share/dive-site/<id>` and show the map, coordinates, name, location, cached description, like count and aggregate marine sightings. Conditions, charts, individual logged dives and comments are not loaded for guests. A blurred placeholder offers a free account to access live dive site conditions and the dive log; signup and login return to that site. Signed-in visitors to a shared link open the full site. Guest previews never trigger paid description generation.
 
+## Sharing Dive Centers
+
+Dive centers have a share icon beside the like button, with native sharing and a copy-link fallback. Public links at `/share/dive-center/<id>` show the center's name, location, address, website and like count. The logged dive feed and community comments are never loaded for guests; a blurred placeholder offers a free Pelagia account to access them. Public previews open directly on the center, without a top banner. Login and signup return to that center, and signed-in visitors to shared links open its full page.
+
 ## Sharing Logged Dives
 
 The log/edit form stores max depth and an optional average depth in meters. Both accept decimals and display whole values without `.0`. Average depth starts unset; when supplied it is used for SAC calculation, otherwise SAC uses max depth. Clearing average depth restores that fallback. Logged cards and dive headlines show max depth and duration. Average depth appears in the logged dive’s detailed metrics and full share image when available. Existing dives keep an unset average depth and their saved SAC rate.

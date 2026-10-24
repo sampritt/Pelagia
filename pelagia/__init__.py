@@ -37,7 +37,7 @@ from . import google_auth, email_auth
 from . import pwa
 from . import dive_brief
 from . import site_descriptions
-from .sharing import fetch_public_dive, fetch_public_dive_site, render_share_image, render_transparent_share_image, share_description
+from .sharing import fetch_public_dive, fetch_public_dive_site, fetch_public_dive_center, render_share_image, render_transparent_share_image, share_description
 
 
 EXPOSURES = ("swimsuit", "shorty", "2mm", "3mm", "4mm", "5mm", "6mm", "7mm", "dry suit")
@@ -706,6 +706,26 @@ def register_routes(app):
             abort(404)
         recent_dives = fetch_dives(scope="center", user_id=session["user_id"], center_id=center_id, limit=6)
         return render_template("dive_center_profile.html", center=center, recent_dives=recent_dives)
+
+    @app.get("/share/dive-center/<int:center_id>")
+    def shared_dive_center(center_id):
+        center = fetch_public_dive_center(center_id)
+        if center is None:
+            abort(404)
+        if current_user():
+            response = redirect(url_for("dive_center_profile", center_id=center_id))
+        else:
+            location = f" in {center['location']}" if center["location"] else ""
+            response = app.make_response(render_template(
+                "shared_dive_center.html", center=center, public_preview=True,
+                description=f"Explore {center['name']}{location}. Discover this dive center on Pelagia.",
+                share_url=public_url("shared_dive_center", center_id=center_id),
+                center_url=url_for("dive_center_profile", center_id=center_id),
+            ))
+        response.headers["Cache-Control"] = "private, no-store"
+        response.headers["X-Robots-Tag"] = "noindex, nofollow"
+        response.vary.add("Cookie")
+        return response
 
     @app.route("/dive-sites/<int:site_id>")
     @login_required

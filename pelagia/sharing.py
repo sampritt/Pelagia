@@ -50,6 +50,17 @@ def fetch_public_dive_site(site_id):
     return dict(row) if row is not None else None
 
 
+def fetch_public_dive_center(center_id):
+    row = get_db().execute(
+        """
+        SELECT dc.id, dc.name, dc.physical_address, dc.location, dc.website,
+               (SELECT COUNT(*) FROM dive_center_likes WHERE dive_center_id = dc.id) AS like_count
+        FROM dive_centers dc WHERE dc.id = ?
+        """, (center_id,),
+    ).fetchone()
+    return dict(row) if row is not None else None
+
+
 def share_description(dive):
     location = f" in {dive['country_or_area']}" if dive["country_or_area"] else ""
     average_depth = dive.get("average_depth_m")

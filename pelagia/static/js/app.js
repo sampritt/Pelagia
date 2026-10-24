@@ -1564,6 +1564,7 @@ document.addEventListener("DOMContentLoaded", () => {
     initDiveBrief();
     initDiveBriefSharing();
     initDiveSiteSharing();
+    initDiveCenterSharing();
     initDiveSharing();
     initDiveInteractions();
     initGlobalSearch();
@@ -1820,6 +1821,20 @@ function initDiveSiteSharing() {
     }, {
         shared: "Dive site shared.", copied: "Link copied. Ready to share this dive site.",
         manual: "Copy this link to share the dive site.",
+    });
+}
+
+function initDiveCenterSharing() {
+    const host = document.querySelector("[data-center-sharing]");
+    const share = host?.querySelector("[data-center-share]");
+    if (!share) return;
+    initLinkSharing({
+        share, status: host.querySelector("[data-center-share-status]"),
+        fallback: host.querySelector("[data-center-share-fallback]"),
+        link: host.querySelector("[data-center-share-link]"),
+    }, {
+        shared: "Dive center shared.", copied: "Link copied. Ready to share this dive center.",
+        manual: "Copy this link to share the dive center.",
     });
 }
 

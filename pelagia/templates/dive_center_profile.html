@@ -3,40 +3,7 @@
 
 {% block content %}
 <section class="profile-layout">
-    <div class="entity-profile-header">
-        <div class="entity-profile-copy">
-            <h1>{{ center.name }}</h1>
-            <p class="profile-meta">{{ center.location or "Location pending" }}</p>
-        </div>
-        <div class="profile-actions">
-            <button class="chip-button like-button {{ 'liked' if center.liked_by_me else '' }}" type="button" data-center-like data-center-id="{{ center.id }}">
-                <span class="heart-icon"></span>
-                <span data-center-like-count>{{ center.like_count }}</span>
-            </button>
-            {% if center.website %}
-                <a class="ghost-button" href="{{ center.website }}" target="_blank" rel="noopener">Website</a>
-            {% endif %}
-        </div>
-    </div>
-
-    <div class="center-info-grid">
-        <div>
-            <small>Address</small>
-            <span>{{ center.physical_address or "Not listed" }}</span>
-        </div>
-        <div>
-            <small>Location</small>
-            <span>{{ center.location or "Not listed" }}</span>
-        </div>
-        <div>
-            <small>Website</small>
-            {% if center.website %}
-                <a href="{{ center.website }}" target="_blank" rel="noopener">{{ center.website }}</a>
-            {% else %}
-                <span>Not listed</span>
-            {% endif %}
-        </div>
-    </div>
+    {% include "_dive_center_overview.html" %}
 
     <div class="comments-block" data-center-comments>
         {% if center.comments %}

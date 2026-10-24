@@ -113,6 +113,20 @@ class GoogleAuthTest(unittest.TestCase):
         self.assertEqual(self.callback(params).location, "/auth/google/signup")
         self.assertEqual(self.complete_signup("site-diver").location, "/dive-sites/42")
 
+    def test_shared_center_destination_survives_google_signup(self):
+        response = self.client.get("/auth/google/login?next=/dive-centers/42")
+        params = parse_qs(urlsplit(response.location).query)
+        self.assertEqual(self.callback(params).location, "/auth/google/signup")
+        self.assertEqual(self.complete_signup("center-diver").location, "/dive-centers/42")
+
+    def test_shared_center_destination_survives_existing_google_login(self):
+        with self.app.app_context():
+            database.get_db().execute("INSERT INTO users (username, google_subject) VALUES ('center-diver', 'google-123')")
+            database.get_db().commit()
+        response = self.client.get("/auth/google/login?next=/dive-centers/42")
+        params = parse_qs(urlsplit(response.location).query)
+        self.assertEqual(self.callback(params).location, "/dive-centers/42")
+
     def start(self):
         response = self.client.get("/auth/google/login")
         self.assertIsNone(self.client.get_cookie("session").expires)

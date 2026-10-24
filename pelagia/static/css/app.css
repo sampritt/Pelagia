@@ -5231,15 +5231,16 @@ body:has(.pwa-install-dialog[open]) { overflow: hidden; }
 .site-map-banner::after { display: none; }
 .site-map-banner.map-pending { background: var(--accent-soft); }
 .site-profile-identity { flex-direction: column; align-items: stretch; gap: 18px; border: 0; border-radius: 0; }
-.site-share-button { justify-content: center; width: 44px; min-width: 44px; height: 44px; padding: 0; }
-.site-public-likes { cursor: default; }
-.site-share-status { margin: 0; color: var(--muted-strong); font-size: .8rem; }
-.site-share-status:empty { display: none; }
-.site-share-fallback { width: 100%; }
-.site-share-fallback input { width: 100%; min-width: 0; }
-.shared-site { display: grid; gap: 24px; }
-.shared-site-body .page-shell { padding-top: calc(24px + env(safe-area-inset-top)); }
-.shared-site-body .shared-footer { margin-top: 28px; }
+.site-share-button, .entity-share-button { justify-content: center; width: 44px; min-width: 44px; height: 44px; padding: 0; }
+.site-public-likes, .entity-public-likes { cursor: default; }
+.site-share-status, .entity-share-status { margin: 0; color: var(--muted-strong); font-size: .8rem; }
+.site-share-status:empty, .entity-share-status:empty { display: none; }
+.site-share-fallback, .entity-share-fallback { width: 100%; }
+.site-share-fallback input, .entity-share-fallback input { width: 100%; min-width: 0; }
+.shared-site, .shared-center, .center-overview { display: grid; gap: 24px; }
+.shared-site-body .page-shell, .shared-center-body .page-shell { padding-top: calc(24px + env(safe-area-inset-top)); }
+.shared-site-body .shared-footer, .shared-center-body .shared-footer { margin-top: 28px; }
+.center-profile-identity { flex-direction: column; align-items: stretch; gap: 18px; }
 
 @media (max-width: 640px) {
     .diver-profile { gap: 24px; }
