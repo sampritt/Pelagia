@@ -18,7 +18,7 @@ COOLDOWN_SECONDS = 300
 NO_DESCRIPTION = "NO_VERIFIED_DESCRIPTION"
 # TEMPORARY: Force every dive-site page visit to regenerate and overwrite its cache row.
 # Revert this to False to restore normal persistent-cache behavior.
-TEMPORARY_FORCE_REGENERATION = True
+TEMPORARY_FORCE_REGENERATION = False
 INSTRUCTIONS = """Perform a SIMPLE and BRIEF internet search for this exact dive site.
 Verify that sources match BOTH its name AND geographic location; use coordinates
 to disambiguate when available. Coordinates are provided only to identify the
