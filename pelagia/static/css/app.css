@@ -2022,8 +2022,33 @@ input[type="range"] {
 
 .detail-social .dive-actions {
     justify-content: flex-start;
+    align-items: stretch;
+    gap: 12px;
     margin: 0;
-    padding: 0;
+    padding: 0 0 16px;
+    border-top: 0;
+    border-bottom: 1px solid var(--line);
+}
+
+.detail-social .social-action {
+    min-width: 120px;
+    min-height: 48px;
+    gap: 6px;
+    flex-wrap: wrap;
+    padding: 10px 12px;
+}
+
+.detail-action-copy {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 6px;
+    max-width: 100%;
+}
+
+.detail-action-copy > span:not(.sr-only) {
+    flex-shrink: 0;
 }
 
 .icon-button {
@@ -5978,4 +6003,25 @@ img.is-media-loading {
 .comment-form .primary-button {
     padding-inline: 18px;
     box-shadow: none;
+}
+
+/* The detail discussion has its own spacing, independent of feed card footers. */
+.detail-social {
+    gap: 16px;
+}
+
+@media (max-width: 640px) {
+    .detail-social {
+        padding: 16px;
+    }
+
+    .detail-social .dive-actions {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .detail-social .social-action {
+        min-width: 0;
+        padding-inline: 8px;
+    }
 }

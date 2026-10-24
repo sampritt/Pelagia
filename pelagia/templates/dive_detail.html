@@ -99,9 +99,12 @@
         <div class="dive-actions">
             <button class="chip-button social-action like-button {{ 'liked' if dive.liked_by_me else '' }}" type="button" aria-pressed="{{ 'true' if dive.liked_by_me else 'false' }}" data-like data-dive-id="{{ dive.id }}">
                 {{ action_icon("like") }}
-                <span class="sr-only">Like dive. Likes:</span><span data-like-count>{{ dive.like_count }}</span>
+                <span class="detail-action-copy"><span>Like</span><span class="sr-only">dive. Likes:</span><span data-like-count>{{ dive.like_count }}</span></span>
             </button>
-            <a class="chip-button social-action" href="#comments" data-focus-comment>{{ action_icon("comment") }}<span class="sr-only">Comment on dive. Comments:</span><span data-comment-count>{{ dive.comment_count }}</span></a>
+            <a class="chip-button social-action" href="#comments" data-focus-comment>
+                {{ action_icon("comment") }}
+                <span class="detail-action-copy"><span>Comment</span><span class="sr-only">on dive. Comments:</span><span data-comment-count>{{ dive.comment_count }}</span></span>
+            </a>
         </div>
         <div class="comments-block" data-comments>
             {% if dive.comments %}
