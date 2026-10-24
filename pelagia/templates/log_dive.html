@@ -6,6 +6,7 @@
 <section class="log-layout">
     <form class="dive-form keyboard-flow" method="post" enctype="multipart/form-data" data-dive-form data-is-edit="{{ 'true' if is_edit else 'false' }}">
         <input type="hidden" name="next" value="{{ next_url }}">
+        <header class="dive-form-header">
         <div class="section-head">
             <div>
                 <h1>{{ 'Edit dive' if is_edit else 'New dive' }}</h1>
@@ -22,7 +23,7 @@
                         </svg>
                     </button>
                 {% endif %}
-                <button class="primary-button compact" type="submit">{{ 'Save changes' if is_edit else 'Save dive' }}</button>
+                <button class="primary-button compact" type="submit" aria-label="{{ 'Save changes' if is_edit else 'Save dive' }}">Save</button>
             </div>
         </div>
 
@@ -30,11 +31,16 @@
             <button class="computer-import-trigger" type="button" data-computer-import-open aria-haspopup="dialog" aria-controls="computerImportDialog" aria-expanded="false">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m-4-4 4 4 4-4M5 16v4h14v-4"></path></svg>
                 <span>Import from dive computer</span>
-                <span aria-hidden="true">&rsaquo;</span>
+                <svg class="computer-import-chevron" viewBox="0 0 16 16" aria-hidden="true"><path d="m6 4 4 4-4 4"></path></svg>
             </button>
             <input type="hidden" name="dive_computer_data_json" value="" data-computer-data>
             <p class="computer-import-status" role="status" aria-live="polite" data-computer-import-status{% if not computer_summary %} hidden{% endif %}>{% if computer_summary %}Garmin depth profile saved · {{ '{:,}'.format(computer_summary.sample_count) }} measurements{% endif %}</p>
+            <details class="computer-import-notices" data-computer-import-notices hidden>
+                <summary>Import details</summary>
+                <ul data-computer-import-notices-list></ul>
+            </details>
         </div>
+        </header>
 
         <div class="form-section">
             {% set location = dive if is_edit else initial_location %}

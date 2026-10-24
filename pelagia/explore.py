@@ -6,6 +6,7 @@ from .db import get_db
 
 
 PAGE_SIZE = 24
+SITE_COLUMNS = "id, name, country_or_area, latitude, longitude, logged_dive_count"
 
 
 def locations():
@@ -22,15 +23,24 @@ def resolve_location(value):
     return next((name for name in locations() if name.casefold() == clean), "")
 
 
-def default_location(user_id):
-    # Use the most recent log, including a backdated import, and ignore deleted dives.
-    row = get_db().execute(
-        """SELECT coalesce(nullif(trim(s.country_or_area), ''), d.country_or_area) AS location
-           FROM dives d LEFT JOIN dive_sites s ON s.id = d.dive_site_id
-           WHERE d.user_id = ? AND d.is_deleted = 0
-           ORDER BY d.created_at DESC, d.id DESC LIMIT 1""", (user_id,)
-    ).fetchone()
-    return resolve_location(row["location"]) if row else ""
+def add_observations(rows):
+    items = [dict(row, sightings=[]) for row in rows]
+    if not items:
+        return items
+    by_id = {item["id"]: item for item in items}
+    placeholders = ",".join("?" for _ in items)
+    sightings = get_db().execute(
+        f"""SELECT d.dive_site_id, min(trim(ds.common_name)) AS common_name,
+                   count(DISTINCT d.id) AS dive_count
+            FROM dive_species ds JOIN dives d ON d.id = ds.dive_id
+            WHERE d.dive_site_id IN ({placeholders}) AND coalesce(d.is_deleted, 0) = 0
+                AND trim(ds.common_name) <> ''
+            GROUP BY d.dive_site_id, lower(trim(ds.common_name))
+            ORDER BY dive_count DESC, common_name COLLATE NOCASE""", list(by_id)
+    )
+    for sighting in sightings:
+        by_id[sighting["dive_site_id"]]["sightings"].append(dict(sighting))
+    return items
 
 
 def feed_data(location, page=1):
@@ -42,12 +52,12 @@ def feed_data(location, page=1):
         "SELECT count(*) FROM dive_sites WHERE trim(country_or_area) = ? COLLATE NOCASE", (location,)
     ).fetchone()[0]
     rows = db.execute(
-        """SELECT id, name, country_or_area, latitude, longitude FROM dive_sites
+        f"""SELECT {SITE_COLUMNS} FROM dive_sites
            WHERE trim(country_or_area) = ? COLLATE NOCASE
            ORDER BY logged_dive_count DESC, name COLLATE NOCASE, id
            LIMIT ? OFFSET ?""", (location, PAGE_SIZE, (page - 1) * PAGE_SIZE)
     ).fetchall()
-    result["items"] = rows
+    result["items"] = add_observations(rows)
     if page * PAGE_SIZE < result["total"]:
         result["next_page"] = page + 1
     return result
@@ -59,8 +69,15 @@ def init_app(app, login_required):
     @blueprint.get("/explore")
     @login_required
     def index():
-        location = resolve_location(request.args["location"]) if "location" in request.args else default_location(session["user_id"])
+        saved = get_db().execute("SELECT explore_location FROM users WHERE id = ?", (session["user_id"],)).fetchone()[0]
+        location = resolve_location(request.args.get("location", saved))
         return render_template("explore.html", **feed_data(location))
+
+    @blueprint.after_request
+    def no_api_cache(response):
+        if request.path.startswith("/api/explore"):
+            response.headers["Cache-Control"] = "no-store"
+        return response
 
     @blueprint.get("/api/explore/locations")
     @login_required
@@ -85,5 +102,21 @@ def init_app(app, login_required):
         )
         response.headers["Cache-Control"] = "no-store"
         return response
+
+    @blueprint.post("/api/explore/location")
+    @login_required
+    def save_location():
+        if request.headers.get("X-Requested-With") != "fetch":
+            abort(403)
+        payload = request.get_json(silent=True)
+        if not isinstance(payload, dict) or not isinstance(payload.get("location"), str):
+            abort(400)
+        location = resolve_location(payload["location"])
+        if payload["location"].strip() and not location:
+            abort(400)
+        db = get_db()
+        db.execute("UPDATE users SET explore_location = ? WHERE id = ?", (location or None, session["user_id"]))
+        db.commit()
+        return jsonify(location=location)
 
     app.register_blueprint(blueprint)

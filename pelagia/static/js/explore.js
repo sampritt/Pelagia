@@ -15,6 +15,32 @@ function initExplore() {
     let feedRequest;
     let options = [];
     let active = -1;
+    let pendingLocation;
+    let savingLocation = false;
+
+    async function rememberLocation(next) {
+        pendingLocation = next;
+        if (savingLocation) return;
+        savingLocation = true;
+        try {
+            // Serialize writes so a slower earlier choice cannot replace the latest one.
+            while (pendingLocation !== undefined) {
+                const selected = pendingLocation;
+                pendingLocation = undefined;
+                try {
+                    await fetchJson("/api/explore/location", {
+                        method: "POST", keepalive: true,
+                        headers: { "Content-Type": "application/json", "X-Requested-With": "fetch" },
+                        body: JSON.stringify({ location: selected }),
+                    });
+                } catch (_error) {
+                    window.PelagiaLoading?.announce("Couldn't remember this location. Choose it again when you're online.", true);
+                }
+            }
+        } finally {
+            savingLocation = false;
+        }
+    }
 
     function closeSuggestions() {
         suggestionRequest?.abort();
@@ -45,6 +71,7 @@ function initExplore() {
             const url = new URL(window.location.href);
             url.searchParams.set("location", location);
             window.history.pushState(null, "", url);
+            rememberLocation(location);
         }
         loadFeed();
         if (location) clear.focus();

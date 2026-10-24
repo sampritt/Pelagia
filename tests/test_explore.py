@@ -32,12 +32,13 @@ class ExploreTest(unittest.TestCase):
             session["user_id"] = 1
 
     def add_dive(self, site_id, *, user_id=1, deleted=0, created="2026-10-24 12:00:00", day="2026-10-24"):
-        self.db.execute(
+        cursor = self.db.execute(
             """INSERT INTO dives (user_id, dive_site_id, site_name, country_or_area, date, created_at, is_deleted)
                VALUES (?, ?, 'Logged site', 'Old location', ?, ?, ?)""",
             (user_id, site_id, day, created, deleted),
         )
         self.db.commit()
+        return cursor.lastrowid
 
     def test_requires_login_and_adds_explore_in_both_navigation_bars(self):
         anonymous = self.app.test_client()
@@ -60,19 +61,91 @@ class ExploreTest(unittest.TestCase):
             with self.subTest(query=query):
                 self.assertEqual(self.client.get("/api/explore/locations", query_string={"q": query}).get_json(), expected)
 
-    def test_defaults_to_latest_log_of_current_user_and_can_be_cleared(self):
-        self.add_dive(1, created="2026-10-20 12:00:00")
-        # A recently logged, backdated dive still supplies the initial location.
-        self.add_dive(3, created="2026-10-21 12:00:00", day="2020-01-01")
-        self.add_dive(1, user_id=2, created="2026-10-23 12:00:00")
-        self.add_dive(1, deleted=1, created="2026-10-24 12:00:00")
+    def save_location(self, location, client=None):
+        return (client or self.client).post("/api/explore/location", json={"location": location},
+                                            headers={"X-Requested-With": "fetch"})
+
+    def test_initial_default_is_empty_even_with_logged_dives(self):
+        self.add_dive(1)
+        html = self.client.get("/explore").get_data(as_text=True)
+        self.assertIn('data-location=""', html)
+        self.assertIn("Where will you dive next?", html)
+        self.assertNotIn("Maple Reef", html)
+        self.assertNotIn("Your Location", html)
+        self.assertNotIn("geolocation", html)
+        self.assertEqual(self.client.post("/api/explore/nearby").status_code, 404)
+
+    def test_selected_location_becomes_default_across_navigation_and_sessions(self):
+        response = self.save_location("komodo national park")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.get_json(), {"location": "Komodo National Park"})
+        self.assertEqual(response.headers["Cache-Control"], "no-store")
+        self.client.get("/home")
         html = self.client.get("/explore").get_data(as_text=True)
         self.assertIn('data-location="Komodo National Park"', html)
-        self.assertIn('data-explore-input hidden disabled', html)
         self.assertIn("Manta Point", html)
-        self.assertNotIn("Maple Reef", html)
-        self.assertIn('data-location=""', self.client.get("/explore?location=").get_data(as_text=True))
-        self.assertIn('data-location="Canada"', self.client.get("/explore?location=CANADA").get_data(as_text=True))
+        self.assertIn('data-explore-input hidden disabled', html)
+        fresh_client = self.app.test_client()
+        with fresh_client.session_transaction() as session:
+            session["user_id"] = 1
+        self.assertIn('data-location="Komodo National Park"', fresh_client.get("/explore").get_data(as_text=True))
+        self.assertEqual(self.save_location("Canada").status_code, 200)
+        self.assertIn("Maple Reef", self.client.get("/explore").get_data(as_text=True))
+        self.assertEqual(self.save_location("").status_code, 200)
+        self.assertIn('data-location=""', self.client.get("/explore").get_data(as_text=True))
+
+    def test_default_is_per_account_and_only_explicit_selection_changes_it(self):
+        self.save_location("Canada")
+        buddy = self.app.test_client()
+        with buddy.session_transaction() as session:
+            session["user_id"] = 2
+        self.assertIn('data-location=""', buddy.get("/explore").get_data(as_text=True))
+        self.save_location("Komodo National Park", buddy)
+        self.assertIn('data-location="Canada"', self.client.get("/explore").get_data(as_text=True))
+        self.client.get("/explore?location=Komodo+National+Park")
+        self.assertIn('data-location="Canada"', self.client.get("/explore").get_data(as_text=True))
+
+    def test_saved_location_requires_auth_and_valid_catalog_selection(self):
+        self.assertEqual(self.save_location("Canada", self.app.test_client()).status_code, 302)
+        self.assertEqual(self.client.post("/api/explore/location", json={"location": "Canada"}).status_code, 403)
+        for invalid in ("Unknown region", "<script>", 1, None, ["Canada"]):
+            self.assertEqual(self.save_location(invalid).status_code, 400)
+        self.save_location("Canada")
+        database.init_db()
+        database.init_db()
+        self.assertEqual(self.db.execute("SELECT explore_location FROM users WHERE id = 1").fetchone()[0], "Canada")
+
+    def test_existing_accounts_migrate_to_an_empty_default_without_changing_dives(self):
+        dive_id = self.add_dive(1)
+        self.db.execute("ALTER TABLE users DROP COLUMN explore_location")
+        self.db.commit()
+        database.init_db()
+        self.assertIsNone(self.db.execute("SELECT explore_location FROM users WHERE id = 1").fetchone()[0])
+        self.assertEqual(self.db.execute("SELECT dive_site_id FROM dives WHERE id = ?", (dive_id,)).fetchone()[0], 1)
+        self.assertIn('data-location=""', self.client.get("/explore").get_data(as_text=True))
+
+    def test_logged_counts_and_observed_species_exclude_deleted_dives_and_catalog_suggestions(self):
+        first = self.add_dive(1)
+        second = self.add_dive(1, user_id=2)
+        third = self.add_dive(1)
+        deleted = self.add_dive(1, deleted=1)
+        self.db.executemany("INSERT INTO dive_species (dive_id, common_name) VALUES (?, ?)",
+                            [(first, "Turtle"), (first, "Turtle"), (second, "Turtle"),
+                             (third, "Ray <&> Shark"), (deleted, "Deleted species")])
+        self.db.execute("INSERT INTO site_species (dive_site_name, common_name) VALUES ('Maple Reef', 'Catalog only')")
+        self.db.commit()
+        for response in (self.client.get("/api/explore?location=Canada"),):
+            html = response.get_json()["html"]
+            self.assertIn("3 logged dives", html)
+            self.assertNotIn("0 logged dives", html)
+            self.assertIn("Turtle <strong>2</strong>", html)
+            self.assertIn("Ray &lt;&amp;&gt; Shark", html)
+            self.assertNotIn("Deleted species", html)
+            self.assertNotIn("Catalog only", html)
+            self.assertLess(html.index('class="mini-map'), html.index('aria-label="Observed marine species"'))
+        self.db.execute("UPDATE dives SET is_deleted = 1 WHERE id IN (?, ?)", (second, third))
+        self.db.commit()
+        self.assertIn("1 logged dive</span>", self.client.get("/api/explore?location=Canada").get_json()["html"])
 
     def test_feed_links_maps_missing_coordinates_and_escaping(self):
         data = self.client.get("/api/explore?location=canada").get_json()

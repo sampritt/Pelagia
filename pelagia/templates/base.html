@@ -1,4 +1,4 @@
-{% from "_action_icons.html" import action_icon %}
+{% from "_primary_navigation.html" import primary_navigation with context %}
 <!doctype html>
 <html lang="en">
 <head>
@@ -37,21 +37,7 @@
                 <div class="autocomplete-menu topbar-search-menu" data-global-search-results hidden></div>
             </form>
         {% endif %}
-        <nav class="desktop-nav" aria-label="Primary">
-            <a class="{{ 'active' if request.endpoint in ('home', 'welcome', 'dive_detail') else '' }}" href="{{ url_for('home') }}">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 13.5 12 5l8 8.5"></path><path d="M6.5 11.5V20h11v-8.5"></path></svg>
-                Feed
-            </a>
-            <a class="{{ 'active' if request.endpoint == 'explore.index' else '' }}" href="{{ url_for('explore.index') }}">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"></circle><path d="m16 16 4.5 4.5"></path></svg>
-                Explore
-            </a>
-            <a class="nav-cta {{ 'active' if request.endpoint == 'log_dive' else '' }}" href="{{ url_for('log_dive') }}">{{ action_icon("plus") }} Log dive</a>
-            <a class="{{ 'active' if request.endpoint in ('profile', 'user_profile', 'profile_settings', 'delete_account') else '' }}" href="{{ url_for('profile') }}">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5"></circle><path d="M5 20c.7-4 3-6 7-6s6.3 2 7 6"></path></svg>
-                Profile
-            </a>
-        </nav>
+        {{ primary_navigation() }}
         <div class="user-corner">
             <a class="mini-avatar" href="{{ url_for('profile') }}" aria-label="Profile">
                 {% if me.profile_photo %}
@@ -84,21 +70,7 @@
     </main>
 
     {% if me %}
-    <nav class="mobile-nav" aria-label="Primary mobile">
-        <a class="{{ 'active' if request.endpoint in ('home', 'welcome', 'dive_detail') else '' }}" href="{{ url_for('home') }}">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 13.5 12 5l8 8.5"></path><path d="M6.5 11.5V20h11v-8.5"></path></svg>
-            <span>Feed</span>
-        </a>
-        <a class="{{ 'active' if request.endpoint == 'explore.index' else '' }}" href="{{ url_for('explore.index') }}">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"></circle><path d="m16 16 4.5 4.5"></path></svg>
-            <span>Explore</span>
-        </a>
-        <a class="mobile-log {{ 'active' if request.endpoint == 'log_dive' else '' }}" href="{{ url_for('log_dive') }}" aria-label="Log dive">{{ action_icon("plus") }}</a>
-        <a class="{{ 'active' if request.endpoint in ('profile', 'user_profile', 'profile_settings', 'delete_account') else '' }}" href="{{ url_for('profile') }}">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5"></circle><path d="M5 20c.7-4 3-6 7-6s6.3 2 7 6"></path></svg>
-            <span>Profile</span>
-        </a>
-    </nav>
+    {{ primary_navigation(mobile=true) }}
     {% endif %}
 
     {% if me %}{% include '_share_dialog.html' %}{% endif %}

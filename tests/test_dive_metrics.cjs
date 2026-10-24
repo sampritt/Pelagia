@@ -52,6 +52,7 @@ function setup(initial = {}, stored = {}, preferred = {}) {
             if (selector === "[data-computer-import-status]") return importStatus;
             if (selector === "[data-average-depth]") return averageDetails;
             if (selector === "[data-gas-mix]") return gasControls;
+            if (selector === "[data-computer-import-notices]" || selector === "[data-computer-import-notices-list]") return null;
             const label = selector.match(/\[data-unit-label='(.+)'\]/);
             if (label) return labels[label[1]];
             return element();
@@ -491,7 +492,7 @@ test("import fills canonical measurements, keeps unrelated values, and survives 
     assert.equal(state.pairs.waterTemp.number.value, "82");
     assert.equal(state.averageDetails.open, true);
     assert.deepEqual(JSON.parse(state.computerData.value), data);
-    assert.match(state.importStatus.textContent, /Matched Daphne/);
+    assert.match(state.importStatus.textContent, /Imported from Garmin · Daphne/);
     assert.match(state.importStatus.textContent, /1 depth measurements ready to save/);
     state.setUnit("length", "m");
     state.setUnit("temperature", "c");

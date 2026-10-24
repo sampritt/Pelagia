@@ -4,7 +4,7 @@ const path = require("node:path");
 const test = require("node:test");
 const vm = require("node:vm");
 
-function setup(initial = "Canada") {
+function setup(initial = "Canada", { deferSaves = false } = {}) {
     let document;
     function element() {
         return {
@@ -41,17 +41,24 @@ function setup(initial = "Canada") {
     window.setTimeout = () => 1;
     window.clearTimeout = () => {};
     const requests = [];
+    const saves = [];
     const context = vm.createContext({
         document, window, URL, URLSearchParams, AbortController,
         debounce(fn) { fn.cancel = () => {}; return fn; },
         initStaticMaps() {},
         fetchJson(url, options) {
+            if (url === "/api/explore/location") {
+                return new Promise((resolve, reject) => {
+                    saves.push({ url, options, resolve, reject });
+                    if (!deferSaves) resolve({ location: JSON.parse(options.body).location });
+                });
+            }
             return new Promise((resolve, reject) => requests.push({ url, options, resolve, reject }));
         },
     });
     vm.runInContext(fs.readFileSync(path.join(__dirname, "../pelagia/static/js/explore.js"), "utf8"), context);
     document.emit("DOMContentLoaded");
-    return { parts, requests, window, document };
+    return { parts, requests, saves, window, document };
 }
 
 const flush = async () => { await Promise.resolve(); await Promise.resolve(); };
@@ -143,4 +150,36 @@ test("failed feeds offer retry and failed suggestions allow another search", asy
     requests[3].resolve(["Canada"]);
     await flush();
     assert.equal(parts.suggestions.children[0].textContent, "Canada");
+});
+
+test("explicit selections and clearing are remembered without saving browser history navigation", async () => {
+    const { parts, requests, saves, window } = setup();
+    assert.equal(saves.length, 0);
+    parts.clear.emit("click");
+    assert.deepEqual(JSON.parse(saves[0].options.body), { location: "" });
+    assert.equal(saves[0].options.keepalive, true);
+    assert.equal(saves[0].options.method, "POST");
+    await flush();
+    parts.input.value = "Komodo";
+    parts.input.emit("input");
+    requests[1].resolve(["Komodo National Park"]);
+    await flush();
+    parts.suggestions.children[0].emit("click");
+    assert.deepEqual(JSON.parse(saves[1].options.body), { location: "Komodo National Park" });
+    window.location.href = "http://localhost/explore?location=Canada";
+    window.emit("popstate");
+    assert.equal(saves.length, 2);
+});
+
+test("rapid selection changes save in order and preference failures do not block the feed", async () => {
+    const { parts, saves } = setup("Canada", { deferSaves: true });
+    parts.clear.emit("click");
+    parts.clear.emit("click");
+    assert.equal(saves.length, 1);
+    saves[0].reject(new Error("offline"));
+    await flush();
+    assert.equal(saves.length, 2);
+    saves[1].resolve({ location: "" });
+    await flush();
+    assert.equal(parts.input.disabled, false);
 });

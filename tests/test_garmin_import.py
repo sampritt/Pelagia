@@ -1,5 +1,6 @@
 import copy
 import json
+import re
 import tempfile
 import unittest
 from pathlib import Path
@@ -173,3 +174,54 @@ class GarminImportTest(unittest.TestCase):
                 self.assertIn(f"<span>{brand}</span>", html)
             self.assertIn('accept=".fit,.FIT"', html)
             self.assertIn('Export Dive as FIT File', html)
+
+    def test_missing_import_conditions_keep_typical_blank_placeholders(self):
+        new = self.client.get("/dive/new").get_data(as_text=True)
+        self.assertIn('<output id="currentStrengthOutput">-</output>', new)
+        self.assertIn('id="currentTypeSummary" data-multi-select-summary>-</span>', new)
+        result = self.import_dive()
+        for field in ("current", "current_strength", "air_temp_c", "visibility_m", "weight_kg", "exposure", "water_type"):
+            self.assertNotIn(field, result["fields"])
+        self.assertEqual(self.save(result, air_temp_c="").status_code, 302)
+        detail = self.client.get("/dive/1").get_data(as_text=True)
+        values = dict(re.findall(r"<dt>(.*?)</dt>\s*<dd>(.*?)</dd>", detail))
+        for field in ("Current type", "Current strength", "Air temperature", "Visibility", "Water type",
+                      "Weight", "Exposure", "Starting pressure", "Ending pressure", "SAC rate"):
+            with self.subTest(field=field):
+                self.assertEqual(values[field], "-")
+        self.assertEqual(values["Water temperature"], "28°C")
+        self.assertEqual(values["Gas mix"], "EANx 33%")
+        edit = self.client.get("/dive/1/edit").get_data(as_text=True)
+        self.assertIn('<output id="currentStrengthOutput">-</output>', edit)
+        self.assertIn('id="currentTypeSummary" data-multi-select-summary>-</span>', edit)
+        # Storage remains compatible, so existing missing-current dives also use the corrected labels.
+        saved = self.stored("dives")[0]
+        self.assertEqual((saved["current"], saved["current_strength"]), ("none", "none"))
+
+    def test_actual_currents_and_zero_measurements_remain_visible(self):
+        result = self.import_dive()
+        self.assertEqual(self.save(result, current=["tidal", "drift"], current_strength="strong",
+                                   air_temp_c="0", visibility_m="0", weight_kg="0", water_type="salt").status_code, 302)
+        detail = self.client.get("/dive/1").get_data(as_text=True)
+        values = dict(re.findall(r"<dt>(.*?)</dt>\s*<dd>(.*?)</dd>", detail))
+        self.assertEqual(values["Current type"], "Tidal, Drift")
+        self.assertEqual(values["Current strength"], "Strong")
+        self.assertEqual(values["Air temperature"], "0°C")
+        self.assertEqual(values["Visibility"], "0 m")
+        self.assertEqual(values["Weight"], "0 kg")
+        self.assertEqual(values["Water type"], "Salt")
+
+    def test_primary_navigation_has_equal_labels_and_tracks_nested_pages(self):
+        self.save(self.import_dive())
+        for path, destination, current in [("/home", "/home", "page"), ("/explore", "/explore", "page"),
+                                           ("/dive/new", "/dive/new", "page"), ("/dive/1/edit", "/dive/new", "location"),
+                                           ("/dive/1", "/home", "location"), ("/dive-sites/2544", "/explore", "location"),
+                                           ("/you", "/you", "page"), ("/you/settings", "/you", "location")]:
+            with self.subTest(path=path):
+                response = self.client.get(path)
+                self.assertEqual(response.status_code, 200)
+                navigations = re.findall(r'<nav class="(?:desktop-nav|mobile-nav)".*?</nav>', response.get_data(as_text=True), re.S)
+                self.assertEqual(len(navigations), 2)
+                for navigation in navigations:
+                    self.assertEqual(re.findall(r"<span>(.*?)</span>", navigation), ["Feed", "Explore", "Log dive", "Profile"])
+                    self.assertEqual(re.findall(r'<a class="active" href="([^"]+)" aria-current="([^"]+)"', navigation), [(destination, current)])

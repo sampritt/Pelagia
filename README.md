@@ -61,9 +61,11 @@ Tests mock OpenAI without making billable calls: `.venv312/bin/python -m unittes
 
 ## Explore
 
-Signed-in users can open **Explore** between Feed and Log dive in the desktop and mobile navigation. Its country/region search autocompletes distinct locations from the dive-site catalog, including named regions such as Komodo National Park. Choosing a suggestion creates one removable location tag and locks typing until the tag is cleared. Explore initially selects the location of the user's most recently logged, non-deleted dive; users without a matching logged location start with an empty search.
+Signed-in users can open **Explore** between Feed and Log dive in the desktop and mobile navigation. Its country/region search autocompletes distinct locations from the dive-site catalog, including named regions such as Komodo National Park. Choosing a suggestion creates one removable location tag and locks typing until the tag is cleared.
 
-The location filters a paginated feed of linked dive-site cards with names, locations and map previews. Show more loads another 24 sites. Selections work with keyboard navigation and browser Back/Forward, and location changes discard stale requests. Explore currently contains dive sites only, without category tabs. The authenticated `/api/explore/locations` and `/api/explore` endpoints provide suggestions and rendered feed pages; no database migration is required.
+Explore starts with an empty search for each account. Selecting a country or region saves it as that account's default, so returning to Explore or signing in on another device restores its tag and site feed. Clearing the tag resets the saved default to empty. Device location is not requested. The authenticated `POST /api/explore/location` endpoint validates selections against the site catalog and stores the preference in `users.explore_location`; normal startup adds this nullable column to existing databases.
+
+The location filters a paginated feed of linked dive-site cards with names, locations and map previews. Cards show nonzero logged-dive counts and marine species actually observed in non-deleted dives, with species tags below the map. Show more loads another 24 sites. Selections work with keyboard navigation and browser Back/Forward, and location changes discard stale requests. Explore currently contains dive sites only, without category tabs. The authenticated `/api/explore/locations` and `/api/explore` endpoints provide suggestions and rendered feed pages.
 
 ## Garmin dive imports
 

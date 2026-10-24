@@ -9,7 +9,7 @@ const escapeHtml = (value) =>
         .replaceAll("'", "&#039;");
 
 const CURRENT_STRENGTHS = [
-    { value: "none", label: "None" },
+    { value: "none", label: "-" },
     { value: "light", label: "Light" },
     { value: "moderate", label: "Moderate" },
     { value: "strong", label: "Strong" },
@@ -795,11 +795,12 @@ function initDiveComputerImport(form, applyImport) {
         }
         trigger.setAttribute("aria-expanded", "true");
         const isGarmin = screen === "garmin";
+        dialog.dataset.importScreen = screen;
         brands.hidden = isGarmin;
         upload.hidden = !isGarmin;
         title.textContent = isGarmin ? "Import from Garmin" : "Choose your dive computer";
         step.textContent = isGarmin ? "Step 2 of 2" : "Step 1 of 2";
-        backLabel.textContent = isGarmin ? "Brands" : "Log dive";
+        backLabel.textContent = isGarmin ? "Brands" : form.dataset?.isEdit === "true" ? "Edit dive" : "Log dive";
         errorText.hidden = true;
         dialog.scrollTop = 0;
         title.focus({ preventScroll: true });
@@ -1299,9 +1300,21 @@ function initDiveForm() {
         form.querySelector("[data-computer-data]").value = JSON.stringify(result.computer_data);
         const status = form.querySelector("[data-computer-import-status]");
         const samples = result.computer_data.depth_profile.length.toLocaleString();
-        const matched = result.matched_site ? ` · Matched ${result.matched_site.name}` : "";
-        status.textContent = `Garmin dive imported${matched} · ${samples} depth measurements ready to save. ${result.notices.join(" ")}`;
+        const matched = result.matched_site ? ` · ${result.matched_site.name}` : "";
+        status.textContent = `Imported from Garmin${matched} · ${samples} depth measurements ready to save.`;
         status.hidden = false;
+        const notices = form.querySelector("[data-computer-import-notices]");
+        const noticeList = form.querySelector("[data-computer-import-notices-list]");
+        if (notices && noticeList) {
+            noticeList.replaceChildren(...result.notices.map((notice) => {
+                const item = document.createElement("li");
+                item.textContent = notice;
+                return item;
+            }));
+            notices.hidden = !result.notices.length;
+            // Missing GPS or gas needs attention; routine sensor notes can stay collapsed.
+            notices.open = result.notices.some((notice) => /GPS|Gas mix|choose.*site/i.test(notice));
+        }
         if (fields.dive_site_id) loadSpeciesSuggestions({ siteId: fields.dive_site_id, country: fields.country_or_area });
     });
 }
@@ -1774,8 +1787,25 @@ function initUserProfile() {
     }
 }
 
+function initPrimaryNavigation() {
+    document.querySelectorAll(".mobile-nav, .desktop-nav").forEach((navigation) => {
+        navigation.addEventListener("click", (event) => {
+            if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+            const link = event.target.closest("a[href]");
+            if (!link || (link.target && link.target !== "_self") || link.hasAttribute("download")) return;
+            const target = new URL(link.href, window.location.href);
+            const current = new URL(window.location.href);
+            if (target.origin !== current.origin || target.pathname !== current.pathname || (target.search && target.search !== current.search)) return;
+            // A second tap returns to the top of the current tab, retaining form entries and filters.
+            event.preventDefault();
+            window.scrollTo({ top: 0, left: 0, behavior: window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth" });
+        });
+    });
+}
+
 document.addEventListener("DOMContentLoaded", () => {
     initInteractionFocus();
+    initPrimaryNavigation();
     initDiveBrief();
     initDiveBriefSharing();
     initDiveSiteSharing();

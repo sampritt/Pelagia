@@ -33,6 +33,7 @@ def init_db():
     if "password_hash" in {row["name"] for row in db.execute("PRAGMA table_info(users)")}:
         db.execute("ALTER TABLE users DROP COLUMN password_hash")
     _ensure_column(db, "users", "bio", "TEXT")
+    _ensure_column(db, "users", "explore_location", "TEXT")
     for group, (metric, alternate) in UNIT_OPTIONS.items():
         _ensure_column(db, "users", f"{group}_unit",
                        f"TEXT NOT NULL DEFAULT '{metric}' CHECK ({group}_unit IN ('{metric}', '{alternate}'))")

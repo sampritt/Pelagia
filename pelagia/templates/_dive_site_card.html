@@ -1,7 +1,19 @@
 {% set has_coords = item.latitude is not none and item.longitude is not none %}
 <a class="explore-card explore-site-card" href="{{ url_for('dive_site_profile', site_id=item.id) }}">
-    <div class="explore-card-copy"><span class="explore-card-kind">Dive site</span><h2>{{ item.name }}</h2><p>{{ item.country_or_area or 'Location pending' }}</p><span class="explore-card-link">Explore dive site <span aria-hidden="true">↗</span></span></div>
+    <div class="explore-card-copy">
+        <span class="explore-card-kind">Dive site</span><h2>{{ item.name }}</h2>
+        <p>{{ item.country_or_area or 'Location pending' }}</p>
+        {% if item.logged_dive_count %}<span class="explore-dive-count">{{ item.logged_dive_count }} logged {{ 'dive' if item.logged_dive_count == 1 else 'dives' }}</span>{% endif %}
+        <span class="explore-card-link">Explore dive site <span aria-hidden="true">↗</span></span>
+    </div>
     <div class="mini-map explore-card-map {{ 'map-pending' if not has_coords else '' }}" role="img" aria-label="Map of {{ item.name }}{% if not has_coords %}: coordinates pending{% endif %}" {% if has_coords %}data-static-map data-map-lat="{{ item.latitude }}" data-map-lng="{{ item.longitude }}" data-map-zoom="10"{% endif %}>
         {% if has_coords %}<span class="map-pin"></span>{% else %}<span class="coordinate-label">Coordinates pending</span>{% endif %}
     </div>
+    {% if item.sightings %}
+    <div class="explore-sightings" aria-label="Observed marine species">
+        <div class="species-row site-sightings-tags">
+            {% for sighting in item.sightings %}<span>{{ sighting.common_name }}{% if sighting.dive_count > 1 %} <strong>{{ sighting.dive_count }}</strong>{% endif %}</span>{% endfor %}
+        </div>
+    </div>
+    {% endif %}
 </a>

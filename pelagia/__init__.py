@@ -48,8 +48,8 @@ GAS_MIXES = ("Air", "30%", "32%", "34%", "36%", "38%", "40%", "Other")
 NITROX_GAS_MIXES = {"30%", "32%", "34%", "36%", "38%", "40%"}
 CURRENT_STRENGTHS = ("none", "light", "moderate", "strong", "very strong")
 DIVE_TYPE_LABELS = {value: value.title() for value in DIVE_TYPES}
-CURRENT_TYPE_LABELS = {value: value.title() for value in CURRENT_TYPES}
-CURRENT_STRENGTH_LABELS = {value: value.title() for value in CURRENT_STRENGTHS}
+CURRENT_TYPE_LABELS = {value: "-" if value == "none" else value.title() for value in CURRENT_TYPES}
+CURRENT_STRENGTH_LABELS = {value: "-" if value == "none" else value.title() for value in CURRENT_STRENGTHS}
 CURRENT_STRENGTH_INDEXES = {value: index for index, value in enumerate(CURRENT_STRENGTHS)}
 ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "gif", "webp"}
 UPLOAD_IMAGE_MAX_DIMENSION = 1600

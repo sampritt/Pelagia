@@ -49,9 +49,11 @@ test("dive dropdown selects multiple options, removes individual choices and ret
     assert.equal(dive.summary.textContent, "open water");
 });
 
-test("multiple currents enable strength; removing the last current resets strength and None", () => {
-    const {current, range, hidden, change} = setup();
+test("multiple currents enable strength; removing the last current restores blank placeholders", () => {
+    const {current, range, hidden, output, change} = setup();
     assert.equal(range.disabled, true);
+    assert.equal(current.summary.textContent, "-");
+    assert.equal(output.textContent, "-");
     change(current, "tidal", true);
     change(current, "drift", true);
     assert.equal(current.summary.textContent, "tidal, drift");
@@ -60,6 +62,7 @@ test("multiple currents enable strength; removing the last current resets streng
     range.value = "3";
     range.handlers.input[0]();
     assert.equal(hidden.value, "strong");
+    assert.equal(output.textContent, "Strong");
     change(current, "tidal", false);
     assert.equal(hidden.value, "strong");
     assert.equal(range.disabled, false);
@@ -67,6 +70,21 @@ test("multiple currents enable strength; removing the last current resets streng
     assert.equal(current.summary.textContent, "-");
     assert.equal(range.disabled, true);
     assert.equal(hidden.value, "none");
+    assert.equal(output.textContent, "-");
+});
+
+test("choosing a current type leaves unspecified strength blank until the slider is set", () => {
+    const {current, range, hidden, output, change} = setup();
+    change(current, "tidal", true);
+    assert.equal(range.disabled, false);
+    assert.equal(hidden.value, "none");
+    assert.equal(output.textContent, "-");
+    range.value = "1";
+    range.handlers.input[0]();
+    assert.equal(output.textContent, "Light");
+    range.value = "0";
+    range.handlers.input[0]();
+    assert.equal(output.textContent, "-");
 });
 
 test("reopening restores all choices; selecting None clears currents and Escape/outside clicks close menus", () => {
