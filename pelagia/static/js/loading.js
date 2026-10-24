@@ -9,6 +9,7 @@
 
     function pageKind(path) {
         if (path === "/home") return "feed";
+        if (path === "/explore") return "explore";
         if (/^\/(you|users\/\d+)$/.test(path)) return "profile";
         if (path === "/you/settings" || /^\/dive\/(new|\d+\/edit)$/.test(path)) return "form";
         if (/^\/(dive\/\d+|share\/dive\/\d+|dive-sites\/\d+|dive-centers\/\d+)$/.test(path)) return "detail";
@@ -18,6 +19,7 @@
 
     function pageMarkup(kind) {
         if (kind === "feed") return `<div class="skeleton-feed"><div>${card()}${card()}</div><aside>${identity()}${metrics()}</aside></div>`;
+        if (kind === "explore") return `${block("title")}${block("field")}${card()}${card()}`;
         if (kind === "profile") return `${identity()}${metrics()}${block("chart")}${card()}`;
         if (kind === "form") return `${block("title")}<div class="skeleton-card skeleton-fields">${Array.from({ length: 8 }, () => `<div>${block()}${block("field")}</div>`).join("")}</div>`;
         if (kind === "detail") return `${identity()}${block("title")}${block("media")}${metrics()}<div class="skeleton-card">${rows()}</div>`;

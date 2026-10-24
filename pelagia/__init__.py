@@ -38,6 +38,7 @@ from . import pwa
 from . import dive_brief
 from . import site_descriptions
 from . import dive_import
+from . import explore
 from .garmin_fit import FitImportError
 from .sharing import TRANSPARENT_LAYOUTS, fetch_public_dive, fetch_public_dive_site, fetch_public_dive_center, render_share_image, render_transparent_share_image, share_description
 
@@ -102,6 +103,7 @@ def create_app(test_config=None):
         _ensure_reference_data(app)
 
     register_routes(app)
+    explore.init_app(app, login_required)
     dive_import.init_app(app, current_user)
     site_descriptions.init_app(app, login_required)
     dive_brief.init_app(app)

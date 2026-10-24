@@ -59,6 +59,12 @@ Tests mock OpenAI without making billable calls: `.venv312/bin/python -m unittes
 - `pelagia/schema.sql`: SQLite schema
 - `pelagia/importer.py`: pandas CSV import
 
+## Explore
+
+Signed-in users can open **Explore** between Feed and Log dive in the desktop and mobile navigation. Its country/region search autocompletes distinct locations from the dive-site catalog, including named regions such as Komodo National Park. Choosing a suggestion creates one removable location tag and locks typing until the tag is cleared. Explore initially selects the location of the user's most recently logged, non-deleted dive; users without a matching logged location start with an empty search.
+
+The location filters a paginated feed of linked dive-site cards with names, locations and map previews. Show more loads another 24 sites. Selections work with keyboard navigation and browser Back/Forward, and location changes discard stale requests. Explore currently contains dive sites only, without category tabs. The authenticated `/api/explore/locations` and `/api/explore` endpoints provide suggestions and rendered feed pages; no database migration is required.
+
 ## Garmin dive imports
 
 New and Edit dive forms offer **Import from dive computer → Garmin → Choose FIT file**. Other listed brands are disabled. Export a single-gas scuba dive from Garmin Dive using **Export Dive as FIT File**. Selecting the file immediately fills its recorded date, depths, bottom time, gas composition, water temperature, and GPS coordinates. The nearest catalog dive site is matched across all valid site coordinates using Cartesian chord distance, with no distance cutoff. Recorded coordinates are retained, and all imported values can be reviewed before saving. Fields absent from the file and unrelated entries, including photos and notes, are preserved. No separate air temperature is inferred from the water sensor.
