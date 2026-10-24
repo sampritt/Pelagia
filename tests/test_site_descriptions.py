@@ -43,6 +43,7 @@ class SiteDescriptionTest(unittest.TestCase):
         self.addCleanup(self.directory.cleanup)
         self.app, self.db_path, self.config_path = self.make_app(Path(self.directory.name))
         self.app.config["OPENAI_API_KEY"] = "test-server-secret"
+        self.app.config["FORCE_DIVE_SITE_DESCRIPTION_REGENERATION"] = False
         self.client = self.app.test_client()
         self.signup(self.client)
         self.headers = {"X-Requested-With": "fetch"}
@@ -90,7 +91,7 @@ class SiteDescriptionTest(unittest.TestCase):
             data = response.get_json()
             self.assertEqual(data["status"], "complete")
             self.assertIn("rocky reef", data["description"])
-            self.assertEqual(data["fragments"][1]["text"], "[1]")
+            self.assertEqual(data["fragments"], [{"text": "A rocky reef reaches 25 m and is accessed by boat."}])
             body = post.call_args.kwargs["json"]
             self.assertEqual(body["model"], "gpt-5.6-luna")
             self.assertEqual(body["tools"], [{"type": "web_search", "search_context_size": "low"}])
@@ -102,12 +103,16 @@ class SiteDescriptionTest(unittest.TestCase):
             for value in ("Alert Rock", "Alaska", '"US"', "54.1", "-132.9"):
                 self.assertIn(value, body["input"])
             self.assertIn("BOTH its name AND geographic location", body["instructions"])
+            self.assertIn("Coordinates are provided only to identify", body["instructions"])
+            self.assertIn("geographic setting, accessibility and shore/boat", body["instructions"])
+            self.assertIn("do not force every category", body["instructions"])
+            self.assertIn("URLs, links, source names, citations", body["instructions"])
             self.assertEqual(post.call_args.kwargs["timeout"], (3, 20))
             self.assertFalse(post.call_args.kwargs["allow_redirects"])
             html = self.client.get("/dive-sites/1").data
             self.assertIn(b"rocky reef", html)
-            self.assertIn(b'href="https://operator.example/alert-rock"', html)
-            self.assertIn(b'Alert Rock &amp; diving', html)
+            self.assertNotIn(b'href="https://operator.example/alert-rock"', html)
+            self.assertNotIn(b'Alert Rock &amp; diving', html)
             self.assertNotIn(b"data-site-description", html)
             self.assertLess(html.index(b"Alaska</p>"), html.index(b"rocky reef"))
             self.assertNotIn(b"test-server-secret", html)
@@ -117,6 +122,9 @@ class SiteDescriptionTest(unittest.TestCase):
         with self.connect() as db:
             row = db.execute("SELECT * FROM dive_site_descriptions").fetchone()
             self.assertEqual(row["model"], descriptions.MODEL)
+            self.assertEqual(json.loads(row["citations_json"]), [{
+                "url": "https://operator.example/alert-rock", "title": "Alert Rock & diving",
+            }])
             self.assertTrue(row["created_at"])
             self.assertEqual(db.execute("SELECT COUNT(*) FROM dive_site_description_attempts").fetchone()[0], 0)
 
@@ -138,6 +146,28 @@ class SiteDescriptionTest(unittest.TestCase):
         with patch.object(descriptions.requests, "post") as post:
             self.assertIsNone(self.post().get_json()["description"])
             post.assert_not_called()
+
+    def test_temporary_force_regeneration_overwrites_cached_description(self):
+        with patch.object(descriptions.requests, "post", return_value=upstream()):
+            self.assertEqual(self.post().status_code, 200)
+
+        self.app.config["FORCE_DIVE_SITE_DESCRIPTION_REGENERATION"] = True
+        page = self.client.get("/dive-sites/1")
+        self.assertIn(b'data-site-description data-description-url=', page.data)
+        self.assertNotIn(b"A rocky reef reaches", page.data)
+
+        replacement = response_payload("A wall dive reaches 30 m and has moderate current. [source]")
+        with patch.object(descriptions.requests, "post", return_value=upstream(replacement)) as post:
+            response = self.post()
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.get_json()["description"],
+                             "A wall dive reaches 30 m and has moderate current.")
+            post.assert_called_once()
+        with self.connect() as db:
+            self.assertEqual(
+                db.execute("SELECT description FROM dive_site_descriptions WHERE dive_site_id = 1").fetchone()[0],
+                "A wall dive reaches 30 m and has moderate current.",
+            )
 
     def test_temporary_failures_have_cooldown_then_can_succeed(self):
         now = time.time()
@@ -253,12 +283,17 @@ class SiteDescriptionTest(unittest.TestCase):
             bad = copy.deepcopy(base)
             bad["output"][1]["content"][0]["annotations"][0].update(patch_data)
             cases.append(bad)
-        cases.extend([response_payload("No citation."), response_payload(" ".join(["reef"] * 71) + " [source]"),
+        cases.extend([response_payload(" ".join(["reef"] * 71) + " [source]"),
                       response_payload("A reef. A wall. A wreck. [source]"),
                       response_payload("A reef.\nA wall. [source]"), {"status": "completed", "output": []}])
         for payload in cases:
             with self.subTest(payload=payload), self.assertRaises(descriptions.GenerationError):
                 descriptions.parse_response(payload)
+
+    def test_summary_without_citations_is_valid(self):
+        description, citations = descriptions.parse_response(response_payload("A reef reaches 25 m by boat."))
+        self.assertEqual(description, "A reef reaches 25 m by boat.")
+        self.assertEqual(citations, [])
 
     def test_generated_text_and_titles_are_escaped_in_server_rendering(self):
         payload = response_payload('A reef with <script>alert("x")</script> & rocks. [source]')

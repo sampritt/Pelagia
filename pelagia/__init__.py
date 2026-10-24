@@ -710,7 +710,7 @@ def register_routes(app):
         return render_template(
             "dive_site_profile.html",
             site=site,
-            site_description=site_descriptions.read_cache(site_id),
+            site_description=site_descriptions.read_page_cache(site_id),
             recent_dives=recent_dives,
             conditions=conditions,
             sightings=sightings,
