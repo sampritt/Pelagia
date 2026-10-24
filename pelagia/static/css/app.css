@@ -5238,6 +5238,7 @@ body:has(.pwa-install-dialog[open]) { overflow: hidden; }
 .site-share-fallback { width: 100%; }
 .site-share-fallback input { width: 100%; min-width: 0; }
 .shared-site { display: grid; gap: 24px; }
+.shared-site-body .page-shell { padding-top: calc(24px + env(safe-area-inset-top)); }
 .shared-site-body .shared-footer { margin-top: 28px; }
 
 @media (max-width: 640px) {
