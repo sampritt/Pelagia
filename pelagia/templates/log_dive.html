@@ -35,10 +35,6 @@
             </button>
             <input type="hidden" name="dive_computer_data_json" value="" data-computer-data>
             <p class="computer-import-status" role="status" aria-live="polite" data-computer-import-status{% if not computer_summary %} hidden{% endif %}>{% if computer_summary %}Garmin depth profile saved · {{ '{:,}'.format(computer_summary.sample_count) }} measurements{% endif %}</p>
-            <details class="computer-import-notices" data-computer-import-notices hidden>
-                <summary>Import details</summary>
-                <ul data-computer-import-notices-list></ul>
-            </details>
         </div>
         </header>
 

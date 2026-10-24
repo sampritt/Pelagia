@@ -1299,22 +1299,9 @@ function initDiveForm() {
         if (fields.average_depth_m !== undefined) form.querySelector("[data-average-depth]").open = true;
         form.querySelector("[data-computer-data]").value = JSON.stringify(result.computer_data);
         const status = form.querySelector("[data-computer-import-status]");
-        const samples = result.computer_data.depth_profile.length.toLocaleString();
         const matched = result.matched_site ? ` · ${result.matched_site.name}` : "";
-        status.textContent = `Imported from Garmin${matched} · ${samples} depth measurements ready to save.`;
+        status.textContent = `Imported from Garmin${matched}`;
         status.hidden = false;
-        const notices = form.querySelector("[data-computer-import-notices]");
-        const noticeList = form.querySelector("[data-computer-import-notices-list]");
-        if (notices && noticeList) {
-            noticeList.replaceChildren(...result.notices.map((notice) => {
-                const item = document.createElement("li");
-                item.textContent = notice;
-                return item;
-            }));
-            notices.hidden = !result.notices.length;
-            // Missing GPS or gas needs attention; routine sensor notes can stay collapsed.
-            notices.open = result.notices.some((notice) => /GPS|Gas mix|choose.*site/i.test(notice));
-        }
         if (fields.dive_site_id) loadSpeciesSuggestions({ siteId: fields.dive_site_id, country: fields.country_or_area });
     });
 }
