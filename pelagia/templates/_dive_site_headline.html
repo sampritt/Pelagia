@@ -32,6 +32,9 @@
             <a class="chip-button share-button site-share-button" href="{{ public_url('shared_dive_site', site_id=site.id) }}" data-site-share data-share-title="{{ site.name }} · Dive site on Pelagia" aria-label="Share dive site {{ site.name }}" title="Share dive site">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V3m-4 4 4-4 4 4M6 12H4v9h16v-9h-2"></path></svg>
             </a>
+            {% if not public_preview %}
+            <a class="primary-button compact" href="{{ url_for('log_dive', dive_site_id=site.id) }}"><span aria-hidden="true">+</span> Log dive</a>
+            {% endif %}
         </div>
         <p class="site-share-status" role="status" aria-live="polite" data-site-share-status></p>
         <div class="site-share-fallback" data-site-share-fallback hidden>

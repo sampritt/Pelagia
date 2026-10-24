@@ -1,6 +1,7 @@
 import tempfile
 import unittest
 from datetime import date
+from html.parser import HTMLParser
 from pathlib import Path
 from unittest.mock import patch
 from urllib.parse import parse_qs, urlsplit
@@ -8,6 +9,20 @@ from urllib.parse import parse_qs, urlsplit
 import test_reference_autocomplete as fixtures
 from pelagia import db as database
 from pelagia.sharing import fetch_public_dive_site
+
+
+class LocationInputsParser(HTMLParser):
+    def __init__(self, html):
+        super().__init__()
+        self.values = {}
+        self.feed(html)
+
+    def handle_starttag(self, tag, attrs):
+        attrs = dict(attrs)
+        if tag == "input" and attrs.get("name") in (
+            "site_name", "dive_site_id", "country_or_area", "latitude", "longitude"
+        ):
+            self.values[attrs["name"]] = attrs.get("value", "")
 
 
 class DiveSiteSharingTest(unittest.TestCase):
@@ -67,10 +82,42 @@ class DiveSiteSharingTest(unittest.TestCase):
         actions = html.split('<div class="profile-actions">', 1)[1].split("</div>", 1)[0]
         self.assertLess(actions.index("data-site-like"), actions.index("data-site-share"))
         self.assertIn('href="https://pelagia.example/share/dive-site/1"', actions)
+        self.assertIn('class="primary-button compact" href="/dive/new?dive_site_id=1"', actions)
+        self.assertLess(actions.index("data-site-share"), actions.index("/dive/new?dive_site_id=1"))
         self.assertLess(html.index('class="site-description"'), html.index('class="profile-actions"'))
         self.assertIn("PRIVATE_LOG_TITLE", html)
         self.assertIn("PRIVATE_SITE_COMMENT", html)
         self.assertIn('class="site-line-chart"', html)
+
+    def test_log_dive_prefills_and_saves_the_selected_site(self):
+        response = self.client.get("/dive/new?dive_site_id=1")
+        self.assertEqual(response.status_code, 200)
+        location = LocationInputsParser(response.get_data(as_text=True)).values
+        self.assertEqual(location, {
+            "site_name": "Alert Rock", "dive_site_id": "1", "country_or_area": "Alaska",
+            "latitude": "54.1", "longitude": "-132.9",
+        })
+        saved = self.client.post("/dive/new?dive_site_id=1", data={
+            **location, "date": date.today().isoformat(), "depth_m": "12", "duration_min": "45",
+        })
+        self.assertEqual(saved.status_code, 302)
+        dive_id = int(saved.location.rsplit("/", 1)[1])
+        dive = self.client.get(f"/api/dives/{dive_id}").get_json()
+        self.assertEqual(dive["site_name"], "Alert Rock")
+        with self.app.app_context():
+            row = database.get_db().execute("SELECT dive_site_id FROM dives WHERE id = ?", (dive_id,)).fetchone()
+            self.assertEqual(row["dive_site_id"], 1)
+        edit = self.client.get(f"/dive/{dive_id}/edit?dive_site_id=3")
+        self.assertEqual(LocationInputsParser(edit.get_data(as_text=True)).values, location)
+
+    def test_log_dive_without_a_valid_site_keeps_location_empty(self):
+        for query in ("", "?dive_site_id=invalid", "?dive_site_id=99999"):
+            with self.subTest(query=query):
+                response = self.client.get("/dive/new" + query)
+                self.assertEqual(response.status_code, 200)
+                self.assertEqual(LocationInputsParser(response.get_data(as_text=True)).values, {
+                    "site_name": "", "dive_site_id": "", "country_or_area": "", "latitude": "", "longitude": "",
+                })
 
     def test_signed_in_share_visitors_open_the_full_site(self):
         response = self.client.get("/share/dive-site/1")

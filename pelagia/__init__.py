@@ -291,8 +291,14 @@ def register_routes(app):
                 flash(str(error))
                 return redirect(url_for("log_dive"))
             return redirect(url_for("dive_detail", dive_id=dive_id))
+        initial_location = database.get_db().execute(
+            "SELECT id AS dive_site_id, name AS site_name, country_or_area, latitude, longitude "
+            "FROM dive_sites WHERE id = ?",
+            (request.args.get("dive_site_id", type=int),),
+        ).fetchone()
         return render_template(
             "log_dive.html",
+            initial_location=initial_location,
             exposures=EXPOSURES,
             gas_mixes=GAS_MIXES,
             dive_types=DIVE_TYPES,

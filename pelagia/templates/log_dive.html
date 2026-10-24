@@ -27,6 +27,7 @@
         </div>
 
         <div class="form-section">
+            {% set location = dive if is_edit else initial_location %}
             <div class="form-section-title">
                 <h2>Location</h2>
             </div>
@@ -37,8 +38,8 @@
                 </label>
                 <label class="autocomplete-field wide">
                     Dive site
-                    <input name="site_name" id="siteName" type="text" autocomplete="off" data-site-input value="{{ dive.site_name if is_edit else '' }}" required>
-                    <input name="dive_site_id" id="diveSiteId" type="hidden" value="{{ dive.dive_site_id if is_edit and dive.dive_site_id else '' }}">
+                    <input name="site_name" id="siteName" type="text" autocomplete="off" data-site-input value="{{ location.site_name if location else '' }}" required>
+                    <input name="dive_site_id" id="diveSiteId" type="hidden" value="{{ location.dive_site_id if location and location.dive_site_id else '' }}">
                     <div class="autocomplete-menu" data-site-results hidden></div>
                 </label>
                 <label class="autocomplete-field wide">
@@ -49,15 +50,15 @@
                 </label>
                 <label>
                     Country
-                    <input name="country_or_area" id="country" data-country-input value="{{ dive.country_or_area if is_edit and dive.country_or_area else '' }}">
+                    <input name="country_or_area" id="country" data-country-input value="{{ location.country_or_area if location and location.country_or_area else '' }}">
                 </label>
                 <label class="location-coordinate">
                     Latitude
-                    <input name="latitude" id="latitude" inputmode="decimal" value="{{ dive.latitude if is_edit and dive.latitude is not none else '' }}">
+                    <input name="latitude" id="latitude" inputmode="decimal" value="{{ location.latitude if location and location.latitude is not none else '' }}">
                 </label>
                 <label class="location-coordinate">
                     Longitude
-                    <input name="longitude" id="longitude" inputmode="decimal" value="{{ dive.longitude if is_edit and dive.longitude is not none else '' }}">
+                    <input name="longitude" id="longitude" inputmode="decimal" value="{{ location.longitude if location and location.longitude is not none else '' }}">
                 </label>
             </div>
         </div>
