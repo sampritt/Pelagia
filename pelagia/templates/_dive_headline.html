@@ -63,7 +63,30 @@
         {% endif %}
     </div>
 
-    <div class="dive-detail-media {{ 'no-photos' if not dive.photos else '' }}">
+    {% set has_chart = depth_chart and not public_preview %}
+    {% set slide_count = (dive.photos|length) + (1 if has_chart else 0) %}
+    <div class="dive-detail-media {{ 'no-photos' if not slide_count else '' }}">
+        {% if slide_count %}
+        <div class="detail-media-gallery" data-dive-gallery role="region" aria-label="Dive media">
+            <div class="detail-photo-carousel" data-dive-slides tabindex="0" aria-label="{{ 'Dive depth profile and photos' if has_chart else 'Dive photos' }}" aria-roledescription="carousel">
+                {% if has_chart %}
+                    {% include "_depth_profile.html" %}
+                {% endif %}
+                {% for photo in dive.photos %}
+                    <figure class="detail-photo-slide" role="group" aria-label="Photo {{ loop.index }} of {{ dive.photos|length }}">
+                        <img src="{{ uploaded_file_url(photo.filename) }}" alt="Dive photo at {{ dive.site_name }}" loading="lazy">
+                    </figure>
+                {% endfor %}
+            </div>
+            {% if slide_count > 1 %}
+            <div class="detail-gallery-controls" data-gallery-controls hidden>
+                <button type="button" class="icon-button" data-gallery-prev aria-label="Previous slide">←</button>
+                <span data-gallery-position aria-live="polite" aria-atomic="true">1 / {{ slide_count }}</span>
+                <button type="button" class="icon-button" data-gallery-next aria-label="Next slide">→</button>
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
         <div class="mini-map detail-map {{ 'map-pending' if not has_coords else '' }}" {% if has_coords %}data-static-map data-map-lat="{{ dive.latitude }}" data-map-lng="{{ dive.longitude }}" data-map-zoom="10"{% endif %}>
             <span class="map-pin"></span>
             <span class="coordinate-label">
@@ -74,15 +97,6 @@
                 {% endif %}
             </span>
         </div>
-        {% if dive.photos %}
-            <div class="detail-photo-carousel" aria-label="Dive photos">
-                {% for photo in dive.photos %}
-                    <figure class="detail-photo-slide">
-                        <img src="{{ uploaded_file_url(photo.filename) }}" alt="Dive photo at {{ dive.site_name }}" loading="lazy">
-                    </figure>
-                {% endfor %}
-            </div>
-        {% endif %}
     </div>
 
     <div class="detail-headline-stats" aria-label="Dive stats">

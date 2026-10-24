@@ -38,6 +38,7 @@ from . import pwa
 from . import dive_brief
 from . import site_descriptions
 from . import dive_import
+from .depth_profile import depth_profile_chart
 from . import explore
 from .garmin_fit import FitImportError
 from .sharing import TRANSPARENT_LAYOUTS, fetch_public_dive, fetch_public_dive_site, fetch_public_dive_center, render_share_image, render_transparent_share_image, share_description
@@ -329,7 +330,8 @@ def register_routes(app):
         dive = fetch_dive(dive_id, session["user_id"])
         if dive is None:
             abort(404)
-        return render_template("dive_detail.html", dive=dive)
+        return render_template("dive_detail.html", dive=dive,
+                               depth_chart=depth_profile_chart(database.get_db(), dive_id))
 
     @app.get("/share/dive/<int:dive_id>")
     def shared_dive(dive_id):

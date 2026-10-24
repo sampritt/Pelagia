@@ -126,6 +126,37 @@ class GarminImportTest(unittest.TestCase):
         self.assertEqual(len(self.stored()), 1)
         self.assertEqual(json.loads(self.stored()[0]["data_json"])["depth_profile"][1]["depth_m"], 18.5)
 
+    def test_detail_chart_precedes_photos_and_map_and_uses_viewer_units(self):
+        self.save(self.import_dive())
+        with self.app.app_context():
+            db = database.get_db()
+            db.execute("INSERT INTO photos (dive_id, filename) VALUES (1, 'dives/test.jpg')")
+            db.execute("UPDATE users SET length_unit = 'ft' WHERE id = 1")
+            db.commit()
+        html = self.client.get("/dive/1").get_data(as_text=True)
+        self.assertLess(html.index('depth-profile-slide'), html.index('alt="Dive photo'))
+        self.assertLess(html.index('alt="Dive photo'), html.index('mini-map detail-map'))
+        self.assertIn('data-gallery-controls', html)
+        self.assertIn('1 / 2', html)
+        self.assertIn('>ft</text>', html)
+        self.assertIn('Depth over time', html)
+        # Public previews and APIs continue to omit the private computer data.
+        with self.client.session_transaction() as session:
+            session.clear()
+        self.assertNotIn('depth-profile-chart', self.client.get('/share/dive/1').get_data(as_text=True))
+
+    def test_missing_and_unusable_profiles_leave_photo_gallery_available(self):
+        result = self.import_dive()
+        for points in ([], [{"elapsed_seconds": 0, "depth_m": 1}],
+                       [{"elapsed_seconds": 0, "depth_m": 1}] * 2):
+            result['computer_data']['depth_profile'] = points
+            self.save(result)
+            dive_id = self.stored('dives')[-1]['id']
+            html = self.client.get(f'/dive/{dive_id}').get_data(as_text=True)
+            self.assertNotIn('depth-profile-chart', html)
+            self.assertNotIn('data-gallery-controls', html)
+            self.assertIn('mini-map detail-map', html)
+
     def test_bad_profile_rolls_back_both_create_and_edit(self):
         result = self.import_dive()
         good = copy.deepcopy(result)

@@ -6148,3 +6148,22 @@ img.is-media-loading {
 @media (prefers-reduced-motion: reduce) {
     .explore-card { transition: none; }
 }
+
+/* The depth profile and photos share one swipeable frame above the map. */
+.dive-detail-media { grid-template-columns: minmax(0, 1fr); }
+.detail-media-gallery { min-width: 0; }
+.detail-media-gallery .detail-photo-carousel { height: 320px; min-height: 320px; max-height: 320px; }
+.detail-photo-carousel:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.depth-profile-slide { display: grid; place-items: center; background: var(--panel); }
+.depth-profile-chart { display: block; width: 100%; height: 100%; padding: 12px; }
+.depth-profile-grid { fill: none; stroke: var(--line); stroke-width: 1; }
+.depth-profile-line { fill: none; stroke: var(--sea); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; vector-effect: non-scaling-stroke; }
+.depth-profile-axis { fill: var(--muted); font-family: var(--font-ui); font-size: 11px; }
+.detail-gallery-controls { display: flex; justify-content: center; align-items: center; gap: 12px; padding-top: 8px; color: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+.detail-gallery-controls[hidden] { display: none; }
+.detail-gallery-controls .icon-button { width: 30px; height: 30px; min-height: 30px; }
+.detail-gallery-controls button:disabled { opacity: .3; cursor: default; }
+@media (max-width: 560px) {
+    .detail-media-gallery .detail-photo-carousel { height: 240px; min-height: 240px; max-height: 240px; }
+    .depth-profile-chart { padding: 0; }
+}
