@@ -5,11 +5,11 @@
         <button class="icon-button dialog-close-button" type="button" data-share-close aria-label="Close sharing"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"></path></svg></button>
     </div>
     <div class="share-preview-carousel" data-share-carousel role="region" aria-roledescription="carousel" aria-label="Dive image styles" tabindex="0">
-        <img class="share-preview-image" data-share-preview alt="Branded dive image with a photo or map" draggable="false">
+        <img class="share-preview-image" data-share-preview alt="Branded dive image with a map" draggable="false">
         <div class="share-preview-navigation">
             <button class="share-preview-arrow" type="button" data-share-previous aria-label="Previous image style"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14 6-6 6 6 6"></path></svg></button>
             <div class="share-preview-dots" role="group" aria-label="Image style">
-                <button class="share-preview-dot" type="button" data-share-style="0" aria-label="Photo or map image" aria-pressed="true"><span aria-hidden="true"></span></button>
+                <button class="share-preview-dot" type="button" data-share-style="0" aria-label="Map image" aria-pressed="true"><span aria-hidden="true"></span></button>
                 {% for layout in ('vertical', 'horizontal', 'stacked', 'map') %}
                 <button class="share-preview-dot" type="button" data-share-style="{{ loop.index }}" aria-label="Transparent {{ layout }} image" aria-pressed="false"><span aria-hidden="true"></span></button>
                 {% endfor %}

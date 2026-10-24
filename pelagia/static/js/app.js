@@ -451,7 +451,7 @@ function initDiveSharing() {
         imageStyles = [
             { imageUrl: button.dataset.shareImage, downloadUrl: button.dataset.shareDownload,
                 filename: "pelagia-dive.jpg", mimeType: "image/jpeg",
-                aspectRatio: "1200 / 630", alt: "Branded dive image with a photo or map" },
+                aspectRatio: "1200 / 630", alt: "Branded dive image with a map" },
             ...[ ["vertical", "720 / 1280"], ["horizontal", "1600 / 600"],
                 ["stacked", "1200 / 780"], ["map", "960 / 1200"] ].map(([layout, aspectRatio]) => {
                 const imageUrl = new URL(button.dataset.shareTransparentImage);

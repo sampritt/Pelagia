@@ -295,7 +295,7 @@ def render_transparent_share_image(dive, *, length_unit="m", weight_unit="kg", l
 @lru_cache(maxsize=1)
 def _share_scrim():
     # Smooth, continuous shading replaces the split text/media panels. The
-    # upper-right stays open for the photo subject or the site's location pin.
+    # upper-right stays open for the site's location pin.
     width, height = 1200, 630
     horizontal = []
     for x in range(width):
@@ -312,47 +312,10 @@ def _share_scrim():
     return Image.frombytes("RGBA", (width, height), bytes(pixels))
 
 
-def _place_share_map(image, map_image):
-    """An inset gives photo shares geographic context without a panel split."""
-    x, y = 830, 108
-    width, height = map_image.size
-    mask = Image.new("L", (width * 4, height * 4))
-    ImageDraw.Draw(mask).rounded_rectangle((0, 0, width * 4 - 1, height * 4 - 1), radius=96, fill=255)
-    mask = mask.resize((width, height), Image.Resampling.LANCZOS)
-    tile = Image.blend(map_image.convert("RGB"), Image.new("RGB", map_image.size, "#123f4b"), 0.08).convert("RGBA")
-    tile.putalpha(mask)
-
-    shadow = Image.new("RGBA", image.size)
-    shadow.paste((3, 18, 26, 90), (x, y + 6, x + width, y + height + 6), mask)
-    image.alpha_composite(shadow.filter(ImageFilter.GaussianBlur(12)))
-    image.alpha_composite(tile, (x, y))
-    border = Image.new("RGBA", image.size)
-    ImageDraw.Draw(border).rounded_rectangle((x, y, x + width - 1, y + height - 1), radius=24,
-                                             outline=(222, 238, 235, 100), width=1)
-    image.alpha_composite(border)
-
-
 def render_share_image(dive, *, length_unit="m", weight_unit="kg"):
-    # Gallery order determines the primary photo. A full-bleed map takes its
-    # place when no readable photo exists, with the pin clear of the headline.
-    uploads = Path(current_app.config["UPLOAD_FOLDER"]).resolve()
-    media = None
-    map_preview = None
-    for photo in dive["photos"]:
-        candidate = (uploads / photo["filename"].removeprefix("uploads/")).resolve()
-        if not candidate.is_relative_to(uploads) or not candidate.is_file():
-            continue
-        try:
-            with Image.open(candidate) as photo:
-                media = ImageOps.fit(ImageOps.exif_transpose(photo).convert("RGB"), (1200, 630))
-            break
-        except (OSError, UnidentifiedImageError):
-            continue
-    if media is None:
-        media = render_static_map(dive["latitude"], dive["longitude"],
-                                  size=(1200, 630), pin_position=(930, 235))
-    else:
-        map_preview = render_static_map(dive["latitude"], dive["longitude"], size=(314, 252))
+    # Every splash uses the full-bleed map, with the pin clear of the headline.
+    media = render_static_map(dive["latitude"], dive["longitude"],
+                              size=(1200, 630), pin_position=(930, 235))
     if media is None:
         try:
             with Image.open(Path(current_app.static_folder, "img/ocean-hero-v2.jpg")) as artwork:
@@ -360,8 +323,6 @@ def render_share_image(dive, *, length_unit="m", weight_unit="kg"):
         except (OSError, UnidentifiedImageError):
             media = Image.new("RGB", (1200, 630), "#123f4b")
     image = Image.alpha_composite(media.convert("RGBA"), _share_scrim())
-    if map_preview is not None:
-        _place_share_map(image, map_preview)
     _place_lockup(image, 145, 56, 39)
     draw = ImageDraw.Draw(image)
     draw.text((1144, 58), "DIVE LOG", font=_font(17, bold=True), fill="#deeeeb", anchor="rt")

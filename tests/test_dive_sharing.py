@@ -185,34 +185,25 @@ class DiveSharingTest(unittest.TestCase):
         })
         self.assertEqual(response.status_code, 302)
 
-    def assert_preview_photo_color(self, color):
-        # Check a clear part of the full-bleed photo, above the lower scrim.
-        guest = self.app.test_client()
-        response = guest.get("/share/dive/1/preview.jpg")
-        self.assertEqual(response.status_code, 200)
-        with Image.open(io.BytesIO(response.data)) as image:
-            self.assertEqual(image.size, (1200, 630))
-            pixel = image.getpixel((1180, 235))
-            for actual, expected in zip(pixel, color):
-                self.assertLessEqual(abs(actual - expected), 3)
-        download = guest.get("/share/dive/1/preview.jpg?download=1")
-        self.assertEqual(download.data, response.data)
-
-    def test_uploaded_primary_photo_appears_in_public_and_saved_thumbnail(self):
+    def test_uploaded_photos_use_same_map_splash_as_a_dive_without_photos(self):
         self.upload_photos()
+        with self.app.app_context():
+            dive = fetch_public_dive(1)
+            dive["photos"] = []
+            expected = render_share_image(dive).getvalue()
+        guest = self.app.test_client()
         with patch("pelagia.sharing.render_static_map", wraps=render_static_map) as map_renderer:
-            self.assert_preview_photo_color((23, 173, 173))
+            for url in ("/share/dive/1/preview.jpg", "/share/dive/1/preview.jpg?download=1"):
+                response = guest.get(url)
+                self.assertEqual(response.status_code, 200)
+                self.assertEqual(response.mimetype, "image/jpeg")
+                self.assertEqual(response.data, expected)
+            self.assertEqual(map_renderer.call_count, 2)
             for call in map_renderer.call_args_list:
                 self.assertEqual(call.args, (7.134, 134.22))
-                self.assertEqual(call.kwargs, {"size": (314, 252)})
-            self.assertGreater(map_renderer.call_count, 0)
-        self.assertGreater(self.tile_request.call_count, 0)
-        with Image.open(io.BytesIO(self.client.get("/share/dive/1/preview.jpg").data)) as image:
-            self.assertNotEqual(image.getpixel((987, 234)), image.getpixel((1080, 234)))
-            # The inset leaves the uploaded photo visible outside its bounds.
-            self.assertNotEqual(image.getpixel((1080, 234)), image.getpixel((1180, 234)))
+                self.assertEqual(call.kwargs, {"size": (1200, 630), "pin_position": (930, 235)})
 
-    def test_photo_share_omits_inset_when_coordinates_or_tiles_are_unavailable(self):
+    def test_splash_with_photos_uses_fallback_when_coordinates_or_tiles_are_unavailable(self):
         self.upload_photos()
         self.tile_request.side_effect = requests.Timeout("Map unavailable")
         failed = self.client.get("/share/dive/1/preview.jpg")
@@ -226,22 +217,16 @@ class DiveSharingTest(unittest.TestCase):
         self.assertEqual(failed.data, missing.data)
         self.tile_request.assert_not_called()
 
-    def test_unavailable_primary_photo_uses_next_photo_then_map_fallback(self):
+    def test_missing_or_unreadable_attachments_do_not_change_map_splash(self):
         self.upload_photos()
+        guest = self.app.test_client()
+        expected = guest.get("/share/dive/1/preview.jpg").data
         with self.app.app_context():
-            # Editing also records the default gas, so compare the fallback
-            # using the same saved metrics as the photo-bearing dive.
-            dive = fetch_public_dive(1)
-            dive["photos"] = []
-            fallback = render_share_image(dive).getvalue()
             photos = database.get_db().execute("SELECT filename FROM photos ORDER BY id").fetchall()
             paths = [Path(self.app.config["UPLOAD_FOLDER"], photo["filename"].removeprefix("uploads/")) for photo in photos]
         paths[0].unlink()
-        self.assert_preview_photo_color((255, 102, 51))
-        paths[0].write_bytes(b"unreadable photo")
-        self.assert_preview_photo_color((255, 102, 51))
         paths[1].write_bytes(b"unreadable photo")
-        self.assertEqual(self.app.test_client().get("/share/dive/1/preview.jpg").data, fallback)
+        self.assertEqual(guest.get("/share/dive/1/preview.jpg").data, expected)
 
     def test_thumbnail_cannot_load_a_photo_outside_upload_folder(self):
         fallback = self.client.get("/share/dive/1/preview.jpg").data
