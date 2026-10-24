@@ -1,5 +1,5 @@
 <figure class="detail-photo-slide depth-profile-slide" role="group" aria-label="Dive depth profile">
-    <svg class="depth-profile-chart" viewBox="0 0 800 290" role="img" aria-labelledby="depthProfileTitle-{{ dive.id }} depthProfileDescription-{{ dive.id }}">
+    <svg class="depth-profile-chart" role="img" aria-labelledby="depthProfileTitle-{{ dive.id }} depthProfileDescription-{{ dive.id }}">
         <title id="depthProfileTitle-{{ dive.id }}">Depth over time</title>
         <desc id="depthProfileDescription-{{ dive.id }}">Dive depth increases downward. Maximum recorded depth {{ display_metric(depth_chart.max_depth_m, 'length') }} over {{ '%.0f'|format(depth_chart.duration_minutes) }} minutes.</desc>
         <defs>
@@ -8,15 +8,17 @@
                 <stop offset="100%" stop-color="var(--accent)" stop-opacity=".38" />
             </linearGradient>
         </defs>
-        <path class="depth-profile-grid" d="M44 28H760 M44 139H760 M44 250H760" />
-        <path d="{{ depth_chart.fill }}" fill="url(#depthProfileFill-{{ dive.id }})" />
-        <path class="depth-profile-line" d="{{ depth_chart.line }}" />
+        <svg x="8%" y="10%" width="87%" height="76%" viewBox="44 28 716 222" preserveAspectRatio="none" overflow="visible">
+            <path class="depth-profile-grid" d="M44 28H760 M44 139H760 M44 250H760" />
+            <path d="{{ depth_chart.fill }}" fill="url(#depthProfileFill-{{ dive.id }})" />
+            <path class="depth-profile-line" d="{{ depth_chart.line }}" />
+        </svg>
         <g class="depth-profile-axis">
-            <text x="34" y="32" text-anchor="end">0</text>
-            <text x="34" y="254" text-anchor="end">{{ display_metric(depth_chart.max_depth_m, 'length', include_unit=False) }}</text>
-            <text x="44" y="275">0 min</text>
-            <text x="760" y="275" text-anchor="end">{{ '%.0f'|format(depth_chart.duration_minutes) }} min</text>
-            <text x="44" y="16">{{ display_unit('length') }}</text>
+            <text x="6%" y="10%" dy="4" text-anchor="end">0</text>
+            <text x="6%" y="86%" dy="4" text-anchor="end">{{ display_metric(depth_chart.max_depth_m, 'length', include_unit=False) }}</text>
+            <text x="8%" y="95%">0 min</text>
+            <text x="95%" y="95%" text-anchor="end">{{ '%.0f'|format(depth_chart.duration_minutes) }} min</text>
+            <text x="8%" y="6%">{{ display_unit('length') }}</text>
         </g>
     </svg>
 </figure>
