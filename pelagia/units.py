@@ -59,6 +59,8 @@ def metric_measurement(value, unit, minimum, maximum):
         parsed *= PSI_TO_BAR
     elif unit == "f":
         parsed = (parsed - 32) * 5 / 9
+    if not math.isfinite(parsed):
+        return None
     if unit in ("ft", "lb", "psi", "f"):
         parsed = round(parsed, 10)
     return max(minimum, min(maximum, parsed))

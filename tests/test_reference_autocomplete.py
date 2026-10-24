@@ -135,7 +135,7 @@ class ReferenceAutocompleteTest(unittest.TestCase):
                         "weight_kg": "100", "weight_unit": "lb", "starting_pressure_bar": "5000", "pressure_unit": "psi",
                         "air_temp_c": "-100", "water_temp_c": "200", "temperature_unit": "f"})
             saved = client.get(f"/api/dives/{dive['id']}").get_json()
-            self.assertEqual((saved["depth_m"], saved["average_depth_m"], saved["weight_kg"], saved["starting_pressure_bar"]), (45, 0, 10, 300))
+            self.assertEqual((saved["depth_m"], saved["average_depth_m"], saved["weight_kg"], saved["starting_pressure_bar"]), (152.4, 0, 10, 300))
             self.assertEqual((saved["air_temp_c"], saved["water_temp_c"]), (-20, 40))
             # Unknown unit names cannot trigger an arbitrary conversion.
             client.post(f"/dive/{dive['id']}/edit", data={**payload, "depth_m": "15.3", "length_unit": "bad"})
@@ -303,7 +303,7 @@ class ReferenceAutocompleteTest(unittest.TestCase):
             self.signup(client)
             form = client.get("/dive/new").data
             self.assertIn(b'<output id="averageDepthOutput">-</output>', form)
-            self.assertIn(b'name="average_depth_m" type="number" min="0" max="45" step="any" placeholder="-" value=""', form)
+            self.assertIn(b'name="average_depth_m" type="number" min="0" step="any" placeholder="-" value=""', form)
             self.assertIn(b'min="0" max="45" step="1" value="0" data-range="averageDepth"', form)
             self.assertLess(form.index(b'name="depth_m"'), form.index(b'name="average_depth_m"'))
             self.assertLess(form.index(b'name="average_depth_m"'), form.index(b'name="duration_min"'))
@@ -436,7 +436,7 @@ class ReferenceAutocompleteTest(unittest.TestCase):
             self.signup(client)
             form = client.get("/dive/new").data
             self.assertIn(b'min="0" max="45" step="1" value="12" data-range="depth"', form)
-            self.assertIn(b'name="depth_m" type="number" min="0" max="45" step="any"', form)
+            self.assertIn(b'name="depth_m" type="number" min="0" step="any"', form)
             self.assertIn(b'min="0" max="120" step="1" value="80" data-range="duration"', form)
             self.assertIn(b'min="0" max="10" step="0.5" value="0" data-range="weight"', form)
             for name in ("starting_pressure_bar", "ending_pressure_bar"):
@@ -1043,7 +1043,7 @@ Kelp House,2 Harbor Way,Alaska,https://kelp.example.test
             self.assertIn("Max depth (m)".encode(), new_response.data)
             self.assertIn("Weight (kg)".encode(), new_response.data)
             self.assertIn("Air temperature (°C)".encode(), new_response.data)
-            self.assertIn(b'name="depth_m" type="number" min="0" max="45"', new_response.data)
+            self.assertIn(b'name="depth_m" type="number" min="0" step="any"', new_response.data)
             self.assertIn(b'name="visibility_m" type="number" min="0" step="any"', new_response.data)
             self.assertIn(b'name="air_temp_c" type="number" min="-20" max="40"', new_response.data)
             self.assertIn(b'data-exposure-label aria-live="polite">-</output>', new_response.data)
@@ -1134,7 +1134,7 @@ Kelp House,2 Harbor Way,Alaska,https://kelp.example.test
             )
 
             logged = client.get("/api/dives/mine").get_json()[0]
-            self.assertEqual(logged["depth_m"], 45)
+            self.assertEqual(logged["depth_m"], 100)
             self.assertEqual(logged["weight_kg"], 10)
             self.assertEqual(logged["starting_pressure_bar"], 250)
             self.assertEqual(logged["ending_pressure_bar"], 60)
@@ -1143,7 +1143,7 @@ Kelp House,2 Harbor Way,Alaska,https://kelp.example.test
             self.assertEqual(logged["water_temp_c"], 40)
 
             detail_response = client.get(f"/dive/{logged['id']}")
-            self.assertIn(b"45<em>m</em>", detail_response.data)
+            self.assertIn(b"100<em>m</em>", detail_response.data)
             self.assertIn(b"100 m", detail_response.data)
             self.assertIn(b"10 kg", detail_response.data)
             self.assertIn(b"250 bar", detail_response.data)

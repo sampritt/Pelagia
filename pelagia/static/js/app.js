@@ -136,10 +136,12 @@ function initStaticMaps(root = document) {
 
 const debounce = (fn, wait = 180) => {
     let timeout;
-    return (...args) => {
+    const delayed = (...args) => {
         window.clearTimeout(timeout);
         timeout = window.setTimeout(() => fn(...args), wait);
     };
+    delayed.cancel = () => window.clearTimeout(timeout);
+    return delayed;
 };
 
 async function fetchJson(url, options = {}) {
@@ -733,6 +735,153 @@ function initGasMix(form) {
     }
 }
 
+function initDiveComputerImport(form, applyImport) {
+    const dialog = document.querySelector("[data-computer-import]");
+    if (!dialog || typeof dialog.showModal !== "function") return;
+    const trigger = form.querySelector("[data-computer-import-open]");
+    const title = dialog.querySelector("[data-computer-import-title]");
+    const backLabel = dialog.querySelector("[data-computer-import-back-label]");
+    const step = dialog.querySelector("[data-computer-import-step]");
+    const brands = dialog.querySelector("[data-computer-import-brands]");
+    const upload = dialog.querySelector("[data-computer-import-upload]");
+    const choose = dialog.querySelector("[data-computer-import-choose]");
+    const fileInput = dialog.querySelector("[data-computer-import-file]");
+    const progress = dialog.querySelector("[data-computer-import-progress]");
+    const errorText = dialog.querySelector("[data-computer-import-error]");
+    let screen = null;
+    let scroll = null;
+    let previousTop = "";
+    let pending = null;
+    let nativePicker = typeof window.showOpenFilePicker === "function";
+    let closing = false;
+
+    const busy = (loading) => {
+        choose.disabled = loading;
+        choose.textContent = loading ? "Importing…" : "Choose FIT file";
+        progress.hidden = !loading;
+        upload.setAttribute("aria-busy", String(loading));
+    };
+    const cancelRequest = () => {
+        pending?.abort();
+        pending = null;
+        busy(false);
+    };
+    const showError = (message) => {
+        errorText.textContent = message;
+        errorText.hidden = false;
+    };
+    const render = (nextScreen) => {
+        if (nextScreen !== screen) cancelRequest();
+        screen = nextScreen;
+        closing = false;
+        if (!screen) {
+            if (dialog.open) dialog.close();
+            document.body.classList.remove("computer-import-is-open");
+            if (scroll) {
+                document.body.style.top = previousTop;
+                window.scrollTo({ left: scroll.x, top: scroll.y, behavior: "instant" });
+                scroll = null;
+                trigger.focus({ preventScroll: true });
+            }
+            trigger.setAttribute("aria-expanded", "false");
+            return;
+        }
+        if (!dialog.open) {
+            scroll = { x: window.scrollX, y: window.scrollY };
+            previousTop = document.body.style.top;
+            document.body.style.top = `-${scroll.y}px`;
+            document.body.classList.add("computer-import-is-open");
+            dialog.showModal();
+        }
+        trigger.setAttribute("aria-expanded", "true");
+        const isGarmin = screen === "garmin";
+        brands.hidden = isGarmin;
+        upload.hidden = !isGarmin;
+        title.textContent = isGarmin ? "Import from Garmin" : "Choose your dive computer";
+        step.textContent = isGarmin ? "Step 2 of 2" : "Step 1 of 2";
+        backLabel.textContent = isGarmin ? "Brands" : "Log dive";
+        errorText.hidden = true;
+        dialog.scrollTop = 0;
+        title.focus({ preventScroll: true });
+    };
+    const push = (nextScreen) => {
+        window.history.pushState({ ...window.history.state, pelagiaComputerImport: nextScreen }, "", window.location.href);
+        render(nextScreen);
+    };
+    const close = () => {
+        if (!screen || closing) return;
+        closing = true;
+        cancelRequest();
+        window.history.go(screen === "garmin" ? -2 : -1);
+    };
+    trigger.addEventListener("click", () => { if (!dialog.open) push("brands"); });
+    dialog.querySelector("[data-computer-import-garmin]").addEventListener("click", () => push("garmin"));
+    dialog.querySelector("[data-computer-import-back]").addEventListener("click", () => {
+        cancelRequest();
+        window.history.back();
+    });
+    dialog.querySelector("[data-computer-import-close]").addEventListener("click", close);
+    dialog.addEventListener("cancel", (event) => { event.preventDefault(); close(); });
+    window.addEventListener("popstate", () => render(window.history.state?.pelagiaComputerImport || null));
+    window.addEventListener("pageshow", () => render(window.history.state?.pelagiaComputerImport || null));
+    window.addEventListener("pagehide", cancelRequest);
+    dialog.addEventListener("close", () => {
+        if (!dialog.open && screen && !closing) close();
+    });
+
+    const importFile = async (file) => {
+        if (!file || pending || screen !== "garmin" || closing) return;
+        errorText.hidden = true;
+        if (!/\.fit$/i.test(file.name)) { showError("Choose a Garmin FIT file ending in .fit."); return; }
+        if (file.size > 10 * 1024 * 1024) { showError("Choose a FIT file smaller than 10 MiB."); return; }
+        if (navigator.onLine === false) { showError("You’re offline. Reconnect and choose the file again."); return; }
+        const controller = new AbortController();
+        pending = controller;
+        busy(true);
+        const timeout = window.setTimeout(() => controller.abort(), 30000);
+        try {
+            const response = await fetch(dialog.dataset.importUrl, {
+                method: "POST", credentials: "same-origin", cache: "no-store",
+                headers: { "Content-Type": "application/octet-stream", "X-Requested-With": "fetch" },
+                body: file, signal: controller.signal,
+            });
+            const result = await response.json();
+            if (pending !== controller || screen !== "garmin" || closing) return;
+            if (!response.ok) throw new Error(result.error || "The dive could not be imported. Choose the file again.");
+            applyImport(result);
+            close();
+        } catch (error) {
+            if (pending !== controller || screen !== "garmin" || closing) return;
+            showError(error.name === "AbortError" ? "Import timed out. Choose the file to try again."
+                : error instanceof TypeError || error instanceof SyntaxError ? "Couldn’t import your dive. Check your connection and try again." : error.message);
+        } finally {
+            window.clearTimeout(timeout);
+            if (pending === controller) { pending = null; busy(false); }
+        }
+    };
+    choose.addEventListener("click", async () => {
+        if (pending) return;
+        if (!nativePicker) {
+            fileInput.value = "";
+            fileInput.click();
+            return;
+        }
+        try {
+            const [handle] = await window.showOpenFilePicker({
+                id: "pelagia-garmin-fit", startIn: "downloads", multiple: false, excludeAcceptAllOption: true,
+                types: [{ description: "Garmin FIT dive", accept: { "application/octet-stream": [".fit"] } }],
+            });
+            await importFile(await handle.getFile());
+        } catch (error) {
+            if (error.name !== "AbortError") {
+                nativePicker = false;
+                showError("Choose FIT file again to open your device’s file picker.");
+            }
+        }
+    });
+    fileInput.addEventListener("change", () => importFile(fileInput.files?.[0]));
+}
+
 function initDiveForm() {
     const form = document.querySelector("[data-dive-form]");
     if (!form) {
@@ -775,7 +924,8 @@ function initDiveForm() {
             number: form.querySelector("[data-number='depth']"),
             output: document.getElementById("depthOutput"),
             min: 0,
-            max: 45,
+            max: Infinity,
+            rangeMax: 45,
             step: 1,
             unit: "m",
         },
@@ -784,7 +934,8 @@ function initDiveForm() {
             number: form.querySelector("[data-number='averageDepth']"),
             output: document.getElementById("averageDepthOutput"),
             min: 0,
-            max: 45,
+            max: Infinity,
+            rangeMax: 45,
             step: 1,
             unit: "m",
             optional: true,
@@ -794,7 +945,8 @@ function initDiveForm() {
             number: form.querySelector("[data-number='duration']"),
             output: document.getElementById("durationOutput"),
             min: 0,
-            max: 120,
+            max: Infinity,
+            rangeMax: 120,
             step: 1,
             unit: "min",
         },
@@ -911,7 +1063,8 @@ function initDiveForm() {
         pair.min = alternate ? Math.round(toDisplay(pair.metricMin, pair)) : Math.floor(pair.metricMin * scale) / scale;
         pair.max = alternate ? Math.round(toDisplay(pair.metricMax, pair)) : Math.ceil(pair.metricMax * scale) / scale;
         pair.rangeMax = pair.group === "pressure" ? (alternate ? 3000 : pair.metricRangeMax)
-            : pair.name === "visibility" ? (alternate ? 100 : pair.metricRangeMax) : pair.max;
+            : pair.name === "visibility" ? (alternate ? 100 : pair.metricRangeMax)
+            : alternate ? Math.round(toDisplay(pair.metricRangeMax, pair)) : pair.metricRangeMax;
         pair.step = pair.name === "visibility" && alternate ? 5 : (alternate ? config.step : pair.metricStep);
         pair.range.min = pair.number.min = String(pair.min);
         pair.range.max = String(pair.rangeMax);
@@ -1032,9 +1185,7 @@ function initDiveForm() {
     initMultiSelects(form);
     initCurrentStrengthSlider(form);
 
-    siteInput.addEventListener(
-        "input",
-        debounce(async () => {
+    const siteSearch = debounce(async () => {
             siteId.value = "";
             const query = siteInput.value.trim();
             if (query.length < 2) {
@@ -1042,8 +1193,8 @@ function initDiveForm() {
                 return;
             }
             await searchSites(`/api/sites?q=${encodeURIComponent(query)}`, renderSiteResults);
-        }, 160),
-    );
+        }, 160);
+    siteInput.addEventListener("input", siteSearch);
 
     centerInput.addEventListener(
         "input",
@@ -1120,6 +1271,39 @@ function initDiveForm() {
     initPhotoPreview(form);
     initPhotoRemoval(form);
     initArrowNavigation(form);
+    initDiveComputerImport(form, (result) => {
+        const fields = result.fields;
+        // Set this before depth: importing a measurement must not suggest another duration.
+        durationTouched = true;
+        siteSearch.cancel();
+        cancelSuggestionLoad(siteResults);
+        hideMenu(siteResults);
+        const metrics = { depth_m: "depth", average_depth_m: "averageDepth", duration_min: "duration",
+            water_temp_c: "waterTemp", air_temp_c: "airTemp" };
+        Object.entries(metrics).forEach(([field, name]) => {
+            if (fields[field] !== undefined && fields[field] !== null) setPair(name, fields[field]);
+        });
+        ["date", "site_name", "dive_site_id", "country_or_area", "latitude", "longitude"].forEach((field) => {
+            if (fields[field] !== undefined) form.elements.namedItem(field).value = fields[field];
+        });
+        if (fields.oxygen_pct !== undefined) {
+            const controls = form.querySelector("[data-gas-mix]");
+            for (const [gas, field] of [["oxygen", "oxygen_pct"], ["helium", "helium_pct"], ["nitrogen", "nitrogen_pct"]]) {
+                controls.querySelector(`[data-gas-range='${gas}']`).value = fields[field];
+                controls.querySelector(`[data-gas-number='${gas}']`).value = fields[field];
+            }
+            controls.querySelector("[data-gas-mix-label]").textContent = fields.helium_pct > 0
+                ? `Trimix ${fields.oxygen_pct}/${fields.helium_pct}` : fields.oxygen_pct === 21 ? "Air" : `EANx ${fields.oxygen_pct}%`;
+        }
+        if (fields.average_depth_m !== undefined) form.querySelector("[data-average-depth]").open = true;
+        form.querySelector("[data-computer-data]").value = JSON.stringify(result.computer_data);
+        const status = form.querySelector("[data-computer-import-status]");
+        const samples = result.computer_data.depth_profile.length.toLocaleString();
+        const matched = result.matched_site ? ` · Matched ${result.matched_site.name}` : "";
+        status.textContent = `Garmin dive imported${matched} · ${samples} depth measurements ready to save. ${result.notices.join(" ")}`;
+        status.hidden = false;
+        if (fields.dive_site_id) loadSpeciesSuggestions({ siteId: fields.dive_site_id, country: fields.country_or_area });
+    });
 }
 
 function suggestedDuration(depthM) {

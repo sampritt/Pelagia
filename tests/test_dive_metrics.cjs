@@ -30,7 +30,17 @@ function setup(initial = {}, stored = {}, preferred = {}) {
     const sacOutput = element();
     const trackStyles = {};
     const pressureTrack = {style: {setProperty(name, value) {trackStyles[name] = value;}}, classList: {toggle() {}}};
+    const namedFields = Object.fromEntries(["date", "site_name", "dive_site_id", "country_or_area", "latitude", "longitude"].map(name => [name, element()]));
+    const computerData = element(), importStatus = element(), averageDetails = element();
+    const gasFields = Object.fromEntries(["oxygen", "helium", "nitrogen"].map(gas => [gas, {range: element(), number: element()}]));
+    const gasLabel = element();
+    const gasControls = {querySelector(selector) {
+        if (selector === "[data-gas-mix-label]") return gasLabel;
+        const match = selector.match(/data-gas-(range|number)='(.+)'/);
+        return gasFields[match[2]][match[1]];
+    }};
     const form = {
+        elements: {namedItem: name => namedFields[name]},
         handlers: {}, addEventListener(name, handler) { this.handlers[name] = handler; },
         dataset: { isEdit: "true" },
         querySelector(selector) {
@@ -38,6 +48,10 @@ function setup(initial = {}, stored = {}, preferred = {}) {
             if (metric) return pairs[metric[2]][metric[1]];
             if (selector === "[data-sac-calculator]") return calculator;
             if (selector === ".pressure-slider") return pressureTrack;
+            if (selector === "[data-computer-data]") return computerData;
+            if (selector === "[data-computer-import-status]") return importStatus;
+            if (selector === "[data-average-depth]") return averageDetails;
+            if (selector === "[data-gas-mix]") return gasControls;
             const label = selector.match(/\[data-unit-label='(.+)'\]/);
             if (label) return labels[label[1]];
             return element();
@@ -49,10 +63,11 @@ function setup(initial = {}, stored = {}, preferred = {}) {
         getElementById: id => id.endsWith("Output") ? pairs[id.slice(0, -6)].output : element(),
         addEventListener() {},
     };
-    const context = vm.createContext({ document, window: {}, setTimeout, clearTimeout });
+    const context = vm.createContext({ document, window: {setTimeout, clearTimeout}, setTimeout, clearTimeout, loadSpeciesSuggestions() {} });
     vm.runInContext(fs.readFileSync(path.join(__dirname, "../pelagia/static/js/app.js"), "utf8"), context);
     vm.runInContext(`
         initSpeciesPicker = initBuddyAutocomplete = initPhotoPreview = initPhotoRemoval = initArrowNavigation = initCurrentStrengthSlider = () => {};
+        initDiveComputerImport = (_form, applyImport) => { globalThis.applyImported = applyImport; };
         initDiveForm();
     `, context);
     const setUnit = (group, unit) => {
@@ -64,7 +79,8 @@ function setup(initial = {}, stored = {}, preferred = {}) {
         form.handlers.formdata({formData: {set: (name, value) => values.set(name, value)}});
         return Object.fromEntries(values);
     };
-    return { pairs, sacOutput, setUnit, submitted, labels, trackStyles };
+    return { pairs, sacOutput, setUnit, submitted, labels, trackStyles, namedFields, computerData, importStatus, gasFields, gasLabel,
+        applyImported: context.applyImported, averageDetails };
 }
 
 test("typed depths round on blur and reopening; sliders use whole meters", () => {
@@ -185,7 +201,8 @@ test("unit toggles update values, bounds, labels and slider steps without changi
     assert.equal(state.pairs.averageDepth.number.value, "34");
     assert.equal(state.pairs.visibility.number.value, "50");
     assert.equal(state.labels.depth.textContent, "Max depth (ft)");
-    assert.equal(state.pairs.depth.number.max, "148");
+    assert.equal(state.pairs.depth.number.max, "");
+    assert.equal(state.pairs.depth.range.max, "148");
     assert.equal(state.pairs.weight.number.max, "22");
     assert.equal(state.pairs.weight.number.value, "17.5");
     assert.equal(state.pairs.startingPressure.number.value, "2828");
@@ -455,4 +472,52 @@ test("gas sliders update nitrogen, preserve the other editable gas, and clamp th
     assert.equal(gases.nitrogen.number.value, "77");
     assert.deepEqual(Object.keys(gases.nitrogen.number.handlers), []);
     assert.deepEqual(Object.keys(gases.nitrogen.range.handlers), []);
+});
+
+test("import fills canonical measurements, keeps unrelated values, and survives unit switches", () => {
+    const state = setup({airTemp: "31", weight: "7.5", startingPressure: "200", endingPressure: "50"}, {}, {length: "ft", temperature: "f"});
+    const data = {version: 1, depth_profile: [{elapsed_seconds: 0, depth_m: 1.602}]};
+    state.applyImported({fields: {depth_m: 21.038, average_depth_m: 13.049, duration_min: 53, water_temp_c: 28,
+        date: "2026-10-09", dive_site_id: 2544, site_name: "Daphne", country_or_area: "Ecuador",
+        latitude: -0.39685134775936604, longitude: -90.35167305730283, oxygen_pct: 33, helium_pct: 0, nitrogen_pct: 67},
+        computer_data: data, matched_site: {name: "Daphne"}, notices: ["No separate air temperature was recorded."]});
+    assert.equal(state.namedFields.site_name.value, "Daphne");
+    assert.equal(state.namedFields.dive_site_id.value, 2544);
+    assert.equal(state.namedFields.latitude.value, -0.39685134775936604);
+    assert.equal(state.gasFields.oxygen.number.value, 33);
+    assert.equal(state.gasLabel.textContent, "EANx 33%");
+    assert.equal(state.pairs.duration.number.value, "53");
+    assert.equal(state.pairs.depth.number.value, "69");
+    assert.equal(state.pairs.waterTemp.number.value, "82");
+    assert.equal(state.averageDetails.open, true);
+    assert.deepEqual(JSON.parse(state.computerData.value), data);
+    assert.match(state.importStatus.textContent, /Matched Daphne/);
+    assert.match(state.importStatus.textContent, /1 depth measurements ready to save/);
+    state.setUnit("length", "m");
+    state.setUnit("temperature", "c");
+    const values = state.submitted();
+    assert.equal(values.depth_m, "21.038");
+    assert.equal(values.average_depth_m, "13.049");
+    assert.equal(values.air_temp_c, "31");
+    assert.equal(values.water_temp_c, "28");
+    assert.equal(values.weight_kg, "7.5");
+    assert.equal(values.starting_pressure_bar, "200");
+});
+
+test("numeric depth and duration exceed convenient slider ranges without loss", () => {
+    const state = setup({depth: "83.123", averageDepth: "50.125", duration: "183"});
+    assert.equal(state.pairs.depth.number.max, "");
+    assert.equal(state.pairs.duration.number.max, "");
+    assert.equal(state.pairs.depth.range.max, "45");
+    assert.equal(state.pairs.duration.range.max, "120");
+    assert.equal(state.pairs.duration.number.value, "183");
+    state.setUnit("length", "ft");
+    state.setUnit("length", "m");
+    assert.equal(state.submitted().depth_m, "83.123");
+    assert.equal(state.submitted().average_depth_m, "50.125");
+    state.pairs.depth.number.value = "102.45";
+    state.pairs.depth.number.handlers.input();
+    state.pairs.depth.number.handlers.blur();
+    assert.equal(state.submitted().depth_m, "102.45");
+    assert.equal(state.pairs.depth.range.value, 45);
 });

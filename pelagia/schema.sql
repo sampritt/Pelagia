@@ -133,6 +133,11 @@ CREATE TABLE IF NOT EXISTS dives (
 CREATE INDEX IF NOT EXISTS idx_dives_user_created ON dives(user_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_dives_created ON dives(created_at DESC);
 
+CREATE TABLE IF NOT EXISTS dive_computer_data (
+    dive_id INTEGER PRIMARY KEY REFERENCES dives(id) ON DELETE CASCADE,
+    data_json TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS dive_species (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     dive_id INTEGER NOT NULL,

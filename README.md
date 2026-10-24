@@ -59,6 +59,22 @@ Tests mock OpenAI without making billable calls: `.venv312/bin/python -m unittes
 - `pelagia/schema.sql`: SQLite schema
 - `pelagia/importer.py`: pandas CSV import
 
+## Garmin dive imports
+
+New and Edit dive forms offer **Import from dive computer → Garmin → Choose FIT file**. Other listed brands are disabled. Export a single-gas scuba dive from Garmin Dive using **Export Dive as FIT File**. Selecting the file immediately fills its recorded date, depths, bottom time, gas composition, water temperature, and GPS coordinates. The nearest catalog dive site is matched across all valid site coordinates using Cartesian chord distance, with no distance cutoff. Recorded coordinates are retained, and all imported values can be reviewed before saving. Fields absent from the file and unrelated entries, including photos and notes, are preserved. No separate air temperature is inferred from the water sensor.
+
+The authenticated `POST /api/dive-import/garmin` endpoint accepts the FIT file as a raw `application/octet-stream` body, requires `X-Requested-With: fetch`, limits input to 10 MiB, validates FIT integrity with `garmin-fit-sdk==21.218.0`, and returns uncached JSON. It reads the upload in memory and never stores the original file or uses multipart temporary-file spooling. Multi-session, multi-gas, apnea, closed-circuit, non-Garmin, and damaged files are rejected without changing the form.
+
+Parsed computer data stays in the mounted browser form until **Save dive/Save changes**. Saving atomically adds or replaces its one-to-one `dive_computer_data` row. Version 1 stores the source, UTC start, exact bottom/recording durations in seconds, and every valid depth measurement as `{elapsed_seconds, depth_m}`, without interpolation or downsampling (up to 100,000 measurements). Existing data survives ordinary edits and is removed by cascading account/dive deletion. Profiles are excluded from feed and sharing payloads; chart rendering is a future feature. The form shows bottom time rounded to whole minutes. Depth and duration numeric entries can exceed the 45 m/120 minute slider ranges.
+
+Supported browsers request Downloads as the initial file location and remember the import picker directory. Safari/iPhone use the native picker, whose starting location is controlled by the platform. Back, Escape, cancellation, and failed imports preserve the mounted form and selected photos. Reloading or leaving the page does not persist an unsaved draft.
+
+The new table is created by normal application initialization; existing dives require no backfill. Install the updated requirements when deploying. Tests generate synthetic FIT files in memory. To additionally check the personal sample without copying it into the repository:
+
+```bash
+PELAGIA_GARMIN_SAMPLE='/path/to/92 Single-Gas Dive.fit' .venv312/bin/python -m unittest discover -s tests -p 'test_garmin_fit.py'
+```
+
 ## The Dive Brief
 
 The main feed starts with a compact daily newsletter card, an expand/collapse chevron and estimated reading time. Read the brief opens a full-screen Markdown reader with a persistent Feed back button. The footer's Back to feed link, Escape and browser Back also return to the feed. The feed stays fixed while the reader scrolls, and returning restores its position and collapses the preview. Touch and mouse interactions keep focus without drawing keyboard focus rings; keyboard navigation retains visible focus indicators. Touch gestures, trackpad scrolling, text selection and pinch zoom keep their native browser behavior; the reader has no custom swipe navigation. Reduced-motion preferences disable animated transitions. Editions also have signed-in deep links at `/brief/YYYY-MM-DD`; returning after refreshing the reader consumes its existing history entry. The reader supports headings, emphasis, links, lists, blockquotes, code and tables, with escaped raw HTML and safe link protocols. External sources open in a separate tab.

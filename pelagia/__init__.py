@@ -37,6 +37,8 @@ from . import google_auth, email_auth
 from . import pwa
 from . import dive_brief
 from . import site_descriptions
+from . import dive_import
+from .garmin_fit import FitImportError
 from .sharing import TRANSPARENT_LAYOUTS, fetch_public_dive, fetch_public_dive_site, fetch_public_dive_center, render_share_image, render_transparent_share_image, share_description
 
 
@@ -100,6 +102,7 @@ def create_app(test_config=None):
         _ensure_reference_data(app)
 
     register_routes(app)
+    dive_import.init_app(app, current_user)
     site_descriptions.init_app(app, login_required)
     dive_brief.init_app(app)
     pwa.init_app(app)
@@ -290,6 +293,8 @@ def register_routes(app):
             except InvalidBuddyError as error:
                 flash(str(error))
                 return redirect(url_for("log_dive"))
+            except FitImportError as error:
+                abort(400, description=str(error))
             return redirect(url_for("dive_detail", dive_id=dive_id))
         initial_location = database.get_db().execute(
             "SELECT id AS dive_site_id, name AS site_name, country_or_area, latitude, longitude "
@@ -311,6 +316,7 @@ def register_routes(app):
             today=date.today().isoformat(),
             dive=None,
             is_edit=False,
+            computer_summary=None,
             tank_size_l=12,
             next_url="",
         )
@@ -390,6 +396,8 @@ def register_routes(app):
             except InvalidBuddyError as error:
                 flash(str(error))
                 return redirect(url_for("edit_dive", dive_id=dive_id))
+            except FitImportError as error:
+                abort(400, description=str(error))
             return redirect(url_for("dive_detail", dive_id=dive_id))
         return render_template(
             "log_dive.html",
@@ -405,6 +413,7 @@ def register_routes(app):
             today=date.today().isoformat(),
             dive=dive,
             is_edit=True,
+            computer_summary=dive_import.computer_data_summary(database.get_db(), dive_id),
             tank_size_l=sac_tank_size(dive),
             next_url=_safe_next_url(request.args.get("next") or request.referrer),
         )
@@ -1019,6 +1028,7 @@ def create_dive_from_request(user_id, form_request):
     # Serialize counting and insertion across workers, before form resolution writes.
     db.execute("BEGIN IMMEDIATE")
     values = dive_values_from_request(form_request, user_id)
+    computer_data = dive_import.computer_data_from_form(form_request.form)
     enforce_dive_limits(db, user_id, values["date"])
     cur = db.execute(
         """
@@ -1068,6 +1078,7 @@ def create_dive_from_request(user_id, form_request):
         ),
     )
     dive_id = cur.lastrowid
+    dive_import.save_computer_data(db, dive_id, computer_data)
     replace_dive_species(dive_id, values["species_names"], db)
     save_dive_photos(dive_id, form_request, db)
     db.commit()
@@ -1080,6 +1091,7 @@ def update_dive_from_request(dive_id, user_id, form_request):
     existing_dive = fetch_owned_dive(dive_id, user_id)
     default_tank_size_l = sac_tank_size(existing_dive) if existing_dive else 12
     values = dive_values_from_request(form_request, user_id, default_tank_size_l)
+    computer_data = dive_import.computer_data_from_form(form_request.form)
     enforce_dive_limits(db, user_id, values["date"], existing_dive)
     db.execute(
         """
@@ -1157,6 +1169,7 @@ def update_dive_from_request(dive_id, user_id, form_request):
             user_id,
         ),
     )
+    dive_import.save_computer_data(db, dive_id, computer_data)
     replace_dive_species(dive_id, values["species_names"], db)
     remove_dive_photos(dive_id, form_request, db)
     save_dive_photos(dive_id, form_request, db)
@@ -1171,9 +1184,9 @@ def dive_values_from_request(form_request, user_id, default_tank_size_l=12):
     weight_unit = "lb" if form.get("weight_unit") == "lb" else "kg"
     pressure_unit = "psi" if form.get("pressure_unit") == "psi" else "bar"
     temperature_unit = "f" if form.get("temperature_unit") == "f" else "c"
-    depth = metric_measurement(form.get("depth_m"), length_unit, 0.0, 45.0) or 0.0
-    average_depth = metric_measurement(form.get("average_depth_m"), length_unit, 0.0, 45.0)
-    duration = clamp_int(form.get("duration_min"), 0, 120)
+    depth = metric_measurement(form.get("depth_m"), length_unit, 0.0, math.inf) or 0.0
+    average_depth = metric_measurement(form.get("average_depth_m"), length_unit, 0.0, math.inf)
+    duration = clamp_int(form.get("duration_min"), 0, 2**63 - 1)
     weight = metric_measurement(form.get("weight_kg"), weight_unit, 0, 10)
     starting_pressure = metric_measurement(form.get("starting_pressure_bar"), pressure_unit, 0, 300)
     ending_pressure = metric_measurement(form.get("ending_pressure_bar"), pressure_unit, 0, 300)
@@ -2059,7 +2072,7 @@ def search_center_payload(row):
 def clamp_int(value, minimum, maximum):
     try:
         parsed = round_half_up(value)
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):
         parsed = minimum
     return max(minimum, min(maximum, parsed))
 

@@ -1,0 +1,40 @@
+<dialog class="computer-import-dialog" id="computerImportDialog" data-computer-import aria-labelledby="computerImportTitle" data-import-url="{{ url_for('import_garmin_dive') }}">
+    <div class="computer-import-toolbar">
+        <button class="computer-import-back" type="button" data-computer-import-back>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14 6-6 6 6 6"></path></svg>
+            <span data-computer-import-back-label>Log dive</span>
+        </button>
+        <span>Import a dive</span>
+        <button class="computer-import-close icon-button" type="button" data-computer-import-close aria-label="Close import">&times;</button>
+    </div>
+    <div class="computer-import-content">
+        <div class="computer-import-symbol" aria-hidden="true">
+            <svg viewBox="0 0 48 48"><path d="m17 12 2-8h10l2 8m-14 24 2 8h10l2-8"></path><rect x="11" y="12" width="26" height="24" rx="7"></rect><path d="M18 24h12m-9-4-4 4 4 4m6-8 4 4-4 4"></path></svg>
+        </div>
+        <p class="computer-import-eyebrow" data-computer-import-step>Step 1 of 2</p>
+        <h1 id="computerImportTitle" tabindex="-1" data-computer-import-title>Choose your dive computer</h1>
+        <div data-computer-import-brands>
+            <p class="computer-import-intro">Bring your dive details straight into your log.</p>
+            <div class="computer-brand-list" aria-label="Dive computer brands">
+                {% for brand in ['Garmin', 'Cressi', 'Mares', 'Suunto', 'Scubapro', 'Shearwater'] %}
+                <button class="computer-brand" type="button"{% if brand == 'Garmin' %} data-computer-import-garmin{% else %} disabled{% endif %}>
+                    <span>{{ brand }}</span>
+                    {% if brand == 'Garmin' %}<span class="computer-brand-tag">FIT import <span aria-hidden="true">&rsaquo;</span></span>{% else %}<span class="computer-brand-soon">Coming soon</span>{% endif %}
+                </button>
+                {% endfor %}
+            </div>
+        </div>
+        <div data-computer-import-upload hidden>
+            <p class="computer-import-instructions">From your Garmin Dive app, select the dive you want to import and then select "Export Dive as FIT File" and save to files. Then, import the file below.</p>
+            <div class="computer-import-file-box">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6v20h12V6l-4-4Zm0 0v5h5M12 17v-6m-3 3 3-3 3 3"></path></svg>
+                <button class="primary-button" type="button" data-computer-import-choose>Choose FIT file</button>
+                <input type="file" accept=".fit,.FIT" class="sr-only" tabindex="-1" aria-label="Choose Garmin FIT file" data-computer-import-file>
+                <small>One single-gas dive · FIT file up to 10 MiB</small>
+            </div>
+            <p class="computer-import-progress" role="status" aria-live="polite" data-computer-import-progress hidden>Reading your dive…</p>
+            <p class="computer-import-error" role="alert" data-computer-import-error hidden></p>
+            <p class="computer-import-footnote">Your original file isn’t stored. Review the imported details before saving your dive.</p>
+        </div>
+    </div>
+</dialog>
