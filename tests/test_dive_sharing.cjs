@@ -6,7 +6,7 @@ const vm = require("node:vm");
 
 function setup(navigator = {}, secure = true, options = {}) {
     const element = () => ({
-        handlers: {}, hidden: false, textContent: "", value: "", dataset: {}, attributes: {},
+        handlers: {}, hidden: false, textContent: "", value: "", dataset: {}, attributes: {}, style: {},
         addEventListener(name, callback) { this.handlers[name] = callback; },
         setAttribute(name, value) { this.attributes[name] = value; },
         setPointerCapture(pointerId) { this.capturedPointer = pointerId; },
@@ -15,7 +15,7 @@ function setup(navigator = {}, secure = true, options = {}) {
         setSelectionRange(start, end) { this.selection = [start, end]; },
     });
     const parts = Object.fromEntries(["link", "copy", "copy-label", "save", "native", "status", "preview", "close", "carousel", "save-label", "counter", "previous", "next"].map(name => [name, element()]));
-    const styles = [element(), element()];
+    const styles = Array.from({length: 5}, element);
     const dialog = element();
     dialog.querySelector = selector => parts[selector.match(/data-share-([a-z-]+)/)[1]];
     dialog.querySelectorAll = () => styles;
@@ -27,7 +27,7 @@ function setup(navigator = {}, secure = true, options = {}) {
     document.body = { appendChild() {} };
     document.createElement = () => ({click() { downloads.push(this); }, remove() { this.removed = true; }});
     const context = vm.createContext({
-        document, navigator, File, AbortSignal,
+        document, navigator, File, AbortSignal, URL,
         fetch: options.fetch || (async () => ({ok: true, blob: async () => new Blob(["image"], {type: "image/jpeg"})})),
         window: {isSecureContext: secure, matchMedia: () => ({matches: !!options.mobile})},
     });
@@ -184,26 +184,26 @@ test("pagination dots and arrows select the preview and correct attachment", asy
     const state = setup();
     state.open();
     assert.equal(state.parts.preview.src, state.trigger.dataset.shareImage);
-    assert.equal(state.parts.counter.textContent, "Image 1 of 2");
+    assert.equal(state.parts.counter.textContent, "Image 1 of 5");
     assert.equal(state.styles[0].attributes["aria-pressed"], "true");
     state.styles[1].handlers.click();
-    assert.equal(state.parts.preview.src, state.trigger.dataset.shareTransparentImage);
+    assert.equal(state.parts.preview.src, `${state.trigger.dataset.shareTransparentImage}?layout=vertical`);
     assert.equal(state.parts.preview.dataset.transparent, "true");
-    assert.equal(state.parts.counter.textContent, "Image 2 of 2");
+    assert.equal(state.parts.counter.textContent, "Image 2 of 5");
     assert.equal(state.styles[1].attributes["aria-pressed"], "true");
     assert.equal(state.styles[0].attributes["aria-pressed"], "false");
     assert.equal(state.parts["save-label"].textContent, "Save image");
     await state.parts.save.handlers.click();
-    assert.equal(state.downloads[0].href, state.trigger.dataset.shareTransparentDownload);
-    assert.equal(state.downloads[0].download, "pelagia-dive-transparent.png");
+    assert.equal(state.downloads[0].href, `${state.trigger.dataset.shareTransparentDownload}&layout=vertical`);
+    assert.equal(state.downloads[0].download, "pelagia-dive-transparent-vertical.png");
     state.parts.next.handlers.click();
-    assert.equal(state.parts.preview.src, state.trigger.dataset.shareImage);
+    assert.equal(state.parts.preview.src, `${state.trigger.dataset.shareTransparentImage}?layout=horizontal`);
     state.parts.previous.handlers.click();
-    assert.equal(state.parts.preview.src, state.trigger.dataset.shareTransparentImage);
+    assert.equal(state.parts.preview.src, `${state.trigger.dataset.shareTransparentImage}?layout=vertical`);
     state.dialog.close();
     state.open();
     assert.equal(state.parts.preview.dataset.transparent, "false");
-    assert.equal(state.parts.counter.textContent, "Image 1 of 2");
+    assert.equal(state.parts.counter.textContent, "Image 1 of 5");
 });
 
 test("horizontal touch swipes and keyboard arrows change styles; vertical scrolling does not", () => {
@@ -212,20 +212,20 @@ test("horizontal touch swipes and keyboard arrows change styles; vertical scroll
     const pointer = (x, y, extra = {}) => ({clientX: x, clientY: y, pointerId: 1, isPrimary: true, pointerType: "touch", target: {closest: () => null}, ...extra});
     state.parts.carousel.handlers.pointerdown(pointer(250, 80));
     state.parts.carousel.handlers.pointerup(pointer(150, 90));
-    assert.equal(state.parts.counter.textContent, "Image 2 of 2");
+    assert.equal(state.parts.counter.textContent, "Image 2 of 5");
     state.parts.carousel.handlers.pointerdown(pointer(150, 80));
     state.parts.carousel.handlers.pointerup(pointer(250, 90));
-    assert.equal(state.parts.counter.textContent, "Image 1 of 2");
+    assert.equal(state.parts.counter.textContent, "Image 1 of 5");
     for (const end of [pointer(245, 82), pointer(200, 200)]) {
         state.parts.carousel.handlers.pointerdown(pointer(250, 80));
         state.parts.carousel.handlers.pointerup(end);
-        assert.equal(state.parts.counter.textContent, "Image 1 of 2");
+        assert.equal(state.parts.counter.textContent, "Image 1 of 5");
     }
     state.parts.carousel.handlers.pointerdown(pointer(250, 80));
     state.parts.carousel.handlers.pointercancel();
     state.parts.carousel.handlers.pointerup(pointer(150, 80));
-    assert.equal(state.parts.counter.textContent, "Image 1 of 2");
-    for (const [key, expected] of [["ArrowRight", "Image 2 of 2"], ["Home", "Image 1 of 2"], ["End", "Image 2 of 2"], ["ArrowLeft", "Image 1 of 2"]]) {
+    assert.equal(state.parts.counter.textContent, "Image 1 of 5");
+    for (const [key, expected] of [["ArrowRight", "Image 2 of 5"], ["Home", "Image 1 of 5"], ["End", "Image 5 of 5"], ["ArrowLeft", "Image 4 of 5"]]) {
         const event = {key, preventDefault() { this.prevented = true; }};
         state.parts.carousel.handlers.keydown(event);
         assert.equal(event.prevented, true);
@@ -240,7 +240,7 @@ test("mobile transparent Save shares a PNG immediately with no background conver
     state.styles[1].handlers.click();
     await flushPreparation();
     const sharing = state.parts.save.handlers.click();
-    assert.equal(payload.files[0].name, "pelagia-dive-transparent.png");
+    assert.equal(payload.files[0].name, "pelagia-dive-transparent-vertical.png");
     assert.equal(payload.files[0].type, "image/png");
     await sharing;
     assert.equal(state.downloads.length, 0);
@@ -262,4 +262,47 @@ test("switching styles invalidates an unfinished JPEG preparation", async () => 
     await state.parts.save.handlers.click();
     assert.equal(payload.files[0].type, "image/png");
     assert.equal(await payload.files[0].text(), "transparent PNG");
+});
+
+
+test("all five styles wrap, keep transparency and save the selected layout", async () => {
+    const state = setup();
+    state.open();
+    const layouts = [null, "vertical", "horizontal", "stacked", "map"];
+    for (let index = 0; index < layouts.length; index++) {
+        state.styles[index].handlers.click();
+        assert.equal(state.parts.counter.textContent, `Image ${index + 1} of 5`);
+        assert.equal(state.parts.preview.dataset.transparent, String(index > 0));
+        assert.ok(state.parts.preview.style.aspectRatio);
+        assert.equal(state.styles.filter(button => button.attributes["aria-pressed"] === "true").length, 1);
+        await state.parts.save.handlers.click();
+        const saved = state.downloads.at(-1);
+        if (layouts[index]) {
+            assert.equal(new URL(saved.href).searchParams.get("layout"), layouts[index]);
+            assert.equal(new URL(saved.href).searchParams.get("download"), "1");
+            assert.equal(saved.download, `pelagia-dive-transparent-${layouts[index]}.png`);
+        } else assert.equal(saved.href, state.trigger.dataset.shareDownload);
+    }
+    state.parts.next.handlers.click();
+    assert.equal(state.parts.counter.textContent, "Image 1 of 5");
+    state.parts.previous.handlers.click();
+    assert.equal(state.parts.counter.textContent, "Image 5 of 5");
+});
+
+test("a late vertical PNG cannot replace the selected map PNG", async () => {
+    const responses = [];
+    let payload;
+    const state = setup({canShare: () => true, share(data) { payload = data; return Promise.resolve(); }}, true, {
+        mobile: true, fetch: () => new Promise(resolve => responses.push(resolve)),
+    });
+    state.open();
+    state.styles[1].handlers.click();
+    state.styles[4].handlers.click();
+    responses[2]({ok: true, blob: async () => new Blob(["map PNG"])});
+    await flushPreparation();
+    responses[1]({ok: true, blob: async () => new Blob(["vertical PNG"])});
+    await flushPreparation();
+    await state.parts.save.handlers.click();
+    assert.equal(payload.files[0].name, "pelagia-dive-transparent-map.png");
+    assert.equal(await payload.files[0].text(), "map PNG");
 });

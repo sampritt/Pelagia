@@ -10,12 +10,14 @@
             <button class="share-preview-arrow" type="button" data-share-previous aria-label="Previous image style"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14 6-6 6 6 6"></path></svg></button>
             <div class="share-preview-dots" role="group" aria-label="Image style">
                 <button class="share-preview-dot" type="button" data-share-style="0" aria-label="Photo or map image" aria-pressed="true"><span aria-hidden="true"></span></button>
-                <button class="share-preview-dot" type="button" data-share-style="1" aria-label="Transparent image" aria-pressed="false"><span aria-hidden="true"></span></button>
+                {% for layout in ('vertical', 'horizontal', 'stacked', 'map') %}
+                <button class="share-preview-dot" type="button" data-share-style="{{ loop.index }}" aria-label="Transparent {{ layout }} image" aria-pressed="false"><span aria-hidden="true"></span></button>
+                {% endfor %}
             </div>
             <button class="share-preview-arrow" type="button" data-share-next aria-label="Next image style"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m10 6 6 6-6 6"></path></svg></button>
         </div>
     </div>
-    <span class="sr-only" data-share-counter role="status" aria-live="polite">Image 1 of 2</span>
+    <span class="sr-only" data-share-counter role="status" aria-live="polite">Image 1 of 5</span>
     <div class="share-options" aria-label="Share options">
         <button class="share-option" type="button" data-share-copy>
             <span class="share-option-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="5" width="14" height="16" rx="2"></rect><rect x="9" y="3" width="6" height="4" rx="1"></rect><path d="M9 12h6M9 16h6"></path></svg></span>

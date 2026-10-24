@@ -10,7 +10,8 @@ import requests
 
 from pelagia import create_app
 from pelagia import db as database
-from pelagia.sharing import fetch_public_dive
+from pelagia.sharing import TRANSPARENT_LAYOUTS, fetch_public_dive, render_share_image, render_transparent_share_image
+from pelagia.static_maps import render_static_map
 
 
 class DiveSharingTest(unittest.TestCase):
@@ -110,10 +111,15 @@ class DiveSharingTest(unittest.TestCase):
         self.assertEqual(response.mimetype, "image/jpeg")
         with Image.open(io.BytesIO(response.data)) as image:
             self.assertEqual(image.size, (1200, 630))
-            # The right panel contains actual map tiles and a centered location pin.
-            for actual, expected in zip(image.getpixel((1100, 300)), (170, 211, 223)):
+            # The full-bleed map stays visible above the stats, and its pin is
+            # offset to the right of the headline instead of hidden beneath it.
+            for actual, expected in zip(image.getpixel((1150, 235)), (170, 211, 223)):
                 self.assertLessEqual(abs(actual - expected), 3)
-            self.assertNotEqual(image.getpixel((910, 315)), image.getpixel((1100, 300)))
+            self.assertNotEqual(image.getpixel((930, 235)), image.getpixel((1150, 235)))
+            # The old panel boundary is now a continuous, gradual fade.
+            for x in range(590, 650):
+                before, after = image.getpixel((x, 350)), image.getpixel((x + 1, 350))
+                self.assertLess(max(abs(a - b) for a, b in zip(before, after)), 8)
         self.assertNotIn("© OpenStreetMap contributors", drawn_text)
         self.assertGreater(self.tile_request.call_count, 0)
         self.assertEqual(self.client.get("/share/dive/1/preview.jpg?download=1").data, response.data)
@@ -180,13 +186,13 @@ class DiveSharingTest(unittest.TestCase):
         self.assertEqual(response.status_code, 302)
 
     def assert_preview_photo_color(self, color):
-        # Check the actual public JPEG, beyond the gradient and text panel.
+        # Check a clear part of the full-bleed photo, above the lower scrim.
         guest = self.app.test_client()
         response = guest.get("/share/dive/1/preview.jpg")
         self.assertEqual(response.status_code, 200)
         with Image.open(io.BytesIO(response.data)) as image:
             self.assertEqual(image.size, (1200, 630))
-            pixel = image.getpixel((1100, 300))
+            pixel = image.getpixel((1180, 235))
             for actual, expected in zip(pixel, color):
                 self.assertLessEqual(abs(actual - expected), 3)
         download = guest.get("/share/dive/1/preview.jpg?download=1")
@@ -194,15 +200,40 @@ class DiveSharingTest(unittest.TestCase):
 
     def test_uploaded_primary_photo_appears_in_public_and_saved_thumbnail(self):
         self.upload_photos()
-        with patch("pelagia.sharing.render_static_map") as map_renderer:
+        with patch("pelagia.sharing.render_static_map", wraps=render_static_map) as map_renderer:
             self.assert_preview_photo_color((23, 173, 173))
-            map_renderer.assert_not_called()
+            for call in map_renderer.call_args_list:
+                self.assertEqual(call.args, (7.134, 134.22))
+                self.assertEqual(call.kwargs, {"size": (314, 252)})
+            self.assertGreater(map_renderer.call_count, 0)
+        self.assertGreater(self.tile_request.call_count, 0)
+        with Image.open(io.BytesIO(self.client.get("/share/dive/1/preview.jpg").data)) as image:
+            self.assertNotEqual(image.getpixel((987, 234)), image.getpixel((1080, 234)))
+            # The inset leaves the uploaded photo visible outside its bounds.
+            self.assertNotEqual(image.getpixel((1080, 234)), image.getpixel((1180, 234)))
+
+    def test_photo_share_omits_inset_when_coordinates_or_tiles_are_unavailable(self):
+        self.upload_photos()
+        self.tile_request.side_effect = requests.Timeout("Map unavailable")
+        failed = self.client.get("/share/dive/1/preview.jpg")
+        self.assertEqual(failed.status_code, 200)
+        self.assertGreater(self.tile_request.call_count, 0)
+        with self.app.app_context():
+            database.get_db().execute("UPDATE dives SET latitude = NULL, longitude = NULL WHERE id = 1")
+            database.get_db().commit()
+        self.tile_request.reset_mock()
+        missing = self.client.get("/share/dive/1/preview.jpg")
+        self.assertEqual(failed.data, missing.data)
         self.tile_request.assert_not_called()
 
     def test_unavailable_primary_photo_uses_next_photo_then_map_fallback(self):
-        fallback = self.app.test_client().get("/share/dive/1/preview.jpg").data
         self.upload_photos()
         with self.app.app_context():
+            # Editing also records the default gas, so compare the fallback
+            # using the same saved metrics as the photo-bearing dive.
+            dive = fetch_public_dive(1)
+            dive["photos"] = []
+            fallback = render_share_image(dive).getvalue()
             photos = database.get_db().execute("SELECT filename FROM photos ORDER BY id").fetchall()
             paths = [Path(self.app.config["UPLOAD_FOLDER"], photo["filename"].removeprefix("uploads/")) for photo in photos]
         paths[0].unlink()
@@ -241,12 +272,12 @@ class DiveSharingTest(unittest.TestCase):
             response = self.client.get("/share/dive/1/transparent.png")
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.mimetype, "image/png")
-        self.assertEqual(drawn, ["Blue Corner", "24 m", "MAX DEPTH", "52 min", "DIVE TIME"])
+        self.assertEqual(drawn, ["Blue Corner", "24", "m", "MAX DEPTH", "52", "min", "DIVE TIME"])
         self.tile_request.assert_not_called()
         self.assertIn("no-store", response.headers["Cache-Control"])
         self.assertIn("Cookie", response.headers["Vary"])
         with Image.open(io.BytesIO(response.data)) as image:
-            self.assertEqual(image.size, (1200, 630))
+            self.assertEqual(image.size, (1200, 780))
             self.assertEqual(image.mode, "RGBA")
             alpha = image.getchannel("A")
             self.assertEqual(alpha.getextrema(), (0, 255))
@@ -254,8 +285,8 @@ class DiveSharingTest(unittest.TestCase):
             for position in ((0, 0), (1199, 629), (600, 250), (600, 390), (600, 300)):
                 self.assertEqual(alpha.getpixel(position), 0)
             self.assertIsNotNone(alpha.crop((100, 60, 1100, 235)).getbbox())
-            self.assertIsNotNone(alpha.crop((250, 270, 950, 375)).getbbox())
-            self.assertIsNotNone(alpha.crop((450, 410, 750, 610)).getbbox())
+            self.assertIsNotNone(alpha.crop((250, 240, 950, 365)).getbbox())
+            self.assertIsNotNone(alpha.crop((450, 490, 750, 630)).getbbox())
 
     def test_transparent_save_downloads_png_attachment_and_respects_depth_units(self):
         self.login_session()
@@ -274,7 +305,8 @@ class DiveSharingTest(unittest.TestCase):
         self.assertEqual(response.mimetype, "image/png")
         self.assertIn("attachment;", response.headers["Content-Disposition"])
         self.assertIn("pelagia-Blue_Corner-transparent.png", response.headers["Content-Disposition"])
-        self.assertIn("79 ft", drawn)
+        self.assertIn("79", drawn)
+        self.assertIn("ft", drawn)
         self.assertEqual(response.data, self.client.get("/share/dive/1/transparent.png").data)
 
     def test_transparent_titles_fit_without_losing_words(self):
@@ -302,6 +334,131 @@ class DiveSharingTest(unittest.TestCase):
                     self.assertGreaterEqual(top, 65)
                     self.assertLessEqual(bottom, 240)
 
+    def test_optional_gas_and_sac_appear_in_both_exports_without_private_equipment(self):
+        original_text = ImageDraw.ImageDraw.text
+        for oxygen, helium, expected in ((21, 0, "Air"), (32, 0, "EANx 32%"), (18, 45, "Trimix 18/45")):
+            with self.subTest(gas=expected):
+                with self.app.app_context():
+                    database.get_db().execute(
+                        "UPDATE dives SET oxygen_pct = ?, helium_pct = ?, sac_rate_l_min = 17.6, "
+                        "starting_pressure_bar = 200, ending_pressure_bar = 50 WHERE id = 1", (oxygen, helium),
+                    )
+                    database.get_db().commit()
+                    public = fetch_public_dive(1)
+                    for field in ("starting_pressure_bar", "ending_pressure_bar", "weight_kg", "notes", "buddy_user_id"):
+                        self.assertNotIn(field, public)
+                for suffix in ("preview.jpg", "transparent.png"):
+                    drawn = []
+
+                    def record_text(draw, xy, text, *args, **kwargs):
+                        drawn.append(text)
+                        return original_text(draw, xy, text, *args, **kwargs)
+
+                    with patch.object(ImageDraw.ImageDraw, "text", new=record_text):
+                        response = self.client.get(f"/share/dive/1/{suffix}")
+                    self.assertEqual(response.status_code, 200)
+                    for text in (expected, "GAS MIX", "18", "L/min", "SAC RATE"):
+                        self.assertIn(text, drawn)
+                    self.assertNotIn("200", drawn)
+                    if suffix == "transparent.png":
+                        with Image.open(io.BytesIO(response.data)) as image:
+                            self.assertEqual(image.getchannel("A").getpixel((0, 0)), 0)
+                            self.assertIsNotNone(image.getchannel("A").crop((100, 450, 1100, 590)).getbbox())
+                            self.assertIsNotNone(image.getchannel("A").crop((500, 620, 700, 770)).getbbox())
+
+    def test_missing_optional_stats_are_omitted_independently(self):
+        original_text = ImageDraw.ImageDraw.text
+        with self.app.app_context():
+            dive = fetch_public_dive(1)
+            for gas, sac, labels in ((None, None, ()), ("EANx 32%", None, ("GAS MIX",)),
+                                     (None, 18, ("SAC RATE",)), (None, 0, ()),
+                                     (None, -5, ()), (None, float("nan"), ())):
+                for renderer in (render_share_image, render_transparent_share_image):
+                    with self.subTest(gas=gas, sac=sac, renderer=renderer.__name__):
+                        drawn = []
+
+                        def record_text(draw, xy, text, *args, **kwargs):
+                            drawn.append(text)
+                            return original_text(draw, xy, text, *args, **kwargs)
+
+                        dive.update(gas_mix_label=gas, sac_rate_l_min=sac)
+                        with patch.object(ImageDraw.ImageDraw, "text", new=record_text):
+                            renderer(dive)
+                        self.assertEqual(tuple(label for label in ("GAS MIX", "SAC RATE") if label in drawn), labels)
+                        self.assertNotIn("-", drawn)
+
+    def test_transparent_layouts_keep_equal_stat_sizes_and_all_text_in_bounds(self):
+        original_text = ImageDraw.ImageDraw.text
+        with self.app.app_context():
+            dive = fetch_public_dive(1)
+            for title in ("Kicker Rock (Leon Dormido)",
+                          "Great Blue Hole and Lighthouse Reef National Marine Reserve"):
+                for gas, sac in ((None, None), ("Air", None), (None, 18),
+                                 ("EANx 32%", 18), ("Trimix 18/45", 18)):
+                    dive.update(site_name=title, gas_mix_label=gas, sac_rate_l_min=sac)
+                    for layout, dimensions in TRANSPARENT_LAYOUTS.items():
+                        with self.subTest(title=title, gas=gas, sac=sac, layout=layout):
+                            drawn = []
+
+                            def record_text(draw, xy, text, *args, **kwargs):
+                                drawn.append((text, kwargs["font"].size,
+                                              draw.textbbox(xy, text, font=kwargs["font"], anchor=kwargs["anchor"])))
+                                return original_text(draw, xy, text, *args, **kwargs)
+
+                            with patch.object(ImageDraw.ImageDraw, "text", new=record_text):
+                                stream = render_transparent_share_image(dive, layout=layout)
+                            with Image.open(stream) as image:
+                                self.assertEqual(image.size, dimensions)
+                                self.assertEqual(image.mode, "RGBA")
+                                self.assertEqual(image.getchannel("A").getpixel((0, 0)), 0)
+                            values = {"24", "52", "18", gas}
+                            self.assertEqual(len({size for text, size, _ in drawn if text in values}), 1)
+                            for _, _, (left, top, right, bottom) in drawn:
+                                self.assertGreaterEqual(left, 12)
+                                self.assertGreaterEqual(top, 12)
+                                self.assertLessEqual(right, dimensions[0] - 12)
+                                self.assertLessEqual(bottom, dimensions[1] - 12)
+                            labels = {text for text, _, _ in drawn}
+                            if layout == "map":
+                                self.assertNotIn("GAS MIX", labels)
+                                self.assertNotIn("SAC RATE", labels)
+                            if layout == "vertical":
+                                # Every metric and its label precedes the site name.
+                                self.assertTrue(all(box[1] > 1000 for text, _, box in drawn
+                                                    if text not in values | {"m", "min", "L/min", "MAX DEPTH", "DIVE TIME", "GAS MIX", "SAC RATE"}))
+
+    def test_each_png_layout_downloads_with_its_own_name_and_map_fallback(self):
+        self.login_session()
+        with self.app.app_context():
+            database.get_db().execute("UPDATE users SET length_unit = 'ft' WHERE id = 1")
+            database.get_db().commit()
+        for layout, dimensions in TRANSPARENT_LAYOUTS.items():
+            with self.subTest(layout=layout):
+                response = self.client.get(f"/share/dive/1/transparent.png?download=1&layout={layout}")
+                self.assertEqual(response.status_code, 200)
+                self.assertIn(f"transparent-{layout}.png", response.headers["Content-Disposition"])
+                with Image.open(io.BytesIO(response.data)) as image:
+                    self.assertEqual(image.size, dimensions)
+                self.assertEqual(response.data, self.client.get(f"/share/dive/1/transparent.png?layout={layout}").data)
+        self.assertEqual(self.client.get("/share/dive/1/transparent.png?layout=unknown").status_code, 400)
+        self.tile_request.assert_called()
+        self.tile_request.reset_mock()
+        with self.app.app_context():
+            database.get_db().execute("UPDATE dives SET latitude = NULL, longitude = NULL WHERE id = 1")
+            database.get_db().commit()
+        drawn = []
+        original_text = ImageDraw.ImageDraw.text
+
+        def record_text(draw, xy, text, *args, **kwargs):
+            drawn.append(text)
+            return original_text(draw, xy, text, *args, **kwargs)
+
+        with patch.object(ImageDraw.ImageDraw, "text", new=record_text):
+            self.assertEqual(self.client.get("/share/dive/1/transparent.png?layout=map").status_code, 200)
+        self.assertIn("Map unavailable", drawn)
+        self.assertIn("ft", drawn)
+        self.tile_request.assert_not_called()
+
     def test_deleted_and_missing_dives_have_no_public_page_or_image(self):
         self.login_session()
         self.client.post("/dive/1/delete")
@@ -320,6 +477,11 @@ class DiveSharingTest(unittest.TestCase):
         self.assertEqual(self.client.get("/share/dive/1/preview.jpg").status_code, 200)
 
     def test_complete_titles_are_drawn_inside_the_headline_area(self):
+        uploads = Path(self.app.config["UPLOAD_FOLDER"])
+        Image.new("RGB", (1200, 630), "#17adad").save(uploads / "title-review.jpg")
+        with self.app.app_context():
+            database.get_db().execute("INSERT INTO photos (dive_id, filename) VALUES (1, 'title-review.jpg')")
+            database.get_db().commit()
         original_text = ImageDraw.ImageDraw.text
         for title in (
             "Blue Corner",
@@ -347,11 +509,13 @@ class DiveSharingTest(unittest.TestCase):
                 for text, (left, top, right, bottom) in drawn:
                     self.assertNotIn("…", text)
                     self.assertGreaterEqual(left, 50)
-                    self.assertLessEqual(right, 604)
+                    self.assertLessEqual(right, 788)
                     self.assertGreaterEqual(top, 150)
-                    self.assertLessEqual(bottom, 320)
+                    self.assertLessEqual(bottom, 324)
                 if title == "NorthwesternSanctuary Entrance":
                     self.assertIn("NorthwesternSanctuary", [text for text, _ in drawn])
+                if title == "Kicker Rock (Leon Dormido)":
+                    self.assertEqual([text for text, _ in drawn], ["Kicker Rock", "(Leon Dormido)"])
 
 
 if __name__ == "__main__":

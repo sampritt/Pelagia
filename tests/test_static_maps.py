@@ -7,7 +7,7 @@ from unittest.mock import Mock, patch
 
 import requests
 from flask import Flask
-from PIL import Image
+from PIL import Image, ImageDraw
 
 from pelagia.static_maps import CACHE_SECONDS, render_static_map
 
@@ -89,6 +89,20 @@ class StaticMapsTest(unittest.TestCase):
             fetch.assert_not_called()
         with patch("pelagia.static_maps.requests.get", side_effect=lambda *a, **k: self.response(content=b"not an image")):
             self.assertIsNone(render_static_map(7.134, 134.22))
+
+    def test_offset_pin_preserves_the_sites_geographic_position(self):
+        tile = Image.new("RGB", (256, 256), "#aad3df")
+        draw = ImageDraw.Draw(tile)
+        for x in range(0, 256, 16):
+            draw.line((x, 0, x, 255), fill=(x, 80, 100), width=3)
+        stream = io.BytesIO()
+        tile.save(stream, "PNG")
+        with patch("pelagia.static_maps.requests.get", side_effect=lambda *a, **k: self.response(content=stream.getvalue())):
+            centered = render_static_map(7.134, 134.22)
+            offset = render_static_map(7.134, 134.22, size=(1200, 630), pin_position=(930, 235))
+        self.assertEqual(offset.getpixel((930, 235)), (6, 42, 70))
+        self.assertEqual(centered.crop((320, 280, 400, 350)).tobytes(),
+                         offset.crop((960, 200, 1040, 270)).tobytes())
 
 
 if __name__ == "__main__":

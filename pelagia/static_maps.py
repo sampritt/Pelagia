@@ -85,7 +85,7 @@ def _load_tile(url, cache_dir, headers):
         return cached
 
 
-def render_static_map(latitude, longitude, size=(580, 630)):
+def render_static_map(latitude, longitude, size=(580, 630), *, pin_position=None):
     try:
         latitude, longitude = float(latitude), float(longitude)
     except (TypeError, ValueError):
@@ -95,11 +95,12 @@ def render_static_map(latitude, longitude, size=(580, 630)):
         return None
 
     width, height = size
+    pin_x, pin_y = pin_position if pin_position is not None else (width // 2, height // 2)
     world_size = TILE_SIZE * 2 ** MAP_ZOOM
     sin_latitude = math.sin(math.radians(latitude))
     center_x = (longitude + 180) / 360 * world_size
     center_y = (0.5 - math.log((1 + sin_latitude) / (1 - sin_latitude)) / (4 * math.pi)) * world_size
-    origin_x, origin_y = round(center_x - width / 2), round(center_y - height / 2)
+    origin_x, origin_y = round(center_x - pin_x), round(center_y - pin_y)
     tile_count = 2 ** MAP_ZOOM
     positions = [
         (x, y)
@@ -122,7 +123,7 @@ def render_static_map(latitude, longitude, size=(580, 630)):
     for (x, y), tile in zip(positions, tiles):
         image.paste(tile, (x * TILE_SIZE - origin_x, y * TILE_SIZE - origin_y))
     draw = ImageDraw.Draw(image)
-    x, y = width // 2, height // 2
+    x, y = pin_x, pin_y
     draw.ellipse((x - 22, y - 22, x + 22, y + 22), fill="#61caff", outline="white", width=4)
     draw.ellipse((x - 7, y - 7, x + 7, y + 7), fill="#062a46")
     return image

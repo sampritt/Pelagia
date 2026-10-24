@@ -403,7 +403,8 @@ function initDiveSharing() {
         downloadUrl = style.downloadUrl;
         preview.src = style.imageUrl;
         preview.alt = style.alt;
-        preview.dataset.transparent = String(selectedStyle === 1);
+        preview.dataset.transparent = String(style.mimeType === "image/png");
+        preview.style.aspectRatio = style.aspectRatio;
         saveLabel.textContent = "Save image";
         dialog.querySelector("[data-share-counter]").textContent = `Image ${selectedStyle + 1} of ${imageStyles.length}`;
         styleButtons.forEach((button, buttonIndex) => button.setAttribute("aria-pressed", String(buttonIndex === selectedStyle)));
@@ -448,10 +449,18 @@ function initDiveSharing() {
         imageStyles = [
             { imageUrl: button.dataset.shareImage, downloadUrl: button.dataset.shareDownload,
                 filename: "pelagia-dive.jpg", mimeType: "image/jpeg",
-                alt: "Branded dive image with a photo or map" },
-            { imageUrl: button.dataset.shareTransparentImage, downloadUrl: button.dataset.shareTransparentDownload,
-                filename: "pelagia-dive-transparent.png", mimeType: "image/png",
-                alt: "Transparent overlay with the dive site, max depth, dive time and Pelagia logo" },
+                aspectRatio: "1200 / 630", alt: "Branded dive image with a photo or map" },
+            ...[ ["vertical", "720 / 1280"], ["horizontal", "1600 / 600"],
+                ["stacked", "1200 / 780"], ["map", "960 / 1200"] ].map(([layout, aspectRatio]) => {
+                const imageUrl = new URL(button.dataset.shareTransparentImage);
+                const downloadUrl = new URL(button.dataset.shareTransparentDownload);
+                imageUrl.searchParams.set("layout", layout);
+                downloadUrl.searchParams.set("layout", layout);
+                return { imageUrl: imageUrl.href, downloadUrl: downloadUrl.href,
+                    filename: `pelagia-dive-transparent-${layout}.png`, mimeType: "image/png", aspectRatio,
+                    alt: layout === "map" ? "Transparent dive-site map with max depth, dive time and Pelagia logo"
+                        : `Transparent ${layout} dive stats with equally sized values, dive site and Pelagia logo` };
+            }),
         ];
         swipeStart = null;
         link.hidden = true;

@@ -7,6 +7,12 @@ DIVE_TYPES = ("open water", "shore dive", "reef", "wall", "deep", "drift", "nigh
 CURRENT_TYPES = ("none", "slack", "tidal", "surge", "drift", "rip", "upwelling", "downdraft")
 
 
+def gas_mix_label(oxygen, helium):
+    if helium > 0:
+        return f"Trimix {oxygen}/{helium}"
+    return "Air" if oxygen == 21 else f"EANx {oxygen}%"
+
+
 def normalize_options(values, choices, default):
     if isinstance(values, str):
         values = [values]

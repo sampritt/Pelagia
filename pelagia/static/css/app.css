@@ -4759,12 +4759,13 @@ input[type="range"] {
 .dialog-close-button { display: inline-flex; flex: 0 0 44px; align-items: center; justify-content: center; width: 44px; height: 44px; min-height: 44px; padding: 0; line-height: 1; }
 .dialog-close-button svg { display: block; flex: none; width: 18px; height: 18px; }
 .share-preview-carousel { border-radius: 14px; touch-action: pan-y pinch-zoom; }
-.share-preview-image { display: block; width: 100%; aspect-ratio: 1200 / 630; border-radius: 14px; object-fit: contain; background: var(--navy); user-select: none; -webkit-user-drag: none; }
+.share-preview-image { display: block; width: 100%; aspect-ratio: 1200 / 630; max-height: min(420px, calc(100dvh - 320px)); border-radius: 14px; object-fit: contain; background: var(--navy); user-select: none; -webkit-user-drag: none; }
 .share-preview-image[data-transparent="true"] { background-color: #647582; background-image: conic-gradient(#566875 25%, transparent 0 50%, #566875 0 75%, transparent 0); background-size: 24px 24px; }
 .share-preview-navigation { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 8px; }
-.share-preview-arrow, .share-preview-dot { display: grid; flex: 0 0 44px; place-items: center; width: 44px; height: 44px; padding: 0; border: 0; border-radius: 50%; background: transparent; color: var(--muted-strong); cursor: pointer; }
+.share-preview-arrow, .share-preview-dot { display: grid; flex: 0 0 40px; place-items: center; width: 40px; height: 44px; padding: 0; border: 0; border-radius: 50%; background: transparent; color: var(--muted-strong); cursor: pointer; }
 .share-preview-arrow:hover, .share-preview-dot:hover { background: var(--accent-soft); color: var(--accent); }
 .share-preview-dots { display: flex; }
+.share-preview-dot { flex-basis: 30px; width: 30px; }
 .share-preview-dot span { width: 6px; height: 6px; border-radius: 999px; background: var(--muted-strong); }
 .share-preview-dot[aria-pressed="true"] span { width: 18px; background: var(--accent); }
 .share-preview-carousel:focus-visible, .share-preview-arrow:focus-visible, .share-preview-dot:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }

@@ -32,12 +32,12 @@ from . import db as database
 from .importer import import_reference_data
 from .metrics import format_metric
 from .units import UNIT_OPTIONS, display_measurement, metric_measurement, pressure_display
-from .dive_options import DIVE_TYPES, CURRENT_TYPES, normalize_options, dive_type_options, current_type_options
+from .dive_options import DIVE_TYPES, CURRENT_TYPES, normalize_options, dive_type_options, current_type_options, gas_mix_label
 from . import google_auth, email_auth
 from . import pwa
 from . import dive_brief
 from . import site_descriptions
-from .sharing import fetch_public_dive, fetch_public_dive_site, fetch_public_dive_center, render_share_image, render_transparent_share_image, share_description
+from .sharing import TRANSPARENT_LAYOUTS, fetch_public_dive, fetch_public_dive_site, fetch_public_dive_center, render_share_image, render_transparent_share_image, share_description
 
 
 EXPOSURES = ("swimsuit", "shorty", "2mm", "3mm", "4mm", "5mm", "6mm", "7mm", "dry suit")
@@ -362,10 +362,14 @@ def register_routes(app):
         dive = fetch_public_dive(dive_id)
         if dive is None:
             abort(404)
+        layout = request.args.get("layout", "stacked")
+        if layout not in TRANSPARENT_LAYOUTS:
+            abort(400)
         filename = _download_name(dive["site_name"])[:80] or "logged-dive"
+        suffix = f"-{layout}" if "layout" in request.args else ""
         response = send_file(
-            render_transparent_share_image(dive, length_unit=unit_preferences()["length"]),
-            mimetype="image/png", download_name=f"pelagia-{filename}-transparent.png",
+            render_transparent_share_image(dive, length_unit=unit_preferences()["length"], layout=layout),
+            mimetype="image/png", download_name=f"pelagia-{filename}-transparent{suffix}.png",
             as_attachment=request.args.get("download") == "1",
         )
         response.headers["Cache-Control"] = "no-store"
@@ -2104,12 +2108,6 @@ def gas_composition(value):
     if value in NITROX_GAS_MIXES:
         return int(value.rstrip("%")), 0
     return 21, 0
-
-
-def gas_mix_label(oxygen, helium):
-    if helium > 0:
-        return f"Trimix {oxygen}/{helium}"
-    return "Air" if oxygen == 21 else f"EANx {oxygen}%"
 
 
 def is_nitrox_gas_mix(value):
