@@ -24,7 +24,7 @@ def fetch_public_dive(dive_id):
         """
         SELECT d.id, d.site_name, d.country_or_area, d.date, d.latitude,
                d.longitude, d.depth_m, d.average_depth_m, d.duration_min, d.dive_type, d.dive_types_json,
-               d.oxygen_pct, d.helium_pct, d.sac_rate_l_min,
+               d.oxygen_pct, d.helium_pct, d.sac_rate_l_min, d.weight_kg, d.exposure,
                COALESCE(dc.name, d.dive_center_name) AS center_name,
                u.username, u.profile_photo
         FROM dives d JOIN users u ON u.id = d.user_id
@@ -156,15 +156,29 @@ def _display_date(value):
     return f"{months[logged_on.month - 1]} {logged_on.day}, {logged_on.year}"
 
 
-def _secondary_stats(dive):
-    """Only recorded metrics belong on a share; never invent a gas or SAC."""
+def _select_share_stats(dive, *, length_unit="m", weight_unit="kg", map_only=False):
+    """Choose the first four recorded values in the shared display priority."""
     stats = []
+
+    def measurement(key, unit, label, *, weight=False):
+        value = dive.get(key)
+        if value is not None and value != "" and math.isfinite(float(value)) and float(value) >= 0:
+            stats.append((format_metric(display_measurement(value, unit), weight=weight), unit, label))
+
+    measurement("depth_m", length_unit, "MAX DEPTH")
+    if not map_only:
+        measurement("average_depth_m", length_unit, "AVG DEPTH")
+    measurement("duration_min", "min", "DIVE TIME")
+    if map_only:
+        return stats
     if dive.get("gas_mix_label"):
         stats.append((dive["gas_mix_label"], "", "GAS MIX"))
-    sac = dive.get("sac_rate_l_min")
-    if sac is not None and math.isfinite(sac) and sac > 0:
-        stats.append((format_metric(sac), "L/min", "SAC RATE"))
-    return stats
+    measurement("sac_rate_l_min", "L/min", "SAC RATE")
+    measurement("weight_kg", weight_unit, "WEIGHT", weight=True)
+    exposure = str(dive.get("exposure") or "").strip()
+    if exposure and exposure.lower() not in {"none", "-"}:
+        stats.append((exposure, "", "EXPOSURE"))
+    return stats[:4]
 
 
 def _draw_stat(draw, x, baseline, value, unit, label, *, width, size=68,
@@ -183,7 +197,7 @@ def _draw_stat(draw, x, baseline, value, unit, label, *, width, size=68,
     if unit:
         draw.text((left + value_width + 9, baseline), unit, font=unit_font,
                   fill="white" if transparent else "#a9ddd8", anchor="ls")
-    draw.text((x, baseline + 22), label, font=_font(18),
+    draw.text((x, baseline + 24), label, font=_font(24),
               fill="white" if transparent else "#b8cecf",
               anchor="mt" if centered else "lt")
 
@@ -209,9 +223,9 @@ def _draw_share_title(draw, title, center, middle, width, height=152):
         draw.text((center, top + index * step), line, font=font, fill="white", anchor="mt")
 
 
-def _equal_stat_size(draw, stats, width, unit_size=32):
+def _equal_stat_size(draw, stats, width, unit_size=32, max_size=80):
     # Fit the longest value once, then give every stat the same type size.
-    for size in range(80, 11, -1):
+    for size in range(max_size, 11, -1):
         font, unit_font = _font(size, bold=True), _font(unit_size)
         if all(draw.textlength(value, font=font)
                + (draw.textlength(unit, font=unit_font) + 9 if unit else 0) <= width
@@ -220,28 +234,22 @@ def _equal_stat_size(draw, stats, width, unit_size=32):
     return size
 
 
-def render_transparent_share_image(dive, *, length_unit="m", layout="stacked"):
+def render_transparent_share_image(dive, *, length_unit="m", weight_unit="kg", layout="stacked"):
     """Transparent overlays with equal stat emphasis and distinct compositions."""
     image = Image.new("RGBA", TRANSPARENT_LAYOUTS[layout], (0, 0, 0, 0))
     draw = ImageDraw.Draw(image)
-    depth = format_metric(display_measurement(dive["depth_m"], length_unit))
-    duration = format_metric(dive["duration_min"])
-    stats = [(depth, length_unit, "MAX DEPTH"), (duration, "min", "DIVE TIME")]
-    if layout != "map":
-        stats.extend(_secondary_stats(dive))
+    stats = _select_share_stats(dive, length_unit=length_unit, weight_unit=weight_unit, map_only=layout == "map")
     count = len(stats)
 
     if layout == "vertical":
         _place_lockup(image, 190, 265, 55)
-        _draw_share_title(draw, dive["site_name"], 360, 1150, 600)
-        baselines = {2: (490, 770), 3: (390, 625, 860), 4: (330, 525, 720, 915)}[count]
+        baselines = {0: (), 1: (700,), 2: (520, 900), 3: (430, 720, 1010), 4: (365, 610, 855, 1100)}[count]
         positions = [(360, baseline) for baseline in baselines]
         column_width = 600
     elif layout == "horizontal":
-        _draw_share_title(draw, dive["site_name"], 800, 120, 1440)
-        column_width = 1480 / count - 36
-        positions = [(60 + (index + 0.5) * 1480 / count, 330) for index in range(count)]
-        _place_lockup(image, 190, 705, 430)
+        column_width = 1480 / max(1, count) - 36
+        positions = [(60 + (index + 0.5) * 1480 / count, 220) for index in range(count)]
+        _place_lockup(image, 190, 705, 340)
     elif layout == "map":
         _draw_share_title(draw, dive["site_name"], 480, 130, 800, height=160)
         map_image = render_static_map(dive["latitude"], dive["longitude"], size=(760, 500))
@@ -254,17 +262,19 @@ def render_transparent_share_image(dive, *, length_unit="m", layout="stacked"):
         else:
             draw.rounded_rectangle((100, 260, 859, 759), radius=32, outline="#b8cecf", width=2)
             draw.text((480, 510), "Map unavailable", font=_font(30), fill="white", anchor="mm")
-        positions, column_width = [(280, 890), (680, 890)], 330
+        positions = [(480, 890)] if count == 1 else [(280, 890), (680, 890)]
+        column_width = 330
         _place_lockup(image, 190, 385, 1020)
     else:
-        _draw_share_title(draw, dive["site_name"], 600, 153, 1000)
-        positions = [(340, 340), (860, 340)]
+        _draw_share_title(draw, dive["site_name"], 600, 123, 1000)
+        first_row = 310 if count > 2 else 380
+        positions = [(600, first_row)] if count == 1 else [(340, first_row), (860, first_row)]
         if count == 3:
-            positions.append((600, 530))
+            positions.append((600, 500))
         elif count == 4:
-            positions.extend(((340, 530), (860, 530)))
+            positions.extend(((340, 500), (860, 500)))
         column_width = 470
-        _place_lockup(image, 190, 505, 624 if count > 2 else 500)
+        _place_lockup(image, 190, 505, 594 if count > 2 else 560)
 
     size = _equal_stat_size(draw, stats, column_width)
     for (x, baseline), (value, unit, label) in zip(positions, stats):
@@ -320,10 +330,9 @@ def _place_share_map(image, map_image):
     ImageDraw.Draw(border).rounded_rectangle((x, y, x + width - 1, y + height - 1), radius=24,
                                              outline=(222, 238, 235, 100), width=1)
     image.alpha_composite(border)
-    ImageDraw.Draw(image).text((x, y + height + 13), "DIVE SITE", font=_font(15), fill="#b8cecf", anchor="lt")
 
 
-def render_share_image(dive, *, length_unit="m"):
+def render_share_image(dive, *, length_unit="m", weight_unit="kg"):
     # Gallery order determines the primary photo. A full-bleed map takes its
     # place when no readable photo exists, with the pin clear of the headline.
     uploads = Path(current_app.config["UPLOAD_FOLDER"]).resolve()
@@ -367,26 +376,16 @@ def render_share_image(dive, *, length_unit="m"):
               font=location_font, fill="#b8cecf", anchor="lt")
 
     draw.line((56, 403, 1144, 403), fill="#426064", width=1)
-    _draw_stat(draw, 56, 492, format_metric(display_measurement(dive["depth_m"], length_unit)),
-               length_unit, "MAX DEPTH", width=230)
-    _draw_stat(draw, 328, 492, format_metric(dive["duration_min"]), "min", "DIVE TIME", width=230)
-    for x, (value, unit, label) in zip((622, 910), _secondary_stats(dive)):
-        _draw_stat(draw, x, 492, value, unit, label, width=234, size=36, unit_size=23)
+    stats = _select_share_stats(dive, length_unit=length_unit, weight_unit=weight_unit)
+    column_width = (1088 - 28 * max(0, len(stats) - 1)) / max(1, len(stats))
+    size = _equal_stat_size(draw, stats, column_width, unit_size=26, max_size=68)
+    for index, (value, unit, label) in enumerate(stats):
+        _draw_stat(draw, 56 + index * (column_width + 28), 492, value, unit, label,
+                   width=column_width, size=size, unit_size=26)
 
     footer_font = _font(20)
     footer = f"{dive['username']}  ·  {_display_date(dive['date'])}"
     draw.text((56, 592), _fit_line(draw, footer, footer_font, 690), font=footer_font, fill="#b8cecf", anchor="ls")
-    if dive.get("average_depth_m") is not None:
-        # Average depth remains available without competing with the headline.
-        label_font = _font(15)
-        value = format_metric(display_measurement(dive["average_depth_m"], length_unit))
-        label_width = draw.textlength("AVG DEPTH", font=label_font)
-        value_width = draw.textlength(value, font=footer_font)
-        unit_width = draw.textlength(length_unit, font=footer_font)
-        x = 1144 - label_width - value_width - unit_width - 28
-        draw.text((x, 592), "AVG DEPTH", font=label_font, fill="#b8cecf", anchor="ls")
-        draw.text((x + label_width + 16, 592), value, font=footer_font, fill="white", anchor="ls")
-        draw.text((1144, 592), length_unit, font=footer_font, fill="#a9ddd8", anchor="rs")
     stream = BytesIO()
     image.convert("RGB").save(stream, "JPEG", quality=92)
     stream.seek(0)

@@ -10,7 +10,7 @@ import requests
 
 from pelagia import create_app
 from pelagia import db as database
-from pelagia.sharing import TRANSPARENT_LAYOUTS, fetch_public_dive, render_share_image, render_transparent_share_image
+from pelagia.sharing import TRANSPARENT_LAYOUTS, _select_share_stats, fetch_public_dive, render_share_image, render_transparent_share_image
 from pelagia.static_maps import render_static_map
 
 
@@ -272,7 +272,8 @@ class DiveSharingTest(unittest.TestCase):
             response = self.client.get("/share/dive/1/transparent.png")
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.mimetype, "image/png")
-        self.assertEqual(drawn, ["Blue Corner", "24", "m", "MAX DEPTH", "52", "min", "DIVE TIME"])
+        self.assertEqual(drawn, ["Blue Corner", "24", "m", "MAX DEPTH", "52", "min", "DIVE TIME",
+                                 "7.5", "kg", "WEIGHT", "dry suit", "EXPOSURE"])
         self.tile_request.assert_not_called()
         self.assertIn("no-store", response.headers["Cache-Control"])
         self.assertIn("Cookie", response.headers["Vary"])
@@ -286,7 +287,7 @@ class DiveSharingTest(unittest.TestCase):
                 self.assertEqual(alpha.getpixel(position), 0)
             self.assertIsNotNone(alpha.crop((100, 60, 1100, 235)).getbbox())
             self.assertIsNotNone(alpha.crop((250, 240, 950, 365)).getbbox())
-            self.assertIsNotNone(alpha.crop((450, 490, 750, 630)).getbbox())
+            self.assertIsNotNone(alpha.crop((450, 620, 750, 770)).getbbox())
 
     def test_transparent_save_downloads_png_attachment_and_respects_depth_units(self):
         self.login_session()
@@ -331,8 +332,8 @@ class DiveSharingTest(unittest.TestCase):
                 for _, (left, top, right, bottom) in drawn:
                     self.assertGreaterEqual(left, 95)
                     self.assertLessEqual(right, 1105)
-                    self.assertGreaterEqual(top, 65)
-                    self.assertLessEqual(bottom, 240)
+                    self.assertGreaterEqual(top, 40)
+                    self.assertLessEqual(bottom, 210)
 
     def test_optional_gas_and_sac_appear_in_both_exports_without_private_equipment(self):
         original_text = ImageDraw.ImageDraw.text
@@ -345,7 +346,7 @@ class DiveSharingTest(unittest.TestCase):
                     )
                     database.get_db().commit()
                     public = fetch_public_dive(1)
-                    for field in ("starting_pressure_bar", "ending_pressure_bar", "weight_kg", "notes", "buddy_user_id"):
+                    for field in ("starting_pressure_bar", "ending_pressure_bar", "notes", "buddy_user_id"):
                         self.assertNotIn(field, public)
                 for suffix in ("preview.jpg", "transparent.png"):
                     drawn = []
@@ -371,7 +372,7 @@ class DiveSharingTest(unittest.TestCase):
         with self.app.app_context():
             dive = fetch_public_dive(1)
             for gas, sac, labels in ((None, None, ()), ("EANx 32%", None, ("GAS MIX",)),
-                                     (None, 18, ("SAC RATE",)), (None, 0, ()),
+                                     (None, 18, ("SAC RATE",)), (None, 0, ("SAC RATE",)),
                                      (None, -5, ()), (None, float("nan"), ())):
                 for renderer in (render_share_image, render_transparent_share_image):
                     with self.subTest(gas=gas, sac=sac, renderer=renderer.__name__):
@@ -422,10 +423,10 @@ class DiveSharingTest(unittest.TestCase):
                             if layout == "map":
                                 self.assertNotIn("GAS MIX", labels)
                                 self.assertNotIn("SAC RATE", labels)
-                            if layout == "vertical":
-                                # Every metric and its label precedes the site name.
-                                self.assertTrue(all(box[1] > 1000 for text, _, box in drawn
-                                                    if text not in values | {"m", "min", "L/min", "MAX DEPTH", "DIVE TIME", "GAS MIX", "SAC RATE"}))
+                            if layout in {"vertical", "horizontal"}:
+                                self.assertFalse(any("Kicker" in text or "Dormido" in text or "Lighthouse" in text
+                                                     for text, _, _ in drawn))
+
 
     def test_each_png_layout_downloads_with_its_own_name_and_map_fallback(self):
         self.login_session()
@@ -458,6 +459,80 @@ class DiveSharingTest(unittest.TestCase):
         self.assertIn("Map unavailable", drawn)
         self.assertIn("ft", drawn)
         self.tile_request.assert_not_called()
+
+    def test_stats_use_the_first_four_available_values_in_priority_order(self):
+        fields = ("depth_m", "average_depth_m", "duration_min", "gas_mix_label",
+                  "sac_rate_l_min", "weight_kg", "exposure")
+        values = (24, 15, 52, "EANx 32%", 18, 7.5, "dry suit")
+        labels = ("MAX DEPTH", "AVG DEPTH", "DIVE TIME", "GAS MIX", "SAC RATE", "WEIGHT", "EXPOSURE")
+        # All combinations cover each fallback and shorter/empty selections.
+        for mask in range(1 << len(fields)):
+            dive = {field: value if mask & (1 << index) else None
+                    for index, (field, value) in enumerate(zip(fields, values))}
+            expected = [label for index, label in enumerate(labels) if mask & (1 << index)][:4]
+            with self.subTest(mask=mask):
+                self.assertEqual([stat[2] for stat in _select_share_stats(dive)], expected)
+        zeroes = dict(depth_m=0, average_depth_m=0, duration_min=0, weight_kg=0)
+        self.assertEqual([stat[0] for stat in _select_share_stats(zeroes)], ["0"] * 4)
+
+    def test_splash_and_three_stat_pngs_share_selection_and_equal_value_sizes(self):
+        labels = {"MAX DEPTH", "AVG DEPTH", "DIVE TIME", "GAS MIX", "SAC RATE", "WEIGHT", "EXPOSURE"}
+        original_text = ImageDraw.ImageDraw.text
+        with self.app.app_context():
+            dive = fetch_public_dive(1)
+            cases = (
+                (dict(average_depth_m=15, gas_mix_label="EANx 32%", sac_rate_l_min=18),
+                 ["MAX DEPTH", "AVG DEPTH", "DIVE TIME", "GAS MIX"]),
+                (dict(average_depth_m=15, gas_mix_label=None, sac_rate_l_min=18),
+                 ["MAX DEPTH", "AVG DEPTH", "DIVE TIME", "SAC RATE"]),
+                (dict(average_depth_m=None, gas_mix_label=None, sac_rate_l_min=None),
+                 ["MAX DEPTH", "DIVE TIME", "WEIGHT", "EXPOSURE"]),
+            )
+            for changes, expected in cases:
+                dive.update(changes)
+                for layout in ("splash", "vertical", "horizontal", "stacked", "map"):
+                    with self.subTest(layout=layout, expected=expected):
+                        drawn, values = [], []
+                        chosen = _select_share_stats(dive, map_only=layout == "map")
+                        chosen_values = {stat[0] for stat in chosen}
+
+                        def record_text(draw, xy, text, *args, **kwargs):
+                            drawn.append(text)
+                            if text in chosen_values:
+                                values.append(kwargs["font"].size)
+                            return original_text(draw, xy, text, *args, **kwargs)
+
+                        with patch.object(ImageDraw.ImageDraw, "text", new=record_text):
+                            if layout == "splash":
+                                render_share_image(dive)
+                            else:
+                                render_transparent_share_image(dive, layout=layout)
+                        self.assertEqual([text for text in drawn if text in labels],
+                                         ["MAX DEPTH", "DIVE TIME"] if layout == "map" else expected)
+                        self.assertEqual(len(set(values)), 1)
+                        self.assertEqual(len(values), len(chosen))
+                        if layout in {"vertical", "horizontal"}:
+                            self.assertNotIn(dive["site_name"], drawn)
+
+    def test_weight_fallback_uses_viewer_weight_units_in_all_four_stat_exports(self):
+        self.login_session()
+        with self.app.app_context():
+            database.get_db().execute("UPDATE users SET weight_unit = 'lb' WHERE id = 1")
+            database.get_db().commit()
+        original_text = ImageDraw.ImageDraw.text
+        for suffix in ("preview.jpg", "transparent.png?layout=vertical", "transparent.png?layout=horizontal",
+                       "transparent.png?layout=stacked"):
+            drawn = []
+
+            def record_text(draw, xy, text, *args, **kwargs):
+                drawn.append(text)
+                return original_text(draw, xy, text, *args, **kwargs)
+
+            with patch.object(ImageDraw.ImageDraw, "text", new=record_text):
+                self.assertEqual(self.client.get(f"/share/dive/1/{suffix}").status_code, 200)
+            for text in ("16.5", "lb", "WEIGHT", "dry suit", "EXPOSURE"):
+                self.assertIn(text, drawn)
+            self.assertNotIn("kg", drawn)
 
     def test_deleted_and_missing_dives_have_no_public_page_or_image(self):
         self.login_session()

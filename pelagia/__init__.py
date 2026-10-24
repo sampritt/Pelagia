@@ -349,7 +349,7 @@ def register_routes(app):
             abort(404)
         filename = _download_name(dive["site_name"])[:80] or "logged-dive"
         response = send_file(
-            render_share_image(dive, length_unit=unit_preferences()["length"]), mimetype="image/jpeg",
+            render_share_image(dive, length_unit=unit_preferences()["length"], weight_unit=unit_preferences()["weight"]), mimetype="image/jpeg",
             download_name=f"pelagia-{filename}.jpg", as_attachment=request.args.get("download") == "1",
         )
         response.headers["Cache-Control"] = "no-store"
@@ -368,7 +368,8 @@ def register_routes(app):
         filename = _download_name(dive["site_name"])[:80] or "logged-dive"
         suffix = f"-{layout}" if "layout" in request.args else ""
         response = send_file(
-            render_transparent_share_image(dive, length_unit=unit_preferences()["length"], layout=layout),
+            render_transparent_share_image(dive, length_unit=unit_preferences()["length"],
+                                           weight_unit=unit_preferences()["weight"], layout=layout),
             mimetype="image/png", download_name=f"pelagia-{filename}-transparent{suffix}.png",
             as_attachment=request.args.get("download") == "1",
         )

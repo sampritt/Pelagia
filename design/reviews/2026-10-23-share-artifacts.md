@@ -1,48 +1,46 @@
-# Dive share artwork review — October 23, 2026
+# Dive share artwork review — updated October 24, 2026
 
-The original landscape export gave the text and media separate visual territories. The transparent export gave a large logo almost the same emphasis as the numbers. The revision borrows the clear activity-stat hierarchy familiar from fitness sharing while retaining Pelagia's supplied fin/wordmark and ocean palette.
+The five-style carousel combines Pelagia's supplied white fin/wordmark, ocean palette and clear activity stats. The splash uses continuous shading across its image rather than separate text and media panels.
 
-## Implemented
+## Shared stat rule
 
-- The 1200 × 630 JPEG uses a photo or map across the entire canvas. A continuous, eased ocean-colored scrim shades the title and lower stats without a vertical seam. Photo splashes now also include a 314 × 252 rounded map inset in the upper-right, with a subtle border and shadow. It uses the existing map zoom and centered site pin, and is omitted if coordinates or map tiles are unavailable. Without a readable photo, the map fills the background with its geographic center and pin in the open upper-right area.
-- Max depth and dive time have larger figures and smaller units. Gas mix and a positive recorded SAC rate appear as secondary metrics, independently, only when available. Air, EANx and Trimix use the same label formatter as the logged dive. Average depth remains in the JPEG footer when recorded.
-- Both exports use the supplied white Pelagia fin and wordmark. The transparent PNG keeps the site name, two primary metrics, optional secondary row and smaller logo. A local shadow supports use over light or busy footage. Its canvas and gaps remain transparent.
-- Both formats retain full long site names and the viewer's depth units. The existing carousel, download formats and share-sheet behavior continue to work.
-- The public data allowlist adds gas composition and saved SAC, without fetching raw tank pressures, notes, buddy identities or other private equipment fields.
+The splash and the vertical, horizontal and stacked PNGs select the first four available values in this exact order:
 
-## Verification
+1. Max depth
+2. Average depth
+3. Dive time
+4. Gas mix
+5. SAC rate
+6. Weight
+7. Exposure
 
-34 Python tests passed across dive sharing, static maps and unit preferences; all 14 JavaScript dive-sharing tests passed. Coverage includes optional metrics independently omitted, Air/EANx/Trimix, invalid SAC values, full titles, true PNG alpha, map pin geography, photo ordering/fallbacks, attachment downloads, and native sharing. `git diff --check` passed.
+All selected values share one type size within their image. The longest value determines the size for every stat, so neither the splash nor a PNG makes individual stats smaller. Missing values are skipped; fewer than four are shown when necessary. Stored zeroes remain valid recorded measurements; negative and nonfinite numeric values are omitted. Depth and weight use the viewer's unit preferences. The splash no longer duplicates average depth as a smaller footer value.
 
-Generated samples are in `output/share-artifacts-review/`:
-
-- `splash-photo.jpg`: full photo composition, with representative sample stats.
-- `map-layout-proof.jpg`: actual map renderer and offset pin over local solid-color test tiles. This is a layout proof, not a geographic map preview.
-- `stats-transparent.png`: actual exported PNG with optional stats.
-- `stats-checkerboard-preview.jpg`: transparency visualization; the checkerboard is not in the PNG.
-- `stats-minimal.png`: PNG with optional stats absent.
-- `splash-long-title.jpg` and `stats-long-title.png`: wrapping and imperial-unit proofs.
-- `reel-overlay-preview.jpg`: 9:16 composition using the PNG over a cropped existing Pelagia ocean image.
-- `contrast-proof.jpg`: white overlay against ocean imagery and a bright background.
-
-Automatic approval review rejected fetching public map tiles because it treated the sample coordinates as location disclosure. Map layout, tile placement, caching and fallback were verified with local test tiles; a live geographic-map preview was not fetched. No deployment was performed.
-
-Follow-up validation: all 22 dive-sharing tests passed after adding the photo/map inset, including photo preservation and missing-coordinate/tile fallbacks. The updated `splash-photo.jpg` uses local test tiles for the inset.
-
-Long-name follow-up: rendered “Kicker Rock (Leon Dormido)” in both formats at full export size and 390 px wide. Fixed the JPEG's awkward break inside the alternate name: it now reads “Kicker Rock” / “(Leon Dormido)”. The PNG retains the complete name on one line. The title-layout regression checks now use a photo with the upper-right map inset and verify the entire title stays inside the headline area for short, long and unbroken names. All 22 dive-sharing tests passed. Corresponding `kicker-rock-*` proofs are in the sample output directory; their maps use local test tiles.
-
+The map PNG remains the exception: it shows only max depth and dive time.
 
 ## Five export styles
 
-The carousel now contains splash JPEG, vertical PNG, horizontal PNG, stacked PNG and map PNG, in that order. Transparent stat layouts use a single shared value font size for all available metrics, fitting the longest value once so gas or SAC never receives smaller type than depth or time.
+- Splash JPEG: 1200 × 630, full-bleed photo or map, smooth ocean-colored fade, site name and location, one row of equally sized selected stats, diver/date footer. Photo splashes include a 314 × 252 rounded map inset in the upper-right. Without a readable photo, the map fills the background with its pin clear of the title.
+- Vertical PNG: 720 × 1280, logo at top and one column of selected stats. No site name.
+- Horizontal PNG: 1600 × 600, one row of selected stats and logo below. No site name.
+- Stacked PNG: 1200 × 780, site name, two-column grid of selected stats, logo below.
+- Map PNG: 960 × 1200, site name, rounded map, max depth/time beneath it, logo below. An unavailable map shows an outline/message rather than a fabricated location.
 
-- Vertical: 720 × 1280, logo at top, one column of stats, site name at bottom.
-- Horizontal: 1600 × 600, site name, one row of stats, logo below.
-- Stacked: 1200 × 780, site name, two-column grid of equal-size stats, logo below.
-- Map: 960 × 1200, site name, rounded map, max depth/time beneath, logo below. The canvas around these elements is transparent. An unavailable map has an explicit outline/message; it does not show a fabricated location.
+PNG canvases and gaps remain transparent, with a local shadow to improve legibility over footage. Long site names retain all words; trailing parenthetical aliases stay together when they fit. Public share data includes the eligible display fields; raw tank pressures, notes, buddy identities and comments remain excluded.
 
-`transparent-layouts-review.jpg` compares the four new PNGs on an illustrative solid background. The actual transparent exports are `transparent-vertical.png`, `transparent-horizontal.png`, `transparent-stacked.png` and `transparent-map.png`. Map proofs continue to use local test tiles.
+## Verification
 
-Validation covers equal value sizes, optional metrics separately omitted, full long titles, RGBA/empty margins, layout-specific dimensions/download names, viewer depth units, map fallback, five-way carousel navigation and stale PNG preparation. The browser review confirms five pagination controls and the correct selected style.
+27 Python dive-sharing tests, 8 unit-preference tests, 5 static-map tests and 16 JavaScript sharing tests passed (56 total). Stat selection is checked across all 128 availability combinations, plus identical ordered selection and equal type size across the four relevant renderers, weight conversions, map-only stats, removed vertical/horizontal titles, full long titles, PNG alpha, downloads and carousel switching. `git diff --check` passed.
 
-Final five-style validation: 24 Python dive-sharing tests and 16 JavaScript sharing tests passed. Browser checks at 320 px and 390 px confirmed that the portrait exports, all five pagination controls, and copy/save/share actions fit without clipping. `carousel-phone-widths.png` is the unedited browser proof; map previews use local test tiles. `git diff --check` passed.
+The earlier generated samples are in `output/share-artifacts-review/`: `splash-photo.jpg`, `transparent-layouts-review.jpg`, and each `transparent-<vertical|horizontal|stacked|map>.png` with a solid-background `-preview.jpg`. Map proofs use local test tiles. Earlier browser screenshots in the same folder predate the latest stat priority/title changes. A previous live tile fetch was blocked by automatic approval review over sample coordinate disclosure, so geographic-map appearance remains unverified against live tiles.
+
+
+## Final design sign-off
+
+Reviewed all five layouts at export size and phone-scale width, including seven representative scenarios: a complete log, Trimix without average depth, weight/exposure fallbacks in ft/lb, three recorded stats, two recorded stats, a long reserve name, and unavailable coordinates. Also reviewed all four PNGs over an existing Pelagia ocean photo inside 1080 × 1920 Reel frames, plus bright and dark backing proofs.
+
+Final small refinements: stat labels are now consistently 24 px for stronger small-screen readability; the title-free horizontal composition is vertically centered; the stacked composition uses more balanced title/grid/logo spacing, including a separate two-stat balance; and the splash omits the redundant caption below its map inset. Equal stat-value sizing, the first-four priority rule, and the title-free vertical/horizontal exports remain intact.
+
+Signed off for the export compositions, PNG transparency, text/brand hierarchy, consistent spacing and reviewed footage contrasts. The geographic appearance of live map tiles remains outside this visual sign-off; map proofs use local test tiles, while map placement, caching and fallback are covered by tests.
+
+Final local proofs are in `output/share-artifacts-final-review/`: `all-five-layouts.jpg`, `reels-proof.jpg`, `contrast-proof.jpg`, and individual exports for each reviewed scenario. These illustrative proofs are not application runtime assets.

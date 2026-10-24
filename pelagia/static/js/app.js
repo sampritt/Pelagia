@@ -459,7 +459,7 @@ function initDiveSharing() {
                 return { imageUrl: imageUrl.href, downloadUrl: downloadUrl.href,
                     filename: `pelagia-dive-transparent-${layout}.png`, mimeType: "image/png", aspectRatio,
                     alt: layout === "map" ? "Transparent dive-site map with max depth, dive time and Pelagia logo"
-                        : `Transparent ${layout} dive stats with equally sized values, dive site and Pelagia logo` };
+                        : `Transparent ${layout} dive stats with equally sized values${layout === "stacked" ? ", dive site" : ""} and Pelagia logo` };
             }),
         ];
         swipeStart = null;
