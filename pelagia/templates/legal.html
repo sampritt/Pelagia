@@ -5,7 +5,7 @@
     <header>
         <p class="eyebrow"><a href="{{ url_for('home') if me else url_for('landing') }}">Pelagia</a></p>
         <h1 id="legalTitle">{% block legal_title %}{% endblock %}</h1>
-        <p class="muted">Last updated: October 18, 2026</p>
+        <p class="muted">Last updated: {{ 'October 23, 2026' if request.endpoint == 'privacy' else 'October 18, 2026' }}</p>
     </header>
     {% block legal_content %}{% endblock %}
     <section>

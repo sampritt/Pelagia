@@ -119,6 +119,8 @@ Repeat the section heading, story headline, paragraphs and source link for each 
 
 ## Terms of Use and Privacy Policy
 
+Settings includes a red **Delete Account** action below Log out. It opens a confirmation page; **Keep my account** returns to settings, while the CSRF-protected **Delete account** submission permanently removes the signed-in user, their authentication challenges, preferences, active and previously soft-deleted dives, dive species, uploaded profile/dive photos, likes, and comments. Buddy references on other users’ dives are cleared, other accounts and shared reference data are preserved, and the session is cleared before returning to the landing page. Deletion requires no database migration.
+
 Profile → Settings includes Terms of Use (`/terms`) and Privacy Policy (`/privacy`). Both pages are also accessible without signing in and linked from the authentication screen, including Google signup.
 
 Set `PELAGIA_OPERATOR_NAME` to the person or entity operating the app and `PELAGIA_CONTACT_EMAIL` to a monitored public email address. Defaults are “Pelagia” and `info@pelagiadivelog.com`. The contact address appears as a mail link in the Questions section of both legal pages. Supply the actual operator name before public release. Hosting/log retention and any deployment-specific data practices should also be verified by the operator.

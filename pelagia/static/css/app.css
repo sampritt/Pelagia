@@ -5830,10 +5830,18 @@ img.is-media-loading {
 .settings-account-email strong { font-weight: 700; }
 .settings-logout { margin-top: 20px; }
 .settings-logout .ghost-button { min-height: 44px; }
+.settings-delete-account { display: flex; width: fit-content; min-height: 44px; margin-top: 12px; color: #b42336; border-color: #e8b7bf; }
+.settings-delete-account:hover { color: #951b2b; border-color: #b42336; background: #fff1f3; }
+.account-deletion-card > p:first-child { margin: 0; line-height: 1.65; }
+.account-deletion-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 24px; }
+.account-deletion-actions .primary-button, .account-deletion-actions .ghost-button { min-height: 44px; }
+.account-delete-button { background: #b42336; border-color: #b42336; box-shadow: none; }
+.account-delete-button:hover { background: #951b2b; border-color: #951b2b; box-shadow: none; }
 .settings-page .profile-settings-attribution { margin-top: 24px; padding-top: 0; border: 0; }
 @media (max-width: 640px) {
     .settings-page-heading { margin-bottom: 20px; }
     .settings-card { margin-top: 16px; padding: 22px 18px; }
     .settings-dive-count { max-width: none; }
     .settings-logout .ghost-button { width: 100%; }
+    .settings-delete-account, .account-deletion-actions > * { width: 100%; }
 }

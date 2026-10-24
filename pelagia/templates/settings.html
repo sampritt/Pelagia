@@ -38,6 +38,7 @@
         <form class="settings-logout" method="post" action="{{ url_for('logout') }}">
             <button class="ghost-button" type="submit">Log out</button>
         </form>
+        <a class="ghost-button settings-delete-account" href="{{ url_for('delete_account') }}">Delete Account</a>
     </section>
     <p class="profile-settings-attribution">&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap contributors</a></p>
 </section>

@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Delete account - Pelagia{% endblock %}
+
+{% block content %}
+<section class="settings-page" aria-labelledby="deleteAccountTitle">
+    <header class="settings-page-heading">
+        <div>
+            <p class="eyebrow">Your account</p>
+            <h1 id="deleteAccountTitle">Delete account?</h1>
+        </div>
+    </header>
+    <section class="settings-card account-deletion-card" aria-describedby="deleteAccountWarning">
+        <p id="deleteAccountWarning">Are you sure you want to delete your account? This action cannot be undone.</p>
+        <p class="settings-description">Your profile, settings, logged dives, uploaded photos, likes, and comments will be permanently deleted.</p>
+        <form class="account-deletion-actions" method="post" action="{{ url_for('delete_account') }}">
+            <input type="hidden" name="csrf_token" value="{{ google_csrf_token() }}">
+            <button class="primary-button account-delete-button" type="submit">Delete account</button>
+            <a class="ghost-button" href="{{ url_for('profile_settings') }}">Keep my account</a>
+        </form>
+    </section>
+</section>
+{% endblock %}

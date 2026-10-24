@@ -463,6 +463,25 @@ def register_routes(app):
             login_email=account["login_email"] or account["google_email"],
         )
 
+    @app.route("/you/settings/delete-account", methods=("GET", "POST"))
+    @login_required
+    def delete_account():
+        status = 200
+        if request.method == "POST":
+            google_auth.check_csrf()
+            try:
+                delete_account_data(session["user_id"])
+            except OSError:
+                current_app.logger.exception("Account upload deletion failed")
+                flash("We couldn’t delete your account. Please try again.")
+                status = 503
+            else:
+                session.clear()
+                response = redirect(url_for("landing"))
+                response.headers["Cache-Control"] = "no-store"
+                return response
+        return render_template("delete_account.html"), status, {"Cache-Control": "no-store"}
+
     @app.route("/users/<int:user_id>")
     @login_required
     def user_profile(user_id):
@@ -871,6 +890,36 @@ def register_routes(app):
 
 class InvalidBuddyError(ValueError):
     pass
+
+
+def delete_account_data(user_id):
+    db = database.get_db()
+    # Serialize against dive creation and email verification while collecting
+    # uploads, including those retained by the normal dive soft-delete flow.
+    with db:
+        db.execute("BEGIN IMMEDIATE")
+        account = db.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
+        if account is None:
+            return
+        filenames = {
+            row["filename"] for row in db.execute(
+                "SELECT p.filename FROM photos p JOIN dives d ON d.id = p.dive_id WHERE d.user_id = ?",
+                (user_id,),
+            )
+        }
+        if account["profile_photo"]:
+            filenames.add(account["profile_photo"])
+        # Challenges are also stored for anonymous sign-ins, so link_user alone
+        # does not identify all of this account's authentication records.
+        db.execute(
+            "DELETE FROM email_challenges WHERE link_user = ? OR lower(email) IN (lower(?), lower(?))",
+            (user_id, account["login_email"], account["google_email"]),
+        )
+        # Foreign keys hard-delete owned dives and all related social records;
+        # buddy tags on other divers' logs are cleared with ON DELETE SET NULL.
+        db.execute("DELETE FROM users WHERE id = ?", (user_id,))
+        for filename in sorted(filenames):
+            _delete_uploaded_file(filename)
 
 
 def fetch_user(user_id):
