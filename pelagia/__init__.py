@@ -1415,6 +1415,15 @@ def fetch_dives(scope, user_id, limit=80, center_id=None, site_id=None, viewer_u
     elif scope == "site":
         clauses.append("d.dive_site_id = ?")
         params.append(site_id)
+    order_by = "d.date DESC, d.created_at DESC"
+    if scope == "all":
+        # Recent uploads surface backdated dives for a rolling seven days.
+        # Keep the usual chronology as the fallback and tie breaker.
+        order_by = """CASE
+            WHEN julianday(d.created_at) BETWEEN julianday('now', '-7 days') AND julianday('now')
+            THEN julianday(d.created_at)
+            ELSE julianday(d.date)
+        END DESC, """ + order_by
     where = "WHERE " + " AND ".join(clauses)
     params.append(-1 if limit is None else limit)
     rows = database.get_db().execute(
@@ -1433,7 +1442,7 @@ def fetch_dives(scope, user_id, limit=80, center_id=None, site_id=None, viewer_u
         LEFT JOIN users buddy ON buddy.id = d.buddy_user_id
         LEFT JOIN dive_centers dc ON dc.id = d.dive_center_id
         {where}
-        ORDER BY d.date DESC, d.created_at DESC
+        ORDER BY {order_by}
         LIMIT ?
         """,
         [viewer_user_id] + params,
