@@ -1593,24 +1593,10 @@ function initDiveBrief() {
     const trigger = document.querySelector("[data-brief-open]");
     const disclosure = document.querySelector("[data-brief-disclosure]");
     const summary = document.querySelector("[data-brief-toggle]");
-    const collapseKey = `pelagia:brief:collapsed:${reader.dataset.briefEdition}`;
-    const rememberCollapsed = (collapsed) => {
-        try { window.sessionStorage?.setItem(collapseKey, String(collapsed)); } catch (_error) { /* Storage can be disabled. */ }
-    };
-    const wasCollapsed = () => {
-        try { return window.sessionStorage?.getItem(collapseKey) === "true"; } catch (_error) { return false; }
-    };
     const collapseCard = () => {
         if (disclosure) disclosure.open = false;
-        rememberCollapsed(true);
     };
-    if (disclosure) {
-        disclosure.open = !wasCollapsed();
-        disclosure.addEventListener("toggle", () => rememberCollapsed(!disclosure.open));
-    }
-    // Native toggle events are queued: persist the current state before a fast
-    // refresh/navigation. A standalone reader marks its edition as read on exit.
-    window.addEventListener("pagehide", () => rememberCollapsed(disclosure ? !disclosure.open : true));
+    collapseCard();
     const scroller = reader.querySelector("[data-brief-scroll]");
     const heading = reader.querySelector("[data-brief-heading]");
     const feedTitle = document.title;
@@ -1705,7 +1691,7 @@ function initDiveBrief() {
             if (dialog.open && !window.history.state?.pelagiaBrief) restoreFeed();
             if (!dialog.open) {
                 unlockFeed();
-                if (disclosure && wasCollapsed()) disclosure.open = false;
+                collapseCard();
             }
         });
         dialog.addEventListener("close", () => {

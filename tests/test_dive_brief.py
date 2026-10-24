@@ -53,6 +53,8 @@ class DiveBriefTest(unittest.TestCase):
         self.assertLess(html.index('class="brief-card"'), html.index('class="empty-state"'))
         self.assertIn("Friday, September 4, 2026", html)
         card = html.split('<article class="brief-card"', 1)[1].split("</article>", 1)[0]
+        self.assertIn('class="brief-card-disclosure" data-brief-disclosure>', card)
+        self.assertNotIn('data-brief-disclosure open', card)
         self.assertIn("Florida scientists breed 61,000 coral larvae", card)
         self.assertIn('href="/brief/2026-09-04"', card)
         self.assertNotIn("Scientists working in the Florida Keys", card)

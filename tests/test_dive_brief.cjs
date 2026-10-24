@@ -15,10 +15,6 @@ function setup(standalone = false, options = {}) {
     const window = element();
     window.scrollX = 0; window.scrollY = options.scrollY || 0;
     window.scrollTo = ({left, top}) => { window.scrollX = left; window.scrollY = top; };
-    const storage = options.storage || new Map();
-    window.sessionStorage = options.blockedStorage ? {
-        getItem() { throw new Error("Storage is disabled"); }, setItem() { throw new Error("Storage is disabled"); },
-    } : {getItem: key => storage.get(key) ?? null, setItem: (key, value) => storage.set(key, value)};
     let backCount = 0;
     window.location = { href: "https://pelagia.test/home", pathname: "/home", assign(url) { this.destination = url; }, replace(url) { this.replaced = url; } };
     window.history = {
@@ -31,7 +27,7 @@ function setup(standalone = false, options = {}) {
     heading.textContent = "The Dive Brief";
     const disclosure = element(), summary = element();
     reader.dataset = {briefEdition: options.edition || "2026-09-04"};
-    disclosure.open = true;
+    disclosure.open = false;
     const scroller = element();
     scroller.scrollHeight = 2000; scroller.clientHeight = 800; scroller.clientWidth = 390; scroller.scrollTop = 0;
     trigger.href = "https://pelagia.test/brief/2026-09-04";
@@ -62,7 +58,7 @@ function setup(standalone = false, options = {}) {
         target: {closest: () => targetLink},
     });
     const end = (x, y) => ({touches: [], changedTouches: [{clientX: x, clientY: y}], preventDefault() { this.prevented = true; }});
-    return {window, document, reader, dialog, trigger, closeLink, heading, disclosure, summary, storage, scroller, classes, open, click, touch, end, context, backCount: () => backCount};
+    return {window, document, reader, dialog, trigger, closeLink, heading, disclosure, summary, scroller, classes, open, click, touch, end, context, backCount: () => backCount};
 }
 
 test("reader focus starts at its heading and returning restores the feed scroll and title", () => {
@@ -198,41 +194,35 @@ test("horizontal trackpad scrolling leaves readers open and preserves native whe
     }
 });
 
-test("exiting the reader collapses the card; expanding the header restores the preview without reopening the reader", () => {
+test("the card starts collapsed, expands on demand, and collapses again after reading", () => {
     const state = setup();
-    assert.equal(state.disclosure.open, true);
+    assert.equal(state.disclosure.open, false);
+    state.disclosure.open = true; // Native details behavior on summary activation.
+    assert.equal(state.dialog.open, undefined);
     state.open();
     state.closeLink.handlers.click(state.click());
     assert.equal(state.disclosure.open, false);
     assert.equal(state.summary.focused, true);
-    assert.equal(state.storage.get("pelagia:brief:collapsed:2026-09-04"), "true");
     state.disclosure.open = true; // Native details behavior on summary activation.
-    state.disclosure.handlers.toggle();
     assert.equal(state.dialog.open, false);
-    assert.equal(state.storage.get("pelagia:brief:collapsed:2026-09-04"), "false");
     state.open();
     assert.equal(state.dialog.open, true);
 });
 
-test("collapsed state survives reloads and standalone returns, while a new edition starts expanded", () => {
-    const standalone = setup(true);
-    standalone.closeLink.handlers.click(standalone.click());
-    assert.equal(standalone.window.location.destination, "/home");
-    const returned = setup(false, {storage: standalone.storage});
-    assert.equal(returned.disclosure.open, false);
-    returned.disclosure.open = true;
-    returned.window.handlers.pagehide(); // Refresh before the native toggle event fires.
-    assert.equal(setup(false, {storage: returned.storage}).disclosure.open, true);
-    returned.disclosure.open = false;
-    returned.disclosure.handlers.toggle();
-    assert.equal(setup(false, {storage: returned.storage, edition:"2026-09-05"}).disclosure.open, true);
+test("every feed initialization and restored page starts with the card collapsed", () => {
+    for (const options of [{}, {edition: "2026-09-05"}]) {
+        const state = setup(false, options);
+        assert.equal(state.disclosure.open, false);
+        state.disclosure.open = true;
+        state.window.handlers.pageshow();
+        assert.equal(state.disclosure.open, false);
+        assert.equal(setup(false, options).disclosure.open, false);
+    }
 });
 
-test("browser Back from a standalone reader marks the edition read and blocked storage never prevents closing", () => {
-    const standalone = setup(true);
-    standalone.window.handlers.pagehide();
-    assert.equal(setup(false, {storage:standalone.storage}).disclosure.open, false);
-    const state = setup(false, {blockedStorage:true});
+test("browser Back closes the reader and leaves the card collapsed", () => {
+    const state = setup();
+    state.disclosure.open = true;
     state.open();
     state.window.history.back();
     assert.equal(state.dialog.open, false);
@@ -243,5 +233,5 @@ test("browser Back after refreshing a modal reader fetches the actual feed docum
     const standalone = setup(true);
     standalone.window.handlers.popstate();
     assert.equal(standalone.window.location.replaced, "/home");
-    assert.equal(setup(false, {storage:standalone.storage}).disclosure.open, false);
+    assert.equal(setup().disclosure.open, false);
 });

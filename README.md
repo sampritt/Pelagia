@@ -51,7 +51,7 @@ The main feed starts with a compact daily newsletter card, an expand/collapse ch
 
 Editions live on disk as `the_dive_brief_YYYY-MM-DD.md`. `PELAGIA_DIVE_BRIEF_DIR` defaults to `dive_briefs/` beside the SQLite database (`/var/data/dive_briefs` in production). The filename and feed selection use **today's publication date** in `PELAGIA_DIVE_BRIEF_TIMEZONE` (default `America/New_York`); the digest can cover T−1 news. File changes are picked up without restarting. The feed shows the brief only when today's valid edition exists. There is no sample, previous-day, or latest-edition fallback. Historical signed-in deep links still work; future editions remain unavailable.
 
-After leaving the full reader, the feed card collapses to its icon, title and date. Tap or click the compact header (or use Enter/Space) to restore the summary and Read more link. The card remembers its collapsed state for that edition in the current tab, including refreshes and returns from a direct reader link. A new day's edition starts expanded. When browser storage is unavailable, the current page still collapses and expands normally.
+The feed card starts collapsed, showing its icon, title and date. Tap or click the compact header (or use Enter/Space) to reveal the summary and Read the brief link. Returning from the full reader collapses it again, and every feed load starts from the compact state.
 
 The supplied September 4 example in `data/dive_briefs/` is a format reference only. `PELAGIA_DIVE_BRIEF_SAMPLE_PATH` is retired and ignored.
 
