@@ -36,6 +36,7 @@ from .dive_options import DIVE_TYPES, CURRENT_TYPES, normalize_options, dive_typ
 from . import google_auth, email_auth
 from . import pwa
 from . import dive_brief
+from . import site_descriptions
 from .sharing import fetch_public_dive, render_share_image, render_transparent_share_image, share_description
 
 
@@ -81,6 +82,7 @@ def create_app(test_config=None):
         DIVE_BRIEF_TIMEZONE=os.environ.get("PELAGIA_DIVE_BRIEF_TIMEZONE", "America/New_York"),
         DIVE_BRIEF_API_KEY_SHA256=os.environ.get("PELAGIA_DIVE_BRIEF_API_KEY_SHA256", ""),
         DIVE_BRIEF_API_KEY_FILE=os.environ.get("PELAGIA_DIVE_BRIEF_API_KEY_FILE"),
+        OPENAI_API_KEY=os.environ.get("OPENAI_API_KEY", ""),
     )
     if test_config:
         app.config.update(test_config)
@@ -98,6 +100,7 @@ def create_app(test_config=None):
         _ensure_reference_data(app)
 
     register_routes(app)
+    site_descriptions.init_app(app, login_required)
     dive_brief.init_app(app)
     pwa.init_app(app)
     google_auth.init_app(app)
@@ -707,6 +710,7 @@ def register_routes(app):
         return render_template(
             "dive_site_profile.html",
             site=site,
+            site_description=site_descriptions.read_cache(site_id),
             recent_dives=recent_dives,
             conditions=conditions,
             sightings=sightings,

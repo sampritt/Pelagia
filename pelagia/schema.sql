@@ -37,6 +37,22 @@ CREATE TABLE IF NOT EXISTS dive_sites (
 CREATE INDEX IF NOT EXISTS idx_dive_sites_name ON dive_sites(name);
 CREATE INDEX IF NOT EXISTS idx_dive_sites_country ON dive_sites(country_or_area);
 
+CREATE TABLE IF NOT EXISTS dive_site_descriptions (
+    dive_site_id INTEGER PRIMARY KEY REFERENCES dive_sites(id) ON DELETE CASCADE,
+    description TEXT,
+    citations_json TEXT NOT NULL DEFAULT '[]',
+    model TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Pending work and temporary failures must not look like a completed NULL result.
+CREATE TABLE IF NOT EXISTS dive_site_description_attempts (
+    dive_site_id INTEGER PRIMARY KEY REFERENCES dive_sites(id) ON DELETE CASCADE,
+    token TEXT,
+    lease_until REAL NOT NULL DEFAULT 0,
+    retry_after REAL NOT NULL DEFAULT 0
+);
+
 CREATE TABLE IF NOT EXISTS species (
     id INTEGER PRIMARY KEY,
     country_or_area TEXT NOT NULL,

@@ -1571,9 +1571,85 @@ document.addEventListener("DOMContentLoaded", () => {
     initStaticMaps(document);
     initUserProfile();
     initProfileHistory();
+    initSiteDescription();
 });
 
 window.openDive = openDive;
+
+function initSiteDescription() {
+    const host = document.querySelector("[data-site-description]");
+    if (!host) return;
+    const controller = new AbortController();
+    const markup = '<span class="skeleton skeleton-line"></span><span class="skeleton skeleton-line"></span>';
+    const finishLoading = window.PelagiaLoading?.begin(host, "Loading dive site description", markup, { reveal: true }) || (() => {});
+    let stopped = false;
+    let pollTimer;
+    const stop = () => {
+        if (stopped) return;
+        stopped = true;
+        controller.abort();
+        window.clearTimeout(pollTimer);
+        window.clearTimeout(deadline);
+        window.removeEventListener("pagehide", stop);
+        finishLoading();
+        host.remove();
+    };
+    const deadline = window.setTimeout(stop, 35000);
+    window.addEventListener("pagehide", stop, { once: true });
+
+    async function load() {
+        try {
+            const response = await fetch(host.dataset.descriptionUrl, {
+                method: "POST",
+                credentials: "same-origin",
+                headers: { "X-Requested-With": "fetch" },
+                cache: "no-store",
+                signal: controller.signal,
+            });
+            if (stopped) return;
+            if (response.status === 202) {
+                pollTimer = window.setTimeout(load, 2000);
+                return;
+            }
+            if (!response.ok) throw new Error("Description unavailable");
+            const result = await response.json();
+            if (stopped) return;
+            if (result.status !== "complete" || typeof result.description !== "string" || !Array.isArray(result.fragments)) {
+                stop();
+                return;
+            }
+            const paragraph = document.createElement("p");
+            result.fragments.forEach((fragment) => {
+                if (typeof fragment.text !== "string") throw new Error("Invalid description");
+                if (fragment.url) {
+                    const source = new URL(fragment.url);
+                    if (!["https:", "http:"].includes(source.protocol) || source.username || source.password) {
+                        throw new Error("Invalid source");
+                    }
+                    const link = document.createElement("a");
+                    link.className = "site-description-source";
+                    link.href = source.href;
+                    link.textContent = fragment.text;
+                    link.title = fragment.title || "Source";
+                    link.setAttribute("aria-label", `Source ${fragment.text}: ${link.title}`);
+                    link.target = "_blank";
+                    link.rel = "noopener noreferrer";
+                    paragraph.appendChild(link);
+                } else paragraph.appendChild(document.createTextNode(fragment.text));
+            });
+            stopped = true;
+            window.clearTimeout(deadline);
+            window.removeEventListener("pagehide", stop);
+            finishLoading();
+            host.replaceChildren(paragraph);
+            host.hidden = false;
+            host.removeAttribute("data-site-description");
+        } catch (_error) {
+            stop();
+        }
+    }
+    load();
+}
 
 function initInteractionFocus() {
     const root = document.documentElement;

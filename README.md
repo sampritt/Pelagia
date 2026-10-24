@@ -38,6 +38,18 @@ For Render, attach a persistent disk at `/var/data`. No database or upload-path 
 
 On first app startup, Pelagia initializes SQLite and imports reference data from the configured CSVs with pandas. Application data, reference data, uploaded-photo paths, likes, and comments are stored in SQLite. Uploaded image files are stored beneath the configured upload directory and served from `/uploads/`.
 
+## Dive site descriptions
+
+Set `OPENAI_API_KEY` in the server environment to enable on-demand dive site summaries. The key stays server-side; do not commit it. Generation uses `gpt-5.6-luna` through the Responses API with one required, low-context web search, low reasoning effort, and bounded output and network timeouts. There are no automatic upstream retries or model substitutions. Search tool calls and model tokens are billed to the key's OpenAI account.
+
+On opening a dive site, Pelagia reads the persistent SQLite `dive_site_descriptions` table. A cached summary appears beneath the name and location with clickable source citations. A site without a cache row loads the rest of its page immediately, requests a summary, and shows the shared two-line skeleton after 160 ms. The search prompt requires sources matching both the site's name and location, using coordinates when available, and limits the summary to 1–2 sentences and 70 words.
+
+The table starts empty; reference CSV descriptions are not imported. A completed search with no confidently verified information saves a row with a **NULL description**. That row renders nothing and permanently prevents automatic generation for the site. Successful summaries also never expire automatically. To deliberately research a completed site again, an operator must remove its cache row from SQLite.
+
+Timeouts, rate limits, missing/invalid credentials, and malformed or incomplete responses do **not** create NULL results. They render no description and allow another visit to retry after a five-minute cooldown. A separate coordination table uses 60-second claims to prevent duplicate generation across Gunicorn workers, without holding a database write transaction during the API call. The browser checks pending requests every two seconds for at most 35 seconds and stops when leaving the page. Responses require login and a same-origin fetch header and are never browser/PWA cached.
+
+Tests mock OpenAI without making billable calls: `.venv312/bin/python -m unittest discover -s tests -p 'test_*.py'` and `node --test tests/*.cjs`.
+
 ## Entry Points
 
 - `wsgi.py`: Gunicorn entrypoint

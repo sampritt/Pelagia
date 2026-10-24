@@ -15,6 +15,11 @@
         <div class="entity-profile-copy">
             <h1>{{ site.name }}</h1>
             <p class="profile-meta">{{ site.country_or_area or "Location pending" }}</p>
+            {% if site_description is none %}
+                <div class="site-description" data-site-description data-description-url="{{ url_for('api_dive_site_description', site_id=site.id) }}" aria-live="polite" hidden></div>
+            {% elif site_description.description is not none %}
+                <p class="site-description">{% for fragment in site_description.fragments %}{% if fragment.url is defined %}<a class="site-description-source" href="{{ fragment.url }}" title="{{ fragment.title }}" aria-label="Source {{ fragment.text }}: {{ fragment.title }}" target="_blank" rel="noopener noreferrer">{{ fragment.text }}</a>{% else %}{{ fragment.text }}{% endif %}{% endfor %}</p>
+            {% endif %}
         </div>
         <div class="profile-actions">
             <button class="chip-button like-button {{ 'liked' if site.liked_by_me else '' }}" type="button" data-site-like data-site-id="{{ site.id }}">

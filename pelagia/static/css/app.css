@@ -5217,6 +5217,15 @@ body:has(.pwa-install-dialog[open]) { overflow: hidden; }
 .entity-profile-copy { flex: 1; min-width: 0; }
 .entity-profile-header > .profile-actions { flex-shrink: 0; margin-top: 0; }
 .entity-profile-header .profile-meta { color: var(--muted-strong); }
+.site-profile-identity .entity-profile-copy:has(.site-description) { align-self: stretch; }
+.site-description { margin: 14px 0 0; color: var(--muted-strong); line-height: 1.65; overflow-wrap: anywhere; }
+.site-description[hidden] { display: none; }
+.site-description > p { margin: 0; }
+.site-description-source { color: var(--blue); text-decoration: underline; font-size: .8em; white-space: nowrap; }
+.site-description.is-skeleton-loading { min-height: 56px; }
+.site-description .component-skeleton { padding: 0; }
+.site-description .skeleton-line { width: 94%; height: 12px; margin: 8px 0 16px; }
+.site-description .skeleton-line:last-child { width: 68%; }
 .site-profile-header { overflow: hidden; border: 1px solid var(--line); border-radius: 18px; background: var(--panel); }
 .site-map-banner { height: 260px; min-height: 260px; margin: 0; border: 0; border-radius: 0; }
 .site-map-banner::after { display: none; }
