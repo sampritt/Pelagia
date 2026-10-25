@@ -23,6 +23,16 @@ def resolve_location(value):
     return next((name for name in locations() if name.casefold() == clean), "")
 
 
+def latest_dive_location(user_id):
+    row = get_db().execute(
+        """SELECT country_or_area FROM dives
+           WHERE user_id = ? AND coalesce(is_deleted, 0) = 0
+           ORDER BY created_at DESC, id DESC
+           LIMIT 1""", (user_id,)
+    ).fetchone()
+    return row[0] if row else ""
+
+
 def add_observations(rows):
     items = [dict(row, sightings=[]) for row in rows]
     if not items:
@@ -70,7 +80,11 @@ def init_app(app, login_required):
     @login_required
     def index():
         saved = get_db().execute("SELECT explore_location FROM users WHERE id = ?", (session["user_id"],)).fetchone()[0]
-        location = resolve_location(request.args.get("location", saved))
+        if "location" in request.args:
+            requested = request.args.get("location")
+        else:
+            requested = latest_dive_location(session["user_id"]) if saved is None else saved
+        location = resolve_location(requested)
         return render_template("explore.html", **feed_data(location))
 
     @blueprint.after_request
@@ -115,7 +129,7 @@ def init_app(app, login_required):
         if payload["location"].strip() and not location:
             abort(400)
         db = get_db()
-        db.execute("UPDATE users SET explore_location = ? WHERE id = ?", (location or None, session["user_id"]))
+        db.execute("UPDATE users SET explore_location = ? WHERE id = ?", (location, session["user_id"]))
         db.commit()
         return jsonify(location=location)
 
