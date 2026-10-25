@@ -6216,8 +6216,22 @@ img.is-media-loading {
     .marine-forecast .site-chart-head .chart-unit { padding-top: 3px; }
 }
 
-.site-equipment-advice { color: var(--muted-strong); font-size: .76rem; line-height: 1.6; margin: -8px 2px 0; }
+.site-equipment-advice { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--line); color: var(--muted-strong); font-size: .8125rem; line-height: 1.6; }
+.marine-forecast .site-conditions-panel { row-gap: 0; }
+.site-equipment-item { display: grid; grid-template-columns: 20px minmax(0, 1fr); align-items: start; gap: 10px; }
+.site-equipment-item + .site-equipment-item { padding-left: 24px; border-left: 1px solid var(--line); }
+.site-equipment-icon { width: 20px; height: 20px; margin-top: 1px; fill: none; stroke: var(--muted); stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+.site-equipment-copy { min-width: 0; }
 .site-equipment-advice p { margin: 0; }
-.site-equipment-advice p + p { margin-top: 4px; }
-.site-equipment-advice .site-equipment-caveat { color: var(--muted); font-size: .68rem; max-width: 85ch; }
-.site-equipment-advice[hidden], [data-weight-caveat][hidden] { display: none; }
+.site-equipment-advice p + p { margin-top: 6px; }
+.site-equipment-advice .site-equipment-caveat { color: var(--muted-strong); font-size: .75rem; line-height: 1.55; max-width: 48ch; }
+.site-equipment-advice sup { font-size: .7em; line-height: 0; margin-left: 1px; }
+.site-equipment-advice[hidden], [data-weight-caveat][hidden], [data-weight-asterisk][hidden], [data-exposure-asterisk][hidden], [data-exposure-history][hidden] { display: none; }
+
+.site-equipment-advice strong { color: var(--ink); font-weight: 700; }
+.site-equipment-advice [data-exposure-history-link] { color: var(--accent-deep); text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px; padding-block: 5px; }
+.site-equipment-advice [data-exposure-history-link]:hover { color: var(--ink); }
+@media (max-width: 700px) {
+    .site-equipment-advice { grid-template-columns: minmax(0, 1fr); gap: 16px; margin-top: 18px; padding-top: 18px; }
+    .site-equipment-item + .site-equipment-item { padding: 16px 0 0; border-left: 0; border-top: 1px solid var(--line); }
+}

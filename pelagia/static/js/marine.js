@@ -141,6 +141,11 @@
         const retry = host.querySelector('[data-marine-retry]');
         const equipment = host.querySelector('[data-equipment-advice]');
         const exposureAdvice = host.querySelector('[data-exposure-advice]');
+        const exposureName = host.querySelector('[data-exposure-name]');
+        const weightAsterisk = host.querySelector('[data-weight-asterisk]');
+        const exposureAsterisk = host.querySelector('[data-exposure-asterisk]');
+        const exposureHistory = host.querySelector('[data-exposure-history]');
+        const exposureHistoryLink = host.querySelector('[data-exposure-history-link]');
         const weightAdvice = host.querySelector('[data-weight-advice]');
         const weightCaveat = host.querySelector('[data-weight-caveat]');
         const values = [...host.querySelectorAll('[data-marine-value]')];
@@ -180,9 +185,15 @@
                 if (equipment) {
                     equipment.hidden = !advice?.exposure;
                     if (advice?.exposure) {
-                        exposureAdvice.textContent = `A ${advice.exposure} is recommended for these conditions`;
-                        exposureAdvice.title = advice.personalized ? 'Based on your temperature feedback from logged dives' : 'Based on water temperature';
-                        weightAdvice.textContent = advice.weight ? `${advice.weight}*` : '-';
+                        exposureName.textContent = advice.exposure;
+                        const hasHistory = Number.isInteger(advice.source_dive_id) && advice.source_dive_id > 0 && !!advice.source_dive_url;
+                        exposureAsterisk.hidden = !hasHistory;
+                        exposureHistory.hidden = !hasHistory;
+                        if (hasHistory) exposureHistoryLink.setAttribute('href', advice.source_dive_url);
+                        else exposureHistoryLink.removeAttribute('href');
+                        exposureAdvice.title = hasHistory ? 'Based on your temperature feedback from logged dives' : 'Based on water temperature';
+                        weightAdvice.textContent = advice.weight || '-';
+                        weightAsterisk.hidden = !advice.weight;
                         weightCaveat.hidden = !advice.weight;
                     }
                 }

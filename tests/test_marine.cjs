@@ -14,12 +14,12 @@ function node(tag = 'div') {
 }
 const flush = async () => { for (let i = 0; i < 12; i++) await Promise.resolve(); };
 function setup(coordinates = 'true') {
-    const equipment=node(), exposureAdvice=node(), weightAdvice=node(), weightCaveat=node();
+    const equipment=node(), exposureAdvice=node(), exposureName=node(), weightAsterisk=node(), exposureAsterisk=node(), exposureHistory=node(), exposureHistoryLink=node(), weightAdvice=node(), weightCaveat=node();
     const host = node(), status = node(), retry = node(), charts = [node(), node()], values = ['temperature', 'tide'].map(v => { const n = node(); n.dataset.marineValue = v; return n; });
     charts.forEach(n => { n.dataset.chart = true; });
     const buttons = ['daily', 'hourly'].map(v => { const n = node(); n.dataset.marineRange = v; return n; });
     host.dataset = {coordinates, url: '/api/dive-sites/1/conditions', temperatureUnit: 'f', lengthUnit: 'ft'};
-    host.querySelector = s => ({'[data-equipment-advice]':equipment,'[data-exposure-advice]':exposureAdvice,'[data-weight-advice]':weightAdvice,'[data-weight-caveat]':weightCaveat,'[data-marine-status]':status,'[data-marine-retry]':retry,'[data-marine-chart="current"]':charts[0],'[data-marine-chart="tide"]':charts[1]})[s];
+    host.querySelector = s => ({'[data-equipment-advice]':equipment,'[data-exposure-advice]':exposureAdvice,'[data-exposure-name]':exposureName,'[data-weight-asterisk]':weightAsterisk,'[data-exposure-asterisk]':exposureAsterisk,'[data-exposure-history]':exposureHistory,'[data-exposure-history-link]':exposureHistoryLink,'[data-weight-advice]':weightAdvice,'[data-weight-caveat]':weightCaveat,'[data-marine-status]':status,'[data-marine-retry]':retry,'[data-marine-chart="current"]':charts[0],'[data-marine-chart="tide"]':charts[1]})[s];
     host.querySelectorAll = s => s.includes('value') ? values : buttons;
     const window = node(); let id = 0; const timers = new Map(); const requests = []; let ended = 0;
     window.setTimeout = (fn, delay) => { timers.set(++id, {fn, delay}); return id; }; window.clearTimeout = n => timers.delete(n);
@@ -27,7 +27,7 @@ function setup(coordinates = 'true') {
     const document = {readyState: 'complete', querySelector: () => host, createElement: node, createElementNS: (_, tag) => node(tag)};
     const context = vm.createContext({window, document, Intl, Date, AbortController, module: {exports: {}}, fetch: (url, options) => new Promise((resolve, reject) => requests.push({url, options, resolve, reject}))});
     vm.runInContext(fs.readFileSync('pelagia/static/js/marine.js', 'utf8'), context);
-    return {equipment,exposureAdvice,weightAdvice,weightCaveat,host, status, retry, charts, values, buttons, window, timers, requests, context, ended: () => ended};
+    return {equipment,exposureAdvice,exposureName,weightAsterisk,exposureAsterisk,exposureHistory,exposureHistoryLink,weightAdvice,weightCaveat,host, status, retry, charts, values, buttons, window, timers, requests, context, ended: () => ended};
 }
 function data() {
     const points = Array.from({length: 48}, (_, i) => ({time:1792940400 + i * 3600, value: .5}));
@@ -94,18 +94,67 @@ test('tide forecast is line-only and chart readouts are not visible beneath the 
 
 test('equipment advice shows personalized exposure, neutral weight and exact caveat marker', async () => {
     const s=setup(), d=data();
-    d.recommendations={exposure:'5mm wetsuit',personalized:true,weight:'6 kg (5mm wetsuit, salt water)'};
+    d.recommendations={exposure:'5mm wetsuit',personalized:true,source_dive_id:42,source_dive_url:'/dive/42',weight:'6 kg'};
     s.requests[0].resolve({status:200,ok:true,json:async()=>d});await flush();
     assert.equal(s.equipment.hidden,false);
-    assert.equal(s.exposureAdvice.textContent,'A 5mm wetsuit is recommended for these conditions');
-    assert.equal(s.weightAdvice.textContent,'6 kg (5mm wetsuit, salt water)*');
+    assert.equal(s.exposureName.textContent,'5mm wetsuit');
+    assert.equal(s.weightAdvice.textContent,'6 kg');
     assert.equal(s.weightCaveat.hidden,false);
+    assert.equal(s.weightAsterisk.hidden,false);
+    assert.equal(s.exposureAsterisk.hidden,false);
+    assert.equal(s.exposureHistory.hidden,false);
+    assert.equal(s.exposureHistoryLink.attrs.href,'/dive/42');
 });
 test('no matching neutral weight shows a dash without the weight caveat', async () => {
     const s=setup(),d=data(); d.recommendations={exposure:'swimsuit or shorty',personalized:false,weight:null};
     s.requests[0].resolve({status:200,ok:true,json:async()=>d});await flush();
-    assert.equal(s.weightAdvice.textContent,'-');assert.equal(s.weightCaveat.hidden,true);
-    assert.equal(s.exposureAdvice.textContent,'A swimsuit or shorty is recommended for these conditions');
+    assert.equal(s.weightAdvice.textContent,'-');assert.equal(s.weightCaveat.hidden,true);assert.equal(s.weightAsterisk.hidden,true);assert.equal(s.exposureAsterisk.hidden,true);assert.equal(s.exposureHistory.hidden,true);assert.equal(s.exposureHistoryLink.attrs.href,undefined);
+    assert.equal(s.exposureName.textContent,'swimsuit or shorty');
+});
+test('a corroborating dive shows history even when it does not override the default', async () => {
+    const s=setup(), d=data();
+    d.recommendations={exposure:'shorty',personalized:false,source_dive_id:43,source_dive_url:'/dive/43',weight:null};
+    s.requests[0].resolve({status:200,ok:true,json:async()=>d});await flush();
+    assert.equal(s.exposureAsterisk.hidden,false);
+    assert.equal(s.exposureHistory.hidden,false);
+    assert.equal(s.exposureHistoryLink.attrs.href,'/dive/43');
+    assert.equal(s.weightAdvice.textContent,'-');
+    assert.equal(s.weightAsterisk.hidden,true);
+});
+test('weight advice preserves converted imperial units and a separate marker', async () => {
+    const s=setup(), d=data();
+    d.recommendations={exposure:'5mm wetsuit',personalized:false,weight:'17.5 lb'};
+    s.requests[0].resolve({status:200,ok:true,json:async()=>d});await flush();
+    assert.equal(s.weightAdvice.textContent,'17.5 lb');
+    assert.equal(s.weightAsterisk.hidden,false);
+    assert.equal(s.exposureHistory.hidden,true);
+});
+test('returning to the site refreshes the history destination and clears stale advice', async () => {
+    const s=setup();
+    const respond = async recommendations => {
+        s.requests.at(-1).resolve({status:200,ok:true,json:async()=>({...data(),recommendations})});
+        await flush();
+    };
+    await respond({exposure:'5mm wetsuit',source_dive_id:42,source_dive_url:'/dive/42',weight:'17.5 lb'});
+    assert.equal(s.exposureHistoryLink.attrs.href,'/dive/42');
+    const returnToSite = () => {
+        s.window.handlers.pagehide();
+        s.window.handlers.pageshow({persisted:true});
+    };
+    returnToSite();
+    assert.equal(s.equipment.hidden,true);
+    await respond({exposure:'3mm wetsuit',source_dive_id:43,source_dive_url:'/dive/43',weight:'8 kg'});
+    assert.equal(s.exposureHistoryLink.attrs.href,'/dive/43');
+    assert.equal(s.exposureName.textContent,'3mm wetsuit');
+    assert.equal(s.weightAdvice.textContent,'8 kg');
+    returnToSite();
+    await respond({exposure:'swimsuit or shorty',source_dive_id:null,weight:null});
+    assert.equal(s.requests.length,3);
+    assert.equal(s.exposureHistoryLink.attrs.href,undefined);
+    assert.equal(s.exposureHistory.hidden,true);
+    assert.equal(s.exposureAsterisk.hidden,true);
+    assert.equal(s.weightAdvice.textContent,'-');
+    assert.equal(s.weightCaveat.hidden,true);
 });
 test('missing marine temperature or failed fetch keeps equipment advice hidden', async () => {
     const s=setup(); assert.equal(s.equipment.hidden,true);

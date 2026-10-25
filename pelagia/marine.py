@@ -8,7 +8,7 @@ from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 import requests
-from flask import current_app, jsonify, session
+from flask import current_app, jsonify, session, url_for
 from .db import get_db
 from .exposure_recommendations import recommend
 
@@ -210,6 +210,9 @@ def init_app(app, login_required):
         if status == 200 and result.get('status') == 'complete':
             result['recommendations'] = recommend(get_db(), session['user_id'], site_id,
                                                    result['current']['temperature_c'], time.time())
+            advice = result['recommendations']
+            if advice and advice['source_dive_id']:
+                advice['source_dive_url'] = url_for('dive_detail', dive_id=advice['source_dive_id'])
         response = jsonify(result)
         response.status_code = status
         response.headers['Cache-Control'] = 'private, no-store'

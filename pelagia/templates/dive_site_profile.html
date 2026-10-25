@@ -17,11 +17,22 @@
                 <div><small>Water temperature</small><span data-marine-value="temperature">-</span></div>
                 <div><small>Tide level</small><span data-marine-value="tide">-</span></div>
             </div>
-        </div>
-        <div class="site-equipment-advice" data-equipment-advice aria-live="polite" hidden>
-            <p data-exposure-advice></p>
-            <p>Weight estimate: <span data-weight-advice>-</span></p>
-            <p class="site-equipment-caveat" data-weight-caveat hidden>* Estimate only based on your logged dives - not official guidance. Always consult local guides.</p>
+            <div class="site-equipment-advice" data-equipment-advice aria-label="Equipment recommendations" aria-live="polite" hidden>
+                <div class="site-equipment-item">
+                    <svg class="site-equipment-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m8 3-5 3 2 5 3-1v11h8V10l3 1 2-5-5-3M8 3a4 4 0 0 0 8 0M12 7v7"/></svg>
+                    <div class="site-equipment-copy">
+                        <p data-exposure-advice>A <strong data-exposure-name></strong><sup data-exposure-asterisk hidden>*</sup> is recommended for these conditions</p>
+                        <p class="site-equipment-caveat" data-exposure-history hidden>* Based on your dive log <a data-exposure-history-link aria-label="View dive log history supporting this recommendation">history</a></p>
+                    </div>
+                </div>
+                <div class="site-equipment-item">
+                    <svg class="site-equipment-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 7V5a3 3 0 0 1 6 0v2M7 7h10l3 13H4L7 7Z"/><path d="M10 12h4"/></svg>
+                    <div class="site-equipment-copy">
+                        <p>Estimated weight: <strong data-weight-advice>-</strong><sup data-weight-asterisk hidden>*</sup></p>
+                        <p class="site-equipment-caveat" data-weight-caveat hidden>* Estimate only based on your logged dives - not official guidance. Always consult local guides.</p>
+                    </div>
+                </div>
+            </div>
         </div>
         <div class="site-chart-block">
             <div class="site-chart-head">

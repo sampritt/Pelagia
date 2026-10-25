@@ -352,15 +352,24 @@ Personalization searches the signed-in user's non-deleted, non-future dives with
 valid exposure, water temperature, and temperature feedback. Prefer the nearest
 dive rated neutral (3/5) within 3°C; otherwise use the nearest rated dive within
 3°C and move one protection step warmer for ratings 1–2 or lighter for ratings
-4–5. Equal temperature distances use the most recent date/ID. The protection order
+4–5. Proposed protection must stay within one step of the current default band;
+outlying historical equipment choices are ignored rather than overriding the
+temperature heuristic. Equal temperature distances use the most recent date/ID. The protection order
 is swimsuit, shorty, 2mm, 3mm, 5mm, 6mm, 7mm, drysuit. Without comparable feedback,
 use the default bands.
+Whenever a qualifying log supports the recommendation, including confirmation of
+the default, exposure advice carries an asterisk and “Based on your dive log
+history”; “history” links to the selected dive.
+The advice sits in a divided footer inside the conditions card, with two aligned
+columns on desktop and stacked equipment rows on phones. History links refresh
+when returning from a logged dive, including browser Back/Forward restoration.
 
 Weight estimates require an exact exposure match and a neutral weight rating
 (3/5), using the user's most recent qualifying log and current kg/lb preference.
 Salinity must match the latest non-deleted, non-future dive at this site, from any
 user. If that latest dive has unknown salinity, no estimate is shown. For the
-swimsuit-or-shorty default, either exposure may match; the estimate names the
-specific exposure and salinity. Missing matches display `-`; confirmed estimates
+swimsuit-or-shorty default, either exposure may match; matching still requires the exact
+exposure and salinity. Only the converted weight is displayed, with equipment and weight emphasized
+in bold. Missing matches display `-`; confirmed estimates
 carry the requested asterisk and guidance caveat. Recommendations are recomputed
 per authenticated request and never written to the shared marine cache.
