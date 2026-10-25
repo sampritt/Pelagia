@@ -56,7 +56,7 @@ class ExposureRecommendationsTest(unittest.TestCase):
         self.db.execute('UPDATE dives SET temperature_rating=5'); self.db.commit()
         self.assertEqual(self.advice()['exposure'],'2mm wetsuit')
 
-    def test_prefer_nearby_comfortable_then_nearest_and_recent(self):
+    def test_prefer_comfortable_then_minimum_exposure(self):
         self.log(exposure='5mm',temperature=23,comfort=3)
         self.log(exposure='3mm',temperature=22,comfort=1)
         self.assertEqual(self.advice()['exposure'],'5mm wetsuit')
@@ -161,7 +161,7 @@ class ExposureRecommendationsTest(unittest.TestCase):
                 self.assertEqual(result['source_dive_id'], dive_id if within_range else None)
                 self.assertEqual(result['personalized'], within_range)
 
-    def test_closest_temperature_wins_over_more_frequent_exposure(self):
+    def test_minimum_exposure_wins_over_more_frequent_exposure(self):
         self.log(exposure='5mm', temperature=28, site=2)
         self.log(exposure='5mm', temperature=28, site=2)
         supporting_dive = self.log(exposure='3mm', temperature=28.3)
@@ -228,15 +228,43 @@ class ExposureRecommendationsTest(unittest.TestCase):
                 supporting_dive = self.log(exposure='3mm', temperature=28.3, site=3)
                 self.assertEqual(self.advice(28.3)['source_dive_id'], supporting_dive)
 
-    def test_frequency_counts_only_equally_close_measurements(self):
+    def test_minimum_comfortable_exposure_wins_even_at_a_farther_temperature(self):
         self.log(exposure='5mm', temperature=28.3)
-        supporting_dive = self.log(exposure='5mm', temperature=28.3)
-        self.log(exposure='3mm', temperature=28.3)
+        supporting_dive = self.log(exposure='3mm', temperature=28)
         for _ in range(3):
-            self.log(exposure='3mm', temperature=28)
+            self.log(exposure='5mm', temperature=28.3)
         result = self.advice(28.3)
-        self.assertEqual(result['exposure'], '5mm wetsuit')
+        self.assertEqual(result['exposure'], '3mm wetsuit')
         self.assertEqual(result['source_dive_id'], supporting_dive)
+
+    def test_minimum_comfortable_exposure_applies_to_regional_and_global_history(self):
+        for has_regional_history in (True, False):
+            with self.subTest(has_regional_history=has_regional_history):
+                self.db.execute('DELETE FROM dives')
+                self.db.execute("UPDATE dive_sites SET country_or_area='Komodo' WHERE id=1")
+                self.db.execute('UPDATE dive_sites SET country_or_area=? WHERE id=2',
+                                ('Komodo' if has_regional_history else 'Bonaire',))
+                supporting_dive = self.log(exposure='3mm', temperature=28, site=2)
+                for _ in range(3):
+                    self.log(exposure='5mm', temperature=28.3, site=2)
+                result = self.advice(28.3)
+                self.assertEqual(result['exposure'], '3mm wetsuit')
+                self.assertEqual(result['source_dive_id'], supporting_dive)
+
+    def test_minimum_exposure_uses_protection_order_across_all_supported_types(self):
+        for lighter, heavier, expected in (
+            ('swimsuit', 'shorty', 'swimsuit'), ('shorty', '2mm', 'shorty'),
+            ('2mm', '3mm', '2mm wetsuit'), ('3mm', '5mm', '3mm wetsuit'),
+            ('5mm', '6mm', '5mm wetsuit'), ('6mm', '7mm', '6mm wetsuit'),
+            ('7mm', 'dry suit', '7mm wetsuit'),
+        ):
+            with self.subTest(lighter=lighter, heavier=heavier):
+                self.db.execute('DELETE FROM dives')
+                supporting_dive = self.log(exposure=lighter, temperature=28)
+                self.log(exposure=heavier, temperature=28.3)
+                result = self.advice(28.3)
+                self.assertEqual(result['exposure'], expected)
+                self.assertEqual(result['source_dive_id'], supporting_dive)
 
     def test_comfortable_feedback_is_preferred_at_the_same_closest_temperature(self):
         supporting_dive = self.log(exposure='5mm', temperature=28.3)
@@ -259,7 +287,7 @@ class ExposureRecommendationsTest(unittest.TestCase):
             self.assertEqual(advice['source_dive_url'], f'/dive/{global_dive}')
             self.assertEqual(fetch.call_count, 1)
 
-    def test_only_qualifying_personal_logs_count_toward_exposure_frequency(self):
+    def test_only_qualifying_personal_logs_can_lower_exposure(self):
         self.db.execute("INSERT INTO users (username) VALUES ('other-diver')")
         self.db.commit()
         self.log(exposure='5mm', temperature=28)
@@ -274,20 +302,21 @@ class ExposureRecommendationsTest(unittest.TestCase):
         self.assertEqual(result['exposure'], '5mm wetsuit')
         self.assertEqual(result['source_dive_id'], supporting_dive)
 
-    def test_closest_temperature_takes_priority_over_farther_comfortable_logs(self):
-        self.log(exposure='5mm', temperature=28)
+    def test_comfortable_logs_take_priority_over_closer_cold_feedback(self):
+        supporting_dive = self.log(exposure='5mm', temperature=28)
         for _ in range(3):
-            supporting_dive = self.log(exposure='3mm', temperature=28.3, comfort=1)
+            self.log(exposure='3mm', temperature=28.3, comfort=1)
         result = self.advice(28.3)
         self.assertEqual(result['exposure'], '5mm wetsuit')
         self.assertEqual(result['source_dive_id'], supporting_dive)
 
-    def test_equally_close_temperatures_use_frequency_then_recency(self):
-        self.log(exposure='5mm', temperature=28)
-        most_frequent = self.log(exposure='5mm', temperature=28)
+    def test_minimum_exposure_history_uses_closest_temperature_then_recency(self):
+        self.log(exposure='3mm', temperature=28)
+        closest = self.log(exposure='3mm', temperature=28.3)
         self.log(exposure='3mm', temperature=28.6)
-        self.assertEqual(self.advice(28.3)['source_dive_id'], most_frequent)
-        newest = self.log(exposure='3mm', temperature=28.6)
+        self.log(exposure='5mm', temperature=28.3)
+        self.assertEqual(self.advice(28.3)['source_dive_id'], closest)
+        newest = self.log(exposure='3mm', temperature=28.3)
         result = self.advice(28.3)
         self.assertEqual(result['exposure'], '3mm wetsuit')
         self.assertEqual(result['source_dive_id'], newest)
@@ -300,19 +329,29 @@ class ExposureRecommendationsTest(unittest.TestCase):
         self.assertEqual(result['exposure'], '5mm wetsuit')
         self.assertEqual(result['source_dive_id'], supporting_dive)
 
-    def test_api_refreshes_modal_exposure_and_history_outside_forecast_cache(self):
+    def test_without_comfortable_logs_choose_minimum_adjusted_exposure(self):
+        self.log(exposure='3mm', temperature=28.3, comfort=1)  # Suggests 5mm.
+        supporting_dive = self.log(exposure='5mm', temperature=28.3, comfort=5)  # Suggests 3mm.
+        self.log(exposure='shorty', temperature=28, comfort=5)  # More distant fallback.
+        result = self.advice(28.3)
+        self.assertEqual(result['exposure'], '3mm wetsuit')
+        self.assertEqual(result['source_dive_id'], supporting_dive)
+
+    def test_api_refreshes_minimum_exposure_and_history_outside_forecast_cache(self):
         self.log(exposure='5mm', temperature=28.3)
-        supporting_dive = self.log(exposure='5mm', temperature=28.3)
-        self.log(exposure='3mm', temperature=28.3)
+        self.log(exposure='5mm', temperature=28.3)
+        supporting_dive = self.log(exposure='3mm', temperature=28.3, weight=6)
         with patch('pelagia.marine.fetch', return_value=payload()) as fetch:
             advice = self.client.get('/api/dive-sites/1/conditions').json['recommendations']
-            self.assertEqual(advice['exposure'], '5mm wetsuit')
-            self.assertEqual(advice['source_dive_url'], f'/dive/{supporting_dive}')
-            self.log(exposure='3mm', temperature=28.3)
-            new_supporting_dive = self.log(exposure='3mm', temperature=28.3)
-            advice = self.client.get('/api/dive-sites/1/conditions').json['recommendations']
             self.assertEqual(advice['exposure'], '3mm wetsuit')
+            self.assertEqual(advice['source_dive_url'], f'/dive/{supporting_dive}')
+            self.assertEqual(advice['weight'], '6 kg')
+            self.log(exposure='5mm', temperature=28.3)
+            new_supporting_dive = self.log(exposure='2mm', temperature=28.3, weight=4)
+            advice = self.client.get('/api/dive-sites/1/conditions').json['recommendations']
+            self.assertEqual(advice['exposure'], '2mm wetsuit')
             self.assertEqual(advice['source_dive_url'], f'/dive/{new_supporting_dive}')
+            self.assertEqual(advice['weight'], '4 kg')
             self.assertEqual(fetch.call_count, 1)
 
     def test_personal_feedback_adjusts_logged_suit_without_default_band_limit(self):
@@ -354,6 +393,7 @@ class ExposureRecommendationsTest(unittest.TestCase):
     def test_api_provides_history_links_for_confirmation_and_override(self):
         with patch('pelagia.marine.fetch', return_value=payload()):
             for exposure, personalized in (('shorty', False), ('2mm', True)):
+                self.db.execute('DELETE FROM dives')
                 dive_id = self.log(exposure=exposure, temperature=28.3)
                 advice = self.client.get('/api/dive-sites/1/conditions').json['recommendations']
                 self.assertEqual(advice['personalized'], personalized)
@@ -379,8 +419,8 @@ class ExposureRecommendationsTest(unittest.TestCase):
 
     def test_history_and_units_refresh_after_log_and_profile_changes(self):
         with patch('pelagia.marine.fetch', return_value=payload()) as fetch:
-            older = self.log(exposure='shorty', temperature=28.3, weight=8)
-            newer = self.log(exposure='2mm', temperature=28.3, weight=6)
+            older = self.log(exposure='2mm', temperature=28.3, weight=8)
+            newer = self.log(exposure='shorty', temperature=28.3, weight=6)
             advice = self.client.get('/api/dive-sites/1/conditions').json['recommendations']
             self.assertEqual(advice['source_dive_url'], f'/dive/{newer}')
             self.db.execute('UPDATE dives SET is_deleted=1 WHERE id=?', (newer,))

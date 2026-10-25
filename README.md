@@ -361,13 +361,14 @@ uses global history. Regional history without qualifying feedback falls back to
 the default exposure rather than borrowing feedback from elsewhere.
 
 Within that scope, require valid exposure, temperature, and temperature feedback
-within ±3°F (about ±1.67°C), inclusive. Choose the closest recorded temperature
-first. Among equally close measurements, prefer neutral feedback (3/5), then use
-the most frequently recorded exposure; remaining frequency ties use the most
-recent date/ID. If no neutral feedback exists at the closest temperature, adjust
-the winning exposure one protection step warmer for ratings 1–2 or lighter for
-ratings 4–5, using its most recent supporting dive's feedback. More distant logs
-never outweigh a closer valid measurement. Matching personal feedback takes
+within ±3°F (about ±1.67°C), inclusive. Among all neutral (3/5) dives in that
+window, recommend the minimum recorded exposure, regardless of frequency or
+whether a thicker suit was logged at a closer temperature. For the winning
+exposure, choose the closest supporting temperature, then the most recent date/ID.
+If no neutral feedback exists in the window, use the closest rated measurements
+and adjust exposure one protection step warmer for ratings 1–2 or lighter for
+ratings 4–5. If those measurements suggest different exposures, use the minimum
+adjusted exposure. Matching personal feedback takes
 precedence over the default temperature band, with no limit on how far the suit
 differs from that default. The matching window is independent of display units.
 The protection order is swimsuit, shorty, 2mm, 3mm, 5mm, 6mm, 7mm, drysuit. Without comparable feedback,

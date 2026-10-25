@@ -1,6 +1,5 @@
 """Personal dive-equipment heuristics; never stored in the shared marine cache."""
 import math
-from collections import Counter
 from datetime import datetime, timezone
 
 from .metrics import format_metric
@@ -48,18 +47,26 @@ def recommend(db, user_id, site_id, temperature_c, now):
     personalized = False
     source_dive_id = None
     if nearby:
-        closest_distance = min(abs(row['water_temp_c'] - temperature_c) for row in nearby)
-        closest = [row for row in nearby if math.isclose(abs(row['water_temp_c'] - temperature_c),
-                                                        closest_distance, rel_tol=0, abs_tol=1e-9)]
-        comfortable = [row for row in closest if row['temperature_rating'] == 3]
-        candidates = comfortable or closest
-        counts = Counter(row['exposure'] for row in candidates)
-        # Only equally close measurements vote. SQL's newest-first order breaks
-        # any remaining exposure-frequency tie and selects the supporting log.
-        reference = min(candidates, key=lambda row: -counts[row['exposure']])
-        index = EXPOSURES.index(reference['exposure'])
-        step = 1 if reference['temperature_rating'] < 3 else -1 if reference['temperature_rating'] > 3 else 0
-        proposed = max(0, min(len(EXPOSURES) - 1, index + step))
+        comfortable = [row for row in nearby if row['temperature_rating'] == 3]
+        if comfortable:
+            candidates = comfortable
+        else:
+            # Keep nearest-temperature feedback as the fallback when no suit was
+            # rated comfortable anywhere in the matching window.
+            closest_distance = min(abs(row['water_temp_c'] - temperature_c) for row in nearby)
+            candidates = [row for row in nearby if math.isclose(abs(row['water_temp_c'] - temperature_c),
+                                                               closest_distance, rel_tol=0, abs_tol=1e-9)]
+        proposals = []
+        for row in candidates:
+            index = EXPOSURES.index(row['exposure'])
+            step = 1 if row['temperature_rating'] < 3 else -1 if row['temperature_rating'] > 3 else 0
+            proposals.append((row, max(0, min(len(EXPOSURES) - 1, index + step))))
+        # Minimum protection wins. For that exposure, link the closest supporting
+        # measurement, then the most recent log using SQL's newest-first order.
+        reference, proposed = min(
+            proposals,
+            key=lambda proposal: (proposal[1], abs(proposal[0]['water_temp_c'] - temperature_c)),
+        )
         personalized = EXPOSURES[proposed] not in choices
         source_dive_id = reference['id']
         choices = (EXPOSURES[proposed],)
