@@ -229,7 +229,8 @@ def init_app(app, login_required):
             if logged_temperature is not None:
                 result['current']['temperature_c'] = logged_temperature
             result['recommendations'] = recommend(get_db(), session['user_id'], site_id,
-                                                   result['current']['temperature_c'], time.time())
+                                                   result['current']['temperature_c'], time.time(),
+                                                   salinity=classification['water_type'])
             advice = result['recommendations']
             if advice and advice['source_dive_id']:
                 advice['source_dive_url'] = url_for('dive_detail', dive_id=advice['source_dive_id'])

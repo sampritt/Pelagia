@@ -34,8 +34,8 @@ class ExposureRecommendationsTest(unittest.TestCase):
         self.db.commit()
         return cursor.lastrowid
 
-    def advice(self, temp=22, user=1):
-        return recommend(self.db, user, 1, temp, self.now)
+    def advice(self, temp=22, user=1, salinity='salt'):
+        return recommend(self.db, user, 1, temp, self.now, salinity)
 
     def test_default_thresholds_and_missing_temperature(self):
         for fahrenheit, expected in ((81, ('swimsuit','shorty')), (80, ('3mm',)), (69, ('3mm',)),
@@ -75,17 +75,18 @@ class ExposureRecommendationsTest(unittest.TestCase):
         self.assertEqual(self.advice()['exposure'],'3mm wetsuit')
         self.assertFalse(self.advice()['personalized'])
 
-    def test_weight_requires_matching_exposure_and_latest_site_salinity(self):
+    def test_weight_requires_matching_exposure_and_classified_site_salinity(self):
         self.log(weight=6)
         self.assertEqual(self.advice()['weight'],'6 kg')
         self.log(exposure='5mm',temperature=5,weight=10)  # Wrong protection, cannot replace weight.
         self.assertEqual(self.advice()['weight'],'6 kg')
         self.log(salinity='fresh', weight=4)
-        self.assertEqual(self.advice()['weight'],'4 kg')
-        self.log(salinity='none')  # Skip unknown water types and retain the latest known value.
-        self.assertEqual(self.advice()['weight'], '4 kg')
+        self.assertEqual(self.advice()['weight'],'6 kg')
+        self.assertEqual(self.advice(salinity='fresh')['weight'], '4 kg')
+        self.log(salinity='none')
+        self.assertEqual(self.advice(salinity='fresh')['weight'], '4 kg')
 
-    def test_kicker_rock_weight_uses_latest_known_salinity_despite_newer_unknown_log(self):
+    def test_kicker_rock_weight_uses_cached_site_classification_despite_site_logs(self):
         self.db.execute("UPDATE dive_sites SET name='Kicker Rock (León Dormido)' WHERE id=1")
         self.db.execute("INSERT INTO users (username) VALUES ('another')")
         self.db.execute("UPDATE users SET weight_unit='lb' WHERE id=1")
@@ -103,26 +104,15 @@ class ExposureRecommendationsTest(unittest.TestCase):
         self.assertEqual(advice['salinity'], 'salt')
         self.assertEqual(advice['weight'], '17.5 lb')
 
-    def test_latest_known_salinity_uses_date_and_id_excluding_deleted_and_future_dives(self):
-        self.db.execute("INSERT INTO users (username) VALUES ('another')")
-        self.db.commit()
-        self.log(salinity='fresh', weight=4, site=2)
+    def test_logged_site_salinity_does_not_override_classification(self):
         self.log(salinity='salt', weight=6)
-        self.log(salinity='fresh', user=2, deleted=1)
-        self.log(salinity='fresh', user=2, day='2099-01-01')
-        self.log(salinity='none', user=2)
-        self.assertEqual(self.advice()['salinity'], 'salt')
-        self.assertEqual(self.advice()['weight'], '6 kg')
-        self.log(salinity='fresh', user=2)
-        self.log(salinity='salt', user=2, day='2000-01-01')
-        self.log(salinity='none', user=2)
-        self.assertEqual(self.advice()['salinity'], 'fresh')
-        self.assertEqual(self.advice()['weight'], '4 kg')
+        self.log(salinity='fresh', weight=4)
+        self.assertEqual(self.advice(salinity='salt')['weight'], '6 kg')
+        self.assertEqual(self.advice(salinity='fresh')['weight'], '4 kg')
 
-    def test_site_without_any_known_salinity_has_no_weight_estimate(self):
-        self.log(salinity='salt', weight=6, site=2)
-        self.log(salinity='none')
-        advice = self.advice()
+    def test_missing_site_classification_has_no_weight_estimate(self):
+        self.log(salinity='salt', weight=6)
+        advice = self.advice(salinity=None)
         self.assertIsNone(advice['salinity'])
         self.assertIsNone(advice['weight'])
 
@@ -139,15 +129,16 @@ class ExposureRecommendationsTest(unittest.TestCase):
         self.log(weight=0)
         self.assertEqual(self.advice()['weight'],'0 lb')
 
-    def test_cross_user_privacy_and_site_salinity_from_latest_log(self):
+    def test_cross_user_logs_do_not_supply_site_salinity_or_weight(self):
         self.db.execute("INSERT INTO users (username) VALUES ('another')"); self.db.commit()
         self.log(exposure='7mm',user=2,weight=12)
         self.assertEqual(self.advice()['exposure'],'3mm wetsuit')
         self.assertIsNone(self.advice()['weight'])
         self.log(exposure='3mm',site=2,salinity='fresh',weight=4)
-        self.assertIsNone(self.advice()['weight']) # The site's latest log still says salt.
+        self.assertIsNone(self.advice()['weight'])
+        self.assertEqual(self.advice(salinity='fresh')['weight'], '4 kg')
         self.log(exposure='3mm',user=2,salinity='fresh',weight=6)
-        self.assertEqual(self.advice()['weight'],'4 kg')
+        self.assertEqual(self.advice(salinity='fresh')['weight'],'4 kg')
 
     def test_warm_default_can_match_shorty_weight_without_guessing(self):
         self.log(exposure='shorty',temperature=None,comfort=None,weight=3)

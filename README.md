@@ -388,9 +388,10 @@ when returning from a logged dive, including browser Back/Forward restoration.
 
 Weight estimates require an exact exposure match and a neutral weight rating
 (3/5), using the user's most recent qualifying log and current kg/lb preference.
-Salinity must match the latest non-deleted, non-future dive at this site with a
-known Fresh or Salt water type, from any user. Newer dives with unknown water type
-are skipped. If no dive has known salinity, no estimate is shown. For the
+Salinity must match the dive site's cached Is On Water classification (`OCEAN`
+is Salt; every other valid feature is Fresh), rather than the water type recorded
+on dives previously logged at that site. If the site has no classification, no
+estimate is shown. For the
 swimsuit-or-shorty default, either exposure may match; matching still requires the exact
 exposure and salinity. Only the converted weight is displayed, with equipment and weight emphasized
 in bold. Missing matches display `-`; confirmed estimates

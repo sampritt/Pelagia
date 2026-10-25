@@ -20,7 +20,7 @@ def default_exposures(temperature_c):
     return ('dry suit',)
 
 
-def recommend(db, user_id, site_id, temperature_c, now):
+def recommend(db, user_id, site_id, temperature_c, now, salinity):
     if not isinstance(temperature_c, (int, float)) or isinstance(temperature_c, bool):
         return None
     if not math.isfinite(temperature_c):
@@ -70,11 +70,7 @@ def recommend(db, user_id, site_id, temperature_c, now):
         personalized = EXPOSURES[proposed] not in choices
         source_dive_id = reference['id']
         choices = (EXPOSURES[proposed],)
-    site_log = db.execute('''SELECT water_type FROM dives WHERE dive_site_id=?
-                            AND COALESCE(is_deleted,0)=0 AND date<=?
-                            AND water_type IN ('fresh', 'salt')
-                            ORDER BY date DESC, id DESC LIMIT 1''', (site_id, today)).fetchone()
-    salinity = site_log['water_type'] if site_log else None
+    salinity = salinity if salinity in ('fresh', 'salt') else None
     match = next((row for row in logs if row['exposure'] in choices and salinity
                   and row['water_type'] == salinity and row['weight_rating'] == 3
                   and row['weight_kg'] is not None and math.isfinite(row['weight_kg']) and row['weight_kg'] >= 0), None)
