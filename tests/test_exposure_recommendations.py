@@ -80,8 +80,49 @@ class ExposureRecommendationsTest(unittest.TestCase):
         self.assertEqual(self.advice()['weight'],'6 kg')
         self.log(salinity='fresh', weight=4)
         self.assertEqual(self.advice()['weight'],'4 kg')
-        self.log(salinity='none')  # Latest site salinity unknown; don't search backward.
-        self.assertIsNone(self.advice()['weight'])
+        self.log(salinity='none')  # Skip unknown water types and retain the latest known value.
+        self.assertEqual(self.advice()['weight'], '4 kg')
+
+    def test_kicker_rock_weight_uses_latest_known_salinity_despite_newer_unknown_log(self):
+        self.db.execute("UPDATE dive_sites SET name='Kicker Rock (León Dormido)' WHERE id=1")
+        self.db.execute("INSERT INTO users (username) VALUES ('another')")
+        self.db.execute("UPDATE users SET weight_unit='lb' WHERE id=1")
+        self.db.commit()
+        self.log(exposure='5mm', temperature=28.3, weight=8, site=2)
+        self.log(exposure=None, temperature=None, comfort=None, weight=None,
+                 weight_rating=None, user=2, salinity='salt')
+        self.log(exposure=None, temperature=None, comfort=None, weight=None,
+                 weight_rating=None, user=2, salinity='none')
+        with patch('pelagia.marine.fetch', return_value=payload()):
+            response = self.client.get('/api/dive-sites/1/conditions')
+        self.assertEqual(response.status_code, 200)
+        advice = response.json['recommendations']
+        self.assertEqual(advice['exposure'], '5mm wetsuit')
+        self.assertEqual(advice['salinity'], 'salt')
+        self.assertEqual(advice['weight'], '17.5 lb')
+
+    def test_latest_known_salinity_uses_date_and_id_excluding_deleted_and_future_dives(self):
+        self.db.execute("INSERT INTO users (username) VALUES ('another')")
+        self.db.commit()
+        self.log(salinity='fresh', weight=4, site=2)
+        self.log(salinity='salt', weight=6)
+        self.log(salinity='fresh', user=2, deleted=1)
+        self.log(salinity='fresh', user=2, day='2099-01-01')
+        self.log(salinity='none', user=2)
+        self.assertEqual(self.advice()['salinity'], 'salt')
+        self.assertEqual(self.advice()['weight'], '6 kg')
+        self.log(salinity='fresh', user=2)
+        self.log(salinity='salt', user=2, day='2000-01-01')
+        self.log(salinity='none', user=2)
+        self.assertEqual(self.advice()['salinity'], 'fresh')
+        self.assertEqual(self.advice()['weight'], '4 kg')
+
+    def test_site_without_any_known_salinity_has_no_weight_estimate(self):
+        self.log(salinity='salt', weight=6, site=2)
+        self.log(salinity='none')
+        advice = self.advice()
+        self.assertIsNone(advice['salinity'])
+        self.assertIsNone(advice['weight'])
 
     def test_weight_requires_neutral_valid_weight_and_is_most_recent(self):
         self.log(weight=6,weight_rating=2)
