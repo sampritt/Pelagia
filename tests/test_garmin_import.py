@@ -145,8 +145,8 @@ class GarminImportTest(unittest.TestCase):
         self.assertIn('depthProfileFill-1', feed)
         self.assertLess(feed.index('class="mini-map'), feed.index('depth-profile-slide'))
         self.assertIn('data-gallery-dot', feed)
-        self.assertIn('data-gallery-controls', html)
-        self.assertIn('1 / 2', html)
+        self.assertNotIn('data-gallery-controls', html)
+        self.assertNotIn('1 / 2', html)
         self.assertIn('>ft</text>', html)
         self.assertIn('Depth over time', html)
         # Public previews and APIs continue to omit the private computer data.

@@ -2132,29 +2132,20 @@ function initDiveGalleries() {
     document.querySelectorAll("[data-dive-gallery]").forEach((gallery) => {
         const track = gallery.querySelector("[data-dive-slides]");
         const slides = Array.from(track.children);
-        const controls = gallery.querySelector("[data-gallery-controls]");
-        if (!controls) return;
-        const previous = controls.querySelector("[data-gallery-prev]");
-        const next = controls.querySelector("[data-gallery-next]");
-        const position = controls.querySelector("[data-gallery-position]");
+        if (slides.length < 2) return;
         const dots = gallery.querySelectorAll("[data-gallery-dot]");
         const currentIndex = () => slides.reduce((best, slide, index) =>
             Math.abs(slide.getBoundingClientRect().left - track.getBoundingClientRect().left) <
             Math.abs(slides[best].getBoundingClientRect().left - track.getBoundingClientRect().left) ? index : best, 0);
         const update = () => {
             const index = currentIndex();
-            position.textContent = `${index + 1} / ${slides.length}`;
             dots.forEach((dot, i) => dot.classList.toggle("is-active", i === index));
-            previous.disabled = index === 0;
-            next.disabled = index === slides.length - 1;
         };
         const move = (delta) => {
             const index = Math.max(0, Math.min(slides.length - 1, currentIndex() + delta));
             track.scrollBy({left: slides[index].getBoundingClientRect().left - track.getBoundingClientRect().left,
                 behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth"});
         };
-        previous.addEventListener("click", () => move(-1));
-        next.addEventListener("click", () => move(1));
         track.addEventListener("keydown", (event) => {
             if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
             event.preventDefault();
@@ -2162,7 +2153,6 @@ function initDiveGalleries() {
         });
         track.addEventListener("scroll", update, {passive: true});
         window.addEventListener("resize", update);
-        controls.hidden = false;
         update();
     });
 }
