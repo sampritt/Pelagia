@@ -348,18 +348,25 @@ Default Fahrenheit bands are: above 80°F swimsuit or shorty, above 68°F 3mm, a
 Celsius values, independently of display units. When no temperature is available,
 the recommendation block stays hidden.
 
-Personalization searches the signed-in user's non-deleted, non-future dives with
-valid exposure, water temperature, and temperature feedback within ±3°F (about
-±1.67°C), inclusive. Prefer dives rated neutral (3/5) and recommend the exposure
-most frequently recorded across those matching dives. If no neutral dives match,
-use the most frequently recorded exposure across matching rated dives and move
-one protection step warmer for ratings 1–2 or lighter for ratings 4–5, using the
-nearest supporting dive's feedback. Matching personal feedback takes
+Personalization searches the signed-in user's non-deleted, non-future dives. If
+the user has history in the site's country/region, only that regional history is
+considered for exposure advice. Otherwise search all of the user's dives. Region
+matching ignores case and surrounding spaces, using the recorded region or the
+linked site's region when the recorded region is missing. A site without a region
+uses global history. Regional history without qualifying feedback falls back to
+the default exposure rather than borrowing feedback from elsewhere.
+
+Within that scope, require valid exposure, temperature, and temperature feedback
+within ±3°F (about ±1.67°C), inclusive. Choose the closest recorded temperature
+first. Among equally close measurements, prefer neutral feedback (3/5), then use
+the most frequently recorded exposure; remaining frequency ties use the most
+recent date/ID. If no neutral feedback exists at the closest temperature, adjust
+the winning exposure one protection step warmer for ratings 1–2 or lighter for
+ratings 4–5, using its most recent supporting dive's feedback. More distant logs
+never outweigh a closer valid measurement. Matching personal feedback takes
 precedence over the default temperature band, with no limit on how far the suit
 differs from that default. The matching window is independent of display units.
-Frequency ties use the nearest supporting temperature, then the most recent
-date/ID. The protection order
-is swimsuit, shorty, 2mm, 3mm, 5mm, 6mm, 7mm, drysuit. Without comparable feedback,
+The protection order is swimsuit, shorty, 2mm, 3mm, 5mm, 6mm, 7mm, drysuit. Without comparable feedback,
 use the default bands.
 Whenever a qualifying log supports the recommendation, including confirmation of
 the default, exposure advice carries an asterisk and “Based on your dive log

@@ -27,25 +27,36 @@ def recommend(db, user_id, site_id, temperature_c, now):
     if not math.isfinite(temperature_c):
         return None
     today = datetime.fromtimestamp(now, timezone.utc).date().isoformat()
-    logs = db.execute('''SELECT id, date, exposure, water_temp_c, temperature_rating,
-                         weight_kg, weight_rating, water_type FROM dives
-                         WHERE user_id=? AND COALESCE(is_deleted,0)=0 AND date<=?
-                         ORDER BY date DESC, id DESC''', (user_id, today)).fetchall()
+    logs = db.execute('''SELECT d.id, d.date, d.exposure, d.water_temp_c, d.temperature_rating,
+                         d.weight_kg, d.weight_rating, d.water_type,
+                         COALESCE(NULLIF(TRIM(d.country_or_area), ''), s.country_or_area) AS country_or_area
+                         FROM dives d LEFT JOIN dive_sites s ON s.id=d.dive_site_id
+                         WHERE d.user_id=? AND COALESCE(d.is_deleted,0)=0 AND d.date<=?
+                         ORDER BY d.date DESC, d.id DESC''', (user_id, today)).fetchall()
+    site = db.execute('SELECT country_or_area FROM dive_sites WHERE id=?', (site_id,)).fetchone()
+    region = (site['country_or_area'] or '').strip().casefold() if site else ''
+    regional_logs = [row for row in logs if region
+                     and (row['country_or_area'] or '').strip().casefold() == region]
+    # Existing regional history restricts exposure matching, even if none of its
+    # logs qualify for the temperature window. Weight matching still uses all logs.
+    exposure_logs = regional_logs or logs
     choices = default_exposures(temperature_c)
-    nearby = [row for row in logs if row['exposure'] in EXPOSURES
+    nearby = [row for row in exposure_logs if row['exposure'] in EXPOSURES
               and row['water_temp_c'] is not None and row['temperature_rating'] in (1, 2, 3, 4, 5)
               # Keep exact 3 F endpoints inclusive after floating-point conversion.
               and abs(row['water_temp_c'] - temperature_c) <= TEMPERATURE_MATCH_C + 1e-9]
-    comfortable = [row for row in nearby if row['temperature_rating'] == 3]
-    candidates = comfortable or nearby
     personalized = False
     source_dive_id = None
-    if candidates:
+    if nearby:
+        closest_distance = min(abs(row['water_temp_c'] - temperature_c) for row in nearby)
+        closest = [row for row in nearby if math.isclose(abs(row['water_temp_c'] - temperature_c),
+                                                        closest_distance, rel_tol=0, abs_tol=1e-9)]
+        comfortable = [row for row in closest if row['temperature_rating'] == 3]
+        candidates = comfortable or closest
         counts = Counter(row['exposure'] for row in candidates)
-        # The most frequently recorded suit wins. Ties use the nearest supporting
-        # temperature, then SQL's newest-first order for equal temperatures.
-        reference = min(candidates, key=lambda row: (-counts[row['exposure']],
-                                                    abs(row['water_temp_c'] - temperature_c)))
+        # Only equally close measurements vote. SQL's newest-first order breaks
+        # any remaining exposure-frequency tie and selects the supporting log.
+        reference = min(candidates, key=lambda row: -counts[row['exposure']])
         index = EXPOSURES.index(reference['exposure'])
         step = 1 if reference['temperature_rating'] < 3 else -1 if reference['temperature_rating'] > 3 else 0
         proposed = max(0, min(len(EXPOSURES) - 1, index + step))
