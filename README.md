@@ -296,3 +296,46 @@ Users enter their email, receive a six-digit code, then enter it in the same bro
 Existing Google users can choose Continue with email and verify a code sent to their Google email address. They sign into the same user ID with all their dives, without an enable/link step. Matching is case-insensitive across both Google and email sign-in addresses. If an address matches multiple accounts, email login stops and asks the user to continue with Google or contact support; it never selects an account arbitrarily. Google login remains independent; email-only accounts cannot automatically add Google login by matching addresses.
 
 Before production release, run `.venv312/bin/python -m unittest tests.test_email_auth tests.test_google_auth`, then test actual email delivery, spam placement, new signup, logout/re-login and email code sign-in for an existing Google account on the deployed app. Each code request counts toward Resend’s sending quota; monitor provider usage. Tests mock delivery and never send real emails.
+
+## Dive-site marine conditions
+
+Signed-in dive-site pages load marine conditions after the page renders through
+`GET /api/dive-sites/<id>/conditions`. Visibility keeps the existing recent-dive
+aggregation. Current strength, sea surface temperature, tide phase, and the two
+forecast charts come from Open-Meteo using the site's stored coordinates. Logged
+dive measurements remain unchanged. Public previews show only the gated labels.
+
+The server requests seven local calendar forecast days plus yesterday for tide
+context. Current velocities are classified in **knots**: Light below 0.5, Moderate
+from 0.5 to below 1, Strong from 1 to below 2, Very Strong at 2 or above. Tide
+labels use hourly local extrema (including plateau midpoints) within one hour,
+otherwise the surrounding slope. Flat or incomplete series show `-`. These are
+modeled surface conditions, not measurements at dive depth; the tide/current grid
+is about 8 km and SST's source resolution is six-hourly. Sea level is relative to
+global mean sea level, not chart datum.
+
+The current chart defaults to seven daily maxima; its two-day view shows the next
+48 hourly samples. Tide level shows the next 24 hourly samples. Both use the site's
+timezone and preserve null-data gaps. The seven daily bars fit on phones; hourly
+charts scroll horizontally with a fixed Y axis. Tap or point at the chart, or focus
+it and use arrow keys, to inspect exact values. Temperature and tide readouts
+respect account units. Chart toggles do not issue additional API requests.
+
+The idempotent schema initialization adds `marine_forecast_cache`. Responses are
+shared across workers for 15 minutes, capped at site-local midnight, and invalidated
+when coordinates change. A 30-second claim prevents duplicate upstream requests;
+failures have a 60-second cooldown. No database transaction stays open during the
+network call. Missing coordinates or upstream failures stop loading, retain
+visibility, and show an unavailable state. Browser requests time out after 20
+seconds and stop on navigation. API responses are private/no-store and excluded
+from the service worker cache.
+
+The default public endpoint needs no key for evaluation and noncommercial use.
+For commercial use, set `OPEN_METEO_API_KEY` server-side; this selects
+`customer-marine-api.open-meteo.com`. Never expose the key to the browser. See
+[Open-Meteo pricing and usage terms](https://open-meteo.com/en/pricing).
+Attribution: [Open-Meteo marine API](https://open-meteo.com/en/docs/marine-weather-api),
+Météo-France / Copernicus Marine, and DWD.
+
+Focused tests: `.venv312/bin/python -m unittest discover -s tests -p 'test_marine.py'`
+and `node --test tests/test_marine.cjs`. These tests mock upstream calls.

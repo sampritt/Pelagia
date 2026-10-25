@@ -1285,15 +1285,15 @@ Kelp House,2 Harbor Way,Alaska,https://kelp.example.test
             self.assertIn(b"VISIBILITY", profile_response.data)
             self.assertIn(b"CURRENT", profile_response.data)
             self.assertIn(b"Water temperature", profile_response.data)
-            self.assertIn(b"Air temperature", profile_response.data)
-            self.assertIn(b"<h2>Currents</h2>", profile_response.data)
+            self.assertIn(b"Tide level", profile_response.data)
+            self.assertIn(b"<h2>Current velocity</h2>", profile_response.data)
             self.assertNotIn(b"<h2>Current Strength</h2>", profile_response.data)
             self.assertNotIn(b"<small>Latitude</small>", profile_response.data)
             self.assertNotIn(b"<small>Longitude</small>", profile_response.data)
             self.assertIn(b"15 m", profile_response.data)
-            self.assertIn(b"Strong", profile_response.data)
-            self.assertIn("24°C".encode(), profile_response.data)
-            self.assertIn("27°C".encode(), profile_response.data)
+            self.assertIn(b'data-marine-value="strength"', profile_response.data)
+            self.assertNotIn("24°C".encode(), profile_response.data)
+            self.assertNotIn("27°C".encode(), profile_response.data)
             self.assertNotIn(b"Trailing 2 weeks, feet by day", profile_response.data)
             self.assertNotIn(b"Trailing 2 weeks by day", profile_response.data)
             self.assertIn(b"SIGHTINGS", profile_response.data)
@@ -1302,7 +1302,7 @@ Kelp House,2 Harbor Way,Alaska,https://kelp.example.test
             self.assertIn(b"Reef Fish", profile_response.data)
             self.assertNotIn(b"<strong>1</strong>", profile_response.data)
 
-    def test_dive_site_condition_charts_end_at_latest_documented_observation(self):
+    def test_dive_site_forecasts_replace_historical_charts(self):
         with tempfile.TemporaryDirectory() as tmp_dir:
             app, _db_path, _config_path = self.make_app(Path(tmp_dir))
             client = app.test_client()
@@ -1335,7 +1335,8 @@ Kelp House,2 Harbor Way,Alaska,https://kelp.example.test
 
             profile_response = client.get("/dive-sites/1")
             self.assertEqual(profile_response.status_code, 200)
-            self.assertIn(f"{observation_day.strftime('%b')} {observation_day.day}: 12 m".encode(), profile_response.data)
+            self.assertNotIn(f"{observation_day.strftime('%b')} {observation_day.day}: 12 m".encode(), profile_response.data)
+            self.assertIn(b'data-marine-chart="current"', profile_response.data)
             self.assertNotIn(empty_day.strftime("%b %-d").encode(), profile_response.data)
 
             like_response = client.post("/api/dive-sites/1/like").get_json()

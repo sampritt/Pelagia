@@ -84,7 +84,7 @@ class UnitPreferencesTest(unittest.TestCase):
         profile = self.client.get("/you").get_data(as_text=True)
         self.assertIn(": 50 ft", profile)
         site = self.client.get("/dive-sites/1").get_data(as_text=True)
-        for expected in ("50 ft", "75°F", "28°F", "Feet · 14 days", "visibility in feet by day"):
+        for expected in ("50 ft", 'data-temperature-unit="f"', 'data-length-unit="ft"', "Current velocity", "Tide level"):
             self.assertIn(expected, site)
         viewer = self.app.test_client()
         self.signup(viewer, "metric-viewer")

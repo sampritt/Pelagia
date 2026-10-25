@@ -87,7 +87,7 @@ class DiveSiteSharingTest(unittest.TestCase):
         self.assertLess(html.index('class="site-description"'), html.index('class="profile-actions"'))
         self.assertIn("PRIVATE_LOG_TITLE", html)
         self.assertIn("PRIVATE_SITE_COMMENT", html)
-        self.assertIn('class="site-line-chart"', html)
+        self.assertIn('data-marine-chart="tide"', html)
 
     def test_log_dive_prefills_and_saves_the_selected_site(self):
         response = self.client.get("/dive/new?dive_site_id=1")

@@ -5,79 +5,42 @@
 <section class="profile-layout">
     {% include "_dive_site_headline.html" %}
 
-    <div class="site-conditions-panel">
-        <div class="site-conditions-grid">
-            <div>
-                <small>VISIBILITY</small>
-                <span>{{ display_metric(conditions.visibility_m, 'visibility') }}</span>
-            </div>
-            <div>
-                <small>CURRENT</small>
-                <span>
-                    {% if conditions.current %}
-                        {{ current_label(conditions.current) }}{% if conditions.current_strength and conditions.current_strength != "none" %}, {{ current_strength_label(conditions.current_strength) }}{% endif %}
-                    {% else %}
-                        -
-                    {% endif %}
-                </span>
-            </div>
-            <div>
-                <small>Water temperature</small>
-                <span>{{ display_metric(conditions.water_temp_c, 'temperature') }}</span>
-            </div>
-            <div>
-                <small>Air temperature</small>
-                <span>{{ display_metric(conditions.air_temp_c, 'temperature') }}</span>
+    <section class="marine-forecast" data-marine-forecast
+             data-url="{{ url_for('api_site_conditions', site_id=site.id) }}"
+             data-coordinates="{{ 'true' if marine_coordinates_valid else 'false' }}"
+             data-temperature-unit="{{ units.temperature }}" data-length-unit="{{ units.length }}"
+             aria-label="Dive site conditions and forecast">
+        <div class="site-conditions-panel">
+            <div class="site-conditions-grid">
+                <div><small>VISIBILITY</small><span>{{ display_metric(conditions.visibility_m, 'visibility') }}</span></div>
+                <div><small>CURRENT</small><span data-marine-value="strength">-</span></div>
+                <div><small>Water temperature</small><span data-marine-value="temperature">-</span></div>
+                <div><small>Tide level</small><span data-marine-value="tide">-</span></div>
             </div>
         </div>
-    </div>
-
-    <div class="site-chart-block">
-        <div class="site-chart-head">
-            <h2>Visibility</h2>
-            <span class="chart-unit">{{ 'Feet' if units.length == 'ft' else 'Meters' }} · 14 days</span>
+        <div class="site-chart-block">
+            <div class="site-chart-head">
+                <h2>Current velocity</h2>
+                <div class="marine-toggle" role="group" aria-label="Current forecast range">
+                    <button type="button" data-marine-range="daily" aria-pressed="true">7-day</button>
+                    <button type="button" data-marine-range="hourly" aria-pressed="false">2-day</button>
+                </div>
+            </div>
+            <div class="marine-chart" data-marine-chart="current"><p class="muted">Forecast unavailable</p></div>
         </div>
-        <svg class="site-line-chart" viewBox="0 0 {{ visibility_chart.width }} {{ visibility_chart.height }}" role="img" aria-label="Two weeks ending with the latest documented visibility or currents observation, visibility in {{ 'feet' if units.length == 'ft' else 'meters' }} by day">
-            <line x1="{{ visibility_chart.padding }}" y1="{{ visibility_chart.height - visibility_chart.padding }}" x2="{{ visibility_chart.width - visibility_chart.padding }}" y2="{{ visibility_chart.height - visibility_chart.padding }}"></line>
-            {% if visibility_chart.polyline %}
-                <polyline points="{{ visibility_chart.polyline }}"></polyline>
-                {% for point in visibility_chart.points %}
-                    {% if point.y is not none %}
-                        <circle cx="{{ point.x }}" cy="{{ point.y }}" r="3">
-                            <title>{{ point.label }}: {{ display_metric(point.value, 'visibility') }}</title>
-                        </circle>
-                    {% endif %}
-                {% endfor %}
-            {% endif %}
-        </svg>
-        <div class="site-chart-labels" aria-hidden="true">
-            <span>{{ visibility_series[0].label }}</span>
-            <span>{{ visibility_series[6].label }}</span>
-            <span>{{ visibility_series[-1].label }}</span>
+        <div class="site-chart-block">
+            <div class="site-chart-head"><h2>Tide level</h2><span class="chart-unit">Next 24 hours</span></div>
+            <div class="marine-chart" data-marine-chart="tide"><p class="muted">Forecast unavailable</p></div>
         </div>
-    </div>
-
-    <div class="site-chart-block">
-        <div class="site-chart-head">
-            <h2>Currents</h2>
-            <span class="chart-unit">Strength · 14 days</span>
+        <div class="marine-status" role="status" aria-live="polite">
+            <span data-marine-status>Forecast unavailable</span>
+            <button type="button" class="ghost-button compact" data-marine-retry hidden>Retry</button>
         </div>
-        <svg class="site-bar-chart" viewBox="0 0 {{ current_chart.width }} {{ current_chart.height }}" role="img" aria-label="Two weeks ending with the latest documented visibility or currents observation, currents by day">
-            <line x1="{{ current_chart.padding }}" y1="{{ current_chart.height - current_chart.padding }}" x2="{{ current_chart.width - current_chart.padding }}" y2="{{ current_chart.height - current_chart.padding }}"></line>
-            {% for point in current_chart.points %}
-                {% if point.value is not none %}
-                    <rect x="{{ point.x }}" y="{{ point.y }}" width="{{ point.width }}" height="{{ point.height }}">
-                        <title>{{ point.label }}: {{ current_strength_index_labels[point.value] }}</title>
-                    </rect>
-                {% endif %}
-            {% endfor %}
-        </svg>
-        <div class="site-chart-labels" aria-hidden="true">
-            <span>{{ current_series[0].label }}</span>
-            <span>{{ current_series[6].label }}</span>
-            <span>{{ current_series[-1].label }}</span>
-        </div>
-    </div>
+        <details class="marine-attribution">
+            <summary>Forecast data</summary>
+            <p>Modeled surface conditions from <a href="https://open-meteo.com/en/docs/marine-weather-api" target="_blank" rel="noopener noreferrer">Open-Meteo</a>, Météo-France / Copernicus Marine and DWD. Sea level is relative to global mean sea level. Times are local to the dive site.</p>
+        </details>
+    </section>
 
     {% include "_dive_site_sightings.html" %}
 
@@ -109,4 +72,8 @@
         </div>
     {% endif %}
 </section>
+{% endblock %}
+
+{% block scripts %}
+<script defer src="{{ url_for('static', filename='js/marine.js', v=pwa_asset_version) }}"></script>
 {% endblock %}

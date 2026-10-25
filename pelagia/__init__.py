@@ -37,6 +37,7 @@ from . import google_auth, email_auth
 from . import pwa
 from . import dive_brief
 from . import site_descriptions
+from . import marine
 from . import dive_import
 from .depth_profile import depth_profile_chart
 from . import explore
@@ -107,6 +108,7 @@ def create_app(test_config=None):
     explore.init_app(app, login_required)
     dive_import.init_app(app, current_user)
     site_descriptions.init_app(app, login_required)
+    marine.init_app(app, login_required)
     dive_brief.init_app(app)
     pwa.init_app(app)
     google_auth.init_app(app)
@@ -784,7 +786,6 @@ def register_routes(app):
             abort(404)
         recent_dives = fetch_dives(scope="site", user_id=session["user_id"], site_id=site_id, limit=8)
         conditions = dive_site_recent_conditions(site_id)
-        visibility_series, current_series = dive_site_condition_series(site_id)
         sightings = dive_site_species_sightings(site_id)
         return render_template(
             "dive_site_profile.html",
@@ -793,12 +794,7 @@ def register_routes(app):
             recent_dives=recent_dives,
             conditions=conditions,
             sightings=sightings,
-            visibility_series=visibility_series,
-            current_series=current_series,
-            visibility_chart=line_chart_points(visibility_series, max_value=max([30] + [item["value"] or 0 for item in visibility_series])),
-            current_chart=bar_chart_points(current_series, max_value=4),
-            current_strength_labels=CURRENT_STRENGTH_LABELS,
-            current_strength_index_labels={index: CURRENT_STRENGTH_LABELS[value] for value, index in CURRENT_STRENGTH_INDEXES.items()},
+            marine_coordinates_valid=marine.coordinates(site) is not None,
         )
 
     @app.get("/share/dive-site/<int:site_id>")
