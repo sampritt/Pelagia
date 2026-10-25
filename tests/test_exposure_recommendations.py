@@ -20,6 +20,8 @@ class ExposureRecommendationsTest(unittest.TestCase):
         self.client = self.app.test_client(); self.signup(self.client)
         self.ctx = self.app.app_context(); self.ctx.push(); self.addCleanup(self.ctx.pop)
         self.db = database.get_db()
+        classifier = patch('pelagia.marine.water_type.classify_site', return_value={'feature': 'OCEAN', 'water_type': 'salt'})
+        classifier.start(); self.addCleanup(classifier.stop)
         self.now = datetime.now(timezone.utc).timestamp()
         self.day = datetime.fromtimestamp(self.now, timezone.utc).date().isoformat()
 

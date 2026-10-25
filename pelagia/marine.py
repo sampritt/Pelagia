@@ -11,6 +11,7 @@ import requests
 from flask import current_app, jsonify, session, url_for
 from .db import get_db
 from .exposure_recommendations import recommend
+from . import water_type
 
 FIELDS = ('ocean_current_velocity', 'sea_level_height_msl', 'sea_surface_temperature')
 
@@ -205,8 +206,23 @@ def init_app(app, login_required):
         site = get_db().execute('SELECT * FROM dive_sites WHERE id=?', (site_id,)).fetchone()
         if site is None:
             result, status = dict(status='unavailable'), 404
+        elif coordinates(site) is None:
+            result, status = dict(status='unavailable', reason='coordinates'), 200
         else:
-            result, status = load(site, time.time())
+            try:
+                classification = water_type.classify_site(site)
+            except water_type.ClassificationPending:
+                result, status = dict(status='pending'), 202
+            except water_type.ClassificationRetryable:
+                result, status = dict(status='unavailable', reason='classification'), 503
+            except (requests.RequestException, ValueError, TypeError, KeyError):
+                current_app.logger.warning('Water classification unavailable for site %s', site['id'])
+                result, status = dict(status='unavailable', reason='classification'), 503
+            else:
+                if classification['feature'] == 'OCEAN':
+                    result, status = load(site, time.time())
+                else:
+                    result, status = dict(status='not_ocean', feature=classification['feature']), 200
         if status == 200 and result.get('status') == 'complete':
             from . import dive_site_recent_conditions
             logged_temperature = dive_site_recent_conditions(site_id)['water_temp_c']

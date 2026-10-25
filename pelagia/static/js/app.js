@@ -917,6 +917,7 @@ function initDiveForm() {
     const country = document.getElementById("country");
     const latitude = document.getElementById("latitude");
     const longitude = document.getElementById("longitude");
+    const waterTypeLookup = initWaterTypeLookup(form, latitude, longitude, siteId, form.dataset.isEdit !== "true");
     const searchSites = createSuggestionLoader(siteInput, siteResults);
     const searchCenters = createSuggestionLoader(centerInput, centerResults);
     let durationTouched = form.dataset.isEdit === "true";
@@ -1239,6 +1240,7 @@ function initDiveForm() {
         country.value = site.country_or_area || "";
         latitude.value = site.latitude ?? "";
         longitude.value = site.longitude ?? "";
+        waterTypeLookup.lookup();
         if (site.max_depth_m !== null && site.max_depth_m !== undefined) {
             setPair("depth", site.max_depth_m, false);
             setPair("duration", suggestedDuration(site.max_depth_m), false);
@@ -1289,6 +1291,7 @@ function initDiveForm() {
         ["date", "site_name", "dive_site_id", "country_or_area", "latitude", "longitude"].forEach((field) => {
             if (fields[field] !== undefined) form.elements.namedItem(field).value = fields[field];
         });
+        if (fields.latitude !== undefined || fields.longitude !== undefined) waterTypeLookup.lookup();
         if (fields.oxygen_pct !== undefined) {
             const controls = form.querySelector("[data-gas-mix]");
             for (const [gas, field] of [["oxygen", "oxygen_pct"], ["helium", "helium_pct"], ["nitrogen", "nitrogen_pct"]]) {
@@ -1306,6 +1309,60 @@ function initDiveForm() {
         status.hidden = false;
         if (fields.dive_site_id) loadSpeciesSuggestions({ siteId: fields.dive_site_id, country: fields.country_or_area });
     });
+}
+
+function initWaterTypeLookup(form, latitude, longitude, siteId, lookupInitial = false) {
+    const options = Array.from(form.querySelectorAll("[data-water-type-option]"));
+    const label = form.querySelector("[data-water-type-label]");
+    let requestId = 0;
+    let timer = null;
+
+    const choose = (waterType) => {
+        const selected = options.find((option) => option.value === waterType);
+        if (!selected) return;
+        selected.checked = true;
+        if (label) label.textContent = selected.dataset.optionLabel;
+    };
+    const lookup = async () => {
+        if (timer) {
+            window.clearTimeout(timer);
+            timer = null;
+        }
+        const lat = Number(latitude?.value);
+        const lon = Number(longitude?.value);
+        if (!latitude?.value.trim() || !longitude?.value.trim() || !Number.isFinite(lat) || !Number.isFinite(lon)
+            || lat < -90 || lat > 90 || lon < -180 || lon > 180) return;
+        const activeRequest = ++requestId;
+        try {
+            const params = new URLSearchParams({latitude: String(lat), longitude: String(lon)});
+            if (siteId?.value) params.set("site_id", siteId.value);
+            const response = await fetch(`/api/water-type?${params}`, {headers: {Accept: "application/json"}, cache: "no-store"});
+            if (response.status === 202) {
+                timer = window.setTimeout(lookup, 2000);
+                return;
+            }
+            if (!response.ok) return;
+            const result = await response.json();
+            if (activeRequest === requestId && result.status === "complete") choose(result.water_type);
+        } catch (_error) {
+            // Leave the control unchanged when the optional upstream lookup is unavailable.
+        }
+    };
+    const schedule = () => {
+        requestId += 1;
+        if (timer) window.clearTimeout(timer);
+        timer = window.setTimeout(lookup, 350);
+    };
+    [latitude, longitude].forEach((input) => input?.addEventListener("input", schedule));
+    options.forEach((option) => option.addEventListener("change", () => {
+        requestId += 1;
+        if (timer) {
+            window.clearTimeout(timer);
+            timer = null;
+        }
+    }));
+    if (lookupInitial) schedule();
+    return {lookup};
 }
 
 function suggestedDuration(depthM) {

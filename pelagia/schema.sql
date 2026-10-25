@@ -217,6 +217,17 @@ CREATE TABLE IF NOT EXISTS dive_site_comments (
 
 CREATE INDEX IF NOT EXISTS idx_dive_site_comments_site ON dive_site_comments(dive_site_id, created_at);
 
+CREATE TABLE IF NOT EXISTS dive_site_water_classifications (
+    dive_site_id INTEGER PRIMARY KEY REFERENCES dive_sites(id) ON DELETE CASCADE,
+    latitude REAL NOT NULL,
+    longitude REAL NOT NULL,
+    feature TEXT,
+    classified_at TEXT,
+    lease_token TEXT,
+    lease_until REAL NOT NULL DEFAULT 0,
+    retry_after REAL NOT NULL DEFAULT 0
+);
+
 CREATE TABLE IF NOT EXISTS marine_forecast_cache (
     site_id INTEGER PRIMARY KEY REFERENCES dive_sites(id) ON DELETE CASCADE,
     latitude REAL NOT NULL,

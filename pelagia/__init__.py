@@ -38,6 +38,7 @@ from . import pwa
 from . import dive_brief
 from . import site_descriptions
 from . import marine
+from . import water_type
 from . import dive_import
 from .depth_profile import depth_profile_chart
 from . import explore
@@ -109,6 +110,7 @@ def create_app(test_config=None):
     dive_import.init_app(app, current_user)
     site_descriptions.init_app(app, login_required)
     marine.init_app(app, login_required)
+    water_type.init_app(app, login_required)
     dive_brief.init_app(app)
     pwa.init_app(app)
     google_auth.init_app(app)

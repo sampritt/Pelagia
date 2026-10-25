@@ -95,6 +95,8 @@ class MarineEndpointTest(unittest.TestCase):
         self.url = '/api/dive-sites/1/conditions'
         self.clock = patch('pelagia.marine.time.time', return_value=NOW); self.clock.start(); self.addCleanup(self.clock.stop)
         self.signup(self.client)
+        self.classifier = patch('pelagia.marine.water_type.classify_site', return_value={'feature': 'OCEAN', 'water_type': 'salt'})
+        self.classify = self.classifier.start(); self.addCleanup(self.classifier.stop)
         self.upstream = patch('pelagia.marine.fetch', return_value=payload()); self.fetch = self.upstream.start(); self.addCleanup(self.upstream.stop)
 
     def test_page_no_upstream_auth_public_gate_and_no_store(self):
@@ -126,6 +128,22 @@ class MarineEndpointTest(unittest.TestCase):
         with self.app.app_context():
             db = database.get_db(); db.execute('UPDATE dive_sites SET latitude=1 WHERE id=1'); db.commit()
         self.client.get(self.url); self.assertEqual(self.fetch.call_count, 3)
+
+    def test_non_ocean_site_skips_open_meteo(self):
+        for feature in ('LAND', 'LAKE', 'RIVER', 'UNKNOWN'):
+            with self.subTest(feature=feature):
+                self.classify.return_value = {'feature': feature, 'water_type': 'fresh'}
+                response = self.client.get(self.url)
+                self.assertEqual(response.status_code, 200)
+                self.assertEqual(response.get_json(), {'status': 'not_ocean', 'feature': feature})
+        self.fetch.assert_not_called()
+
+    def test_classification_failure_skips_open_meteo(self):
+        self.classify.side_effect = requests.Timeout('offline')
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, 503)
+        self.assertEqual(response.get_json(), {'status': 'unavailable', 'reason': 'classification'})
+        self.fetch.assert_not_called()
 
     def test_logged_temperature_is_rendered_without_coordinates_in_account_units(self):
         with self.app.app_context():

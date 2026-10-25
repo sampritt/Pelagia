@@ -139,6 +139,7 @@
         if (!host) return;
         const status = host.querySelector('[data-marine-status]');
         const retry = host.querySelector('[data-marine-retry]');
+        const source = host.querySelector('[data-marine-source]');
         const equipment = host.querySelector('[data-equipment-advice]');
         const exposureAdvice = host.querySelector('[data-exposure-advice]');
         const exposureName = host.querySelector('[data-exposure-name]');
@@ -168,6 +169,26 @@
             retry.hidden = noCoordinates;
             buttons.forEach(button => { button.disabled = true; });
         };
+        const notOcean = () => {
+            clear(); result = null;
+            if (equipment) equipment.hidden = true;
+            values.forEach(node => { node.textContent = '-'; node.removeAttribute('title'); });
+            const messages = [
+                'Current strength is only available for ocean dive sites',
+                'Tide level is only available for ocean dive sites',
+            ];
+            [currentChart, tideChart].forEach((node, index) => {
+                node.replaceChildren();
+                const message = document.createElement('p');
+                message.className = 'muted';
+                message.textContent = messages[index];
+                node.appendChild(message);
+            });
+            status.textContent = 'Marine forecast unavailable for non-ocean dive sites';
+            retry.hidden = true;
+            if (source) source.hidden = true;
+            buttons.forEach(button => { button.disabled = true; });
+        };
         async function requestForecast(ticket = generation) {
             try {
                 const response = await fetch(host.dataset.url, { credentials: 'same-origin', cache: 'no-store',
@@ -177,6 +198,7 @@
                 if (!response.ok) throw new Error('Unavailable');
                 const data = await response.json();
                 if (stopped || ticket !== generation) return;
+                if (data.status === 'not_ocean') { notOcean(); return; }
                 if (data.status !== 'complete') { unavailable(data.reason === 'coordinates'); return; }
                 if (!data.charts || !data.current) throw new Error('Incomplete');
                 result = data; clear();
@@ -215,6 +237,7 @@
         function load() {
             generation++; clear(); controller?.abort(); controller = new AbortController(); stopped = false;
             status.textContent = 'Updating forecast…';
+            if (source) source.hidden = false;
             if (equipment) equipment.hidden = true; retry.hidden = true;
             buttons.forEach(button => { button.disabled = true; });
             const line = '<span class="skeleton skeleton-line"></span>';

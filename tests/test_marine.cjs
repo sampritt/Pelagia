@@ -14,12 +14,12 @@ function node(tag = 'div') {
 }
 const flush = async () => { for (let i = 0; i < 12; i++) await Promise.resolve(); };
 function setup(coordinates = 'true') {
-    const equipment=node(), exposureAdvice=node(), exposureName=node(), weightAsterisk=node(), exposureAsterisk=node(), exposureHistory=node(), exposureHistoryLink=node(), weightAdvice=node(), weightCaveat=node();
+    const equipment=node(), exposureAdvice=node(), exposureName=node(), weightAsterisk=node(), exposureAsterisk=node(), exposureHistory=node(), exposureHistoryLink=node(), weightAdvice=node(), weightCaveat=node(), source=node();
     const host = node(), status = node(), retry = node(), charts = [node(), node()], values = ['temperature', 'tide'].map(v => { const n = node(); n.dataset.marineValue = v; return n; });
     charts.forEach(n => { n.dataset.chart = true; });
     const buttons = ['daily', 'hourly'].map(v => { const n = node(); n.dataset.marineRange = v; return n; });
     host.dataset = {coordinates, url: '/api/dive-sites/1/conditions', temperatureUnit: 'f', lengthUnit: 'ft'};
-    host.querySelector = s => ({'[data-equipment-advice]':equipment,'[data-exposure-advice]':exposureAdvice,'[data-exposure-name]':exposureName,'[data-weight-asterisk]':weightAsterisk,'[data-exposure-asterisk]':exposureAsterisk,'[data-exposure-history]':exposureHistory,'[data-exposure-history-link]':exposureHistoryLink,'[data-weight-advice]':weightAdvice,'[data-weight-caveat]':weightCaveat,'[data-marine-status]':status,'[data-marine-retry]':retry,'[data-marine-chart="current"]':charts[0],'[data-marine-chart="tide"]':charts[1]})[s];
+    host.querySelector = s => ({'[data-equipment-advice]':equipment,'[data-exposure-advice]':exposureAdvice,'[data-exposure-name]':exposureName,'[data-weight-asterisk]':weightAsterisk,'[data-exposure-asterisk]':exposureAsterisk,'[data-exposure-history]':exposureHistory,'[data-exposure-history-link]':exposureHistoryLink,'[data-weight-advice]':weightAdvice,'[data-weight-caveat]':weightCaveat,'[data-marine-status]':status,'[data-marine-retry]':retry,'[data-marine-source]':source,'[data-marine-chart="current"]':charts[0],'[data-marine-chart="tide"]':charts[1]})[s];
     host.querySelectorAll = s => s.includes('value') ? values : buttons;
     const window = node(); let id = 0; const timers = new Map(); const requests = []; let ended = 0;
     window.setTimeout = (fn, delay) => { timers.set(++id, {fn, delay}); return id; }; window.clearTimeout = n => timers.delete(n);
@@ -27,7 +27,7 @@ function setup(coordinates = 'true') {
     const document = {readyState: 'complete', querySelector: () => host, createElement: node, createElementNS: (_, tag) => node(tag)};
     const context = vm.createContext({window, document, Intl, Date, AbortController, module: {exports: {}}, fetch: (url, options) => new Promise((resolve, reject) => requests.push({url, options, resolve, reject}))});
     vm.runInContext(fs.readFileSync('pelagia/static/js/marine.js', 'utf8'), context);
-    return {equipment,exposureAdvice,exposureName,weightAsterisk,exposureAsterisk,exposureHistory,exposureHistoryLink,weightAdvice,weightCaveat,host, status, retry, charts, values, buttons, window, timers, requests, context, ended: () => ended};
+    return {equipment,exposureAdvice,exposureName,weightAsterisk,exposureAsterisk,exposureHistory,exposureHistoryLink,weightAdvice,weightCaveat,source,host, status, retry, charts, values, buttons, window, timers, requests, context, ended: () => ended};
 }
 function data() {
     const points = Array.from({length: 48}, (_, i) => ({time:1792940400 + i * 3600, value: .5}));
@@ -46,6 +46,14 @@ test('failure stops loading and retry issues one new request', async () => {
     const s=setup();s.requests[0].reject(new Error());await flush();
     assert.equal(s.status.textContent,'Forecast unavailable');assert.equal(s.retry.hidden,false);assert.equal(s.ended(),4);
     s.retry.handlers.click();assert.equal(s.requests.length,2);
+});
+test('non-ocean sites show availability messages without charts or retry', async () => {
+    const s=setup();
+    s.requests[0].resolve({status:200,ok:true,json:async()=>({status:'not_ocean',feature:'LAND'})});await flush();
+    assert.equal(s.charts[0].children[0].textContent,'Current strength is only available for ocean dive sites');
+    assert.equal(s.charts[1].children[0].textContent,'Tide level is only available for ocean dive sites');
+    assert.equal(s.charts[0].children.length,1);assert.equal(s.charts[1].children.length,1);
+    assert.equal(s.retry.hidden,true);assert.equal(s.source.hidden,true);assert.equal(s.ended(),4);
 });
 test('missing coordinates never fetch; leaving page aborts and cancels timers', () => {
     const missing=setup('false');assert.equal(missing.requests.length,0);assert.equal(missing.retry.hidden,true);
