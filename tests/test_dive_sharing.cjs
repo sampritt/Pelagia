@@ -14,7 +14,7 @@ function setup(navigator = {}, secure = true, options = {}) {
         select() { this.selected = true; },
         setSelectionRange(start, end) { this.selection = [start, end]; },
     });
-    const parts = Object.fromEntries(["link", "copy", "copy-label", "save", "native", "status", "preview", "close", "carousel", "save-label", "counter", "previous", "next"].map(name => [name, element()]));
+    const parts = Object.fromEntries(["link", "copy", "copy-label", "save", "native", "status", "preview", "close", "carousel", "save-label", "counter"].map(name => [name, element()]));
     const styles = Array.from({length: 6}, element);
     const dialog = element();
     dialog.querySelector = selector => parts[selector.match(/data-share-([a-z-]+)/)[1]];
@@ -180,7 +180,7 @@ test("an earlier image request cannot overwrite the current dive's image", async
     assert.equal(await payload.files[0].text(), "current image");
 });
 
-test("pagination dots and arrows select the preview and correct attachment", async () => {
+test("pagination dots select the preview and correct attachment", async () => {
     const state = setup();
     state.open();
     assert.equal(state.parts.preview.src, state.trigger.dataset.shareImage);
@@ -196,9 +196,9 @@ test("pagination dots and arrows select the preview and correct attachment", asy
     await state.parts.save.handlers.click();
     assert.equal(state.downloads[0].href, `${state.trigger.dataset.shareTransparentDownload}&layout=vertical`);
     assert.equal(state.downloads[0].download, "pelagia-dive-transparent-vertical.png");
-    state.parts.next.handlers.click();
+    state.parts.carousel.handlers.keydown({key: "ArrowRight", preventDefault() {}});
     assert.equal(state.parts.preview.src, `${state.trigger.dataset.shareTransparentImage}?layout=horizontal`);
-    state.parts.previous.handlers.click();
+    state.parts.carousel.handlers.keydown({key: "ArrowLeft", preventDefault() {}});
     assert.equal(state.parts.preview.src, `${state.trigger.dataset.shareTransparentImage}?layout=vertical`);
     state.dialog.close();
     state.open();
@@ -283,9 +283,9 @@ test("all five styles wrap, keep transparency and save the selected layout", asy
             assert.equal(saved.download, `pelagia-dive-transparent-${layouts[index]}.png`);
         } else assert.equal(saved.href, state.trigger.dataset.shareDownload);
     }
-    state.parts.next.handlers.click();
+    state.parts.carousel.handlers.keydown({key: "ArrowRight", preventDefault() {}});
     assert.equal(state.parts.counter.textContent, "Image 1 of 5");
-    state.parts.previous.handlers.click();
+    state.parts.carousel.handlers.keydown({key: "ArrowLeft", preventDefault() {}});
     assert.equal(state.parts.counter.textContent, "Image 5 of 5");
 });
 
@@ -321,13 +321,13 @@ test("depth chart adds a sixth transparent style and resets for a dive without a
     state.parts.save.handlers.click();
     assert.equal(state.downloads[0].href, `${state.trigger.dataset.shareTransparentDownload}&layout=depth_profile`);
     assert.equal(state.downloads[0].download, "pelagia-dive-transparent-depth_profile.png");
-    state.parts.next.handlers.click();
+    state.parts.carousel.handlers.keydown({key: "ArrowRight", preventDefault() {}});
     assert.equal(state.parts.counter.textContent, "Image 1 of 6");
     state.trigger.dataset.shareDepthProfile = "false";
     state.open();
     assert.equal(state.styles[5].hidden, true);
     assert.equal(state.parts.counter.textContent, "Image 1 of 5");
-    state.parts.previous.handlers.click();
+    state.parts.carousel.handlers.keydown({key: "ArrowLeft", preventDefault() {}});
     assert.equal(state.parts.counter.textContent, "Image 5 of 5");
 });
 

@@ -6,16 +6,12 @@
     </div>
     <div class="share-preview-carousel" data-share-carousel role="region" aria-roledescription="carousel" aria-label="Dive image styles" tabindex="0">
         <img class="share-preview-image" data-share-preview alt="Branded dive image with a map" draggable="false">
-        <div class="share-preview-navigation">
-            <button class="share-preview-arrow" type="button" data-share-previous aria-label="Previous image style"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14 6-6 6 6 6"></path></svg></button>
-            <div class="share-preview-dots" role="group" aria-label="Image style">
-                <button class="share-preview-dot" type="button" data-share-style="0" aria-label="Map image" aria-pressed="true"><span aria-hidden="true"></span></button>
-                {% for layout in ('vertical', 'horizontal', 'stacked', 'map') %}
-                <button class="share-preview-dot" type="button" data-share-style="{{ loop.index }}" aria-label="Transparent {{ layout }} image" aria-pressed="false"><span aria-hidden="true"></span></button>
-                {% endfor %}
-                <button class="share-preview-dot" type="button" data-share-style="5" aria-label="Transparent depth profile image" aria-pressed="false" hidden><span aria-hidden="true"></span></button>
-            </div>
-            <button class="share-preview-arrow" type="button" data-share-next aria-label="Next image style"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m10 6 6 6-6 6"></path></svg></button>
+        <div class="share-preview-dots" role="group" aria-label="Image style">
+            <button class="share-preview-dot" type="button" data-share-style="0" aria-label="Map image" aria-pressed="true"><span aria-hidden="true"></span></button>
+            {% for layout in ('vertical', 'horizontal', 'stacked', 'map') %}
+            <button class="share-preview-dot" type="button" data-share-style="{{ loop.index }}" aria-label="Transparent {{ layout }} image" aria-pressed="false"><span aria-hidden="true"></span></button>
+            {% endfor %}
+            <button class="share-preview-dot" type="button" data-share-style="5" aria-label="Transparent depth profile image" aria-pressed="false" hidden><span aria-hidden="true"></span></button>
         </div>
     </div>
     <span class="sr-only" data-share-counter role="status" aria-live="polite">Image 1 of 5</span>

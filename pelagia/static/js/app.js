@@ -419,8 +419,6 @@ function initDiveSharing() {
     };
 
     styleButtons.forEach((button, index) => button.addEventListener("click", () => selectStyle(index)));
-    dialog.querySelector("[data-share-previous]").addEventListener("click", () => selectStyle(selectedStyle - 1));
-    dialog.querySelector("[data-share-next]").addEventListener("click", () => selectStyle(selectedStyle + 1));
     carousel.addEventListener("keydown", (event) => {
         const index = { ArrowLeft: selectedStyle - 1, ArrowRight: selectedStyle + 1, Home: 0, End: imageStyles.length - 1 }[event.key];
         if (index === undefined || event.altKey || event.ctrlKey || event.metaKey) return;
