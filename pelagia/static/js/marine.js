@@ -139,6 +139,10 @@
         if (!host) return;
         const status = host.querySelector('[data-marine-status]');
         const retry = host.querySelector('[data-marine-retry]');
+        const equipment = host.querySelector('[data-equipment-advice]');
+        const exposureAdvice = host.querySelector('[data-exposure-advice]');
+        const weightAdvice = host.querySelector('[data-weight-advice]');
+        const weightCaveat = host.querySelector('[data-weight-caveat]');
         const values = [...host.querySelectorAll('[data-marine-value]')];
         const currentChart = host.querySelector('[data-marine-chart="current"]');
         const tideChart = host.querySelector('[data-marine-chart="tide"]');
@@ -152,6 +156,7 @@
         };
         const unavailable = (noCoordinates = false) => {
             clear(); result = null;
+            if (equipment) equipment.hidden = true;
             values.forEach(node => { node.textContent = '-'; node.removeAttribute('title'); });
             [currentChart, tideChart].forEach(node => { node.replaceChildren(); const p = document.createElement('p'); p.className = 'muted'; p.textContent = 'Forecast unavailable'; node.appendChild(p); });
             status.textContent = 'Forecast unavailable';
@@ -171,6 +176,16 @@
                 if (!data.charts || !data.current) throw new Error('Incomplete');
                 result = data; clear();
                 const current = data.current;
+                const advice = data.recommendations;
+                if (equipment) {
+                    equipment.hidden = !advice?.exposure;
+                    if (advice?.exposure) {
+                        exposureAdvice.textContent = `A ${advice.exposure} is recommended for these conditions`;
+                        exposureAdvice.title = advice.personalized ? 'Based on your temperature feedback from logged dives' : 'Based on water temperature';
+                        weightAdvice.textContent = advice.weight ? `${advice.weight}*` : '-';
+                        weightCaveat.hidden = !advice.weight;
+                    }
+                }
                 values.forEach(node => {
                     if (node.dataset.marineValue === 'tide') node.textContent = current.tide || '-';
                     if (node.dataset.marineValue === 'temperature') {
@@ -188,7 +203,8 @@
         }
         function load() {
             generation++; clear(); controller?.abort(); controller = new AbortController(); stopped = false;
-            status.textContent = 'Updating forecast…'; retry.hidden = true;
+            status.textContent = 'Updating forecast…';
+            if (equipment) equipment.hidden = true; retry.hidden = true;
             buttons.forEach(button => { button.disabled = true; });
             const line = '<span class="skeleton skeleton-line"></span>';
             const chart = '<span class="skeleton skeleton-chart"></span>';

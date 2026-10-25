@@ -6215,3 +6215,9 @@ img.is-media-loading {
     .marine-forecast .site-chart-head h2 { font-size: .98rem; line-height: 1.35; }
     .marine-forecast .site-chart-head .chart-unit { padding-top: 3px; }
 }
+
+.site-equipment-advice { color: var(--muted-strong); font-size: .76rem; line-height: 1.6; margin: -8px 2px 0; }
+.site-equipment-advice p { margin: 0; }
+.site-equipment-advice p + p { margin-top: 4px; }
+.site-equipment-advice .site-equipment-caveat { color: var(--muted); font-size: .68rem; max-width: 85ch; }
+.site-equipment-advice[hidden], [data-weight-caveat][hidden] { display: none; }

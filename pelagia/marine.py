@@ -8,8 +8,9 @@ from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 import requests
-from flask import current_app, jsonify
+from flask import current_app, jsonify, session
 from .db import get_db
+from .exposure_recommendations import recommend
 
 FIELDS = ('ocean_current_velocity', 'sea_level_height_msl', 'sea_surface_temperature')
 
@@ -206,6 +207,9 @@ def init_app(app, login_required):
             result, status = dict(status='unavailable'), 404
         else:
             result, status = load(site, time.time())
+        if status == 200 and result.get('status') == 'complete':
+            result['recommendations'] = recommend(get_db(), session['user_id'], site_id,
+                                                   result['current']['temperature_c'], time.time())
         response = jsonify(result)
         response.status_code = status
         response.headers['Cache-Control'] = 'private, no-store'

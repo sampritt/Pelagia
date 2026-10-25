@@ -14,11 +14,12 @@ function node(tag = 'div') {
 }
 const flush = async () => { for (let i = 0; i < 12; i++) await Promise.resolve(); };
 function setup(coordinates = 'true') {
+    const equipment=node(), exposureAdvice=node(), weightAdvice=node(), weightCaveat=node();
     const host = node(), status = node(), retry = node(), charts = [node(), node()], values = ['temperature', 'tide'].map(v => { const n = node(); n.dataset.marineValue = v; return n; });
     charts.forEach(n => { n.dataset.chart = true; });
     const buttons = ['daily', 'hourly'].map(v => { const n = node(); n.dataset.marineRange = v; return n; });
     host.dataset = {coordinates, url: '/api/dive-sites/1/conditions', temperatureUnit: 'f', lengthUnit: 'ft'};
-    host.querySelector = s => ({'[data-marine-status]':status,'[data-marine-retry]':retry,'[data-marine-chart="current"]':charts[0],'[data-marine-chart="tide"]':charts[1]})[s];
+    host.querySelector = s => ({'[data-equipment-advice]':equipment,'[data-exposure-advice]':exposureAdvice,'[data-weight-advice]':weightAdvice,'[data-weight-caveat]':weightCaveat,'[data-marine-status]':status,'[data-marine-retry]':retry,'[data-marine-chart="current"]':charts[0],'[data-marine-chart="tide"]':charts[1]})[s];
     host.querySelectorAll = s => s.includes('value') ? values : buttons;
     const window = node(); let id = 0; const timers = new Map(); const requests = []; let ended = 0;
     window.setTimeout = (fn, delay) => { timers.set(++id, {fn, delay}); return id; }; window.clearTimeout = n => timers.delete(n);
@@ -26,7 +27,7 @@ function setup(coordinates = 'true') {
     const document = {readyState: 'complete', querySelector: () => host, createElement: node, createElementNS: (_, tag) => node(tag)};
     const context = vm.createContext({window, document, Intl, Date, AbortController, module: {exports: {}}, fetch: (url, options) => new Promise((resolve, reject) => requests.push({url, options, resolve, reject}))});
     vm.runInContext(fs.readFileSync('pelagia/static/js/marine.js', 'utf8'), context);
-    return {host, status, retry, charts, values, buttons, window, timers, requests, context, ended: () => ended};
+    return {equipment,exposureAdvice,weightAdvice,weightCaveat,host, status, retry, charts, values, buttons, window, timers, requests, context, ended: () => ended};
 }
 function data() {
     const points = Array.from({length: 48}, (_, i) => ({time:1792940400 + i * 3600, value: .5}));
@@ -89,4 +90,27 @@ test('tide forecast is line-only and chart readouts are not visible beneath the 
     assert.equal(tide.children.filter(n=>n.tag==='polyline').length,1);
     assert.equal(s.charts[0].children[2].className,'sr-only');
     assert.equal(s.charts[1].children[2].className,'sr-only');
+});
+
+test('equipment advice shows personalized exposure, neutral weight and exact caveat marker', async () => {
+    const s=setup(), d=data();
+    d.recommendations={exposure:'5mm wetsuit',personalized:true,weight:'6 kg (5mm wetsuit, salt water)'};
+    s.requests[0].resolve({status:200,ok:true,json:async()=>d});await flush();
+    assert.equal(s.equipment.hidden,false);
+    assert.equal(s.exposureAdvice.textContent,'A 5mm wetsuit is recommended for these conditions');
+    assert.equal(s.weightAdvice.textContent,'6 kg (5mm wetsuit, salt water)*');
+    assert.equal(s.weightCaveat.hidden,false);
+});
+test('no matching neutral weight shows a dash without the weight caveat', async () => {
+    const s=setup(),d=data(); d.recommendations={exposure:'swimsuit or shorty',personalized:false,weight:null};
+    s.requests[0].resolve({status:200,ok:true,json:async()=>d});await flush();
+    assert.equal(s.weightAdvice.textContent,'-');assert.equal(s.weightCaveat.hidden,true);
+    assert.equal(s.exposureAdvice.textContent,'A swimsuit or shorty is recommended for these conditions');
+});
+test('missing marine temperature or failed fetch keeps equipment advice hidden', async () => {
+    const s=setup(); assert.equal(s.equipment.hidden,true);
+    s.requests[0].resolve({status:200,ok:true,json:async()=>({...data(),recommendations:null})});await flush();
+    assert.equal(s.equipment.hidden,true);
+    const failed=setup(); failed.requests[0].reject(new Error());await flush();
+    assert.equal(failed.equipment.hidden,true);
 });

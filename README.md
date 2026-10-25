@@ -341,3 +341,26 @@ Météo-France / Copernicus Marine, and DWD.
 
 Focused tests: `.venv312/bin/python -m unittest discover -s tests -p 'test_marine.py'`
 and `node --test tests/test_marine.cjs`. These tests mock upstream calls.
+
+Below site conditions, exposure advice uses the current marine surface temperature.
+Default Fahrenheit bands are: above 80°F swimsuit or shorty, above 68°F 3mm, above
+60°F 5mm, above 50°F 7mm, and 50°F or below drysuit. Comparisons use unrounded
+Celsius values, independently of display units. When no temperature is available,
+the recommendation block stays hidden.
+
+Personalization searches the signed-in user's non-deleted, non-future dives with
+valid exposure, water temperature, and temperature feedback. Prefer the nearest
+dive rated neutral (3/5) within 3°C; otherwise use the nearest rated dive within
+3°C and move one protection step warmer for ratings 1–2 or lighter for ratings
+4–5. Equal temperature distances use the most recent date/ID. The protection order
+is swimsuit, shorty, 2mm, 3mm, 5mm, 6mm, 7mm, drysuit. Without comparable feedback,
+use the default bands.
+
+Weight estimates require an exact exposure match and a neutral weight rating
+(3/5), using the user's most recent qualifying log and current kg/lb preference.
+Salinity must match the latest non-deleted, non-future dive at this site, from any
+user. If that latest dive has unknown salinity, no estimate is shown. For the
+swimsuit-or-shorty default, either exposure may match; the estimate names the
+specific exposure and salinity. Missing matches display `-`; confirmed estimates
+carry the requested asterisk and guidance caveat. Recommendations are recomputed
+per authenticated request and never written to the shared marine cache.
