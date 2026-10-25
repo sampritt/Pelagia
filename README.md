@@ -300,9 +300,9 @@ Before production release, run `.venv312/bin/python -m unittest tests.test_email
 ## Dive-site marine conditions
 
 Signed-in dive-site pages load marine conditions after the page renders through
-`GET /api/dive-sites/<id>/conditions`. Visibility keeps the existing recent-dive
-aggregation. Current strength, sea surface temperature, tide phase, and the two
-forecast charts come from Open-Meteo using the site's stored coordinates. Logged
+`GET /api/dive-sites/<id>/conditions`. Visibility and current strength keep the existing recent-dive
+aggregation, falling back to `-`. Sea surface temperature, tide phase, and the two
+regional forecast charts come from Open-Meteo using the site's stored coordinates. Logged
 dive measurements remain unchanged. Public previews show only the gated labels.
 
 The server requests seven local calendar forecast days plus yesterday for tide
@@ -314,12 +314,14 @@ modeled surface conditions, not measurements at dive depth; the tide/current gri
 is about 8 km and SST's source resolution is six-hourly. Sea level is relative to
 global mean sea level, not chart datum.
 
-The current chart defaults to seven daily maxima; its two-day view shows the next
+The regional current chart defaults to seven daily maxima; its two-day view shows the next
 48 hourly samples. Tide level shows the next 24 hourly samples. Both use the site's
 timezone and preserve null-data gaps. The seven daily bars fit on phones; hourly
 charts scroll horizontally with a fixed Y axis. Tap or point at the chart, or focus
-it and use arrow keys, to inspect exact values. Temperature and tide readouts
-respect account units. Chart toggles do not issue additional API requests.
+it and use arrow keys, to inspect accessible values. Exact chart values remain
+available to screen readers, while the visible charts end at their axes. Tide
+forecasts render as a continuous line without hourly point markers. Temperature
+and tide values respect account units. Chart toggles do not issue additional API requests.
 
 The idempotent schema initialization adds `marine_forecast_cache`. Responses are
 shared across workers for 15 minutes, capped at site-local midnight, and invalidated

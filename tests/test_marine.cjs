@@ -14,7 +14,7 @@ function node(tag = 'div') {
 }
 const flush = async () => { for (let i = 0; i < 12; i++) await Promise.resolve(); };
 function setup(coordinates = 'true') {
-    const host = node(), status = node(), retry = node(), charts = [node(), node()], values = ['strength', 'temperature', 'tide'].map(v => { const n = node(); n.dataset.marineValue = v; return n; });
+    const host = node(), status = node(), retry = node(), charts = [node(), node()], values = ['temperature', 'tide'].map(v => { const n = node(); n.dataset.marineValue = v; return n; });
     charts.forEach(n => { n.dataset.chart = true; });
     const buttons = ['daily', 'hourly'].map(v => { const n = node(); n.dataset.marineRange = v; return n; });
     host.dataset = {coordinates, url: '/api/dive-sites/1/conditions', temperatureUnit: 'f', lengthUnit: 'ft'};
@@ -36,19 +36,19 @@ function data() {
 }
 test('forecast renders Fahrenheit, accessible charts, and range toggle without another request', async () => {
     const s = setup(); s.requests[0].resolve({status:200,ok:true,json:async()=>data()}); await flush();
-    assert.equal(s.values[1].textContent,'83°F'); assert.equal(s.values[0].textContent,'Moderate');
-    assert.equal(s.ended(),5); assert.equal(s.timers.size,0); assert.equal(s.retry.hidden,true);
+    assert.equal(s.values[0].textContent,'83°F'); assert.equal(s.values[1].textContent,'Rising');
+    assert.equal(s.ended(),4); assert.equal(s.timers.size,0); assert.equal(s.retry.hidden,true);
     s.buttons[1].handlers.click(); assert.equal(s.requests.length,1); assert.equal(s.buttons[1].attrs['aria-pressed'],'true');
     assert.equal(s.charts[0].children[1].children[0].children.filter(n=>n.tag==='rect').length,48);
 });
 test('failure stops loading and retry issues one new request', async () => {
     const s=setup();s.requests[0].reject(new Error());await flush();
-    assert.equal(s.status.textContent,'Forecast unavailable');assert.equal(s.retry.hidden,false);assert.equal(s.ended(),5);
+    assert.equal(s.status.textContent,'Forecast unavailable');assert.equal(s.retry.hidden,false);assert.equal(s.ended(),4);
     s.retry.handlers.click();assert.equal(s.requests.length,2);
 });
 test('missing coordinates never fetch; leaving page aborts and cancels timers', () => {
     const missing=setup('false');assert.equal(missing.requests.length,0);assert.equal(missing.retry.hidden,true);
-    const s=setup();s.window.handlers.pagehide();assert.equal(s.requests[0].options.signal.aborted,true);assert.equal(s.timers.size,0);assert.equal(s.ended(),5);
+    const s=setup();s.window.handlers.pagehide();assert.equal(s.requests[0].options.signal.aborted,true);assert.equal(s.timers.size,0);assert.equal(s.ended(),4);
 });
 test('pending response polls; deadline aborts requests', async () => {
     const s=setup();s.requests[0].resolve({status:202});await flush();
@@ -80,4 +80,13 @@ test('daily chart fits a narrow phone and pointer selection does not add dozens 
     svg.getBoundingClientRect=()=>({left:0,width:270});
     svg.handlers.pointerdown({clientX:200,type:'pointerdown',pointerType:'touch'});
     assert.ok(Number(s.charts[0].dataset.selectedIndex)>0);
+});
+
+test('tide forecast is line-only and chart readouts are not visible beneath the axes', async () => {
+    const s=setup();s.requests[0].resolve({status:200,ok:true,json:async()=>data()});await flush();
+    const tide=s.charts[1].children[1].children[0];
+    assert.equal(tide.children.filter(n=>n.tag==='circle').length,0);
+    assert.equal(tide.children.filter(n=>n.tag==='polyline').length,1);
+    assert.equal(s.charts[0].children[2].className,'sr-only');
+    assert.equal(s.charts[1].children[2].className,'sr-only');
 });

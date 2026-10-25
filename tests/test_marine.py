@@ -100,6 +100,11 @@ class MarineEndpointTest(unittest.TestCase):
     def test_page_no_upstream_auth_public_gate_and_no_store(self):
         page = self.client.get('/dive-sites/1')
         self.assertIn(b'data-marine-forecast', page.data)
+        self.assertIn(b'data-site-current-strength>-</span>', page.data)
+        self.assertNotIn(b'data-marine-value="strength"', page.data)
+        self.assertNotIn(b'<details class="marine-attribution">', page.data)
+        self.assertIn(b'Current Strength (Regional Forecast)', page.data)
+        self.assertIn(b'Tide Level (Regional Forecast)', page.data)
         self.fetch.assert_not_called()
         anonymous = self.app.test_client()
         self.assertEqual(anonymous.get(self.url).status_code, 302)

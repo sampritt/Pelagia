@@ -13,33 +13,31 @@
         <div class="site-conditions-panel">
             <div class="site-conditions-grid">
                 <div><small>VISIBILITY</small><span>{{ display_metric(conditions.visibility_m, 'visibility') }}</span></div>
-                <div><small>CURRENT</small><span data-marine-value="strength">-</span></div>
+                <div><small>CURRENT</small><span data-site-current-strength>{{ current_strength_label(conditions.current_strength) }}</span></div>
                 <div><small>Water temperature</small><span data-marine-value="temperature">-</span></div>
                 <div><small>Tide level</small><span data-marine-value="tide">-</span></div>
             </div>
         </div>
         <div class="site-chart-block">
             <div class="site-chart-head">
-                <h2>Current velocity</h2>
+                <h2>Current Strength (Regional Forecast)</h2>
                 <div class="marine-toggle" role="group" aria-label="Current forecast range">
                     <button type="button" data-marine-range="daily" aria-pressed="true">7-day</button>
                     <button type="button" data-marine-range="hourly" aria-pressed="false">2-day</button>
                 </div>
             </div>
+            <p class="marine-chart-note">Regional forecast only. Actual current strength and characteristics vary by dive site, depth profile and other variables. Always consult local guides.</p>
             <div class="marine-chart" data-marine-chart="current"><p class="muted">Forecast unavailable</p></div>
         </div>
         <div class="site-chart-block">
-            <div class="site-chart-head"><h2>Tide level</h2><span class="chart-unit">Next 24 hours</span></div>
+            <div class="site-chart-head"><h2>Tide Level (Regional Forecast)</h2><span class="chart-unit">Next 24 hours</span></div>
             <div class="marine-chart" data-marine-chart="tide"><p class="muted">Forecast unavailable</p></div>
         </div>
         <div class="marine-status" role="status" aria-live="polite">
             <span data-marine-status>Forecast unavailable</span>
             <button type="button" class="ghost-button compact" data-marine-retry hidden>Retry</button>
+            <a class="marine-source" href="https://open-meteo.com/en/docs/marine-weather-api" target="_blank" rel="noopener noreferrer" title="Marine model data: Météo-France / Copernicus Marine / DWD">Open-Meteo / DWD</a>
         </div>
-        <details class="marine-attribution">
-            <summary>Forecast data</summary>
-            <p>Modeled surface conditions from <a href="https://open-meteo.com/en/docs/marine-weather-api" target="_blank" rel="noopener noreferrer">Open-Meteo</a>, Météo-France / Copernicus Marine and DWD. Sea level is relative to global mean sea level. Times are local to the dive site.</p>
-        </details>
     </section>
 
     {% include "_dive_site_sightings.html" %}

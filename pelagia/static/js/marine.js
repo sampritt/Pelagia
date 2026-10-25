@@ -38,10 +38,10 @@
         const scroll = document.createElement('div'); scroll.className = 'marine-chart-scroll';
         scroll.tabIndex = 0;
         scroll.setAttribute('role', 'region');
-        scroll.setAttribute('aria-label', `${tide ? 'Tide level' : 'Current velocity'} forecast; scroll for more hours`);
+        scroll.setAttribute('aria-label', `${tide ? 'Tide level' : 'Current strength'} forecast; scroll for more hours`);
         const svg = el('svg', { viewBox: `0 0 ${width} ${height}`, width, height,
-            role: 'img', 'aria-label': `${tide ? 'Tide level' : 'Current velocity'} forecast in ${zone}. ${daily ? 'Daily maximum current.' : 'Hourly values.'}` });
-        const readout = document.createElement('div'); readout.className = 'marine-readout';
+            role: 'img', 'aria-label': `${tide ? 'Tide level' : 'Current strength'} forecast in ${zone}. ${daily ? 'Daily maximum current.' : 'Hourly values.'}` });
+        const readout = document.createElement('div'); readout.className = 'sr-only';
         readout.setAttribute('role', 'status');
         const readoutDate = document.createElement('span');
         const readoutValue = document.createElement('strong'); readout.append(readoutDate, readoutValue);
@@ -70,7 +70,7 @@
             let mark;
             if (tide) {
                 segment.push(`${x(i)},${y(point.value)}`);
-                mark = el('circle', { cx: x(i), cy: y(point.value), r: 2.5, class: 'marine-tide-point', 'aria-label': title });
+                return;
             } else {
                 const barWidth = Math.min(daily ? 34 : 20, (width - left - 22) / points.length * .65);
                 mark = el('rect', { x: x(i) - barWidth / 2, y: y(point.value), width: barWidth,
@@ -87,7 +87,7 @@
                 if ((daily && width < 550 && (i === 0 || new Intl.DateTimeFormat('en-US', { timeZone: zone, day: 'numeric' }).format(new Date(point.time * 1000)) === '1')) || (!daily && (hour === 0 || i === 0))) svg.appendChild(el('text', { x: x(i), y: bottom + 45, 'text-anchor': 'middle' }, daily ? new Intl.DateTimeFormat('en-US', { timeZone: zone, month: 'short' }).format(new Date(point.time * 1000)) : localDate(point.time, zone)));
             }
         });
-        svg.appendChild(cursor);
+        if (!tide) svg.appendChild(cursor);
         let selected = Math.min(Number(host.dataset.selectedIndex) || 0, points.length - 1);
         function select(index, reveal = false) {
             selected = Math.max(0, Math.min(points.length - 1, index));
@@ -100,7 +100,6 @@
             cursor.setAttribute('x1', x(selected)); cursor.setAttribute('x2', x(selected));
             marks.forEach(({ mark, index }) => {
                 mark.setAttribute('data-selected', String(index === selected));
-                if (tide) mark.setAttribute('r', index === selected ? 5 : 2.5);
             });
             if (reveal && typeof scroll.scrollTo === 'function') {
                 const position = x(selected) - left - (scroll.clientWidth - left) / 2;
@@ -120,7 +119,7 @@
             if (index === undefined) return;
             event.preventDefault(); select(index, true);
         });
-        scroll.setAttribute('aria-label', `${tide ? 'Tide level' : 'Current velocity'} forecast. Use left and right arrow keys to inspect values.`);
+        scroll.setAttribute('aria-label', `${tide ? 'Tide level' : 'Current strength'} forecast. Use left and right arrow keys to inspect values.`);
         readout.title = tide ? 'Height above global mean sea level' : 'Current velocity in knots';
         const list = document.createElement('ul'); list.className = 'sr-only';
         points.forEach(point => {
@@ -173,14 +172,12 @@
                 result = data; clear();
                 const current = data.current;
                 values.forEach(node => {
-                    if (node.dataset.marineValue === 'strength') node.textContent = current.strength || '-';
                     if (node.dataset.marineValue === 'tide') node.textContent = current.tide || '-';
                     if (node.dataset.marineValue === 'temperature') {
                         const fahrenheit = host.dataset.temperatureUnit === 'f';
                         node.textContent = finite(current.temperature_c) ? `${Math.round(fahrenheit ? current.temperature_c * 9 / 5 + 32 : current.temperature_c)}°${fahrenheit ? 'F' : 'C'}` : '-';
                     }
                 });
-                values[0].title = finite(current.velocity_kn) ? `${current.velocity_kn} knots` : '';
                 buttons.forEach(button => { button.disabled = false; });
                 const timestamps = Object.values(current.timestamps).filter(finite);
                 const timestamp = timestamps.length ? Math.min(...timestamps) : data.fetched_at;
