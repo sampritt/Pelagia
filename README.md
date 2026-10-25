@@ -301,8 +301,11 @@ Before production release, run `.venv312/bin/python -m unittest tests.test_email
 
 Signed-in dive-site pages load marine conditions after the page renders through
 `GET /api/dive-sites/<id>/conditions`. Visibility and current strength keep the existing recent-dive
-aggregation, falling back to `-`. Sea surface temperature, tide phase, and the two
-regional forecast charts come from Open-Meteo using the site's stored coordinates. Logged
+aggregation, falling back to `-`. Water temperature uses the same median from the latest
+logged dive day within seven days, falling back to Open-Meteo sea surface temperature
+when that day has no logged temperature. Logged temperature renders immediately and
+stays visible without a forecast. Tide phase and the two regional forecast charts
+come from Open-Meteo using the site's stored coordinates. Logged
 dive measurements remain unchanged. Public previews show only the gated labels.
 
 The server requests seven local calendar forecast days plus yesterday for tide
@@ -328,7 +331,7 @@ shared across workers for 15 minutes, capped at site-local midnight, and invalid
 when coordinates change. A 30-second claim prevents duplicate upstream requests;
 failures have a 60-second cooldown. No database transaction stays open during the
 network call. Missing coordinates or upstream failures stop loading, retain
-visibility, and show an unavailable state. Browser requests time out after 20
+visibility, current strength and logged water temperature, and show an unavailable state. Browser requests time out after 20
 seconds and stop on navigation. API responses are private/no-store and excluded
 from the service worker cache.
 
@@ -342,7 +345,8 @@ Météo-France / Copernicus Marine, and DWD.
 Focused tests: `.venv312/bin/python -m unittest discover -s tests -p 'test_marine.py'`
 and `node --test tests/test_marine.cjs`. These tests mock upstream calls.
 
-Below site conditions, exposure advice uses the current marine surface temperature.
+Below site conditions, exposure advice uses the displayed water temperature, preferring
+recent logged measurements over the marine surface forecast.
 Default Fahrenheit bands are: above 80°F swimsuit or shorty, above 68°F 3mm, above
 60°F 5mm, above 50°F 7mm, and 50°F or below drysuit. Comparisons use unrounded
 Celsius values, independently of display units. When no temperature is available,

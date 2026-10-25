@@ -208,6 +208,10 @@ def init_app(app, login_required):
         else:
             result, status = load(site, time.time())
         if status == 200 and result.get('status') == 'complete':
+            from . import dive_site_recent_conditions
+            logged_temperature = dive_site_recent_conditions(site_id)['water_temp_c']
+            if logged_temperature is not None:
+                result['current']['temperature_c'] = logged_temperature
             result['recommendations'] = recommend(get_db(), session['user_id'], site_id,
                                                    result['current']['temperature_c'], time.time())
             advice = result['recommendations']

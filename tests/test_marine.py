@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 import tempfile
 import threading
@@ -126,6 +126,53 @@ class MarineEndpointTest(unittest.TestCase):
         with self.app.app_context():
             db = database.get_db(); db.execute('UPDATE dive_sites SET latitude=1 WHERE id=1'); db.commit()
         self.client.get(self.url); self.assertEqual(self.fetch.call_count, 3)
+
+    def test_logged_temperature_is_rendered_without_coordinates_in_account_units(self):
+        with self.app.app_context():
+            db = database.get_db()
+            db.executemany("INSERT INTO dives (user_id, dive_site_id, site_name, date, water_temp_c) VALUES (1, 1, 'Alert Rock', ?, ?)",
+                           [(date.today().isoformat(), temperature) for temperature in (20, 24, None)])
+            db.execute('UPDATE dive_sites SET latitude=NULL WHERE id=1')
+            db.commit()
+        page = self.client.get('/dive-sites/1')
+        self.assertIn('data-site-water-temperature>22°C</span>'.encode(), page.data)
+        self.assertNotIn(b'data-marine-value="temperature"', page.data)
+        self.assertIn(b'data-coordinates="false"', page.data)
+        with self.app.app_context():
+            db = database.get_db()
+            db.execute("UPDATE users SET temperature_unit='f' WHERE id=1")
+            db.commit()
+        self.assertIn('data-site-water-temperature>72°F</span>'.encode(), self.client.get('/dive-sites/1').data)
+        self.fetch.assert_not_called()
+
+    def test_temperature_prefers_recent_dive_median_and_recomputes_outside_forecast_cache(self):
+        self.assertEqual(self.client.get(self.url).json['current']['temperature_c'], 28.3)
+        with self.app.app_context():
+            db = database.get_db()
+            db.executemany("INSERT INTO dives (user_id, dive_site_id, site_name, date, water_temp_c) VALUES (1, 1, 'Alert Rock', ?, ?)",
+                           [(date.today().isoformat(), temperature) for temperature in (18, 22, None)])
+            db.commit()
+        result = self.client.get(self.url).json
+        self.assertEqual(result['current']['temperature_c'], 20)
+        self.assertEqual(result['recommendations']['exposure'], '5mm wetsuit')
+        with self.app.app_context():
+            db = database.get_db()
+            db.execute('UPDATE dives SET water_temp_c=0')
+            db.commit()
+        self.assertEqual(self.client.get(self.url).json['current']['temperature_c'], 0)
+        self.assertEqual(self.fetch.call_count, 1)
+
+    def test_temperature_falls_back_for_missing_old_or_deleted_measurements(self):
+        for temperature, age, deleted in ((None, 0, 0), (12, 8, 0), (12, 0, 1)):
+            with self.subTest(temperature=temperature, age=age, deleted=deleted):
+                with self.app.app_context():
+                    db = database.get_db()
+                    db.execute('DELETE FROM dives')
+                    db.execute("INSERT INTO dives (user_id, dive_site_id, site_name, date, water_temp_c, is_deleted) VALUES (1, 1, 'Alert Rock', ?, ?, ?)",
+                               ((date.today() - timedelta(days=age)).isoformat(), temperature, deleted))
+                    db.commit()
+                self.assertIn(b'data-marine-value="temperature">-</span>', self.client.get('/dive-sites/1').data)
+                self.assertEqual(self.client.get(self.url).json['current']['temperature_c'], 28.3)
 
     def test_failure_cooldown_and_missing_coordinates(self):
         self.fetch.side_effect = requests.Timeout()
