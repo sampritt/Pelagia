@@ -1,5 +1,6 @@
 """Personal dive-equipment heuristics; never stored in the shared marine cache."""
 import math
+from collections import Counter
 from datetime import datetime, timezone
 
 from .metrics import format_metric
@@ -8,6 +9,7 @@ from .units import display_measurement
 EXPOSURES = ('swimsuit', 'shorty', '2mm', '3mm', '5mm', '6mm', '7mm', 'dry suit')
 LABELS = {value: f'{value} wetsuit' for value in EXPOSURES if value.endswith('mm')}
 LABELS.update({'swimsuit': 'swimsuit', 'shorty': 'shorty', 'dry suit': 'drysuit'})
+TEMPERATURE_MATCH_C = 3 * 5 / 9  # A 3 F difference, independently of display units.
 
 
 def default_exposures(temperature_c):
@@ -32,25 +34,21 @@ def recommend(db, user_id, site_id, temperature_c, now):
     choices = default_exposures(temperature_c)
     nearby = [row for row in logs if row['exposure'] in EXPOSURES
               and row['water_temp_c'] is not None and row['temperature_rating'] in (1, 2, 3, 4, 5)
-              and abs(row['water_temp_c'] - temperature_c) <= 3]
-    # Personal feedback may shift protection by one step around the current
-    # temperature band, but an old thick-suit log cannot replace a warm-water rule.
-    minimum = max(0, min(EXPOSURES.index(choice) for choice in choices) - 1)
-    maximum = min(len(EXPOSURES) - 1, max(EXPOSURES.index(choice) for choice in choices) + 1)
-    proposals = []
-    for row in nearby:
-        index = EXPOSURES.index(row['exposure'])
-        step = 1 if row['temperature_rating'] < 3 else -1 if row['temperature_rating'] > 3 else 0
-        proposed = max(0, min(len(EXPOSURES) - 1, index + step))
-        if minimum <= proposed <= maximum:
-            proposals.append((row, proposed))
-    comfortable = [proposal for proposal in proposals if proposal[0]['temperature_rating'] == 3]
-    candidates = comfortable or proposals
+              # Keep exact 3 F endpoints inclusive after floating-point conversion.
+              and abs(row['water_temp_c'] - temperature_c) <= TEMPERATURE_MATCH_C + 1e-9]
+    comfortable = [row for row in nearby if row['temperature_rating'] == 3]
+    candidates = comfortable or nearby
     personalized = False
     source_dive_id = None
     if candidates:
-        # SQL order provides newest-first tie breaking for equal temperatures.
-        reference, proposed = min(candidates, key=lambda proposal: abs(proposal[0]['water_temp_c'] - temperature_c))
+        counts = Counter(row['exposure'] for row in candidates)
+        # The most frequently recorded suit wins. Ties use the nearest supporting
+        # temperature, then SQL's newest-first order for equal temperatures.
+        reference = min(candidates, key=lambda row: (-counts[row['exposure']],
+                                                    abs(row['water_temp_c'] - temperature_c)))
+        index = EXPOSURES.index(reference['exposure'])
+        step = 1 if reference['temperature_rating'] < 3 else -1 if reference['temperature_rating'] > 3 else 0
+        proposed = max(0, min(len(EXPOSURES) - 1, index + step))
         personalized = EXPOSURES[proposed] not in choices
         source_dive_id = reference['id']
         choices = (EXPOSURES[proposed],)

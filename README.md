@@ -349,17 +349,22 @@ Celsius values, independently of display units. When no temperature is available
 the recommendation block stays hidden.
 
 Personalization searches the signed-in user's non-deleted, non-future dives with
-valid exposure, water temperature, and temperature feedback. Prefer the nearest
-dive rated neutral (3/5) within 3°C; otherwise use the nearest rated dive within
-3°C and move one protection step warmer for ratings 1–2 or lighter for ratings
-4–5. Proposed protection must stay within one step of the current default band;
-outlying historical equipment choices are ignored rather than overriding the
-temperature heuristic. Equal temperature distances use the most recent date/ID. The protection order
+valid exposure, water temperature, and temperature feedback within ±3°F (about
+±1.67°C), inclusive. Prefer dives rated neutral (3/5) and recommend the exposure
+most frequently recorded across those matching dives. If no neutral dives match,
+use the most frequently recorded exposure across matching rated dives and move
+one protection step warmer for ratings 1–2 or lighter for ratings 4–5, using the
+nearest supporting dive's feedback. Matching personal feedback takes
+precedence over the default temperature band, with no limit on how far the suit
+differs from that default. The matching window is independent of display units.
+Frequency ties use the nearest supporting temperature, then the most recent
+date/ID. The protection order
 is swimsuit, shorty, 2mm, 3mm, 5mm, 6mm, 7mm, drysuit. Without comparable feedback,
 use the default bands.
 Whenever a qualifying log supports the recommendation, including confirmation of
 the default, exposure advice carries an asterisk and “Based on your dive log
-history”; “history” links to the selected dive.
+history”; “history” links to the nearest, most recent supporting dive for the
+winning exposure.
 The advice sits in a divided footer inside the conditions card, with two aligned
 columns on desktop and stacked equipment rows on phones. History links refresh
 when returning from a logged dive, including browser Back/Forward restoration.
