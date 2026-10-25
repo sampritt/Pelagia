@@ -122,26 +122,43 @@
     function trackImage(img) {
         if (!img.getAttribute("src") || img.closest(".brand, .brand-mark, .welcome-wordmark, .auth-brand")) return;
         imageStates.get(img)?.();
-        const host = img.closest("[data-share-carousel]") || img;
-        if (img.complete) return;
+        const stage = img.closest("[data-share-preview-stage]");
+        const host = stage || img;
+        host.classList.remove("is-media-error");
+        if (img.complete) {
+            if (stage && !img.naturalWidth) host.classList.add("is-media-error");
+            return;
+        }
+        if (stage) host.classList.add("is-media-pending");
         let timer;
         let timeout;
         const clear = () => {
             window.clearTimeout(timer);
             window.clearTimeout(timeout);
             host.classList.remove("is-media-loading");
+            host.classList.remove("is-media-pending");
+            host.classList.remove("is-media-error");
             host.removeAttribute("aria-busy");
             img.removeEventListener("load", clear);
-            img.removeEventListener("error", clear);
+            img.removeEventListener("error", fail);
             imageStates.delete(img);
+        };
+        const fail = () => {
+            clear();
+            if (stage) {
+                host.classList.add("is-media-error");
+                // A very slow response can still finish after the timeout.
+                img.addEventListener("load", clear);
+                imageStates.set(img, clear);
+            }
         };
         timer = window.setTimeout(() => {
             host.classList.add("is-media-loading");
             host.setAttribute("aria-busy", "true");
         }, DELAY);
-        timeout = window.setTimeout(clear, 15000);
+        timeout = window.setTimeout(fail, 15000);
         img.addEventListener("load", clear);
-        img.addEventListener("error", clear);
+        img.addEventListener("error", fail);
         imageStates.set(img, clear);
     }
 

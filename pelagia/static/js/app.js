@@ -406,7 +406,6 @@ function initDiveSharing() {
         preview.src = style.imageUrl;
         preview.alt = style.alt;
         preview.dataset.transparent = String(style.mimeType === "image/png");
-        preview.style.aspectRatio = style.aspectRatio;
         saveLabel.textContent = "Save image";
         dialog.querySelector("[data-share-counter]").textContent = `Image ${selectedStyle + 1} of ${imageStyles.length}`;
         styleButtons.forEach((button, buttonIndex) => {
@@ -427,7 +426,7 @@ function initDiveSharing() {
     });
     carousel.addEventListener("pointerdown", (event) => {
         swipeStart = null;
-        if (event.pointerType === "mouse" || !event.isPrimary || event.target.closest("button")) return;
+        if ((event.pointerType === "mouse" && event.button !== 0) || !event.isPrimary || event.target.closest("button")) return;
         swipeStart = { x: event.clientX, y: event.clientY, pointerId: event.pointerId };
         carousel.setPointerCapture(event.pointerId);
     });

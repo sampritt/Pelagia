@@ -5,7 +5,10 @@
         <button class="icon-button dialog-close-button" type="button" data-share-close aria-label="Close sharing"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"></path></svg></button>
     </div>
     <div class="share-preview-carousel" data-share-carousel role="region" aria-roledescription="carousel" aria-label="Dive image styles" tabindex="0">
-        <img class="share-preview-image" data-share-preview alt="Branded dive image with a map" draggable="false">
+        <div class="share-preview-stage" data-share-preview-stage>
+            <img class="share-preview-image" data-share-preview alt="Branded dive image with a map" draggable="false">
+            <p class="share-preview-error" role="status">Preview unavailable. You can still save this image.</p>
+        </div>
         <div class="share-preview-dots" role="group" aria-label="Image style">
             <button class="share-preview-dot" type="button" data-share-style="0" aria-label="Map image" aria-pressed="true"><span aria-hidden="true"></span></button>
             {% for layout in ('vertical', 'horizontal', 'stacked', 'map') %}

@@ -273,7 +273,6 @@ test("all five styles wrap, keep transparency and save the selected layout", asy
         state.styles[index].handlers.click();
         assert.equal(state.parts.counter.textContent, `Image ${index + 1} of 5`);
         assert.equal(state.parts.preview.dataset.transparent, String(index > 0));
-        assert.ok(state.parts.preview.style.aspectRatio);
         assert.equal(state.styles.filter(button => button.attributes["aria-pressed"] === "true").length, 1);
         await state.parts.save.handlers.click();
         const saved = state.downloads.at(-1);
@@ -316,7 +315,6 @@ test("depth chart adds a sixth transparent style and resets for a dive without a
     state.styles[5].handlers.click();
     assert.equal(state.parts.preview.src, `${state.trigger.dataset.shareTransparentImage}?layout=depth_profile`);
     assert.equal(state.parts.preview.dataset.transparent, "true");
-    assert.equal(state.parts.preview.style.aspectRatio, "960 / 1200");
     assert.equal(state.parts.counter.textContent, "Image 6 of 6");
     state.parts.save.handlers.click();
     assert.equal(state.downloads[0].href, `${state.trigger.dataset.shareTransparentDownload}&layout=depth_profile`);
@@ -341,4 +339,19 @@ test("mobile depth profile Save shares the transparent PNG", async () => {
     await state.parts.save.handlers.click();
     assert.equal(payload.files[0].type, "image/png");
     assert.equal(payload.files[0].name, "pelagia-dive-transparent-depth_profile.png");
+});
+
+test('desktop primary-button drags change styles, right clicks and vertical drags do not', () => {
+    const state = setup();
+    state.open();
+    const pointer = (x, y, button = 0) => ({clientX: x, clientY: y, button, pointerId: 1,
+        isPrimary: true, pointerType: 'mouse', target: {closest: () => null}});
+    for (const [start, end] of [[pointer(250, 80, 2), pointer(150, 80, 2)], [pointer(250, 80), pointer(245, 180)]]) {
+        state.parts.carousel.handlers.pointerdown(start);
+        state.parts.carousel.handlers.pointerup(end);
+        assert.equal(state.parts.counter.textContent, 'Image 1 of 5');
+    }
+    state.parts.carousel.handlers.pointerdown(pointer(250, 80));
+    state.parts.carousel.handlers.pointerup(pointer(150, 90));
+    assert.equal(state.parts.counter.textContent, 'Image 2 of 5');
 });

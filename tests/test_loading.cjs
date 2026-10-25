@@ -208,3 +208,36 @@ test('Escape and focus leaving the field cancel suggestions before they can reop
     assert.equal(menu.hidden,true);
     assert.equal(menu.getAttribute('aria-busy'),null);
 });
+
+test('share preview loading stays inside its frame and recovers across rapid changes and failures', () => {
+    const { observeMedia, tick } = setup();
+    const stage = element();
+    const img = element();
+    img.attrs.src = '/share.jpg';
+    img.closest = selector => selector === '[data-share-preview-stage]' ? stage : null;
+    img.complete = false;
+    const track = () => observeMedia([{type: 'attributes', target: img, addedNodes: [], removedNodes: []}]);
+    track();
+    assert.equal(stage.classList.contains('is-media-pending'), true);
+    assert.equal(stage.classList.contains('is-media-loading'), false);
+    tick(160);
+    assert.equal(stage.classList.contains('is-media-loading'), true);
+    assert.equal(stage.getAttribute('aria-busy'), 'true');
+    img.attrs.src = '/vertical.png'; track();
+    assert.equal(stage.classList.contains('is-media-loading'), false);
+    tick(160); img.dispatch('load');
+    assert.equal(stage.classList.contains('is-media-pending'), false);
+    assert.equal(stage.getAttribute('aria-busy'), null);
+    track(); tick(160); img.dispatch('error');
+    assert.equal(stage.classList.contains('is-media-error'), true);
+    assert.equal(stage.classList.contains('is-media-loading'), false);
+    track();
+    assert.equal(stage.classList.contains('is-media-error'), false);
+    tick(15000);
+    assert.equal(stage.classList.contains('is-media-error'), true);
+    img.dispatch('load');
+    assert.equal(stage.classList.contains('is-media-error'), false);
+    img.complete = true; img.naturalWidth = 720; track();
+    assert.equal(stage.classList.contains('is-media-error'), false);
+    assert.equal(stage.classList.contains('is-media-pending'), false);
+});
