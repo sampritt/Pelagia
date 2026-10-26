@@ -17,12 +17,12 @@ def api_response(payload):
     return response
 
 
-def openai_payload(tags):
+def openai_payload(values):
     return {
         "status": "completed",
         "output": [
             {"type": "web_search_call", "status": "completed", "action": {"type": "search"}},
-            {"type": "message", "content": [{"type": "output_text", "text": json.dumps(tags)}]},
+            {"type": "message", "content": [{"type": "output_text", "text": json.dumps(values)}]},
         ],
     }
 
@@ -47,6 +47,14 @@ class ObisSpeciesTest(unittest.TestCase):
 
     def test_database_upgrade_is_idempotent_and_separate_from_logged_species(self):
         with self.app.app_context():
+            db = database.get_db()
+            db.execute("DROP TABLE dive_site_obis_species")
+            db.execute(
+                "CREATE TABLE dive_site_obis_species ("
+                "dive_site_id INTEGER NOT NULL REFERENCES dive_sites(id) ON DELETE CASCADE, "
+                "common_name TEXT NOT NULL, PRIMARY KEY (dive_site_id, common_name))"
+            )
+            db.commit()
             database.init_db()
             database.init_db()
             tables = {
@@ -60,6 +68,13 @@ class ObisSpeciesTest(unittest.TestCase):
             "dive_site_obis_species_attempts",
         }.issubset(tables))
         self.assertIn("dive_species", tables)
+        with self.app.app_context():
+            columns = {
+                row[1] for row in database.get_db().execute(
+                    "PRAGMA table_info(dive_site_obis_species)"
+                )
+            }
+        self.assertIn("observation_dates_json", columns)
 
     def test_fetch_filters_distance_uncertainty_absence_and_deduplicates_species(self):
         valid = {
@@ -67,10 +82,11 @@ class ObisSpeciesTest(unittest.TestCase):
             "decimalLongitude": -132.9002, "coordinateUncertaintyInMeters": 100,
             "species": "Triaenodon obesus", "speciesid": 218253,
             "genus": "Triaenodon", "family": "Carcharhinidae",
+            "eventDate": "2026-03-25T06:26:00+05:00",
         }
         rows = [
             valid,
-            {**valid, "id": "duplicate"},
+            {**valid, "id": "duplicate", "eventDate": "2025-12-25"},
             {**valid, "id": "uncertain", "species": "Mobula kuhlii", "speciesid": 102,
              "coordinateUncertaintyInMeters": 805},
             {**valid, "id": "far", "species": "Octopus cyanea", "speciesid": 103,
@@ -87,6 +103,7 @@ class ObisSpeciesTest(unittest.TestCase):
         self.assertEqual(result, [{
             "scientific_name": "Triaenodon obesus", "aphia_id": 218253,
             "genus": "Triaenodon", "family": "Carcharhinidae", "order": None, "class": None,
+            "observation_dates": ["2026-03-25", "2025-12-25"],
         }])
         self.assertEqual(get.call_args.kwargs["params"]["startdate"], "2020-01-01")
         self.assertEqual(get.call_args.kwargs["params"]["size"], 1000)
@@ -108,11 +125,15 @@ class ObisSpeciesTest(unittest.TestCase):
         self.assertEqual([taxon["scientific_name"] for taxon in result], ["Mobula kuhlii"])
 
     def test_normalizer_uses_description_model_parameters_and_validates_tags(self):
-        response = api_response(openai_payload(["Coral", "reef fish", "Coral"]))
+        response = api_response(openai_payload([
+            {"scientific_name": "Example species", "pelagia_tag": "reef fish"},
+        ]))
         taxa = [{"scientific_name": "Example species", "aphia_id": 7}]
         with self.app.app_context(), patch.object(obis_species.requests, "post", return_value=response) as post:
-            tags = obis_species.normalize_species(taxa, ["Coral", "Reef Fish"])
-        self.assertEqual(tags, ["Coral", "Reef Fish"])
+            mappings = obis_species.normalize_species(taxa, ["Coral", "Reef Fish"])
+        self.assertEqual(mappings, [
+            {"scientific_name": "Example species", "pelagia_tag": "Reef Fish"},
+        ])
         body = post.call_args.kwargs["json"]
         self.assertEqual(body["model"], "gpt-5.6-luna")
         self.assertEqual(body["tools"], [{"type": "web_search", "search_context_size": "low"}])
@@ -127,23 +148,60 @@ class ObisSpeciesTest(unittest.TestCase):
         self.assertIn("most specific", body["instructions"])
         response.close.assert_called_once()
         with self.assertRaises(obis_species.EnrichmentError):
-            obis_species.parse_normalized_tags(openai_payload(["Invented animal"]), ["Coral"])
+            obis_species.parse_normalized_mappings(
+                openai_payload([{"scientific_name": "Example species", "pelagia_tag": "Invented animal"}]),
+                taxa,
+                ["Coral"],
+            )
+
+    def test_mapped_species_rows_unions_all_dates_for_each_pelagia_species(self):
+        taxa = [
+            {
+                "scientific_name": "Octopus cyanea",
+                "observation_dates": ["2026-07-18", "2025-04-03"],
+            },
+            {
+                "scientific_name": "Octopus vulgaris",
+                "observation_dates": ["2026-07-18", "2024-01-09"],
+            },
+        ]
+        mappings = [
+            {"scientific_name": "Octopus cyanea", "pelagia_tag": "Octopus"},
+            {"scientific_name": "Octopus vulgaris", "pelagia_tag": "Octopus"},
+        ]
+        self.assertEqual(obis_species.mapped_species_rows(taxa, mappings), [{
+            "common_name": "Octopus",
+            "observation_dates": ["2026-07-18", "2025-04-03", "2024-01-09"],
+        }])
 
     def test_cold_endpoint_persists_once_and_warm_requests_do_not_call_upstreams(self):
-        taxa = [{"scientific_name": "Triaenodon obesus", "aphia_id": 218253}]
+        taxa = [{
+            "scientific_name": "Triaenodon obesus",
+            "aphia_id": 218253,
+            "observation_dates": ["2026-03-25", "2025-12-25"],
+        }]
         with patch.object(obis_species, "fetch_obis_species", return_value=taxa) as fetch, \
-             patch.object(obis_species, "normalize_species", return_value=["Reef Fish", "Coral"]) as normalize:
+             patch.object(obis_species, "normalize_species", return_value=[
+                 {"scientific_name": "Triaenodon obesus", "pelagia_tag": "Reef Fish"},
+             ]) as normalize:
             first = self.client.post("/api/dive-sites/1/obis-species", headers=self.headers)
             second = self.client.post("/api/dive-sites/1/obis-species", headers=self.headers)
         self.assertEqual(first.status_code, 200)
         self.assertEqual(first.headers["Cache-Control"], "no-store")
-        self.assertEqual(first.get_json(), {"status": "complete", "species": ["Coral", "Reef Fish"]})
+        self.assertEqual(first.get_json(), {"status": "complete", "species": ["Reef Fish"]})
         self.assertEqual(second.get_json(), first.get_json())
         fetch.assert_called_once_with(54.1, -132.9)
         normalize.assert_called_once()
         with self.connect() as db:
             self.assertEqual(db.execute("SELECT COUNT(*) FROM dive_site_obis_species_cache").fetchone()[0], 1)
-            self.assertEqual(db.execute("SELECT COUNT(*) FROM dive_site_obis_species").fetchone()[0], 2)
+            stored = db.execute(
+                "SELECT common_name, observation_dates_json FROM dive_site_obis_species"
+            ).fetchone()
+            self.assertEqual(stored["common_name"], "Reef Fish")
+            self.assertEqual(
+                json.loads(stored["observation_dates_json"]),
+                ["2026-03-25", "2025-12-25"],
+            )
             self.assertEqual(db.execute("SELECT COUNT(*) FROM dive_species").fetchone()[0], 0)
 
     def test_empty_obis_result_is_permanent_without_openai(self):

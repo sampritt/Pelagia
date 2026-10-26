@@ -69,6 +69,7 @@ CREATE TABLE IF NOT EXISTS dive_site_obis_species_cache (
 CREATE TABLE IF NOT EXISTS dive_site_obis_species (
     dive_site_id INTEGER NOT NULL REFERENCES dive_sites(id) ON DELETE CASCADE,
     common_name TEXT NOT NULL,
+    observation_dates_json TEXT NOT NULL DEFAULT '[]',
     PRIMARY KEY (dive_site_id, common_name)
 );
 

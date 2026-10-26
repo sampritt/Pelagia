@@ -69,6 +69,12 @@ def init_db():
     _ensure_column(db, "dives", "current_strength", "TEXT NOT NULL DEFAULT 'none'")
     _ensure_column(db, "dives", "is_deleted", "INTEGER NOT NULL DEFAULT 0")
     _ensure_column(db, "dive_sites", "logged_dive_count", "INTEGER NOT NULL DEFAULT 0")
+    _ensure_column(
+        db,
+        "dive_site_obis_species",
+        "observation_dates_json",
+        "TEXT NOT NULL DEFAULT '[]'",
+    )
     _ensure_column(db, "dives", "oxygen_pct", "INTEGER")
     _ensure_column(db, "dives", "helium_pct", "INTEGER")
     _ensure_metric_dive_schema(db)
