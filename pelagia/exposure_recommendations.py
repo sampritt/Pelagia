@@ -61,11 +61,11 @@ def recommend(db, user_id, site_id, temperature_c, now, salinity):
             index = EXPOSURES.index(row['exposure'])
             step = 1 if row['temperature_rating'] < 3 else -1 if row['temperature_rating'] > 3 else 0
             proposals.append((row, max(0, min(len(EXPOSURES) - 1, index + step))))
-        # Minimum protection wins. For that exposure, link the closest supporting
-        # measurement, then the most recent log using SQL's newest-first order.
+        # Minimum protection wins. For that exposure, link the most recent
+        # supporting log using SQL's newest-first order.
         reference, proposed = min(
             proposals,
-            key=lambda proposal: (proposal[1], abs(proposal[0]['water_temp_c'] - temperature_c)),
+            key=lambda proposal: proposal[1],
         )
         personalized = EXPOSURES[proposed] not in choices
         source_dive_id = reference['id']

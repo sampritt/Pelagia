@@ -371,7 +371,7 @@ Within that scope, require valid exposure, temperature, and temperature feedback
 within ±3°F (about ±1.67°C), inclusive. Among all neutral (3/5) dives in that
 window, recommend the minimum recorded exposure, regardless of frequency or
 whether a thicker suit was logged at a closer temperature. For the winning
-exposure, choose the closest supporting temperature, then the most recent date/ID.
+exposure, link the most recent supporting dive by date/ID.
 If no neutral feedback exists in the window, use the closest rated measurements
 and adjust exposure one protection step warmer for ratings 1–2 or lighter for
 ratings 4–5. If those measurements suggest different exposures, use the minimum
@@ -382,7 +382,7 @@ The protection order is swimsuit, shorty, 2mm, 3mm, 5mm, 6mm, 7mm, drysuit. With
 use the default bands.
 Whenever a qualifying log supports the recommendation, including confirmation of
 the default, exposure advice carries an asterisk and “Based on your dive log
-history”; “history” links to the nearest, most recent supporting dive for the
+history”; “history” links to the most recent qualifying supporting dive for the
 winning exposure.
 The advice sits in a divided footer inside the conditions card, with two aligned
 columns on desktop and stacked equipment rows on phones. History links refresh

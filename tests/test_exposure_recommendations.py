@@ -344,16 +344,35 @@ class ExposureRecommendationsTest(unittest.TestCase):
         self.assertEqual(result['exposure'], '5mm wetsuit')
         self.assertEqual(result['source_dive_id'], supporting_dive)
 
-    def test_minimum_exposure_history_uses_closest_temperature_then_recency(self):
+    def test_minimum_exposure_history_uses_most_recent_supporting_dive(self):
         self.log(exposure='3mm', temperature=28)
-        closest = self.log(exposure='3mm', temperature=28.3)
-        self.log(exposure='3mm', temperature=28.6)
+        self.log(exposure='3mm', temperature=28.3)
+        recent = self.log(exposure='3mm', temperature=28.6)
         self.log(exposure='5mm', temperature=28.3)
-        self.assertEqual(self.advice(28.3)['source_dive_id'], closest)
+        self.assertEqual(self.advice(28.3)['source_dive_id'], recent)
         newest = self.log(exposure='3mm', temperature=28.3)
         result = self.advice(28.3)
         self.assertEqual(result['exposure'], '3mm wetsuit')
         self.assertEqual(result['source_dive_id'], newest)
+
+    def test_api_history_skips_newer_feedback_that_does_not_support_winning_suit(self):
+        self.log(exposure='5mm', temperature=28.3, day='2026-01-01')
+        # Most recent date wins even when an older, closer match has a higher ID.
+        supporting_dive = self.log(exposure='5mm', temperature=28, day='2026-02-01')
+        self.log(exposure='5mm', temperature=28.3, day='2026-01-02')
+        self.log(exposure='5mm', temperature=28.3, comfort=1)
+        self.log(exposure='5mm', temperature=28.3, comfort=5)
+        self.log(exposure='5mm', temperature=28.3, comfort=None)
+        self.log(exposure='7mm', temperature=28.3)
+        self.log(exposure='5mm', temperature=22)
+        self.log(exposure='5mm', temperature=28.3, deleted=1)
+        self.log(exposure='5mm', temperature=28.3, day='2099-01-01')
+        with patch('pelagia.marine.fetch', return_value=payload()), \
+             patch('pelagia.dive_site_recent_conditions', return_value={'water_temp_c': 28.3}):
+            advice = self.client.get('/api/dive-sites/1/conditions').json['recommendations']
+        self.assertEqual(advice['exposure'], '5mm wetsuit')
+        self.assertEqual(advice['source_dive_id'], supporting_dive)
+        self.assertEqual(advice['source_dive_url'], f'/dive/{supporting_dive}')
 
     def test_without_comfortable_logs_adjust_the_closest_recorded_suit(self):
         self.log(exposure='5mm', temperature=28, comfort=1)
