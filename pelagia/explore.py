@@ -12,7 +12,7 @@ PAGE_SIZE = 24
 SITE_COLUMNS = "id, name, country_or_area, latitude, longitude, logged_dive_count"
 EARTH_RADIUS_KM = 6371.0088
 NOMINATIM_ENDPOINT = "https://nominatim.openstreetmap.org/search"
-RADIUS_LIMITS = {"mi": 500, "km": 800}
+RADIUS_LIMITS = {"mi": 100, "km": 160}
 
 
 class GeocodingError(RuntimeError):

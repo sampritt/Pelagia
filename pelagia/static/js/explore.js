@@ -274,7 +274,7 @@ function initExplore() {
     }, 160);
 
     function radiusLimit(unit) {
-        return unit === "mi" ? 500 : 800;
+        return unit === "mi" ? 100 : 160;
     }
 
     function selectedUnit() {

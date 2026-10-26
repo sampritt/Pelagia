@@ -2,12 +2,12 @@
 {% block title %}Explore - Pelagia{% endblock %}
 {% block head %}<script defer src="{{ url_for('static', filename='js/explore.js', v=pwa_asset_version) }}"></script>{% endblock %}
 {% block content %}
-<section class="explore-layout" data-explore data-location="{{ location }}" aria-labelledby="exploreTitle">
-    <header class="explore-header">
-        <h1 id="exploreTitle">Explore</h1>
-        <p>Find your next underwater story.</p>
-    </header>
+<section class="explore-layout" data-explore data-location="{{ location }}">
     <div data-explore-feed-frame>
+        <header class="explore-header">
+            <h1 id="exploreTitle">Explore</h1>
+            <p>Find your next underwater story.</p>
+        </header>
         <div class="explore-search autocomplete-field" role="search" aria-label="Explore by location">
             <div class="explore-search-bar">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"></circle><path d="m16 16 4.5 4.5"></path></svg>
@@ -19,7 +19,7 @@
             </div>
             <div id="exploreLocations" class="autocomplete-menu explore-location-menu" role="listbox" aria-label="Locations" data-explore-suggestions hidden></div>
         </div>
-        <button class="explore-advanced-link" type="button" data-explore-advanced-open>Advanced search</button>
+        <button class="explore-advanced-link" type="button" data-explore-advanced-open>Advanced search <span aria-hidden="true">›</span></button>
         <p class="explore-count" role="status" aria-live="polite" data-explore-count>{% if location %}{{ total }} {{ 'dive site' if total == 1 else 'dive sites' }} in {{ location }}{% endif %}</p>
         <div id="exploreResults" class="explore-results" aria-label="Dive sites" data-explore-results>
             {% include '_explore_results.html' %}
@@ -27,20 +27,21 @@
         <button class="ghost-button explore-more" type="button" data-explore-more data-next-page="{{ next_page or '' }}" {% if not next_page %}hidden{% endif %}>Show more</button>
     </div>
     <section class="explore-advanced-frame" data-explore-advanced-frame aria-labelledby="advancedSearchTitle" hidden>
-        <button class="explore-frame-back" type="button" data-explore-advanced-back>
-            <span aria-hidden="true">←</span> Explore
-        </button>
+        <header class="explore-frame-header">
+            <button class="explore-frame-back" type="button" aria-label="Back to Explore" data-explore-advanced-back>
+                <span aria-hidden="true">‹</span>
+            </button>
+            <h1 id="advancedSearchTitle">Advanced search</h1>
+        </header>
         <div class="explore-advanced-card">
-            <p class="explore-eyebrow">Advanced search</p>
-            <h2 id="advancedSearchTitle">Find dive sites near anywhere</h2>
             <form data-explore-nearby-form novalidate>
                 <div class="explore-distance-sentence">
                     <span>Search within</span>
                     <div class="explore-radius-control">
                         <label class="sr-only" for="exploreRadiusSlider">Search radius</label>
-                        <input id="exploreRadiusSlider" type="range" min="1" max="500" step="1" value="50" data-explore-radius-slider>
+                        <input id="exploreRadiusSlider" type="range" min="1" max="100" step="1" value="50" data-explore-radius-slider>
                         <label class="sr-only" for="exploreRadiusNumber">Search radius as a whole number</label>
-                        <input id="exploreRadiusNumber" class="explore-radius-number" type="number" min="1" max="500" step="1" value="50" inputmode="numeric" data-explore-radius-number>
+                        <input id="exploreRadiusNumber" class="explore-radius-number" type="number" min="1" max="100" step="1" value="50" inputmode="numeric" data-explore-radius-number>
                     </div>
                     <div class="unit-toggle explore-distance-unit" role="group" aria-label="Distance units">
                         <label><input class="sr-only" type="radio" name="explore_distance_unit" value="mi" checked data-explore-unit><span>miles</span></label>

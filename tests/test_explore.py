@@ -59,6 +59,7 @@ class ExploreTest(unittest.TestCase):
         self.assertIn("Search within", html)
         self.assertIn("City, island, or landmark", html)
         self.assertIn("OpenStreetMap contributors", html)
+        self.assertIn('type="range" min="1" max="100"', html)
 
     def nearby_search(self, query="Victoria", radius=50, unit="mi"):
         return self.client.post(
@@ -133,7 +134,8 @@ class ExploreTest(unittest.TestCase):
             {"query": "", "radius": 10, "unit": "mi"},
             {"query": "Victoria", "radius": 0, "unit": "mi"},
             {"query": "Victoria", "radius": 10.5, "unit": "mi"},
-            {"query": "Victoria", "radius": 801, "unit": "km"},
+            {"query": "Victoria", "radius": 101, "unit": "mi"},
+            {"query": "Victoria", "radius": 161, "unit": "km"},
             {"query": "Victoria", "radius": 10, "unit": "league"},
         ):
             with self.subTest(payload=payload):

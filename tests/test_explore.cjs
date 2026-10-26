@@ -221,7 +221,7 @@ test("advanced search keeps radius controls in sync and shows no-result feedback
     units[1].checked = true;
     units[1].emit("change");
     assert.equal(parts["radius-number"].value, 116);
-    assert.equal(parts["radius-slider"].max, 800);
+    assert.equal(parts["radius-slider"].max, 160);
     parts.place.value = "Gaunacaste";
     parts["nearby-form"].emit("submit", { preventDefault() {} });
     assert.deepEqual(JSON.parse(requests[0].options.body), {
