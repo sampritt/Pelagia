@@ -81,12 +81,12 @@ def init_db():
         "observation_dates_json",
         "TEXT NOT NULL DEFAULT '[]'",
     )
-    # Version 1 can be retained when it produced species, or when OBIS found no
-    # qualifying taxa. A positive-taxa/empty-species result is retried once with
-    # the compact version 2 model contract.
+    # Older results can be retained when they produced species, or when OBIS found
+    # no qualifying taxa. A positive-taxa/empty-species result is retried with the
+    # current bounded-batch normalizer contract.
     db.execute(
-        "UPDATE dive_site_obis_species_cache SET normalizer_version = 2 "
-        "WHERE normalizer_version = 1 AND (qualifying_taxon_count = 0 OR EXISTS ("
+        "UPDATE dive_site_obis_species_cache SET normalizer_version = 3 "
+        "WHERE normalizer_version < 3 AND (qualifying_taxon_count = 0 OR EXISTS ("
         "SELECT 1 FROM dive_site_obis_species species "
         "WHERE species.dive_site_id = dive_site_obis_species_cache.dive_site_id))"
     )

@@ -5,6 +5,7 @@ import math
 import re
 import time
 import uuid
+from concurrent.futures import ThreadPoolExecutor
 from datetime import date
 
 import requests
@@ -23,7 +24,9 @@ EARTH_RADIUS_M = 6371008.8
 PAGE_SIZE = 1000
 LEASE_SECONDS = 120
 COOLDOWN_SECONDS = 300
-NORMALIZER_VERSION = 2
+NORMALIZER_VERSION = 3
+NORMALIZATION_BATCH_SIZE = 40
+NORMALIZATION_WORKERS = 3
 INSTRUCTIONS = """Normalize the supplied OBIS marine taxa into Pelagia's allowed species tags.
 Perform one brief web search when useful to verify scientific-to-common-name taxonomy.
 Return only a compact JSON array of two-item arrays: [taxon_id, pelagia_tag]. taxon_id
@@ -262,10 +265,7 @@ def parse_normalized_mappings(payload, taxa, allowed_tags):
     return sorted(result, key=lambda mapping: mapping["scientific_name"].casefold())
 
 
-def normalize_species(taxa, allowed_tags):
-    api_key = current_app.config["OPENAI_API_KEY"].strip()
-    if not api_key:
-        raise EnrichmentError("OpenAI credentials unavailable")
+def _normalize_species_batch(taxa, allowed_tags, api_key):
     response = requests.post(
         OPENAI_ENDPOINT,
         headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
@@ -305,6 +305,38 @@ def normalize_species(taxa, allowed_tags):
         return parse_normalized_mappings(response.json(), taxa, allowed_tags)
     finally:
         response.close()
+
+
+def normalize_species(taxa, allowed_tags):
+    """Normalize bounded taxon batches concurrently and return one combined result.
+
+    Large sites can contain hundreds of qualifying taxa. Keeping each model output
+    small prevents one truncated response from discarding the entire enrichment,
+    while concurrent requests keep the page-load latency close to one model call.
+    """
+    api_key = current_app.config["OPENAI_API_KEY"].strip()
+    if not api_key:
+        raise EnrichmentError("OpenAI credentials unavailable")
+    batches = [
+        taxa[index:index + NORMALIZATION_BATCH_SIZE]
+        for index in range(0, len(taxa), NORMALIZATION_BATCH_SIZE)
+    ]
+    if not batches:
+        return []
+    if len(batches) == 1:
+        return _normalize_species_batch(batches[0], allowed_tags, api_key)
+    with ThreadPoolExecutor(
+        max_workers=min(NORMALIZATION_WORKERS, len(batches)),
+        thread_name_prefix="obis-normalizer",
+    ) as pool:
+        results = list(pool.map(
+            lambda batch: _normalize_species_batch(batch, allowed_tags, api_key),
+            batches,
+        ))
+    return sorted(
+        (mapping for result in results for mapping in result),
+        key=lambda mapping: mapping["scientific_name"].casefold(),
+    )
 
 
 def read_cache(site_id, db=None):
@@ -453,6 +485,7 @@ def init_app(app, login_required):
             return jsonify(status="pending"), 202, {"Retry-After": "2"}
         if state == "retryable":
             return jsonify(status="retryable"), 503, {"Retry-After": str(COOLDOWN_SECONDS)}
+        stage = "OBIS query"
         try:
             latitude = _finite_number(site["latitude"])
             longitude = _finite_number(site["longitude"])
@@ -466,9 +499,16 @@ def init_app(app, login_required):
                         "SELECT common_name FROM species ORDER BY common_name COLLATE NOCASE"
                     ).fetchall()
                 ]
+                stage = "OpenAI normalization"
                 mappings = normalize_species(taxa, allowed_tags) if taxa else []
-        except (EnrichmentError, requests.RequestException, ValueError, TypeError, KeyError, AttributeError):
-            current_app.logger.warning("OBIS species enrichment failed for site %s", site_id)
+        except (EnrichmentError, requests.RequestException, ValueError, TypeError, KeyError, AttributeError) as error:
+            current_app.logger.warning(
+                "OBIS species enrichment failed for site %s during %s: %s",
+                site_id,
+                stage,
+                error,
+                exc_info=True,
+            )
             record_failure(db, site_id, token)
             return jsonify(status="retryable"), 503, {"Retry-After": str(COOLDOWN_SECONDS)}
         species_rows = mapped_species_rows(taxa, mappings)

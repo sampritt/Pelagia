@@ -155,6 +155,30 @@ class ObisSpeciesTest(unittest.TestCase):
                 ["Coral"],
             )
 
+    def test_normalizer_batches_large_taxon_sets(self):
+        taxa = [
+            {"scientific_name": f"Species {index:03d}", "aphia_id": index}
+            for index in range(103)
+        ]
+
+        def normalized_response(*_args, **kwargs):
+            batch = json.loads(kwargs["json"]["input"])["obis_taxa"]
+            return api_response(openai_payload([
+                [taxon["taxon_id"], "Reef Fish"] for taxon in batch
+            ]))
+
+        with self.app.app_context(), patch.object(
+            obis_species.requests, "post", side_effect=normalized_response
+        ) as post:
+            mappings = obis_species.normalize_species(taxa, ["Reef Fish"])
+
+        self.assertEqual(len(post.call_args_list), 3)
+        self.assertEqual(len(mappings), 103)
+        self.assertEqual(
+            [mapping["scientific_name"] for mapping in mappings],
+            [taxon["scientific_name"] for taxon in taxa],
+        )
+
     def test_mapped_species_rows_unions_all_dates_for_each_pelagia_species(self):
         taxa = [
             {
@@ -220,6 +244,18 @@ class ObisSpeciesTest(unittest.TestCase):
                 ["2026-03-25", "2025-12-25"],
             )
             self.assertEqual(db.execute("SELECT COUNT(*) FROM dive_species").fetchone()[0], 0)
+
+    def test_positive_empty_older_cache_is_retried_after_batching_upgrade(self):
+        with self.app.app_context():
+            db = database.get_db()
+            db.execute(
+                "INSERT INTO dive_site_obis_species_cache "
+                "(dive_site_id, latitude, longitude, radius_miles, start_date, "
+                "qualifying_taxon_count, model, normalizer_version) "
+                "VALUES (1, 54.1, -132.9, 0.5, '2020-01-01', 103, 'test', 2)"
+            )
+            db.commit()
+            self.assertIsNone(obis_species.read_cache(1))
 
     def test_empty_obis_result_is_permanent_without_openai(self):
         with patch.object(obis_species, "fetch_obis_species", return_value=[]) as fetch, \
