@@ -15,9 +15,14 @@
             {% endfor %}
         {% endif %}
     </div>
-    <button class="site-sightings-more" type="button" data-site-sightings-more hidden></button>
     <p class="muted" data-site-sightings-empty {% if sightings %}hidden{% endif %}>No marine species observations yet.</p>
     {% if obis_species_cache is none and not public_preview %}
-    <div class="site-sightings-loading" data-site-sightings-loading aria-live="polite" hidden></div>
+    <div class="site-sightings-loading" data-site-sightings-loading role="status" hidden>
+        <span class="sr-only">Finding nearby marine species</span>
+        <span class="skeleton skeleton-chip" aria-hidden="true"></span>
+        <span class="skeleton skeleton-chip short" aria-hidden="true"></span>
+        <span class="skeleton skeleton-chip long" aria-hidden="true"></span>
+        <span class="skeleton skeleton-chip medium" aria-hidden="true"></span>
+    </div>
     {% endif %}
 </div>

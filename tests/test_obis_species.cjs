@@ -39,15 +39,13 @@ function setup(existing = []) {
     const empty = node('p');
     empty.hidden = existing.length > 0;
     const loading = node();
-    const more = node('button');
-    more.hidden = true;
+    loading.hidden = true;
     const host = node();
     host.dataset.obisSpeciesUrl = '/api/dive-sites/1/obis-species';
     host.querySelector = selector => ({
         '[data-site-sightings-tags]': tags,
         '[data-site-sightings-empty]': empty,
         '[data-site-sightings-loading]': loading,
-        '[data-site-sightings-more]': more,
     })[selector] || null;
     host.querySelectorAll = selector => selector === '[data-site-sightings-tags] > span' ? tags.children : [];
     const document = {
@@ -67,11 +65,13 @@ function setup(existing = []) {
     const context = vm.createContext({window, document, fetch, AbortController, URL, console});
     vm.runInContext(fs.readFileSync('pelagia/static/js/app.js', 'utf8'), context);
     vm.runInContext('initObisSpecies()', context);
-    return {host, tags, empty, loading, more, queued, timers, context};
+    return {host, tags, empty, loading, queued, timers, context};
 }
 
 test('completed enrichment appends unique tags and keeps logged species once', async () => {
     const state = setup(['Coral']);
+    assert.equal(state.loading.hidden, true);
+    assert.equal([...state.timers.values()].some(timer => timer.delay === 160), false);
     assert.equal(state.queued[0].options.method, 'POST');
     assert.equal(state.queued[0].options.headers['X-Requested-With'], 'fetch');
     state.queued[0].resolve(response(200, {status: 'complete', species: ['coral', 'Reef Fish']}));
@@ -84,6 +84,10 @@ test('completed enrichment appends unique tags and keeps logged species once', a
 test('empty completion reveals the empty state', async () => {
     const state = setup();
     assert.equal(state.empty.hidden, true);
+    const loadingDelay = [...state.timers.values()].find(timer => timer.delay === 160);
+    assert.ok(loadingDelay);
+    loadingDelay.callback();
+    assert.equal(state.loading.hidden, false);
     state.queued[0].resolve(response(200, {status: 'complete', species: []}));
     await flush();
     assert.equal(state.tags.hidden, true);
@@ -104,13 +108,10 @@ test('pending enrichment polls and invalid responses preserve existing sightings
     assert.deepEqual(state.tags.children.map(tag => tag.textContent), ['Coral']);
 });
 
-test('large cached sets collapse after twelve tags and can expand', () => {
+test('large species sets always remain fully visible', async () => {
     const state = setup(Array.from({length: 15}, (_value, index) => `Species ${index + 1}`));
-    vm.runInContext('initSightingsDisclosure(document.querySelector("[data-site-sightings]"))', state.context);
-    assert.equal(state.tags.children.filter(tag => tag.hidden).length, 3);
-    assert.equal(state.more.hidden, false);
-    assert.equal(state.more.textContent, 'Show 3 more');
-    state.more.click();
-    assert.equal(state.tags.children.filter(tag => tag.hidden).length, 0);
-    assert.equal(state.more.textContent, 'Show fewer');
+    state.queued[0].resolve(response(200, {status: 'complete', species: ['Species 16']}));
+    await flush();
+    assert.equal(state.tags.children.length, 16);
+    assert.equal(state.tags.children.some(tag => tag.hidden), false);
 });
