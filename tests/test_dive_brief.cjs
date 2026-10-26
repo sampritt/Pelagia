@@ -27,7 +27,7 @@ function setup(standalone = false, options = {}) {
     heading.textContent = "The Dive Brief";
     const disclosure = element(), summary = element();
     reader.dataset = {briefEdition: options.edition || "2026-09-04"};
-    disclosure.open = false;
+    disclosure.open = options.disclosureOpen ?? false;
     const scroller = element();
     scroller.scrollHeight = 2000; scroller.clientHeight = 800; scroller.clientWidth = 390; scroller.scrollTop = 0;
     trigger.href = "https://pelagia.test/brief/2026-09-04";
@@ -194,39 +194,40 @@ test("horizontal trackpad scrolling leaves readers open and preserves native whe
     }
 });
 
-test("the card starts collapsed, expands on demand, and collapses again after reading", () => {
+test("the card starts collapsed and stays expanded after reading", () => {
     const state = setup();
     assert.equal(state.disclosure.open, false);
     state.disclosure.open = true; // Native details behavior on summary activation.
     assert.equal(state.dialog.open, undefined);
     state.open();
     state.closeLink.handlers.click(state.click());
-    assert.equal(state.disclosure.open, false);
+    assert.equal(state.disclosure.open, true);
     assert.equal(state.summary.focused, true);
-    state.disclosure.open = true; // Native details behavior on summary activation.
     assert.equal(state.dialog.open, false);
     state.open();
     assert.equal(state.dialog.open, true);
 });
 
-test("every feed initialization and restored page starts with the card collapsed", () => {
+test("feed initialization and page restoration preserve the card's native state", () => {
     for (const options of [{}, {edition: "2026-09-05"}]) {
-        const state = setup(false, options);
-        assert.equal(state.disclosure.open, false);
-        state.disclosure.open = true;
-        state.window.handlers.pageshow();
-        assert.equal(state.disclosure.open, false);
-        assert.equal(setup(false, options).disclosure.open, false);
+        for (const disclosureOpen of [false, true]) {
+            const state = setup(false, {...options, disclosureOpen});
+            assert.equal(state.disclosure.open, disclosureOpen);
+            state.window.handlers.pageshow();
+            assert.equal(state.disclosure.open, disclosureOpen);
+        }
     }
 });
 
-test("browser Back closes the reader and leaves the card collapsed", () => {
+test("browser Back closes the reader and preserves the expanded card", () => {
     const state = setup();
     state.disclosure.open = true;
     state.open();
     state.window.history.back();
     assert.equal(state.dialog.open, false);
-    assert.equal(state.disclosure.open, false);
+    assert.equal(state.disclosure.open, true);
+    state.window.handlers.pageshow();
+    assert.equal(state.disclosure.open, true);
 });
 
 test("browser Back after refreshing a modal reader fetches the actual feed document", () => {

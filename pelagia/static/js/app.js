@@ -1961,12 +1961,7 @@ function initDiveBrief() {
     if (!reader || reader.dataset.briefPublic === "true") return;
     const dialog = document.querySelector("[data-brief-dialog]");
     const trigger = document.querySelector("[data-brief-open]");
-    const disclosure = document.querySelector("[data-brief-disclosure]");
     const summary = document.querySelector("[data-brief-toggle]");
-    const collapseCard = () => {
-        if (disclosure) disclosure.open = false;
-    };
-    collapseCard();
     const scroller = reader.querySelector("[data-brief-scroll]");
     const heading = reader.querySelector("[data-brief-heading]");
     const feedTitle = document.title;
@@ -1999,9 +1994,6 @@ function initDiveBrief() {
     const restoreFeed = () => {
         if (!dialog?.open) return;
         dialog.close();
-        // Change the card height while the feed is still fixed, so scroll
-        // anchoring cannot move the page during focus and position restoration.
-        collapseCard();
         unlockFeed();
         document.title = feedTitle;
         trigger?.setAttribute("aria-expanded", "false");
@@ -2012,7 +2004,6 @@ function initDiveBrief() {
         if (closing) return;
         if (!dialog) {
             closing = true;
-            collapseCard();
             if (window.history.state?.pelagiaBrief) window.history.back();
             else window.location.assign("/home");
             return;
@@ -2028,7 +2019,6 @@ function initDiveBrief() {
         // to this document. Fetch the feed when Back changes only its URL.
         window.addEventListener("popstate", () => {
             if (window.location.pathname === "/home") {
-                collapseCard();
                 window.location.replace("/home");
             }
         });
@@ -2059,10 +2049,7 @@ function initDiveBrief() {
         // A restored bfcache snapshot must not leave a hidden feed scroll-locked.
         window.addEventListener("pageshow", () => {
             if (dialog.open && !window.history.state?.pelagiaBrief) restoreFeed();
-            if (!dialog.open) {
-                unlockFeed();
-                collapseCard();
-            }
+            if (!dialog.open) unlockFeed();
         });
         dialog.addEventListener("close", () => {
             // Native close events are queued and can arrive after Forward has
