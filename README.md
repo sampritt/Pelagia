@@ -7,10 +7,16 @@ Pelagia is a Flask/Gunicorn MVP for logging and sharing scuba dives with local S
 ```bash
 python3.12 -m venv .venv312
 .venv312/bin/pip install -r requirements.txt
-.venv312/bin/gunicorn --bind 127.0.0.1:8010 --workers 2 wsgi:app
+.venv312/bin/gunicorn --config gunicorn.conf.py --bind 127.0.0.1:8010 wsgi:app
 ```
 
 Open `http://127.0.0.1:8010`.
+
+`gunicorn.conf.py` runs two `gthread` workers with four threads each by default, so the independent
+Open-Meteo, OBIS, and OpenAI requests made by a dive-site page can progress concurrently instead of
+occupying all synchronous workers. Set `WEB_CONCURRENCY` and `GUNICORN_THREADS` to tune those values
+for the deployment. SQLite remains safe for this workload because each request uses its own connection,
+WAL mode is enabled, and upstream calls release their short database claims before network I/O.
 
 ## Configuration
 
@@ -61,6 +67,10 @@ The unique taxa and Pelagia's complete global species vocabulary are sent to `gp
 Completed results, including empty results, are stored permanently in `dive_site_obis_species_cache` and `dive_site_obis_species`; they are never written to the diver-recorded `dive_species` table. Each mapped species row retains every unique OBIS observation date in `observation_dates_json`, ordered newest first. Concurrent page loads share a lease so only one worker performs enrichment. Temporary network, rate-limit, credential, or malformed-response failures retry after a five-minute cooldown. To deliberately enrich a site again, delete its rows from `dive_site_obis_species_cache` and `dive_site_obis_species`; the next authenticated profile visit will recreate them.
 
 The SIGHTINGS panel shows a case-insensitive union of cached OBIS tags and species from non-deleted logged dives. Logged counts remain attached to their tags. Shared profiles may display an existing cache but never initiate enrichment, and Explore cards continue to use logged observations only. Set `OBIS_ENDPOINT` to override the public OBIS occurrence endpoint in managed or test environments.
+
+The browser starts OBIS enrichment independently from the marine forecast and dive-site description
+requests. Gunicorn's threaded workers service those requests concurrently; none of the upstream network
+calls waits for another feature to finish.
 
 ## Entry Points
 
