@@ -355,6 +355,29 @@ class ExposureRecommendationsTest(unittest.TestCase):
         self.assertEqual(result['exposure'], '3mm wetsuit')
         self.assertEqual(result['source_dive_id'], newest)
 
+    def test_history_requires_neutral_weight_on_a_supporting_dive(self):
+        self.log(exposure='3mm', temperature=28.3, day='2026-01-01')
+        supporting_dive = self.log(exposure='3mm', temperature=28, day='2026-02-01')
+        self.log(exposure='3mm', temperature=28.3, day='2026-01-02')
+        for rating in (1, 2, 4, 5, None):
+            with self.subTest(weight_rating=rating):
+                self.log(exposure='3mm', temperature=28.3, weight_rating=rating)
+                result = self.advice(28.3)
+                self.assertEqual(result['exposure'], '3mm wetsuit')
+                self.assertEqual(result['source_dive_id'], supporting_dive)
+
+    def test_api_omits_history_without_neutral_weight_supporting_dive(self):
+        self.log(exposure='3mm', temperature=28.3, weight_rating=2)
+        self.log(exposure='5mm', temperature=28.3)  # Does not support the winning suit.
+        self.log(exposure='3mm', temperature=22)  # Outside the temperature window.
+        with patch('pelagia.marine.fetch', return_value=payload()), \
+             patch('pelagia.dive_site_recent_conditions', return_value={'water_temp_c': 28.3}):
+            advice = self.client.get('/api/dive-sites/1/conditions').json['recommendations']
+        self.assertEqual(advice['exposure'], '3mm wetsuit')
+        self.assertTrue(advice['personalized'])
+        self.assertIsNone(advice['source_dive_id'])
+        self.assertNotIn('source_dive_url', advice)
+
     def test_api_history_skips_newer_feedback_that_does_not_support_winning_suit(self):
         self.log(exposure='5mm', temperature=28.3, day='2026-01-01')
         # Most recent date wins even when an older, closer match has a higher ID.

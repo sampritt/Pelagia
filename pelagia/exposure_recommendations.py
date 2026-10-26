@@ -61,14 +61,16 @@ def recommend(db, user_id, site_id, temperature_c, now, salinity):
             index = EXPOSURES.index(row['exposure'])
             step = 1 if row['temperature_rating'] < 3 else -1 if row['temperature_rating'] > 3 else 0
             proposals.append((row, max(0, min(len(EXPOSURES) - 1, index + step))))
-        # Minimum protection wins. For that exposure, link the most recent
-        # supporting log using SQL's newest-first order.
-        reference, proposed = min(
+        # Minimum protection wins independently of weight feedback.
+        _, proposed = min(
             proposals,
             key=lambda proposal: proposal[1],
         )
         personalized = EXPOSURES[proposed] not in choices
-        source_dive_id = reference['id']
+        # Link only supporting dives whose weight felt right, retaining SQL's
+        # newest-first order. Missing neutral weight feedback means no history link.
+        source_dive_id = next((row['id'] for row, protection in proposals
+                               if protection == proposed and row['weight_rating'] == 3), None)
         choices = (EXPOSURES[proposed],)
     salinity = salinity if salinity in ('fresh', 'salt') else None
     match = next((row for row in logs if row['exposure'] in choices and salinity
