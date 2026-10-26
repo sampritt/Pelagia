@@ -52,6 +52,16 @@ Timeouts, rate limits, missing/invalid credentials, and malformed or incomplete 
 
 Tests mock OpenAI without making billable calls: `.venv312/bin/python -m unittest discover -s tests -p 'test_*.py'` and `node --test tests/*.cjs`.
 
+## OBIS species enrichment
+
+Opening an authenticated dive-site profile also starts a one-time nearby-species enrichment when that site has no completed OBIS cache. Pelagia queries OBIS for presence records dated from January 1, 2020 through the current date within 0.5 miles of the site's coordinates. A record qualifies only when both its observation point and its reported coordinate uncertainty are within that radius. Accepted species are deduplicated with OBIS/WoRMS identifiers before normalization.
+
+The unique taxa and Pelagia's complete global species vocabulary are sent to `gpt-5.6-luna` using the same bounded Responses API configuration as dive-site descriptions. The model may return only exact Pelagia names and at most one most-specific tag for each taxon. Responses are validated against the local `species` table before storage. An OBIS search with no qualifying species completes without an OpenAI call.
+
+Completed results, including empty results, are stored permanently in `dive_site_obis_species_cache` and `dive_site_obis_species`; they are never written to the diver-recorded `dive_species` table. Concurrent page loads share a lease so only one worker performs enrichment. Temporary network, rate-limit, credential, or malformed-response failures retry after a five-minute cooldown. To deliberately enrich a site again, delete its rows from `dive_site_obis_species_cache` and `dive_site_obis_species`; the next authenticated profile visit will recreate them.
+
+The SIGHTINGS panel shows a case-insensitive union of cached OBIS tags and species from non-deleted logged dives. Logged counts remain attached to their tags. Shared profiles may display an existing cache but never initiate enrichment, and Explore cards continue to use logged observations only. Set `OBIS_ENDPOINT` to override the public OBIS occurrence endpoint in managed or test environments.
+
 ## Entry Points
 
 - `wsgi.py`: Gunicorn entrypoint

@@ -1678,11 +1678,38 @@ input[type="range"] {
     gap: 6px;
 }
 
+.site-sightings-tags span[hidden] { display: none; }
+
 .site-sightings-tags strong {
     color: var(--ink);
     font-size: 0.72rem;
     font-weight: 700;
 }
+
+.site-sightings-more {
+    width: fit-content;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--accent-deep);
+    font: inherit;
+    font-size: 0.78rem;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.site-sightings-more:hover { text-decoration: underline; }
+
+.site-sightings-more:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 4px;
+    border-radius: 2px;
+}
+
+.site-sightings-loading { min-height: 28px; }
+.site-sightings-loading .component-skeleton { display: flex; flex-wrap: wrap; gap: 8px; padding: 0; }
+.site-sightings-loading .skeleton-chip { width: 112px; height: 28px; border-radius: 999px; }
+.site-sightings-loading .skeleton-chip.short { width: 78px; }
 
 .site-conditions-panel {
     display: grid;

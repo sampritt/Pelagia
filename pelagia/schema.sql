@@ -55,6 +55,33 @@ CREATE TABLE IF NOT EXISTS dive_site_description_attempts (
     retry_after REAL NOT NULL DEFAULT 0
 );
 
+CREATE TABLE IF NOT EXISTS dive_site_obis_species_cache (
+    dive_site_id INTEGER PRIMARY KEY REFERENCES dive_sites(id) ON DELETE CASCADE,
+    latitude REAL,
+    longitude REAL,
+    radius_miles REAL NOT NULL,
+    start_date TEXT NOT NULL,
+    qualifying_taxon_count INTEGER NOT NULL DEFAULT 0,
+    model TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS dive_site_obis_species (
+    dive_site_id INTEGER NOT NULL REFERENCES dive_sites(id) ON DELETE CASCADE,
+    common_name TEXT NOT NULL,
+    PRIMARY KEY (dive_site_id, common_name)
+);
+
+CREATE INDEX IF NOT EXISTS idx_dive_site_obis_species_name
+ON dive_site_obis_species(common_name);
+
+CREATE TABLE IF NOT EXISTS dive_site_obis_species_attempts (
+    dive_site_id INTEGER PRIMARY KEY REFERENCES dive_sites(id) ON DELETE CASCADE,
+    token TEXT,
+    lease_until REAL NOT NULL DEFAULT 0,
+    retry_after REAL NOT NULL DEFAULT 0
+);
+
 CREATE TABLE IF NOT EXISTS species (
     id INTEGER PRIMARY KEY,
     country_or_area TEXT NOT NULL,

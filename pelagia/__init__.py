@@ -37,6 +37,7 @@ from . import google_auth, email_auth
 from . import pwa
 from . import dive_brief
 from . import site_descriptions
+from . import obis_species
 from . import marine
 from . import water_type
 from . import dive_import
@@ -91,6 +92,7 @@ def create_app(test_config=None):
         OPENAI_API_KEY=os.environ.get("OPENAI_API_KEY", ""),
         NOMINATIM_ENDPOINT=os.environ.get("NOMINATIM_ENDPOINT", ""),
         NOMINATIM_USER_AGENT=os.environ.get("NOMINATIM_USER_AGENT", ""),
+        OBIS_ENDPOINT=os.environ.get("OBIS_ENDPOINT", ""),
     )
     if test_config:
         app.config.update(test_config)
@@ -111,6 +113,7 @@ def create_app(test_config=None):
     explore.init_app(app, login_required)
     dive_import.init_app(app, current_user)
     site_descriptions.init_app(app, login_required)
+    obis_species.init_app(app, login_required)
     marine.init_app(app, login_required)
     water_type.init_app(app, login_required)
     dive_brief.init_app(app)
@@ -791,6 +794,7 @@ def register_routes(app):
         recent_dives = fetch_dives(scope="site", user_id=session["user_id"], site_id=site_id, limit=8)
         conditions = dive_site_recent_conditions(site_id)
         sightings = dive_site_species_sightings(site_id)
+        obis_species_cache = obis_species.read_cache(site_id)
         return render_template(
             "dive_site_profile.html",
             site=site,
@@ -798,6 +802,7 @@ def register_routes(app):
             recent_dives=recent_dives,
             conditions=conditions,
             sightings=sightings,
+            obis_species_cache=obis_species_cache,
             marine_coordinates_valid=marine.coordinates(site) is not None,
         )
 
@@ -816,7 +821,8 @@ def register_routes(app):
             )
             response = app.make_response(render_template(
                 "shared_dive_site.html", site=site, site_description=site_description,
-                sightings=dive_site_species_sightings(site_id), description=description,
+                sightings=dive_site_species_sightings(site_id),
+                obis_species_cache=obis_species.read_cache(site_id), description=description,
                 share_url=public_url("shared_dive_site", site_id=site_id),
                 site_url=url_for("dive_site_profile", site_id=site_id), public_preview=True,
             ))
@@ -1879,20 +1885,33 @@ def dive_site_condition_series(site_id):
     return visibility_series, current_series
 
 
-def dive_site_species_sightings(site_id, limit=10):
-    return database.get_db().execute(
+def dive_site_species_sightings(site_id):
+    logged = database.get_db().execute(
         """
-        SELECT ds.common_name, COUNT(DISTINCT ds.dive_id) AS dive_count
+        SELECT MIN(trim(ds.common_name)) AS common_name, COUNT(DISTINCT ds.dive_id) AS dive_count
         FROM dive_species ds
         JOIN dives d ON d.id = ds.dive_id
         WHERE d.dive_site_id = ?
             AND COALESCE(d.is_deleted, 0) = 0
-        GROUP BY lower(ds.common_name), ds.common_name
-        ORDER BY dive_count DESC, ds.common_name
-        LIMIT ?
+            AND trim(ds.common_name) <> ''
+        GROUP BY lower(trim(ds.common_name))
+        ORDER BY dive_count DESC, common_name COLLATE NOCASE
         """,
-        (site_id, limit),
+        (site_id,),
     ).fetchall()
+    sightings = [dict(row) for row in logged]
+    seen = {row["common_name"].casefold() for row in sightings}
+    nearby = database.get_db().execute(
+        "SELECT common_name FROM dive_site_obis_species WHERE dive_site_id = ? "
+        "ORDER BY common_name COLLATE NOCASE",
+        (site_id,),
+    ).fetchall()
+    sightings.extend(
+        {"common_name": row["common_name"], "dive_count": 0}
+        for row in nearby
+        if row["common_name"].casefold() not in seen
+    )
+    return sightings
 
 
 def optional_median(values):
