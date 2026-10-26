@@ -89,6 +89,8 @@ def create_app(test_config=None):
         DIVE_BRIEF_API_KEY_SHA256=os.environ.get("PELAGIA_DIVE_BRIEF_API_KEY_SHA256", ""),
         DIVE_BRIEF_API_KEY_FILE=os.environ.get("PELAGIA_DIVE_BRIEF_API_KEY_FILE"),
         OPENAI_API_KEY=os.environ.get("OPENAI_API_KEY", ""),
+        NOMINATIM_ENDPOINT=os.environ.get("NOMINATIM_ENDPOINT", ""),
+        NOMINATIM_USER_AGENT=os.environ.get("NOMINATIM_USER_AGENT", ""),
     )
     if test_config:
         app.config.update(test_config)

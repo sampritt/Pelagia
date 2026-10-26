@@ -7,21 +7,55 @@
         <h1 id="exploreTitle">Explore</h1>
         <p>Find your next underwater story.</p>
     </header>
-    <div class="explore-search autocomplete-field" role="search" aria-label="Explore by location">
-        <div class="explore-search-bar">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"></circle><path d="m16 16 4.5 4.5"></path></svg>
-            <div class="explore-location-tag" data-explore-tag {% if not location %}hidden{% endif %}>
-                <span class="tag"><span data-explore-location>{{ location }}</span><button type="button" data-explore-clear aria-label="Remove location {{ location }}">&times;</button></span>
+    <div data-explore-feed-frame>
+        <div class="explore-search autocomplete-field" role="search" aria-label="Explore by location">
+            <div class="explore-search-bar">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"></circle><path d="m16 16 4.5 4.5"></path></svg>
+                <div class="explore-location-tag" data-explore-tag {% if not location %}hidden{% endif %}>
+                    <span class="tag"><span data-explore-location>{{ location }}</span><button type="button" data-explore-clear aria-label="Remove location {{ location }}">&times;</button></span>
+                </div>
+                <label class="sr-only" for="exploreLocation">Search for a country or region</label>
+                <input id="exploreLocation" type="search" autocomplete="off" placeholder="Search a country or region" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="exploreLocations" data-explore-input {% if location %}hidden disabled{% endif %}>
             </div>
-            <label class="sr-only" for="exploreLocation">Search for a country or region</label>
-            <input id="exploreLocation" type="search" autocomplete="off" placeholder="Search a country or region" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="exploreLocations" data-explore-input {% if location %}hidden disabled{% endif %}>
+            <div id="exploreLocations" class="autocomplete-menu explore-location-menu" role="listbox" aria-label="Locations" data-explore-suggestions hidden></div>
         </div>
-        <div id="exploreLocations" class="autocomplete-menu explore-location-menu" role="listbox" aria-label="Locations" data-explore-suggestions hidden></div>
+        <button class="explore-advanced-link" type="button" data-explore-advanced-open>Advanced search</button>
+        <p class="explore-count" role="status" aria-live="polite" data-explore-count>{% if location %}{{ total }} {{ 'dive site' if total == 1 else 'dive sites' }} in {{ location }}{% endif %}</p>
+        <div id="exploreResults" class="explore-results" aria-label="Dive sites" data-explore-results>
+            {% include '_explore_results.html' %}
+        </div>
+        <button class="ghost-button explore-more" type="button" data-explore-more data-next-page="{{ next_page or '' }}" {% if not next_page %}hidden{% endif %}>Show more</button>
     </div>
-    <p class="explore-count" role="status" aria-live="polite" data-explore-count>{% if location %}{{ total }} {{ 'dive site' if total == 1 else 'dive sites' }} in {{ location }}{% endif %}</p>
-    <div id="exploreResults" class="explore-results" aria-label="Dive sites" data-explore-results>
-        {% include '_explore_results.html' %}
-    </div>
-    <button class="ghost-button explore-more" type="button" data-explore-more data-next-page="{{ next_page or '' }}" {% if not next_page %}hidden{% endif %}>Show more</button>
+    <section class="explore-advanced-frame" data-explore-advanced-frame aria-labelledby="advancedSearchTitle" hidden>
+        <button class="explore-frame-back" type="button" data-explore-advanced-back>
+            <span aria-hidden="true">←</span> Explore
+        </button>
+        <div class="explore-advanced-card">
+            <p class="explore-eyebrow">Advanced search</p>
+            <h2 id="advancedSearchTitle">Find dive sites near anywhere</h2>
+            <form data-explore-nearby-form novalidate>
+                <div class="explore-distance-sentence">
+                    <span>Search within</span>
+                    <div class="explore-radius-control">
+                        <label class="sr-only" for="exploreRadiusSlider">Search radius</label>
+                        <input id="exploreRadiusSlider" type="range" min="1" max="500" step="1" value="50" data-explore-radius-slider>
+                        <label class="sr-only" for="exploreRadiusNumber">Search radius as a whole number</label>
+                        <input id="exploreRadiusNumber" class="explore-radius-number" type="number" min="1" max="500" step="1" value="50" inputmode="numeric" data-explore-radius-number>
+                    </div>
+                    <div class="unit-toggle explore-distance-unit" role="group" aria-label="Distance units">
+                        <label><input class="sr-only" type="radio" name="explore_distance_unit" value="mi" checked data-explore-unit><span>miles</span></label>
+                        <label><input class="sr-only" type="radio" name="explore_distance_unit" value="km" data-explore-unit><span>km</span></label>
+                    </div>
+                    <label class="explore-place-field" for="exploreNearbyPlace">
+                        <span>of</span>
+                        <input id="exploreNearbyPlace" type="search" maxlength="160" autocomplete="off" placeholder="City, island, or landmark" required data-explore-place>
+                    </label>
+                </div>
+                <p class="explore-nearby-error" role="alert" data-explore-nearby-error hidden></p>
+                <button class="primary-button explore-nearby-submit" type="submit" data-explore-nearby-submit>Search</button>
+                <p class="explore-geocoder-credit">Place search by <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a></p>
+            </form>
+        </div>
+    </section>
 </section>
 {% endblock %}

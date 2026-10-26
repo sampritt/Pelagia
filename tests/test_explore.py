@@ -2,10 +2,12 @@ import re
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import Mock, patch
+
+import requests
 
 from pelagia import create_app, db as database
-from pelagia.explore import PAGE_SIZE
+from pelagia.explore import PAGE_SIZE, GeocodingError, cartesian_distance_km, geocode_place
 
 
 class ExploreTest(unittest.TestCase):
@@ -43,7 +45,8 @@ class ExploreTest(unittest.TestCase):
 
     def test_requires_login_and_adds_explore_in_both_navigation_bars(self):
         anonymous = self.app.test_client()
-        for path in ("/explore", "/api/explore", "/api/explore/locations?q=Canada"):
+        for path in ("/explore", "/api/explore", "/api/explore/locations?q=Canada",
+                     "/api/explore/nearby?query=x&radius=1&unit=mi"):
             self.assertEqual(anonymous.get(path).status_code, 302)
         html = self.client.get("/explore").get_data(as_text=True)
         for nav in re.findall(r'<nav class="(?:desktop-nav|mobile-nav)".*?</nav>', html, re.S):
@@ -52,6 +55,113 @@ class ExploreTest(unittest.TestCase):
         self.assertIn("Where will you dive next?", html)
         self.assertNotIn('role="tablist"', html)
         self.assertNotIn("Coming soon", html)
+        self.assertIn("Advanced search", html)
+        self.assertIn("Search within", html)
+        self.assertIn("City, island, or landmark", html)
+        self.assertIn("OpenStreetMap contributors", html)
+
+    def nearby_search(self, query="Victoria", radius=50, unit="mi"):
+        return self.client.post(
+            "/api/explore/nearby",
+            json={"query": query, "radius": radius, "unit": unit},
+            headers={"X-Requested-With": "fetch"},
+        )
+
+    def test_nominatim_request_and_result_validation(self):
+        response = Mock()
+        response.raise_for_status.return_value = None
+        response.json.return_value = [{
+            "display_name": "Victoria, British Columbia, Canada",
+            "lat": "48.4283", "lon": "-123.3649",
+        }]
+        with patch("pelagia.explore.requests.get", return_value=response) as get:
+            result = geocode_place("Victoria")
+        self.assertEqual(result, {
+            "display_name": "Victoria, British Columbia, Canada",
+            "latitude": 48.4283, "longitude": -123.3649,
+        })
+        self.assertEqual(get.call_args.args[0], "https://nominatim.openstreetmap.org/search")
+        self.assertEqual(get.call_args.kwargs["params"], {
+            "q": "Victoria", "format": "jsonv2", "limit": 1,
+        })
+        self.assertIn("Pelagia/1.0", get.call_args.kwargs["headers"]["User-Agent"])
+        self.assertEqual(get.call_args.kwargs["timeout"], 10)
+
+        response.json.return_value = []
+        with patch("pelagia.explore.requests.get", return_value=response):
+            self.assertIsNone(geocode_place("Nowhere"))
+        with patch("pelagia.explore.requests.get", side_effect=requests.Timeout):
+            with self.assertRaises(GeocodingError):
+                geocode_place("Victoria")
+
+    def test_advanced_search_geocodes_then_filters_by_cartesian_radius(self):
+        self.db.executemany(
+            "INSERT INTO dive_sites (name, country_or_area, latitude, longitude) VALUES (?, ?, ?, ?)",
+            [("Nearby Wall", "Canada", 48.5, -123.3),
+             ("Outside Wall", "Canada", 49.2, -123.3)],
+        )
+        self.db.commit()
+        place = {
+            "display_name": "Victoria, Capital Regional District, British Columbia, Canada",
+            "latitude": 48.4, "longitude": -123.3,
+        }
+        with patch("pelagia.explore.geocode_place", return_value=place) as geocode:
+            response = self.nearby_search("Victoria", 10, "mi")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.headers["Cache-Control"], "no-store")
+        data = response.get_json()
+        self.assertEqual(data["place"], place)
+        self.assertEqual(data["query"], "Victoria")
+        self.assertEqual(data["total"], 2)
+        self.assertLess(data["html"].index("Maple Reef"), data["html"].index("Nearby Wall"))
+        self.assertNotIn("Outside Wall", data["html"])
+        self.assertNotIn("Northern Wall", data["html"])
+        geocode.assert_called_once_with("Victoria")
+        self.assertAlmostEqual(cartesian_distance_km(0, 179.9, 0, -179.9), 22.24, places=1)
+
+    def test_advanced_search_no_result_errors_and_validation(self):
+        self.assertEqual(self.client.post("/api/explore/nearby", json={}).status_code, 403)
+        with patch("pelagia.explore.geocode_place", return_value=None):
+            missing = self.nearby_search("Gaunacaste")
+        self.assertEqual(missing.status_code, 200)
+        self.assertEqual(missing.get_json(), {"error": "no_results", "query": "Gaunacaste"})
+        with patch("pelagia.explore.geocode_place", side_effect=GeocodingError("offline")):
+            unavailable = self.nearby_search()
+        self.assertEqual(unavailable.status_code, 502)
+        self.assertEqual(unavailable.get_json()["error"], "geocoding_unavailable")
+        for payload in (
+            {"query": "", "radius": 10, "unit": "mi"},
+            {"query": "Victoria", "radius": 0, "unit": "mi"},
+            {"query": "Victoria", "radius": 10.5, "unit": "mi"},
+            {"query": "Victoria", "radius": 801, "unit": "km"},
+            {"query": "Victoria", "radius": 10, "unit": "league"},
+        ):
+            with self.subTest(payload=payload):
+                response = self.client.post(
+                    "/api/explore/nearby", json=payload,
+                    headers={"X-Requested-With": "fetch"},
+                )
+                self.assertEqual(response.status_code, 400)
+
+    def test_advanced_search_pagination_reuses_coordinates_without_geocoding(self):
+        self.db.executemany(
+            "INSERT INTO dive_sites (name, country_or_area, latitude, longitude) VALUES (?, 'Canada', ?, ?)",
+            [(f"Nearby {index:02}", 48.4 + index / 10000, -123.3)
+             for index in range(PAGE_SIZE + 3)],
+        )
+        self.db.commit()
+        response = self.client.get("/api/explore/nearby", query_string={
+            "query": "Victoria", "display_name": "Victoria, British Columbia, Canada",
+            "latitude": 48.4, "longitude": -123.3, "radius": 10, "unit": "km",
+        })
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.get_json()["next_page"], 2)
+        page_two = self.client.get("/api/explore/nearby", query_string={
+            "query": "Victoria", "display_name": "Victoria, British Columbia, Canada",
+            "latitude": 48.4, "longitude": -123.3, "radius": 10, "unit": "km", "page": 2,
+        }).get_json()
+        self.assertIsNone(page_two["next_page"])
+        self.assertEqual(response.get_json()["total"], PAGE_SIZE + 4)
 
     def test_location_search_is_distinct_case_insensitive_and_literal(self):
         self.db.execute("INSERT INTO dive_sites (name, country_or_area) VALUES ('Duplicate', 'canada')")
@@ -74,7 +184,7 @@ class ExploreTest(unittest.TestCase):
         self.assertNotIn("Where will you dive next?", html)
         self.assertNotIn("Your Location", html)
         self.assertNotIn("geolocation", html)
-        self.assertEqual(self.client.post("/api/explore/nearby").status_code, 404)
+        self.assertEqual(self.client.post("/api/explore/nearby").status_code, 403)
 
     def test_initial_default_uses_log_time_and_ignores_deleted_or_other_users_dives(self):
         self.add_dive(3, created="2026-10-24 13:00:00", day="2026-10-25",

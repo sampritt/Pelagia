@@ -1,7 +1,7 @@
 {% if not location %}
 <div class="explore-empty"><svg class="explore-empty-mark" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"></circle><path d="m16 16 4.5 4.5"></path></svg><h2>Where will you dive next?</h2><p>Choose a country or region to discover dive sites.</p></div>
 {% elif not items %}
-<div class="explore-empty"><h2>No dive sites here yet</h2><p>Try another country or region to keep exploring.</p></div>
+<div class="explore-empty"><h2>No dive sites here yet</h2><p>{% if nearby %}Try expanding the search radius or choosing another place.{% else %}Try another country or region to keep exploring.{% endif %}</p></div>
 {% else %}
 {% for item in items %}
     {% include '_dive_site_card.html' %}

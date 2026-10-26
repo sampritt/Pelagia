@@ -22,22 +22,41 @@ function setup(initial = "Canada", { deferSaves = false } = {}) {
             scrollIntoView() {}, contains(target) { return target === this || this.children.includes(target); },
         };
     }
-    const names = ["input", "suggestions", "tag", "location", "clear", "results", "count", "more"];
+    const names = [
+        "input", "suggestions", "tag", "location", "clear", "results", "count", "more",
+        "feed-frame", "advanced-frame", "advanced-open", "advanced-back", "nearby-form",
+        "radius-slider", "radius-number", "place", "nearby-error", "nearby-submit",
+    ];
     const parts = Object.fromEntries(names.map(name => [name, element()]));
     parts.input.hidden = Boolean(initial);
     parts.input.disabled = Boolean(initial);
     parts.tag.hidden = !initial;
+    parts["advanced-frame"].hidden = true;
+    parts["radius-slider"].value = "50";
+    parts["radius-number"].value = "50";
+    parts["nearby-error"].hidden = true;
+    parts["nearby-submit"].textContent = "Search";
+    const units = [element(), element()];
+    units[0].value = "mi";
+    units[0].checked = true;
+    units[1].value = "km";
+    units[1].checked = false;
     const search = element();
     search.contains = target => [parts.input, parts.clear, ...parts.suggestions.children].includes(target);
     const root = element();
     root.dataset.location = initial;
     root.querySelector = selector => selector === ".explore-search" ? search : parts[selector.match(/data-explore-(.+)\]/)[1]];
+    root.querySelectorAll = selector => selector === "[data-explore-unit]" ? units : [];
     document = element();
     document.querySelector = () => root;
     document.createElement = element;
     const window = element();
     window.location = { href: "http://localhost/explore" };
-    window.history = { pushState(_state, _unused, url) { window.location.href = String(url); } };
+    window.history = {
+        pushState(_state, _unused, url) { window.location.href = String(url); },
+        replaceState(_state, _unused, url) { window.location.href = String(url); },
+        back() {},
+    };
     window.setTimeout = () => 1;
     window.clearTimeout = () => {};
     const requests = [];
@@ -58,7 +77,7 @@ function setup(initial = "Canada", { deferSaves = false } = {}) {
     });
     vm.runInContext(fs.readFileSync(path.join(__dirname, "../pelagia/static/js/explore.js"), "utf8"), context);
     document.emit("DOMContentLoaded");
-    return { parts, requests, saves, window, document };
+    return { parts, units, requests, saves, window, document };
 }
 
 const flush = async () => { await Promise.resolve(); await Promise.resolve(); };
@@ -187,4 +206,60 @@ test("rapid selection changes save in order and preference failures do not block
     saves[1].resolve({ location: "" });
     await flush();
     assert.equal(parts.input.disabled, false);
+});
+
+test("advanced search keeps radius controls in sync and shows no-result feedback in its frame", async () => {
+    const { parts, units, requests, document } = setup("");
+    parts["advanced-open"].emit("click");
+    assert.equal(parts["feed-frame"].hidden, true);
+    assert.equal(parts["advanced-frame"].hidden, false);
+    assert.equal(document.activeElement, parts.place);
+    parts["radius-slider"].value = "72";
+    parts["radius-slider"].emit("input");
+    assert.equal(parts["radius-number"].value, "72");
+    units[0].checked = false;
+    units[1].checked = true;
+    units[1].emit("change");
+    assert.equal(parts["radius-number"].value, 116);
+    assert.equal(parts["radius-slider"].max, 800);
+    parts.place.value = "Gaunacaste";
+    parts["nearby-form"].emit("submit", { preventDefault() {} });
+    assert.deepEqual(JSON.parse(requests[0].options.body), {
+        query: "Gaunacaste", radius: 116, unit: "km",
+    });
+    requests[0].resolve({ error: "no_results", query: "Gaunacaste" });
+    await flush();
+    assert.equal(parts["advanced-frame"].hidden, false);
+    assert.equal(parts["nearby-error"].hidden, false);
+    assert.equal(parts["nearby-error"].textContent, "No search results for Gaunacaste");
+});
+
+test("advanced search returns to the feed using the API display name as the removable tag", async () => {
+    const { parts, requests, window, document } = setup("Canada");
+    parts["advanced-open"].emit("click");
+    parts.place.value = "Guanacaste";
+    parts["radius-number"].value = "50";
+    parts["nearby-form"].emit("submit", { preventDefault() {} });
+    requests[0].resolve({
+        html: "Nearby cards", total: 3, next_page: 2,
+        query: "Guanacaste", radius: 50, unit: "mi",
+        place: {
+            display_name: "Guanacaste, Costa Rica",
+            latitude: 10.3788441, longitude: -85.4338287,
+        },
+    });
+    await flush();
+    assert.equal(parts["advanced-frame"].hidden, true);
+    assert.equal(parts["feed-frame"].hidden, false);
+    assert.equal(parts.location.textContent, "Guanacaste, Costa Rica");
+    assert.equal(parts.clear.attrs["aria-label"], "Remove location Guanacaste, Costa Rica");
+    assert.equal(parts.results.innerHTML, "Nearby cards");
+    assert.equal(parts.count.textContent, "3 dive sites within 50 miles of Guanacaste, Costa Rica");
+    assert.equal(document.activeElement, parts.clear);
+    assert.match(window.location.href, /display=Guanacaste%2C\+Costa\+Rica/);
+    parts.more.emit("click");
+    assert.match(requests[1].url, /display_name=Guanacaste%2C\+Costa\+Rica/);
+    requests[1].resolve({ html: " More", total: 3, next_page: null });
+    await flush();
+    assert.equal(parts.results.innerHTML, "Nearby cards More");
 });
