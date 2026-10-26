@@ -378,6 +378,22 @@ class ExposureRecommendationsTest(unittest.TestCase):
         self.assertIsNone(advice['source_dive_id'])
         self.assertNotIn('source_dive_url', advice)
 
+    def test_kicker_rock_83f_does_not_link_to_regional_5mm_too_warm_log(self):
+        self.db.execute("UPDATE dive_sites SET name='Kicker Rock', country_or_area='Galapagos' WHERE id=1")
+        self.db.execute("UPDATE dive_sites SET name='Mosquera', country_or_area='Galapagos' WHERE id=2")
+        self.db.execute("UPDATE dive_sites SET country_or_area='Belize' WHERE id=3")
+        self.log(exposure='5mm', temperature=(83-32)*5/9, comfort=5, site=2)
+        self.log(exposure='3mm', temperature=(83-32)*5/9, site=3)
+        with patch('pelagia.marine.fetch', return_value=payload()), \
+             patch('pelagia.dive_site_recent_conditions', return_value={'water_temp_c': (83-32)*5/9}):
+            advice = self.client.get('/api/dive-sites/1/conditions').json['recommendations']
+        self.assertEqual(advice['exposure'], '3mm wetsuit')
+        self.assertIsNone(advice['source_dive_id'])
+        self.assertNotIn('source_dive_url', advice)
+        regional_match = self.log(exposure='3mm', temperature=(83-32)*5/9, site=2)
+        self.log(exposure='3mm', temperature=(83-32)*5/9, site=2, weight_rating=2)
+        self.assertEqual(self.advice((83-32)*5/9)['source_dive_id'], regional_match)
+
     def test_api_history_skips_newer_feedback_that_does_not_support_winning_suit(self):
         self.log(exposure='5mm', temperature=28.3, day='2026-01-01')
         # Most recent date wins even when an older, closer match has a higher ID.
@@ -400,18 +416,18 @@ class ExposureRecommendationsTest(unittest.TestCase):
     def test_without_comfortable_logs_adjust_the_closest_recorded_suit(self):
         self.log(exposure='5mm', temperature=28, comfort=1)
         self.log(exposure='5mm', temperature=28, comfort=1)
-        supporting_dive = self.log(exposure='3mm', temperature=28.3, comfort=1)
+        self.log(exposure='3mm', temperature=28.3, comfort=1)
         result = self.advice(28.3)
         self.assertEqual(result['exposure'], '5mm wetsuit')
-        self.assertEqual(result['source_dive_id'], supporting_dive)
+        self.assertIsNone(result['source_dive_id'])
 
     def test_without_comfortable_logs_choose_minimum_adjusted_exposure(self):
         self.log(exposure='3mm', temperature=28.3, comfort=1)  # Suggests 5mm.
-        supporting_dive = self.log(exposure='5mm', temperature=28.3, comfort=5)  # Suggests 3mm.
+        self.log(exposure='5mm', temperature=28.3, comfort=5)  # Suggests 3mm.
         self.log(exposure='shorty', temperature=28, comfort=5)  # More distant fallback.
         result = self.advice(28.3)
         self.assertEqual(result['exposure'], '3mm wetsuit')
-        self.assertEqual(result['source_dive_id'], supporting_dive)
+        self.assertIsNone(result['source_dive_id'])
 
     def test_api_refreshes_minimum_exposure_and_history_outside_forecast_cache(self):
         self.log(exposure='5mm', temperature=28.3)
@@ -438,9 +454,9 @@ class ExposureRecommendationsTest(unittest.TestCase):
                 dive_id = self.log(exposure='5mm', temperature=(82-32)*5/9, comfort=comfort)
                 result = self.advice((83-32)*5/9)
                 self.assertEqual(result['exposure'], expected)
-                self.assertEqual(result['source_dive_id'], dive_id)
+                self.assertEqual(result['source_dive_id'], dive_id if comfort == 3 else None)
 
-    def test_history_identifies_logs_that_confirm_or_adjust_the_default(self):
+    def test_history_only_links_logs_that_confirm_the_recommended_suit(self):
         for exposure, temperature, comfort, expected, personalized in (
             ('3mm', 22, 3, '3mm wetsuit', False),
             ('5mm', 22, 5, '3mm wetsuit', False),
@@ -453,7 +469,7 @@ class ExposureRecommendationsTest(unittest.TestCase):
                 result = self.advice(temperature)
                 self.assertEqual(result['exposure'], expected)
                 self.assertEqual(result['personalized'], personalized)
-                self.assertEqual(result['source_dive_id'], dive_id)
+                self.assertEqual(result['source_dive_id'], dive_id if comfort == 3 else None)
 
     def test_history_links_to_nearest_comfortable_dive_with_recent_tiebreak(self):
         self.log(exposure='5mm', temperature=23, comfort=3)

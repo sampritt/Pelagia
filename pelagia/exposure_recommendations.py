@@ -67,10 +67,11 @@ def recommend(db, user_id, site_id, temperature_c, now, salinity):
             key=lambda proposal: proposal[1],
         )
         personalized = EXPOSURES[proposed] not in choices
-        # Link only supporting dives whose weight felt right, retaining SQL's
-        # newest-first order. Missing neutral weight feedback means no history link.
-        source_dive_id = next((row['id'] for row, protection in proposals
-                               if protection == proposed and row['weight_rating'] == 3), None)
+        # History must confirm the recommended suit with both comfort ratings
+        # neutral. Adjusted cold/warm feedback can inform advice without a link.
+        source_dive_id = next((row['id'] for row in comfortable
+                               if row['exposure'] == EXPOSURES[proposed]
+                               and row['weight_rating'] == 3), None)
         choices = (EXPOSURES[proposed],)
     salinity = salinity if salinity in ('fresh', 'salt') else None
     match = next((row for row in logs if row['exposure'] in choices and salinity
