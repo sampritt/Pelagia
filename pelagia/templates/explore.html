@@ -2,7 +2,9 @@
 {% block title %}Explore - Pelagia{% endblock %}
 {% block head %}<script defer src="{{ url_for('static', filename='js/explore.js', v=pwa_asset_version) }}"></script>{% endblock %}
 {% block content %}
-<section class="explore-layout" data-explore data-location="{{ location }}">
+{% set selected_location = initial_nearby.displayName if initial_nearby else location %}
+<section class="explore-layout" data-explore data-location="{{ '' if initial_nearby else location }}">
+    <script type="application/json" data-explore-initial-nearby>{{ initial_nearby|tojson }}</script>
     <div data-explore-feed-frame>
         <header class="explore-header">
             <h1 id="exploreTitle">Explore</h1>
@@ -11,16 +13,16 @@
         <div class="explore-search autocomplete-field" role="search" aria-label="Explore by location">
             <div class="explore-search-bar">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"></circle><path d="m16 16 4.5 4.5"></path></svg>
-                <div class="explore-location-tag" data-explore-tag {% if not location %}hidden{% endif %}>
-                    <span class="tag"><span data-explore-location>{{ location }}</span><button type="button" data-explore-clear aria-label="Remove location {{ location }}">&times;</button></span>
+                <div class="explore-location-tag" data-explore-tag {% if not selected_location %}hidden{% endif %}>
+                    <span class="tag"><span data-explore-location>{{ selected_location }}</span><button type="button" data-explore-clear aria-label="Remove location {{ selected_location }}">&times;</button></span>
                 </div>
                 <label class="sr-only" for="exploreLocation">Search for a country or region</label>
-                <input id="exploreLocation" type="search" autocomplete="off" placeholder="Search a country or region" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="exploreLocations" data-explore-input {% if location %}hidden disabled{% endif %}>
+                <input id="exploreLocation" type="search" autocomplete="off" placeholder="Search a country or region" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="exploreLocations" data-explore-input {% if selected_location %}hidden disabled{% endif %}>
             </div>
             <div id="exploreLocations" class="autocomplete-menu explore-location-menu" role="listbox" aria-label="Locations" data-explore-suggestions hidden></div>
         </div>
         <button class="explore-advanced-link" type="button" data-explore-advanced-open>Advanced search <span aria-hidden="true">›</span></button>
-        <p class="explore-count" role="status" aria-live="polite" data-explore-count>{% if location %}{{ total }} {{ 'dive site' if total == 1 else 'dive sites' }} in {{ location }}{% endif %}</p>
+        <p class="explore-count" role="status" aria-live="polite" data-explore-count>{% if initial_nearby %}{{ total }} {{ 'dive site' if total == 1 else 'dive sites' }} within {{ initial_nearby.radius }} {{ 'mile' if initial_nearby.unit == 'mi' and initial_nearby.radius == 1 else ('miles' if initial_nearby.unit == 'mi' else 'km') }} of {{ initial_nearby.displayName }}{% elif location %}{{ total }} {{ 'dive site' if total == 1 else 'dive sites' }} in {{ location }}{% endif %}</p>
         <div id="exploreResults" class="explore-results" aria-label="Dive sites" data-explore-results>
             {% include '_explore_results.html' %}
         </div>

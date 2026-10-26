@@ -14,6 +14,7 @@ CREATE TABLE IF NOT EXISTS users (
     profile_photo TEXT,
     bio TEXT,
     explore_location TEXT,
+    explore_nearby_json TEXT,
     pressure_unit TEXT NOT NULL DEFAULT 'bar' CHECK (pressure_unit IN ('bar', 'psi')),
     length_unit TEXT NOT NULL DEFAULT 'm' CHECK (length_unit IN ('m', 'ft')),
     temperature_unit TEXT NOT NULL DEFAULT 'c' CHECK (temperature_unit IN ('c', 'f')),

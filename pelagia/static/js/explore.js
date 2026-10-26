@@ -20,9 +20,10 @@ function initExplore() {
     const placeInput = root.querySelector("[data-explore-place]");
     const nearbyError = root.querySelector("[data-explore-nearby-error]");
     const nearbySubmit = root.querySelector("[data-explore-nearby-submit]");
+    const initialNearby = JSON.parse(root.querySelector("[data-explore-initial-nearby]").textContent);
     const initialLocation = root.dataset.location;
     let location = initialLocation;
-    let nearby = null;
+    let nearby = initialNearby;
     let suggestionRequest;
     let feedRequest;
     let options = [];
@@ -94,6 +95,7 @@ function initExplore() {
         advancedFrame.hidden = false;
         nearbyError.hidden = true;
         nearbyError.textContent = "";
+        if (nearby) paintNearbyForm();
         if (updateHistory) {
             const url = new URL(window.location.href);
             url.searchParams.set("advanced", "1");
@@ -288,6 +290,13 @@ function initExplore() {
         radiusNumber.value = integer;
     }
 
+    function paintNearbyForm() {
+        placeInput.value = nearby.query;
+        unitInputs.forEach(option => { option.checked = option.value === nearby.unit; });
+        previousUnit = nearby.unit;
+        setRadius(nearby.radius, nearby.unit);
+    }
+
     radiusSlider.addEventListener("input", () => { radiusNumber.value = radiusSlider.value; });
     radiusNumber.addEventListener("input", () => {
         if (radiusNumber.value !== "" && Number.isInteger(Number(radiusNumber.value))) setRadius(radiusNumber.value);
@@ -378,6 +387,13 @@ function initExplore() {
                 loadNearbyFeed();
                 return;
             }
+        }
+        if (initial && initialNearby && !params.has("location")) {
+            nearby = initialNearby;
+            location = "";
+            paintLocation();
+            showFeedFrame();
+            return;
         }
         const nextLocation = params.has("location") ? params.get("location") : initialLocation;
         if (initial && nextLocation === initialLocation) {

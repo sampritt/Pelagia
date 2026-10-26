@@ -120,6 +120,20 @@ class ExploreTest(unittest.TestCase):
         geocode.assert_called_once_with("Victoria")
         self.assertAlmostEqual(cartesian_distance_km(0, 179.9, 0, -179.9), 22.24, places=1)
 
+        self.client.get("/home")
+        restored = self.client.get("/explore").get_data(as_text=True)
+        self.assertIn("Victoria, Capital Regional District, British Columbia, Canada", restored)
+        self.assertIn("2 dive sites within 10 miles", restored)
+        self.assertIn("Maple Reef", restored)
+        self.assertIn('"radius": 10', restored)
+        fresh_client = self.app.test_client()
+        with fresh_client.session_transaction() as fresh_session:
+            fresh_session["user_id"] = 1
+        self.assertIn(
+            "Victoria, Capital Regional District, British Columbia, Canada",
+            fresh_client.get("/explore").get_data(as_text=True),
+        )
+
     def test_advanced_search_no_result_errors_and_validation(self):
         self.assertEqual(self.client.post("/api/explore/nearby", json={}).status_code, 403)
         with patch("pelagia.explore.geocode_place", return_value=None):
@@ -216,6 +230,9 @@ class ExploreTest(unittest.TestCase):
             session["user_id"] = 1
         self.assertIn('data-location="Komodo National Park"', fresh_client.get("/explore").get_data(as_text=True))
         self.assertEqual(self.save_location("Canada").status_code, 200)
+        self.assertIsNone(self.db.execute(
+            "SELECT explore_nearby_json FROM users WHERE id = 1"
+        ).fetchone()[0])
         self.assertIn("Maple Reef", self.client.get("/explore").get_data(as_text=True))
         self.assertEqual(self.save_location("").status_code, 200)
         self.assertIn('data-location=""', self.client.get("/explore").get_data(as_text=True))
@@ -241,6 +258,9 @@ class ExploreTest(unittest.TestCase):
         database.init_db()
         database.init_db()
         self.assertEqual(self.db.execute("SELECT explore_location FROM users WHERE id = 1").fetchone()[0], "Canada")
+        self.assertIn("explore_nearby_json", {
+            row["name"] for row in self.db.execute("PRAGMA table_info(users)")
+        })
 
     def test_existing_accounts_migrate_to_latest_dive_default_without_changing_dives(self):
         dive_id = self.add_dive(1)

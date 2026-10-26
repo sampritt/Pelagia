@@ -4,7 +4,7 @@ const path = require("node:path");
 const test = require("node:test");
 const vm = require("node:vm");
 
-function setup(initial = "Canada", { deferSaves = false } = {}) {
+function setup(initial = "Canada", { deferSaves = false, initialNearby = null } = {}) {
     let document;
     function element() {
         return {
@@ -26,6 +26,7 @@ function setup(initial = "Canada", { deferSaves = false } = {}) {
         "input", "suggestions", "tag", "location", "clear", "results", "count", "more",
         "feed-frame", "advanced-frame", "advanced-open", "advanced-back", "nearby-form",
         "radius-slider", "radius-number", "place", "nearby-error", "nearby-submit",
+        "initial-nearby",
     ];
     const parts = Object.fromEntries(names.map(name => [name, element()]));
     parts.input.hidden = Boolean(initial);
@@ -36,6 +37,7 @@ function setup(initial = "Canada", { deferSaves = false } = {}) {
     parts["radius-number"].value = "50";
     parts["nearby-error"].hidden = true;
     parts["nearby-submit"].textContent = "Search";
+    parts["initial-nearby"].textContent = JSON.stringify(initialNearby);
     const units = [element(), element()];
     units[0].value = "mi";
     units[0].checked = true;
@@ -262,4 +264,21 @@ test("advanced search returns to the feed using the API display name as the remo
     requests[1].resolve({ html: " More", total: 3, next_page: null });
     await flush();
     assert.equal(parts.results.innerHTML, "Nearby cards More");
+});
+
+test("a saved advanced result restores its tag and form without another request", () => {
+    const initialNearby = {
+        query: "Guanacaste", displayName: "Guanacaste Province, Costa Rica",
+        latitude: 10.63, longitude: -85.44, radius: 35, unit: "mi",
+    };
+    const { parts, units, requests, document } = setup("", { initialNearby });
+    assert.equal(parts.tag.hidden, false);
+    assert.equal(parts.location.textContent, initialNearby.displayName);
+    assert.equal(parts.input.disabled, true);
+    assert.equal(requests.length, 0);
+    parts["advanced-open"].emit("click");
+    assert.equal(parts.place.value, "Guanacaste");
+    assert.equal(parts["radius-number"].value, 35);
+    assert.equal(units[0].checked, true);
+    assert.notEqual(document.activeElement, parts.place);
 });

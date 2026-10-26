@@ -1,5 +1,6 @@
 """Location discovery and paginated Explore feeds backed by the reference catalog."""
 
+import json
 import math
 
 import requests
@@ -134,6 +135,45 @@ def parse_coordinate(value, minimum, maximum):
     return number
 
 
+def decode_saved_nearby(raw):
+    """Return a validated account-level nearby search, or ``None``."""
+    if not raw:
+        return None
+    try:
+        saved = json.loads(raw)
+        query = saved["query"].strip()
+        display_name = saved["displayName"].strip()
+        latitude = float(saved["latitude"])
+        longitude = float(saved["longitude"])
+        radius = saved["radius"]
+        unit = saved["unit"]
+    except (AttributeError, KeyError, TypeError, ValueError, json.JSONDecodeError):
+        return None
+    if (
+        not isinstance(saved.get("query"), str)
+        or not isinstance(saved.get("displayName"), str)
+        or isinstance(radius, bool)
+        or not isinstance(radius, int)
+        or unit not in RADIUS_LIMITS
+        or not 1 <= len(query) <= 160
+        or not 1 <= len(display_name) <= 300
+        or not math.isfinite(latitude)
+        or not math.isfinite(longitude)
+        or not -90 <= latitude <= 90
+        or not -180 <= longitude <= 180
+        or not 1 <= radius <= RADIUS_LIMITS[unit]
+    ):
+        return None
+    return {
+        "query": query,
+        "displayName": display_name,
+        "latitude": latitude,
+        "longitude": longitude,
+        "radius": radius,
+        "unit": unit,
+    }
+
+
 def locations():
     return [row[0] for row in get_db().execute(
         """SELECT trim(country_or_area) FROM dive_sites
@@ -204,13 +244,38 @@ def init_app(app, login_required):
     @blueprint.get("/explore")
     @login_required
     def index():
-        saved = get_db().execute("SELECT explore_location FROM users WHERE id = ?", (session["user_id"],)).fetchone()[0]
+        saved = get_db().execute(
+            "SELECT explore_location, explore_nearby_json FROM users WHERE id = ?",
+            (session["user_id"],),
+        ).fetchone()
+        initial_nearby = None
+        if "location" not in request.args and "nearby" not in request.args:
+            initial_nearby = decode_saved_nearby(saved["explore_nearby_json"])
+        if initial_nearby:
+            radius_km = (
+                initial_nearby["radius"] * 1.609344
+                if initial_nearby["unit"] == "mi"
+                else initial_nearby["radius"]
+            )
+            data = nearby_feed_data(
+                initial_nearby["latitude"], initial_nearby["longitude"],
+                radius_km, initial_nearby["displayName"],
+            )
+            return render_template(
+                "explore.html", initial_nearby=initial_nearby, **data
+            )
         if "location" in request.args:
             requested = request.args.get("location")
         else:
-            requested = latest_dive_location(session["user_id"]) if saved is None else saved
+            requested = (
+                latest_dive_location(session["user_id"])
+                if saved["explore_location"] is None
+                else saved["explore_location"]
+            )
         location = resolve_location(requested)
-        return render_template("explore.html", **feed_data(location))
+        return render_template(
+            "explore.html", initial_nearby=None, **feed_data(location)
+        )
 
     @blueprint.after_request
     def no_api_cache(response):
@@ -261,6 +326,20 @@ def init_app(app, login_required):
         data = nearby_feed_data(
             place["latitude"], place["longitude"], radius_km, place["display_name"]
         )
+        saved_nearby = {
+            "query": query,
+            "displayName": place["display_name"],
+            "latitude": place["latitude"],
+            "longitude": place["longitude"],
+            "radius": radius,
+            "unit": unit,
+        }
+        db = get_db()
+        db.execute(
+            "UPDATE users SET explore_location = NULL, explore_nearby_json = ? WHERE id = ?",
+            (json.dumps(saved_nearby, separators=(",", ":")), session["user_id"]),
+        )
+        db.commit()
         return jsonify(
             html=render_template("_explore_results.html", **data),
             next_page=data["next_page"],
@@ -302,7 +381,10 @@ def init_app(app, login_required):
         if payload["location"].strip() and not location:
             abort(400)
         db = get_db()
-        db.execute("UPDATE users SET explore_location = ? WHERE id = ?", (location, session["user_id"]))
+        db.execute(
+            "UPDATE users SET explore_location = ?, explore_nearby_json = NULL WHERE id = ?",
+            (location, session["user_id"]),
+        )
         db.commit()
         return jsonify(location=location)
 
