@@ -6153,8 +6153,6 @@ img.is-media-loading {
 .explore-nearby-error { margin: 14px 0 0; color: var(--danger); font-size: .8rem; line-height: 1.55; }
 .explore-nearby-submit { width: 100%; min-height: 50px; margin-top: 24px; }
 .explore-nearby-submit:disabled { cursor: wait; opacity: .65; }
-.explore-geocoder-credit { margin: 12px 0 0; color: var(--muted); font-size: .65rem; text-align: center; }
-.explore-geocoder-credit a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
 @keyframes explore-frame-in { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: none; } }
 .explore-layout [hidden] { display: none; }
 @media (min-width: 821px) and (max-width: 1160px) {

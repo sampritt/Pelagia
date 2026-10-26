@@ -213,7 +213,7 @@ test("advanced search keeps radius controls in sync and shows no-result feedback
     parts["advanced-open"].emit("click");
     assert.equal(parts["feed-frame"].hidden, true);
     assert.equal(parts["advanced-frame"].hidden, false);
-    assert.equal(document.activeElement, parts.place);
+    assert.notEqual(document.activeElement, parts.place);
     parts["radius-slider"].value = "72";
     parts["radius-slider"].emit("input");
     assert.equal(parts["radius-number"].value, "72");

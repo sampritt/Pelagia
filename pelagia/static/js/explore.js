@@ -100,7 +100,6 @@ function initExplore() {
             window.history.pushState(null, "", url);
             advancedOpenedHere = true;
         }
-        placeInput.focus();
     }
 
     function clearExploreParams(url) {

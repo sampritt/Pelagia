@@ -58,7 +58,7 @@ class ExploreTest(unittest.TestCase):
         self.assertIn("Advanced search", html)
         self.assertIn("Search within", html)
         self.assertIn("City, island, or landmark", html)
-        self.assertIn("OpenStreetMap contributors", html)
+        self.assertNotIn("Place search by", html)
         self.assertIn('type="range" min="1" max="100"', html)
 
     def nearby_search(self, query="Victoria", radius=50, unit="mi"):
