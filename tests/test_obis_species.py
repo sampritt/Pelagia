@@ -126,7 +126,7 @@ class ObisSpeciesTest(unittest.TestCase):
 
     def test_normalizer_uses_description_model_parameters_and_validates_tags(self):
         response = api_response(openai_payload([
-            {"scientific_name": "Example species", "pelagia_tag": "reef fish"},
+            [0, "reef fish"],
         ]))
         taxa = [{"scientific_name": "Example species", "aphia_id": 7}]
         with self.app.app_context(), patch.object(obis_species.requests, "post", return_value=response) as post:
@@ -145,11 +145,12 @@ class ObisSpeciesTest(unittest.TestCase):
         self.assertEqual(post.call_args.kwargs["timeout"], (3, 20))
         self.assertFalse(post.call_args.kwargs["allow_redirects"])
         self.assertIn("Example species", body["input"])
-        self.assertIn("most specific", body["instructions"])
+        self.assertIn('"taxon_id":0', body["input"])
+        self.assertIn("single most", body["instructions"])
         response.close.assert_called_once()
         with self.assertRaises(obis_species.EnrichmentError):
             obis_species.parse_normalized_mappings(
-                openai_payload([{"scientific_name": "Example species", "pelagia_tag": "Invented animal"}]),
+                openai_payload([[0, "Invented animal"]]),
                 taxa,
                 ["Coral"],
             )
@@ -180,6 +181,16 @@ class ObisSpeciesTest(unittest.TestCase):
             "aphia_id": 218253,
             "observation_dates": ["2026-03-25", "2025-12-25"],
         }]
+        with self.app.app_context():
+            db = database.get_db()
+            db.execute(
+                "INSERT INTO dive_site_obis_species_cache "
+                "(dive_site_id, latitude, longitude, radius_miles, start_date, "
+                "qualifying_taxon_count, model, normalizer_version) "
+                "VALUES (1, 54.1, -132.9, 0.5, '2020-01-01', 88, 'test', 1)"
+            )
+            db.commit()
+            self.assertIsNone(obis_species.read_cache(1))
         with patch.object(obis_species, "fetch_obis_species", return_value=taxa) as fetch, \
              patch.object(obis_species, "normalize_species", return_value=[
                  {"scientific_name": "Triaenodon obesus", "pelagia_tag": "Reef Fish"},
@@ -194,6 +205,12 @@ class ObisSpeciesTest(unittest.TestCase):
         normalize.assert_called_once()
         with self.connect() as db:
             self.assertEqual(db.execute("SELECT COUNT(*) FROM dive_site_obis_species_cache").fetchone()[0], 1)
+            self.assertEqual(
+                db.execute(
+                    "SELECT normalizer_version FROM dive_site_obis_species_cache"
+                ).fetchone()[0],
+                obis_species.NORMALIZER_VERSION,
+            )
             stored = db.execute(
                 "SELECT common_name, observation_dates_json FROM dive_site_obis_species"
             ).fetchone()

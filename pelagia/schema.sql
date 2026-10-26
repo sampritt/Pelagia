@@ -63,6 +63,7 @@ CREATE TABLE IF NOT EXISTS dive_site_obis_species_cache (
     start_date TEXT NOT NULL,
     qualifying_taxon_count INTEGER NOT NULL DEFAULT 0,
     model TEXT NOT NULL,
+    normalizer_version INTEGER NOT NULL DEFAULT 2,
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 

@@ -71,9 +71,24 @@ def init_db():
     _ensure_column(db, "dive_sites", "logged_dive_count", "INTEGER NOT NULL DEFAULT 0")
     _ensure_column(
         db,
+        "dive_site_obis_species_cache",
+        "normalizer_version",
+        "INTEGER NOT NULL DEFAULT 1",
+    )
+    _ensure_column(
+        db,
         "dive_site_obis_species",
         "observation_dates_json",
         "TEXT NOT NULL DEFAULT '[]'",
+    )
+    # Version 1 can be retained when it produced species, or when OBIS found no
+    # qualifying taxa. A positive-taxa/empty-species result is retried once with
+    # the compact version 2 model contract.
+    db.execute(
+        "UPDATE dive_site_obis_species_cache SET normalizer_version = 2 "
+        "WHERE normalizer_version = 1 AND (qualifying_taxon_count = 0 OR EXISTS ("
+        "SELECT 1 FROM dive_site_obis_species species "
+        "WHERE species.dive_site_id = dive_site_obis_species_cache.dive_site_id))"
     )
     _ensure_column(db, "dives", "oxygen_pct", "INTEGER")
     _ensure_column(db, "dives", "helium_pct", "INTEGER")
