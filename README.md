@@ -68,6 +68,8 @@ Completed results, including empty results, are stored permanently in `dive_site
 
 The SIGHTINGS panel shows a case-insensitive union of cached OBIS tags and species from non-deleted logged dives. Logged counts remain attached to their tags. Shared profiles may display an existing cache but never initiate enrichment, and Explore cards continue to use logged observations only. Set `OBIS_ENDPOINT` to override the public OBIS occurrence endpoint in managed or test environments.
 
+For an occurrence-level offline catalogue, run `PYTHONPATH=. .venv312/bin/python scripts/ingest_obis_species_occurrences.py`. The restartable job iterates Pelagia's full species vocabulary, resolves common names to the most-specific exact marine WoRMS taxon matches, and queries each distinct AphiaID in OBIS from 2020-01-01 through the current UTC date. It saves the complete source JSON only when coordinate uncertainty is strictly below 0.5 miles and a local Cartesian distance check places the occurrence strictly within 0.5 miles of a Pelagia dive site. Resolution status, accepted taxa, occurrences, distances, and every dive-site/species/occurrence link live in separate tables and never modify diver-recorded species. Use `--taxon-overrides overrides.json` for ambiguous, misspelled, multilingual, or catalogue-only tags; its JSON values are AphiaID arrays, while `null` explicitly skips a tag. `--resolve-only`, `--ingest-only`, repeatable `--species`, and `--max-taxa` support review and staged runs.
+
 The browser starts OBIS enrichment independently from the marine forecast and dive-site description
 requests. Gunicorn's threaded workers service those requests concurrently; none of the upstream network
 calls waits for another feature to finish.

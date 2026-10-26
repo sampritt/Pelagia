@@ -77,6 +77,73 @@ CREATE TABLE IF NOT EXISTS dive_site_obis_species (
 CREATE INDEX IF NOT EXISTS idx_dive_site_obis_species_name
 ON dive_site_obis_species(common_name);
 
+-- Offline, occurrence-level OBIS catalogue. This stays separate from diver logs
+-- and from the on-demand per-site display cache above.
+CREATE TABLE IF NOT EXISTS pelagia_species_obis_resolution (
+    species_id INTEGER PRIMARY KEY REFERENCES species(id) ON DELETE CASCADE,
+    common_name TEXT NOT NULL,
+    status TEXT NOT NULL CHECK (status IN ('resolved', 'unresolved', 'skipped')),
+    source TEXT NOT NULL,
+    note TEXT,
+    resolved_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS pelagia_species_obis_taxa (
+    species_id INTEGER NOT NULL REFERENCES species(id) ON DELETE CASCADE,
+    taxon_id INTEGER NOT NULL,
+    scientific_name TEXT NOT NULL,
+    taxon_rank TEXT,
+    source TEXT NOT NULL,
+    PRIMARY KEY (species_id, taxon_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_pelagia_species_obis_taxa_taxon
+ON pelagia_species_obis_taxa(taxon_id);
+
+CREATE TABLE IF NOT EXISTS obis_occurrences (
+    obis_id TEXT PRIMARY KEY,
+    occurrence_id TEXT,
+    queried_taxon_id INTEGER NOT NULL,
+    scientific_name TEXT,
+    event_date TEXT,
+    decimal_latitude REAL NOT NULL,
+    decimal_longitude REAL NOT NULL,
+    coordinate_uncertainty_m REAL NOT NULL,
+    raw_json TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_obis_occurrences_taxon
+ON obis_occurrences(queried_taxon_id);
+
+CREATE TABLE IF NOT EXISTS obis_occurrence_queries (
+    obis_id TEXT NOT NULL REFERENCES obis_occurrences(obis_id) ON DELETE CASCADE,
+    taxon_id INTEGER NOT NULL,
+    PRIMARY KEY (obis_id, taxon_id)
+);
+
+CREATE TABLE IF NOT EXISTS dive_site_obis_occurrences (
+    dive_site_id INTEGER NOT NULL REFERENCES dive_sites(id) ON DELETE CASCADE,
+    species_id INTEGER NOT NULL REFERENCES species(id) ON DELETE CASCADE,
+    obis_id TEXT NOT NULL REFERENCES obis_occurrences(obis_id) ON DELETE CASCADE,
+    distance_meters REAL NOT NULL,
+    PRIMARY KEY (dive_site_id, species_id, obis_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_dive_site_obis_occurrences_species
+ON dive_site_obis_occurrences(species_id, dive_site_id);
+
+CREATE TABLE IF NOT EXISTS obis_taxon_ingestion (
+    taxon_id INTEGER NOT NULL,
+    start_date TEXT NOT NULL,
+    end_date TEXT NOT NULL,
+    status TEXT NOT NULL CHECK (status IN ('running', 'complete')),
+    after_cursor TEXT,
+    pages INTEGER NOT NULL DEFAULT 0,
+    records_seen INTEGER NOT NULL DEFAULT 0,
+    updated_at TEXT NOT NULL,
+    PRIMARY KEY (taxon_id, start_date, end_date)
+);
+
 CREATE TABLE IF NOT EXISTS dive_site_obis_species_attempts (
     dive_site_id INTEGER PRIMARY KEY REFERENCES dive_sites(id) ON DELETE CASCADE,
     token TEXT,
