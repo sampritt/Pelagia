@@ -4,6 +4,7 @@ import tempfile
 import unittest
 from datetime import date
 from pathlib import Path
+from unittest.mock import Mock
 
 from pelagia import obis_catalog
 
@@ -75,6 +76,14 @@ class ObisCatalogTest(unittest.TestCase):
             "taxon_rank": "Species",
         }])
 
+    def test_empty_taxonomy_lookup_accepts_worms_404(self):
+        response = Mock(status_code=404, headers={})
+        session = Mock()
+        session.get.return_value = response
+        api = obis_catalog.JsonApi(session=session)
+        self.assertEqual(api.get("https://example.test/missing", allow_empty=True), [])
+        response.raise_for_status.assert_not_called()
+
     def test_qualifying_occurrence_requires_strict_uncertainty_and_presence(self):
         radius = 0.5 * obis_catalog.METERS_PER_MILE
         base = {
@@ -123,6 +132,7 @@ class ObisCatalogTest(unittest.TestCase):
             self.db, api, 105847, [1, 2], index,
             date(2020, 1, 1), date(2026, 1, 3), progress=lambda _message: None,
         )
+        self.assertEqual(api.calls[0][1]["params"]["size"], 10_000)
         stored = self.db.execute("SELECT * FROM obis_occurrences").fetchone()
         self.assertEqual(stored["obis_id"], "obis-row-1")
         self.assertEqual(json.loads(stored["raw_json"])["datasetName"], "Example")

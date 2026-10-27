@@ -21,7 +21,7 @@ START_DATE = date(2020, 1, 1)
 RADIUS_MILES = 0.5
 METERS_PER_MILE = 1609.344
 EARTH_RADIUS_M = 6_371_008.8
-PAGE_SIZE = 1000
+PAGE_SIZE = 10_000
 GRID_DEGREES = 0.01
 USER_AGENT = "Pelagia-OBIS-catalog-ingest/1.0"
 
@@ -199,7 +199,7 @@ class JsonApi:
                     headers={"Accept": "application/json", "User-Agent": USER_AGENT},
                     timeout=(5, self.timeout),
                 )
-                if allow_empty and response.status_code == 204:
+                if allow_empty and response.status_code in (204, 404):
                     return []
                 if response.status_code in (429, 500, 502, 503, 504):
                     delay = finite_number(response.headers.get("Retry-After"))
