@@ -1,28 +1,17 @@
-<div class="site-sightings-panel"
-     {% if obis_species_cache is none and not public_preview %}
-     data-site-sightings data-obis-species-url="{{ url_for('api_dive_site_obis_species', site_id=site.id) }}"
-     {% endif %}>
+<div class="site-sightings-panel">
     <h2>SIGHTINGS</h2>
-    <div class="species-row site-sightings-tags" data-site-sightings-tags {% if not sightings %}hidden{% endif %}>
-        {% if sightings %}
+    {% if sightings %}
+        <div class="species-row site-sightings-tags">
             {% for sighting in sightings %}
-                <span data-species-name="{{ sighting.common_name|lower }}">
+                <span>
                     {{ sighting.common_name }}
                     {% if sighting.dive_count > 1 %}
                         <strong>{{ sighting.dive_count }}</strong>
                     {% endif %}
                 </span>
             {% endfor %}
-        {% endif %}
-    </div>
-    <p class="muted" data-site-sightings-empty {% if sightings %}hidden{% endif %}>No marine species observations yet.</p>
-    {% if obis_species_cache is none and not public_preview %}
-    <div class="site-sightings-loading" data-site-sightings-loading role="status" hidden>
-        <span class="sr-only">Finding nearby marine species</span>
-        <span class="skeleton skeleton-chip" aria-hidden="true"></span>
-        <span class="skeleton skeleton-chip short" aria-hidden="true"></span>
-        <span class="skeleton skeleton-chip long" aria-hidden="true"></span>
-        <span class="skeleton skeleton-chip medium" aria-hidden="true"></span>
-    </div>
+        </div>
+    {% else %}
+        <p class="muted">No marine species observations yet.</p>
     {% endif %}
 </div>

@@ -55,30 +55,7 @@ CREATE TABLE IF NOT EXISTS dive_site_description_attempts (
     retry_after REAL NOT NULL DEFAULT 0
 );
 
-CREATE TABLE IF NOT EXISTS dive_site_obis_species_cache (
-    dive_site_id INTEGER PRIMARY KEY REFERENCES dive_sites(id) ON DELETE CASCADE,
-    latitude REAL,
-    longitude REAL,
-    radius_miles REAL NOT NULL,
-    start_date TEXT NOT NULL,
-    qualifying_taxon_count INTEGER NOT NULL DEFAULT 0,
-    model TEXT NOT NULL,
-    normalizer_version INTEGER NOT NULL DEFAULT 3,
-    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE IF NOT EXISTS dive_site_obis_species (
-    dive_site_id INTEGER NOT NULL REFERENCES dive_sites(id) ON DELETE CASCADE,
-    common_name TEXT NOT NULL,
-    observation_dates_json TEXT NOT NULL DEFAULT '[]',
-    PRIMARY KEY (dive_site_id, common_name)
-);
-
-CREATE INDEX IF NOT EXISTS idx_dive_site_obis_species_name
-ON dive_site_obis_species(common_name);
-
--- Offline, occurrence-level OBIS catalogue. This stays separate from diver logs
--- and from the on-demand per-site display cache above.
+-- Offline, occurrence-level OBIS catalogue. This stays separate from diver logs.
 CREATE TABLE IF NOT EXISTS pelagia_species_obis_resolution (
     species_id INTEGER PRIMARY KEY REFERENCES species(id) ON DELETE CASCADE,
     common_name TEXT NOT NULL,
@@ -142,13 +119,6 @@ CREATE TABLE IF NOT EXISTS obis_taxon_ingestion (
     records_seen INTEGER NOT NULL DEFAULT 0,
     updated_at TEXT NOT NULL,
     PRIMARY KEY (taxon_id, start_date, end_date)
-);
-
-CREATE TABLE IF NOT EXISTS dive_site_obis_species_attempts (
-    dive_site_id INTEGER PRIMARY KEY REFERENCES dive_sites(id) ON DELETE CASCADE,
-    token TEXT,
-    lease_until REAL NOT NULL DEFAULT 0,
-    retry_after REAL NOT NULL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS species (

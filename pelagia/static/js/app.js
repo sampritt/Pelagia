@@ -1866,7 +1866,6 @@ document.addEventListener("DOMContentLoaded", () => {
     initUserProfile();
     initProfileHistory();
     initSiteDescription();
-    initObisSpecies();
 });
 
 window.openDive = openDive;
@@ -1939,78 +1938,6 @@ function initSiteDescription() {
             host.replaceChildren(paragraph);
             host.hidden = false;
             host.removeAttribute("data-site-description");
-        } catch (_error) {
-            stop();
-        }
-    }
-    load();
-}
-
-function initObisSpecies() {
-    const host = document.querySelector("[data-site-sightings]");
-    if (!host) return;
-    const tags = host.querySelector("[data-site-sightings-tags]");
-    const empty = host.querySelector("[data-site-sightings-empty]");
-    const loading = host.querySelector("[data-site-sightings-loading]");
-    const hadTags = tags.querySelectorAll("[data-species-name]").length > 0;
-    if (!hadTags) empty.hidden = true;
-    const controller = new AbortController();
-    const loadingTimer = !hadTags && loading
-        ? window.setTimeout(() => { loading.hidden = false; }, 160)
-        : undefined;
-    let stopped = false;
-    let completed = false;
-    let pollTimer;
-    const deadline = window.setTimeout(stop, 45000);
-    function stop() {
-        if (stopped) return;
-        stopped = true;
-        controller.abort();
-        window.clearTimeout(loadingTimer);
-        window.clearTimeout(pollTimer);
-        window.clearTimeout(deadline);
-        window.removeEventListener("pagehide", stop);
-        loading?.remove();
-        if (!completed && !hadTags) empty.hidden = false;
-    }
-    window.addEventListener("pagehide", stop, { once: true });
-
-    async function load() {
-        try {
-            const response = await fetch(host.dataset.obisSpeciesUrl, {
-                method: "POST",
-                credentials: "same-origin",
-                headers: { "X-Requested-With": "fetch" },
-                cache: "no-store",
-                signal: controller.signal,
-            });
-            if (stopped) return;
-            if (response.status === 202) {
-                pollTimer = window.setTimeout(load, 2000);
-                return;
-            }
-            if (!response.ok) throw new Error("Nearby observations unavailable");
-            const result = await response.json();
-            if (result.status !== "complete" || !Array.isArray(result.species)
-                    || !result.species.every(name => typeof name === "string")) {
-                throw new Error("Invalid nearby observations");
-            }
-            const existing = new Set(Array.from(tags.querySelectorAll("[data-species-name]"), tag => tag.dataset.speciesName));
-            result.species.forEach((name) => {
-                const key = name.trim().toLocaleLowerCase();
-                if (!key || existing.has(key)) return;
-                const tag = document.createElement("span");
-                tag.dataset.speciesName = key;
-                tag.textContent = name.trim();
-                tags.appendChild(tag);
-                existing.add(key);
-            });
-            tags.hidden = existing.size === 0;
-            empty.hidden = existing.size !== 0;
-            completed = true;
-            host.removeAttribute("data-site-sightings");
-            host.removeAttribute("data-obis-species-url");
-            stop();
         } catch (_error) {
             stop();
         }

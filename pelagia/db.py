@@ -29,6 +29,15 @@ def init_db():
     db = get_db()
     schema = Path(current_app.root_path, "schema.sql").read_text()
     db.executescript(schema)
+    # Retire the former page-load OBIS/Luna cache after the offline catalogue
+    # has become the only source of imported site sightings.
+    db.executescript(
+        """
+        DROP TABLE IF EXISTS dive_site_obis_species_attempts;
+        DROP TABLE IF EXISTS dive_site_obis_species;
+        DROP TABLE IF EXISTS dive_site_obis_species_cache;
+        """
+    )
     # Remove retired credentials without rebuilding users or changing its IDs.
     if "password_hash" in {row["name"] for row in db.execute("PRAGMA table_info(users)")}:
         db.execute("ALTER TABLE users DROP COLUMN password_hash")
@@ -69,27 +78,6 @@ def init_db():
     _ensure_column(db, "dives", "current_strength", "TEXT NOT NULL DEFAULT 'none'")
     _ensure_column(db, "dives", "is_deleted", "INTEGER NOT NULL DEFAULT 0")
     _ensure_column(db, "dive_sites", "logged_dive_count", "INTEGER NOT NULL DEFAULT 0")
-    _ensure_column(
-        db,
-        "dive_site_obis_species_cache",
-        "normalizer_version",
-        "INTEGER NOT NULL DEFAULT 1",
-    )
-    _ensure_column(
-        db,
-        "dive_site_obis_species",
-        "observation_dates_json",
-        "TEXT NOT NULL DEFAULT '[]'",
-    )
-    # Older results can be retained when they produced species, or when OBIS found
-    # no qualifying taxa. A positive-taxa/empty-species result is retried with the
-    # current bounded-batch normalizer contract.
-    db.execute(
-        "UPDATE dive_site_obis_species_cache SET normalizer_version = 3 "
-        "WHERE normalizer_version < 3 AND (qualifying_taxon_count = 0 OR EXISTS ("
-        "SELECT 1 FROM dive_site_obis_species species "
-        "WHERE species.dive_site_id = dive_site_obis_species_cache.dive_site_id))"
-    )
     _ensure_column(db, "dives", "oxygen_pct", "INTEGER")
     _ensure_column(db, "dives", "helium_pct", "INTEGER")
     _ensure_metric_dive_schema(db)

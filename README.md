@@ -13,7 +13,7 @@ python3.12 -m venv .venv312
 Open `http://127.0.0.1:8010`.
 
 `gunicorn.conf.py` runs two `gthread` workers with four threads each by default, so the independent
-Open-Meteo, OBIS, and OpenAI requests made by a dive-site page can progress concurrently instead of
+Open-Meteo and OpenAI requests made by a dive-site page can progress concurrently instead of
 occupying all synchronous workers. Set `WEB_CONCURRENCY` and `GUNICORN_THREADS` to tune those values
 for the deployment. SQLite remains safe for this workload because each request uses its own connection,
 WAL mode is enabled, and upstream calls release their short database claims before network I/O.
@@ -58,21 +58,11 @@ Timeouts, rate limits, missing/invalid credentials, and malformed or incomplete 
 
 Tests mock OpenAI without making billable calls: `.venv312/bin/python -m unittest discover -s tests -p 'test_*.py'` and `node --test tests/*.cjs`.
 
-## OBIS species enrichment
+## OBIS species catalogue
 
-Opening an authenticated dive-site profile also starts a one-time nearby-species enrichment when that site has no completed OBIS cache. Pelagia queries OBIS for presence records dated from January 1, 2020 through the current date within 0.5 miles of the site's coordinates. A record qualifies only when both its observation point and its reported coordinate uncertainty are within that radius. Accepted species are deduplicated with OBIS/WoRMS identifiers before normalization.
-
-The unique taxa and Pelagia's complete global species vocabulary are sent to `gpt-5.6-luna` using the same bounded Responses API configuration as dive-site descriptions. Taxa receive compact integer IDs and large sets are split into bounded batches of 40, with up to three model requests progressing concurrently. The model may return only exact Pelagia names and at most one most-specific tag for each taxon. Responses are validated against the original OBIS taxa and local `species` table before storage. An OBIS search with no qualifying species completes without an OpenAI call.
-
-Completed results, including empty results, are stored permanently in `dive_site_obis_species_cache` and `dive_site_obis_species`; they are never written to the diver-recorded `dive_species` table. Each mapped species row retains every unique OBIS observation date in `observation_dates_json`, ordered newest first. Concurrent page loads share a lease so only one worker performs enrichment. Temporary network, rate-limit, credential, or malformed-response failures retry after a five-minute cooldown. To deliberately enrich a site again, delete its rows from `dive_site_obis_species_cache` and `dive_site_obis_species`; the next authenticated profile visit will recreate them.
-
-The SIGHTINGS panel shows a case-insensitive union of cached OBIS tags and species from non-deleted logged dives. Logged counts remain attached to their tags. Shared profiles may display an existing cache but never initiate enrichment, and Explore cards continue to use logged observations only. Set `OBIS_ENDPOINT` to override the public OBIS occurrence endpoint in managed or test environments.
+The SIGHTINGS panel reads the precomputed `dive_site_obis_occurrences` catalogue and combines its Pelagia species with species from non-deleted logged dives. Logged counts remain attached to their tags. Loading a dive-site page performs no OBIS or OpenAI species-normalization request. Explore cards continue to use logged observations only.
 
 For an occurrence-level offline catalogue, run `PYTHONPATH=. .venv312/bin/python scripts/ingest_obis_species_occurrences.py`. The restartable job iterates Pelagia's full species vocabulary, resolves common names to the most-specific exact marine WoRMS taxon matches, and queries each distinct AphiaID in OBIS from 2020-01-01 through the current UTC date. It saves the complete source JSON only when coordinate uncertainty is strictly below 0.5 miles and a local Cartesian distance check places the occurrence strictly within 0.5 miles of a Pelagia dive site. Resolution status, accepted taxa, occurrences, distances, and every dive-site/species/occurrence link live in separate tables and never modify diver-recorded species. Use `--taxon-overrides overrides.json` for ambiguous, misspelled, multilingual, or catalogue-only tags; its JSON values are AphiaID arrays, while `null` explicitly skips a tag. `--resolve-only`, `--ingest-only`, repeatable `--species`, and `--max-taxa` support review and staged runs.
-
-The browser starts OBIS enrichment independently from the marine forecast and dive-site description
-requests. Gunicorn's threaded workers service those requests concurrently; none of the upstream network
-calls waits for another feature to finish.
 
 ## Entry Points
 

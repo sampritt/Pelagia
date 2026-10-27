@@ -1684,27 +1684,6 @@ input[type="range"] {
     font-weight: 700;
 }
 
-.site-sightings-loading {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    min-height: 28px;
-}
-
-.site-sightings-loading[hidden] { display: none; }
-
-.site-sightings-loading .skeleton-chip {
-    width: 108px;
-    height: 28px;
-    margin: 0;
-    border: 1px solid color-mix(in srgb, var(--line) 65%, transparent);
-    border-radius: 999px;
-}
-
-.site-sightings-loading .skeleton-chip.short { width: 76px; }
-.site-sightings-loading .skeleton-chip.medium { width: 92px; }
-.site-sightings-loading .skeleton-chip.long { width: 128px; }
-
 .site-conditions-panel {
     display: grid;
     gap: 14px;
