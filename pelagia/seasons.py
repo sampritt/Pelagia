@@ -16,7 +16,7 @@ def init_app(app):
         for row in csv.DictReader(source):
             start = date.fromisoformat(row["rainy_season_start"])
             end = date.fromisoformat(row["rainy_season_end"])
-            seasons[row["dive_site_id"]] = (start.month, end.month)
+            seasons[row["dive_site_id"]] = (start, end)
     app.extensions["rainy_seasons"] = seasons
 
 
@@ -26,10 +26,13 @@ def for_site(master_site_id, today=None):
         return None
     if today is None:
         today = datetime.now(ZoneInfo("America/New_York")).date()
-    start, end = months
+    start_date, end_date = months
+    start, end = start_date.month, end_date.month
     # Month-level display includes the entire rainy-season end month.
     rainy = (start <= today.month <= end if start <= end
              else today.month >= start or today.month <= end)
+    if end_date.year > start_date.year and end >= start:
+        rainy = True
     first, last = (start, end) if rainy else (end, start)
     return {"label": "Rainy season" if rainy else "Dry season",
             "start_month": calendar.month_name[first],

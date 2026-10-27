@@ -139,6 +139,7 @@ def main() -> None:
         writer = csv.DictWriter(
             destination,
             fieldnames=["dive_site_id", "rainy_season_start", "rainy_season_end"],
+            lineterminator="\n",
         )
         writer.writeheader()
         writer.writerows(

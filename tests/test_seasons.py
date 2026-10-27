@@ -27,6 +27,7 @@ class SeasonsTest(unittest.TestCase):
                     })
                 self.assertEqual(seasons.for_site("DS003250", date(2030, 1, 1))["label"], "Rainy season")
                 self.assertEqual(seasons.for_site("DS003250", date(2030, 6, 1))["label"], "Dry season")
+                self.assertEqual(seasons.for_site("DS012966", date(2030, 8, 1))["label"], "Rainy season")
                 self.assertIsNone(seasons.for_site(None))
                 self.assertIsNone(seasons.for_site("missing"))
 
