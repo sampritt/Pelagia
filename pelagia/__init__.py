@@ -37,6 +37,7 @@ from . import google_auth, email_auth
 from . import pwa
 from . import dive_brief
 from . import site_descriptions
+from . import seasons
 from . import marine
 from . import water_type
 from . import dive_import
@@ -108,6 +109,7 @@ def create_app(test_config=None):
         _ensure_reference_data(app)
 
     register_routes(app)
+    seasons.init_app(app)
     explore.init_app(app, login_required)
     dive_import.init_app(app, current_user)
     site_descriptions.init_app(app, login_required)
@@ -795,6 +797,7 @@ def register_routes(app):
             "dive_site_profile.html",
             site=site,
             site_description=site_descriptions.read_page_cache(site_id),
+            season=seasons.for_site(site.get("master_site_id")),
             recent_dives=recent_dives,
             conditions=conditions,
             sightings=sightings,

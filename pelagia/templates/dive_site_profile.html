@@ -34,6 +34,11 @@
                 </div>
             </div>
         </div>
+        {% if season %}
+        <div class="site-season-advice" aria-label="Season">
+            <p><strong>{{ season.label }}</strong> from {{ season.start_month }} to {{ season.end_month }}</p>
+        </div>
+        {% endif %}
         <div class="site-chart-block">
             <div class="site-chart-head">
                 <h2>Current Strength (Regional Forecast)</h2>
