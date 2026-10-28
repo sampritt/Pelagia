@@ -44,27 +44,19 @@
         marker.appendChild(needle);
         return marker;
     }
-    const numericStep = (maximum, minimum) => {
-        const rough = Math.max(maximum / 4, minimum);
-        const magnitude = 10 ** Math.floor(Math.log10(rough));
-        const fraction = rough / magnitude;
-        return (fraction <= 1 ? 1 : fraction <= 2 ? 2 : fraction <= 2.5 ? 2.5 : fraction <= 5 ? 5 : 10) * magnitude;
-    };
     const decimal = value => Number(value.toFixed(2));
 
-    function renderChart(host, points, { tide = false, wind = false, swell = false, daily = false, zone, lengthUnit = 'm', moons = [] }) {
+    function renderChart(host, points, { tide = false, wind = false, daily = false, zone, lengthUnit = 'm', moons = [] }) {
         points = points || [];
-        if (swell) points = points.map(point => ({ ...point, value: finite(point.value) ? point.value * (lengthUnit === 'ft' ? 1 / .3048 : 1) : null }));
         host.replaceChildren();
         host.removeAttribute('data-can-scroll');
-        host.setAttribute('data-dual-axis', String(swell));
-        if (!points.some(p => finite(p.value) || (swell && finite(p.period_s)))) {
+        if (!points.some(p => finite(p.value))) {
             const empty = document.createElement('p');
             empty.className = 'muted'; empty.textContent = 'Forecast unavailable'; host.appendChild(empty);
             return;
         }
-        const left = 80, right = swell ? 52 : 22, top = 32, bottom = 168;
-        const name = tide ? 'Tide level' : wind ? 'Wind speed' : swell ? 'Swell height and period' : 'Current strength';
+        const left = 80, right = 22, top = 32, bottom = 168;
+        const name = tide ? 'Tide level' : wind ? 'Wind speed' : 'Current strength';
         const width = Math.max(daily ? 240 : tide ? 650 : 900, host.clientWidth || 550), height = 220;
         const values = points.map(p => p.value).filter(finite);
         let min = tide ? Math.min(...values) : 0;
@@ -72,10 +64,6 @@
         // A numeric wind scale shares the current chart's bar layout and fixed axis.
         const windStep = Math.max(...values) <= 8 ? 2 : Math.max(...values) <= 20 ? 5 : Math.max(...values) <= 40 ? 10 : Math.ceil(Math.max(...values) / 40) * 10;
         if (wind) max = windStep * 4;
-        const swellStep = swell ? numericStep(Math.max(0, ...values), .1) : 0;
-        if (swell) max = swellStep * 4;
-        const periodStep = swell ? numericStep(Math.max(0, ...points.map(p => p.period_s).filter(finite)), 1) : 0;
-        const periodY = value => bottom - value / (periodStep * 4) * (bottom - top);
         if (min === max) { min -= .05; max += .05; }
         const y = value => bottom - (value - min) / (max - min) * (bottom - top);
         const x = i => left + (i + .5) * (width - left - right) / points.length;
@@ -86,7 +74,7 @@
         scroll.setAttribute('role', 'region');
         scroll.setAttribute('aria-label', `${name} forecast; scroll for more hours`);
         const svg = el('svg', { viewBox: `0 0 ${width} ${height}`, width, height,
-            role: 'img', 'aria-label': `${name} forecast in ${zone}. ${daily ? 'Daily maximum values.' : 'Hourly values.'}${wind ? ' Arrows indicate where the wind comes from, rounded to 16 compass points.' : ''}${swell ? ` Bars: height in ${lengthUnit}, left axis. Line and dots: period in seconds, right axis.${daily ? ' Period is sampled at the maximum height.' : ''}` : ''}` });
+            role: 'img', 'aria-label': `${name} forecast in ${zone}. ${daily ? 'Daily maximum values.' : 'Hourly values.'}${wind ? ' Arrows indicate where the wind comes from, rounded to 16 compass points.' : ''}` });
         const readout = document.createElement('div'); readout.className = 'sr-only';
         readout.setAttribute('role', 'status');
         const readoutDate = document.createElement('span');
@@ -95,21 +83,19 @@
         const cursor = el('line', { y1: top, y2: bottom, class: 'marine-cursor' });
         const ticks = tide ? [{ value: min, label: 'Low' }, { value: max, label: 'High' }]
             : wind ? [0, 1, 2, 3, 4].map(i => ({ value: i * windStep, label: `${i * windStep} kn` }))
-            : swell ? [0, 1, 2, 3, 4].map(i => ({ value: i * swellStep, label: `${decimal(i * swellStep)} ${lengthUnit}` }))
             : [{ value: .25, label: 'Light' }, { value: .75, label: 'Moderate' }, { value: 1.5, label: 'Strong' }, { value: 2.25, label: 'Very Strong' }];
         ticks.forEach(tick => {
             axis.appendChild(el('text', { x: left - 10, y: y(tick.value) + 4, 'text-anchor': 'end' }, tick.label));
         });
-        (tide ? [min, max] : wind ? [windStep, windStep * 2, windStep * 3, max] : swell ? [swellStep, swellStep * 2, swellStep * 3, max] : [.5, 1, 2]).forEach(value => {
+        (tide ? [min, max] : wind ? [windStep, windStep * 2, windStep * 3, max] : [.5, 1, 2]).forEach(value => {
             svg.appendChild(el('line', { x1: left, x2: width - right, y1: y(value), y2: y(value), class: 'marine-guide' }));
         });
         svg.appendChild(el('line', { x1: left, x2: width - right, y1: bottom, y2: bottom, class: 'marine-baseline' }));
         const valueLabel = value => tide
             ? `${(value * (lengthUnit === 'ft' ? 1 / .3048 : 1)).toFixed(2)} ${lengthUnit} above global mean sea level`
-            : swell ? `${decimal(value)} ${lengthUnit}` : `${value.toFixed(2)} knots`;
+            : `${value.toFixed(2)} knots`;
         const moonLookup = new Map(moons.map(point => [point.time, point.phase]));
         const contextLabel = point => {
-            if (swell) return `; period ${finite(point.period_s) ? `${decimal(point.period_s)} s` : 'unavailable'}`;
             const heading = wind && compassHeading(point.direction_deg);
             const phase = daily && !wind && !tide && moonLookup.get(point.time);
             return heading ? `; wind from ${heading.label}` : phase ? `; ${phase} moon` : '';
@@ -143,26 +129,6 @@
             mark.appendChild(el('title', {}, title)); svg.appendChild(mark);
         });
         flush();
-        let periodAxis;
-        if (swell) {
-            periodAxis = el('svg', { viewBox: `0 0 ${right} ${height}`, class: 'marine-period-axis', 'aria-hidden': 'true' });
-            [0, 1, 2, 3, 4].forEach(i => periodAxis.appendChild(el('text', { x: 10, y: periodY(i * periodStep) + 4 }, `${decimal(i * periodStep)} s`)));
-            const dots = [];
-            const flushPeriod = () => {
-                if (segment.length > 1) svg.appendChild(el('polyline', { points: segment.join(' '), class: 'marine-period-line' }));
-                segment = [];
-            };
-            points.forEach((point, i) => {
-                if (!finite(point.period_s)) { flushPeriod(); return; }
-                segment.push(`${x(i)},${periodY(point.period_s)}`);
-                const dot = el('circle', { cx: x(i), cy: periodY(point.period_s), r: daily ? 2.8 : 2,
-                    class: 'marine-period-dot', 'aria-hidden': 'true' });
-                dot.appendChild(el('title', {}, `${localDate(point.time, zone)}${daily ? '' : ', ' + localHour(point.time, zone)}: period ${decimal(point.period_s)} s`));
-                dots.push(dot); marks.push({ mark: dot, index: i });
-            });
-            flushPeriod();
-            dots.forEach(dot => svg.appendChild(dot));
-        }
         points.forEach((point, i) => {
             const hour = hourNumber(point.time, zone);
             if (daily || hour % 3 === 0) {
@@ -179,7 +145,7 @@
             readoutDate.textContent = `${localDate(point.time, zone)} · ${daily ? 'Daily max' : localHour(point.time, zone)}`;
             readoutValue.textContent = finite(point.value) ? (tide
                 ? `${(point.value * (lengthUnit === 'ft' ? 1 / .3048 : 1)).toFixed(2)} ${lengthUnit}`
-                : swell ? `${decimal(point.value)} ${lengthUnit}` : `${decimal(point.value)} kn`) : '—';
+                : `${decimal(point.value)} kn`) : '—';
             readoutValue.textContent += contextLabel(point);
             cursor.setAttribute('x1', x(selected)); cursor.setAttribute('x2', x(selected));
             marks.forEach(({ mark, index }) => {
@@ -204,7 +170,7 @@
             event.preventDefault(); select(index, true);
         });
         scroll.setAttribute('aria-label', `${name} forecast. Use left and right arrow keys to inspect values.`);
-        readout.title = tide ? 'Height above global mean sea level' : wind ? 'Wind speed in knots and source direction' : swell ? `Swell height in ${lengthUnit} and period in seconds` : 'Current velocity in knots';
+        readout.title = tide ? 'Height above global mean sea level' : wind ? 'Wind speed in knots and source direction' : 'Current velocity in knots';
         const list = document.createElement('ul'); list.className = 'sr-only';
         points.forEach(point => {
             const item = document.createElement('li');
@@ -213,7 +179,6 @@
         });
         select(selected);
         scroll.appendChild(svg); host.append(axis, scroll, readout, list);
-        if (periodAxis) host.appendChild(periodAxis);
         const edge = () => host.setAttribute('data-can-scroll', String(scroll.scrollWidth > scroll.clientWidth + scroll.scrollLeft + 2));
         scroll.addEventListener('scroll', edge, { passive: true });
         edge();
@@ -238,10 +203,9 @@
         const currentChart = host.querySelector('[data-marine-chart="current"]');
         const tideChart = host.querySelector('[data-marine-chart="tide"]');
         const windChart = host.querySelector('[data-marine-chart="wind"]');
-        const swellChart = host.querySelector('[data-marine-chart="swell"]');
-        const chartNodes = [currentChart, tideChart, windChart, swellChart].filter(Boolean);
+        const chartNodes = [currentChart, tideChart, windChart].filter(Boolean);
         const buttons = [...host.querySelectorAll('[data-marine-range]')];
-        const ranges = { current: 'daily', wind: 'daily', swell: 'daily' };
+        const ranges = { current: 'daily', wind: 'daily' };
         let result, controller, deadline, poll, ends = [], stopped = false, generation = 0;
         const finish = () => { ends.forEach(end => end()); ends = []; };
         const clear = () => { window.clearTimeout(poll); window.clearTimeout(deadline); finish(); };
@@ -251,10 +215,6 @@
             if (windChart && (!target || target === 'wind')) {
                 const points = ranges.wind === 'daily' ? result.charts.wind_daily : result.charts.wind_hourly?.map(point => ({ ...point, value: point.speed_kn }));
                 renderChart(windChart, points, { wind: true, daily: ranges.wind === 'daily', zone: result.timezone });
-            }
-            if (swellChart && (!target || target === 'swell')) {
-                const points = ranges.swell === 'daily' ? result.charts.swell_daily : result.charts.swell_hourly?.map(point => ({ ...point, value: point.height_m }));
-                renderChart(swellChart, points, { swell: true, daily: ranges.swell === 'daily', zone: result.timezone, lengthUnit: host.dataset.lengthUnit });
             }
         };
         const unavailable = (noCoordinates = false) => {
@@ -274,7 +234,6 @@
                 'Current strength is only available for ocean dive sites',
                 'Tide level is only available for ocean dive sites',
                 'Wind forecast is only available for ocean dive sites',
-                'Swell height is only available for ocean dive sites',
             ];
             chartNodes.forEach((node, index) => {
                 node.replaceChildren();
@@ -325,10 +284,8 @@
                         node.textContent = current.moon_phase || '-';
                         node.title = 'Nearest major moon phase for today at this dive site';
                     }
-                    if (node.dataset.marineValue === 'swell') {
-                        const unit = host.dataset.lengthUnit === 'ft' ? 'ft' : 'm';
-                        const height = current.swell_height_m * (unit === 'ft' ? 1 / .3048 : 1);
-                        node.textContent = finite(current.swell_height_m) ? `${Number(height.toFixed(1))} ${unit}` : '-';
+                    if (node.dataset.marineValue === 'wind') {
+                        node.textContent = finite(current.wind_speed_kn) ? `${Number(current.wind_speed_kn.toFixed(1))} kn` : '-';
                     }
                     if (node.dataset.marineValue === 'temperature') {
                         const fahrenheit = host.dataset.temperatureUnit === 'f';
@@ -359,7 +316,7 @@
             if (!result) return;
             const target = button.dataset.marineTarget || 'current';
             ranges[target] = button.dataset.marineRange;
-            const chart = { current: currentChart, wind: windChart, swell: swellChart }[target];
+            const chart = { current: currentChart, wind: windChart }[target];
             chart.dataset.selectedIndex = '0';
             buttons.filter(item => (item.dataset.marineTarget || 'current') === target)
                 .forEach(item => item.setAttribute('aria-pressed', String(item === button)));

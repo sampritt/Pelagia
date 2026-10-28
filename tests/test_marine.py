@@ -18,14 +18,12 @@ def payload(zone='Pacific/Galapagos'):
     start = NOW - 15 * 60 - 36 * 3600
     times = [start + i * 3600 for i in range(216)]
     marine_data = dict(timezone=zone, current=dict(time=NOW - 900, ocean_current_velocity=.5,
-                sea_level_height_msl=.2, sea_surface_temperature=28.3,
-                swell_wave_height=1.2, swell_wave_period=8.5),
-                current_units=dict(zip(marine.FIELDS, ('kn', 'm', '°C', 'm', 's'))),
-                hourly_units=dict(zip(marine.FIELDS, ('kn', 'm', '°C', 'm', 's'))),
+                sea_level_height_msl=.2, sea_surface_temperature=28.3),
+                current_units=dict(zip(marine.FIELDS, ('kn', 'm', '°C'))),
+                hourly_units=dict(zip(marine.FIELDS, ('kn', 'm', '°C'))),
                 hourly=dict(time=times, ocean_current_velocity=[.4] * len(times),
                             sea_level_height_msl=[(i % 12 if i % 12 <= 6 else 12 - i % 12) / 10 for i in range(len(times))],
-                            sea_surface_temperature=[28.1] * len(times),
-                            swell_wave_height=[1.1] * len(times), swell_wave_period=[8] * len(times)))
+                            sea_surface_temperature=[28.1] * len(times)))
     daily_times = [datetime.combine(datetime.fromtimestamp(NOW, ZoneInfo(zone)).date() + timedelta(days=i),
                                     datetime.min.time(), ZoneInfo(zone)).timestamp() for i in range(-1, 7)]
     marine_data['weather'] = dict(timezone=zone,
@@ -86,9 +84,8 @@ class MarineRulesTest(unittest.TestCase):
         marine.validate_weather(data['weather'])
         result = marine.normalize(data, NOW, NOW)
         self.assertEqual(result['current']['strength'], 'Moderate')
-        self.assertEqual((result['current']['swell_height_m'], result['current']['swell_period_s']), (1.2, 8.5))
+        self.assertEqual(result['current']['wind_speed_kn'], 12.3)
         self.assertEqual([len(result['charts'][k]) for k in ('current_daily', 'current_hourly', 'tide_hourly')], [7, 48, 24])
-        self.assertEqual(result['charts']['swell_hourly'][0], {'time': NOW - 900, 'height_m': 1.1, 'period_s': 8})
         self.assertEqual(result['charts']['wind_hourly'][0], {'time': NOW - 900, 'speed_kn': 12.3, 'direction_deg': 225})
         self.assertEqual(len(result['charts']['moon_phase_daily']), 7)
         self.assertEqual(result['current']['moon_phase'], 'Full')
@@ -148,23 +145,20 @@ class MarineRulesTest(unittest.TestCase):
         self.assertTrue(all(p['value'] is None for p in result['charts']['wind_daily']))
         self.assertIsNone(result['current']['moon_phase'])
 
-    def test_daily_swell_pairs_peak_height_with_its_period_and_preserves_missing_data(self):
+    def test_current_wind_uses_this_hour_preserving_zero_and_missing_data(self):
         data = payload()
-        zone = ZoneInfo(data['timezone'])
-        today = datetime.fromtimestamp(NOW, zone).date()
-        indexes = [i for i, t in enumerate(data['hourly']['time']) if datetime.fromtimestamp(t, zone).date() == today]
-        peak_index = indexes[3]
-        data['hourly']['swell_wave_height'][peak_index] = 2.3
-        data['hourly']['swell_wave_period'][peak_index] = 9.5
-        data['hourly']['swell_wave_period'][indexes[4]] = 12
+        weather = data['weather']['hourly']
+        hour = NOW - 900
+        index = weather['time'].index(hour)
+        weather['wind_speed_10m'][index] = 0
+        weather['wind_speed_10m'][index + 1] = 30
         result = marine.normalize(data, NOW, NOW)
-        self.assertEqual(result['charts']['swell_daily'][0], {
-            'time': datetime.combine(today, datetime.min.time(), zone).timestamp(), 'value': 2.3, 'period_s': 9.5})
-        self.assertEqual(len(result['charts']['swell_daily']), 7)
-        data['hourly']['swell_wave_period'][peak_index] = None
-        self.assertIsNone(marine.normalize(data, NOW, NOW)['charts']['swell_daily'][0]['period_s'])
-        data['hourly'].pop('swell_wave_height')
-        self.assertTrue(all(p['value'] is None for p in marine.normalize(data, NOW, NOW)['charts']['swell_daily']))
+        self.assertEqual(result['current']['wind_speed_kn'], 0)
+        self.assertEqual(result['current']['timestamps']['wind_speed_10m'], hour)
+        weather['wind_speed_10m'][index] = None
+        self.assertIsNone(marine.normalize(data, NOW, NOW)['current']['wind_speed_kn'])
+        data.pop('weather')
+        self.assertIsNone(marine.normalize(data, NOW, NOW)['current']['wind_speed_kn'])
 
     def test_moon_dates_remain_aligned_when_api_fixed_offset_crosses_dst(self):
         data = payload('America/New_York')
@@ -203,9 +197,9 @@ class MarineEndpointTest(unittest.TestCase):
         self.assertIn(b'<h2>Current Strength</h2>', page.data)
         self.assertIn(b'<h2>Tide Level</h2>', page.data)
         self.assertIn(b'data-marine-value="moon"', page.data)
-        self.assertIn(b'data-marine-value="swell"', page.data)
+        self.assertIn(b'data-marine-value="wind"', page.data)
         self.assertIn(b'<h2>Wind Speed</h2>', page.data)
-        self.assertIn(b'<h2>Swell Height</h2>', page.data)
+        self.assertNotIn(b'swell', page.data.lower())
         self.assertNotIn(b'(Regional Forecast)', page.data)
         self.assertEqual(page.data.count(b'class="marine-chart-note"'), 1)
         self.fetch.assert_not_called()
@@ -347,7 +341,9 @@ class MarineEndpointTest(unittest.TestCase):
             self.assertTrue(all(call['params']['apikey'] == 'secret' for call in calls.values()))
             self.assertTrue(all(call['timeout'] == (3, 10) for call in calls.values()))
             self.assertEqual(calls['https://customer-api.open-meteo.com/v1/forecast']['params']['daily'], 'moon_phase')
-            self.assertIn('swell_wave_height', calls['https://customer-marine-api.open-meteo.com/v1/marine']['params']['hourly'])
+            params = calls['https://customer-marine-api.open-meteo.com/v1/marine']['params']
+            self.assertEqual(params['hourly'], 'ocean_current_velocity,sea_level_height_msl,sea_surface_temperature')
+            self.assertEqual(params['current'], params['hourly'])
             self.assertIn('weather', result)
         self.upstream.start()
 

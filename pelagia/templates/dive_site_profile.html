@@ -17,7 +17,7 @@
                 <div><small>Water temperature</small><span {% if conditions.water_temp_c is none %}data-marine-value="temperature"{% else %}data-site-water-temperature{% endif %}>{{ display_metric(conditions.water_temp_c, 'temperature') }}</span></div>
                 <div><small>Tide level</small><span data-marine-value="tide">-</span></div>
                 <div><small>Moon phase</small><span data-marine-value="moon">-</span></div>
-                <div><small>Swell height</small><span data-marine-value="swell">-</span></div>
+                <div><small>Wind speed</small><span data-marine-value="wind">-</span></div>
             </div>
             <div class="site-equipment-advice" data-equipment-advice aria-label="Equipment recommendations" aria-live="polite" hidden>
                 <div class="site-equipment-item">
@@ -65,20 +65,6 @@
                 </div>
             </div>
             <div class="marine-chart" data-marine-chart="wind"><p class="muted">Forecast unavailable</p></div>
-        </div>
-        <div class="site-chart-block">
-            <div class="site-chart-head">
-                <h2>Swell Height</h2>
-                <div class="marine-toggle" role="group" aria-label="Swell forecast range">
-                    <button type="button" data-marine-range="daily" data-marine-target="swell" aria-pressed="true">7-day</button>
-                    <button type="button" data-marine-range="hourly" data-marine-target="swell" aria-pressed="false">2-day</button>
-                </div>
-            </div>
-            <div class="marine-chart-legend" aria-label="Swell chart legend">
-                <span class="marine-legend-height">Height ({{ units.length }})</span>
-                <span class="marine-legend-period">Period (s)</span>
-            </div>
-            <div class="marine-chart" data-marine-chart="swell"><p class="muted">Forecast unavailable</p></div>
         </div>
         <div class="marine-status" role="status" aria-live="polite">
             <span data-marine-status>Forecast unavailable</span>

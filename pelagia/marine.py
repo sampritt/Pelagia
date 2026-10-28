@@ -14,10 +14,9 @@ from .db import get_db
 from .exposure_recommendations import recommend
 from . import water_type
 
-FIELDS = ('ocean_current_velocity', 'sea_level_height_msl', 'sea_surface_temperature',
-          'swell_wave_height', 'swell_wave_period')
-FIELD_UNITS = dict(zip(FIELDS, ('kn', 'm', '°C', 'm', 's')))
-NONNEGATIVE_FIELDS = {'ocean_current_velocity', 'swell_wave_height', 'swell_wave_period'}
+FIELDS = ('ocean_current_velocity', 'sea_level_height_msl', 'sea_surface_temperature')
+FIELD_UNITS = dict(zip(FIELDS, ('kn', 'm', '°C')))
+NONNEGATIVE_FIELDS = {'ocean_current_velocity'}
 WEATHER_FIELDS = ('wind_speed_10m', 'wind_direction_10m')
 WEATHER_UNITS = dict(zip(WEATHER_FIELDS, ('kn', '°')))
 MOON_PHASES = ('New', 'First Quarter', 'Full', 'Last Quarter')
@@ -181,6 +180,8 @@ def normalize(payload, now, fetched):
         timestamp = hour + i * 3600
         wind.append(dict(time=timestamp, speed_kn=speed_lookup.get(timestamp),
                          direction_deg=direction_lookup.get(timestamp)))
+    wind_speed = speed_lookup.get(hour)
+    timestamps['wind_speed_10m'] = hour if number(wind_speed) else None
     wind_daily = []
     for offset in range(7):
         day = today + timedelta(days=offset)
@@ -209,29 +210,14 @@ def normalize(payload, now, fetched):
                                           point['time']), default=None)
     if closest_moon is not None:
         closest_moon['phase'] = moon_phase(closest_moon['value'])
-    swell_height = window('swell_wave_height', 48)
-    swell_period = window('swell_wave_period', 48)
-    swell_hourly = [dict(time=height['time'], height_m=height['value'], period_s=period['value'])
-                    for height, period in zip(swell_height, swell_period)]
-    height_lookup = {point['time']: point['value'] for point in series['swell_wave_height']}
-    period_lookup = {point['time']: point['value'] for point in series['swell_wave_period']}
-    swell_daily = []
-    for offset in range(7):
-        day = today + timedelta(days=offset)
-        samples = [(t, height) for t, height in height_lookup.items()
-                   if number(height) and datetime.fromtimestamp(t, zone).date() == day]
-        peak_time, peak = max(samples, key=lambda sample: sample[1]) if samples else (None, None)
-        swell_daily.append(dict(time=datetime.combine(day, datetime.min.time(), zone).timestamp(),
-                                value=peak, period_s=period_lookup.get(peak_time)))
     return dict(status='complete', timezone=payload['timezone'], fetched_at=fetched,
                 current=dict(velocity_kn=values[FIELDS[0]], strength=strength(values[FIELDS[0]]),
                              temperature_c=values[FIELDS[2]], sea_level_m=values[FIELDS[1]],
-                             swell_height_m=values['swell_wave_height'],
-                             swell_period_s=values['swell_wave_period'],
+                             wind_speed_kn=wind_speed,
                              moon_phase=moon_phase(moon[0]['value']),
                              tide=tide_phase(series[FIELDS[1]], now), timestamps=timestamps),
                 charts=dict(current_daily=daily, current_hourly=window(FIELDS[0], 48),
-                            tide_hourly=window(FIELDS[1], 24), swell_hourly=swell_hourly, swell_daily=swell_daily,
+                            tide_hourly=window(FIELDS[1], 24),
                             wind_hourly=wind, wind_daily=wind_daily, moon_phase_daily=moon))
 
 

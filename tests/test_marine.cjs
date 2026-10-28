@@ -15,11 +15,11 @@ function node(tag = 'div') {
 const flush = async () => { for (let i = 0; i < 12; i++) await Promise.resolve(); };
 function setup(coordinates = 'true') {
     const equipment=node(), exposureAdvice=node(), exposureName=node(), weightAsterisk=node(), exposureAsterisk=node(), exposureHistory=node(), exposureHistoryLink=node(), weightAdvice=node(), weightCaveat=node(), source=node();
-    const host = node(), status = node(), retry = node(), charts = [node(), node(), node(), node()], values = ['temperature', 'tide', 'moon', 'swell'].map(v => { const n = node(); n.dataset.marineValue = v; return n; });
+    const host = node(), status = node(), retry = node(), charts = [node(), node(), node()], values = ['temperature', 'tide', 'moon', 'wind'].map(v => { const n = node(); n.dataset.marineValue = v; return n; });
     charts.forEach(n => { n.dataset.chart = true; });
-    const buttons = ['daily', 'hourly', 'daily', 'hourly', 'daily', 'hourly'].map((v, i) => { const n = node(); n.dataset.marineRange = v; if (i > 1) n.dataset.marineTarget = i > 3 ? 'swell' : 'wind'; return n; });
+    const buttons = ['daily', 'hourly', 'daily', 'hourly'].map((v, i) => { const n = node(); n.dataset.marineRange = v; if (i > 1) n.dataset.marineTarget = 'wind'; return n; });
     host.dataset = {coordinates, url: '/api/dive-sites/1/conditions', temperatureUnit: 'f', lengthUnit: 'ft'};
-    host.querySelector = s => ({'[data-equipment-advice]':equipment,'[data-exposure-advice]':exposureAdvice,'[data-exposure-name]':exposureName,'[data-weight-asterisk]':weightAsterisk,'[data-exposure-asterisk]':exposureAsterisk,'[data-exposure-history]':exposureHistory,'[data-exposure-history-link]':exposureHistoryLink,'[data-weight-advice]':weightAdvice,'[data-weight-caveat]':weightCaveat,'[data-marine-status]':status,'[data-marine-retry]':retry,'[data-marine-source]':source,'[data-marine-chart="current"]':charts[0],'[data-marine-chart="tide"]':charts[1],'[data-marine-chart="wind"]':charts[2],'[data-marine-chart="swell"]':charts[3]})[s];
+    host.querySelector = s => ({'[data-equipment-advice]':equipment,'[data-exposure-advice]':exposureAdvice,'[data-exposure-name]':exposureName,'[data-weight-asterisk]':weightAsterisk,'[data-exposure-asterisk]':exposureAsterisk,'[data-exposure-history]':exposureHistory,'[data-exposure-history-link]':exposureHistoryLink,'[data-weight-advice]':weightAdvice,'[data-weight-caveat]':weightCaveat,'[data-marine-status]':status,'[data-marine-retry]':retry,'[data-marine-source]':source,'[data-marine-chart="current"]':charts[0],'[data-marine-chart="tide"]':charts[1],'[data-marine-chart="wind"]':charts[2]})[s];
     host.querySelectorAll = s => s.includes('value') ? values : buttons;
     const window = node(); let id = 0; const timers = new Map(); const requests = []; let ended = 0;
     window.setTimeout = (fn, delay) => { timers.set(++id, {fn, delay}); return id; }; window.clearTimeout = n => timers.delete(n);
@@ -32,24 +32,22 @@ function setup(coordinates = 'true') {
 function data() {
     const points = Array.from({length: 48}, (_, i) => ({time:1792940400 + i * 3600, value: .5}));
     return {status:'complete', timezone:'Pacific/Galapagos', fetched_at:1792940400,
-        current:{strength:'Moderate', temperature_c:28.3, tide:'Rising', velocity_kn:.5, swell_height_m:1.2, moon_phase:'Full', timestamps:{ocean_current_velocity:1792940400}},
+        current:{strength:'Moderate', temperature_c:28.3, tide:'Rising', velocity_kn:.5, wind_speed_kn:12.3, moon_phase:'Full', timestamps:{ocean_current_velocity:1792940400}},
         charts:{current_daily:points.slice(0,7), current_hourly:points, tide_hourly:points.slice(0,24),
             moon_phase_daily:[{time:points[0].time,phase:'Full'}],
             wind_daily:points.slice(0,7).map(p=>({...p,value:12,direction_deg:350})),
-            wind_hourly:points.map(p=>({time:p.time,speed_kn:10,direction_deg:225})),
-            swell_daily:points.slice(0,7).map(p=>({...p,value:.36,period_s:8})),
-            swell_hourly:points.map(p=>({time:p.time,height_m:.4,period_s:7.5}))}};
+            wind_hourly:points.map(p=>({time:p.time,speed_kn:10,direction_deg:225}))}};
 }
 test('forecast renders Fahrenheit, accessible charts, and range toggle without another request', async () => {
     const s = setup(); s.requests[0].resolve({status:200,ok:true,json:async()=>data()}); await flush();
     assert.equal(s.values[0].textContent,'83°F'); assert.equal(s.values[1].textContent,'Rising');
-    assert.equal(s.ended(),8); assert.equal(s.timers.size,0); assert.equal(s.retry.hidden,true);
+    assert.equal(s.ended(),7); assert.equal(s.timers.size,0); assert.equal(s.retry.hidden,true);
     s.buttons[1].handlers.click(); assert.equal(s.requests.length,1); assert.equal(s.buttons[1].attrs['aria-pressed'],'true');
     assert.equal(s.charts[0].children[1].children[0].children.filter(n=>n.tag==='rect').length,48);
 });
 test('failure stops loading and retry issues one new request', async () => {
     const s=setup();s.requests[0].reject(new Error());await flush();
-    assert.equal(s.status.textContent,'Forecast unavailable');assert.equal(s.retry.hidden,false);assert.equal(s.ended(),8);
+    assert.equal(s.status.textContent,'Forecast unavailable');assert.equal(s.retry.hidden,false);assert.equal(s.ended(),7);
     s.retry.handlers.click();assert.equal(s.requests.length,2);
 });
 test('non-ocean sites show availability messages without charts or retry', async () => {
@@ -59,12 +57,11 @@ test('non-ocean sites show availability messages without charts or retry', async
     assert.equal(s.charts[1].children[0].textContent,'Tide level is only available for ocean dive sites');
     assert.equal(s.charts[0].children.length,1);assert.equal(s.charts[1].children.length,1);
     assert.equal(s.charts[2].children[0].textContent,'Wind forecast is only available for ocean dive sites');
-    assert.equal(s.charts[3].children[0].textContent,'Swell height is only available for ocean dive sites');
-    assert.equal(s.retry.hidden,true);assert.equal(s.source.hidden,true);assert.equal(s.ended(),8);
+    assert.equal(s.retry.hidden,true);assert.equal(s.source.hidden,true);assert.equal(s.ended(),7);
 });
 test('missing coordinates never fetch; leaving page aborts and cancels timers', () => {
     const missing=setup('false');assert.equal(missing.requests.length,0);assert.equal(missing.retry.hidden,true);
-    const s=setup();s.window.handlers.pagehide();assert.equal(s.requests[0].options.signal.aborted,true);assert.equal(s.timers.size,0);assert.equal(s.ended(),8);
+    const s=setup();s.window.handlers.pagehide();assert.equal(s.requests[0].options.signal.aborted,true);assert.equal(s.timers.size,0);assert.equal(s.ended(),7);
 });
 test('pending response polls; deadline aborts requests', async () => {
     const s=setup();s.requests[0].resolve({status:202});await flush();
@@ -77,16 +74,16 @@ test('site-local labels include 12am and handle DST hours', () => {
     assert.equal(api.localHour(Date.parse('2026-10-25T06:00:00Z')/1000,'Pacific/Galapagos'),'12am');
     assert.equal(api.hourNumber(Date.parse('2026-11-01T06:00:00Z')/1000,'America/New_York'),1);
 });
-test('moon and swell fields render in account units, including zero and missing data', async () => {
+test('moon and wind fields render knots for both unit preferences, including zero and missing data', async () => {
     const imperial=setup();imperial.requests[0].resolve({status:200,ok:true,json:async()=>data()});await flush();
-    assert.equal(imperial.values[2].textContent,'Full');assert.equal(imperial.values[3].textContent,'3.9 ft');
+    assert.equal(imperial.values[2].textContent,'Full');assert.equal(imperial.values[3].textContent,'12.3 kn');
     const metric=setup();metric.host.dataset.lengthUnit='m';
-    const d=data();d.current.swell_height_m=.36;d.current.moon_phase='Last Quarter';
+    const d=data();d.current.wind_speed_kn=8.76;d.current.moon_phase='Last Quarter';
     metric.requests[0].resolve({status:200,ok:true,json:async()=>d});await flush();
-    assert.equal(metric.values[3].textContent,'0.4 m');assert.equal(metric.values[2].textContent,'Last Quarter');
-    const zero=setup();zero.requests[0].resolve({status:200,ok:true,json:async()=>({...data(),current:{...data().current,swell_height_m:0,moon_phase:null}})});await flush();
-    assert.equal(zero.values[3].textContent,'0 ft');assert.equal(zero.values[2].textContent,'-');
-    const missing=setup();missing.requests[0].resolve({status:200,ok:true,json:async()=>({...data(),current:{...data().current,swell_height_m:null}})});await flush();
+    assert.equal(metric.values[3].textContent,'8.8 kn');assert.equal(metric.values[2].textContent,'Last Quarter');
+    const zero=setup();zero.requests[0].resolve({status:200,ok:true,json:async()=>({...data(),current:{...data().current,wind_speed_kn:0,moon_phase:null}})});await flush();
+    assert.equal(zero.values[3].textContent,'0 kn');assert.equal(zero.values[2].textContent,'-');
+    const missing=setup();missing.requests[0].resolve({status:200,ok:true,json:async()=>({...data(),current:{...data().current,wind_speed_kn:null}})});await flush();
     assert.equal(missing.values[3].textContent,'-');
 });
 test('moon markers align only with qualifying daily current bars and vanish in hourly view', async () => {
@@ -114,37 +111,6 @@ test('wind chart uses numeric knots and independently toggles daily and hourly a
     assert.equal(s.buttons[2].attrs['aria-pressed'],'false');assert.equal(s.buttons[3].attrs['aria-pressed'],'true');
     assert.equal(s.charts[0].children[1].children[0].children.filter(n=>n.tag==='rect').length,7);
     assert.equal(s.requests.length,1);
-});
-test('swell pairs height bars with period line/dots, separate unit axes, and its own range', async () => {
-    const s=setup();s.requests[0].resolve({status:200,ok:true,json:async()=>data()});await flush();
-    const chart=s.charts[3];let svg=chart.children[1].children[0];
-    assert.equal(svg.children.filter(n=>n.tag==='rect').length,7);
-    assert.equal(svg.children.filter(n=>n.attrs.class==='marine-period-line').length,1);
-    assert.equal(svg.children.filter(n=>n.attrs.class==='marine-period-dot').length,7);
-    assert.ok(chart.children[0].children.every(n=>n.textContent.endsWith(' ft')));
-    assert.ok(chart.children[4].children.every(n=>n.textContent.endsWith(' s')));
-    assert.equal(chart.children[2].children[1].textContent,'1.18 ft; period 8 s');
-    s.buttons[5].handlers.click();svg=chart.children[1].children[0];
-    assert.equal(svg.children.filter(n=>n.tag==='rect').length,48);
-    assert.equal(svg.children.filter(n=>n.attrs.class==='marine-period-dot').length,48);
-    assert.equal(s.charts[0].children[1].children[0].children.filter(n=>n.tag==='rect').length,7);
-    assert.equal(s.charts[2].children[1].children[0].children.filter(n=>n.tag==='rect').length,7);
-    chart.children[1].handlers.keydown({key:'End',preventDefault(){}});
-    assert.equal(chart.dataset.selectedIndex,'47');
-    assert.equal(chart.children[2].children[1].textContent,'1.31 ft; period 7.5 s');
-    assert.equal(s.requests.length,1);
-});
-test('swell metric axis and period gaps stay independent of missing height samples', async () => {
-    const s=setup();s.host.dataset.lengthUnit='m';const d=data();
-    d.charts.swell_daily[2].period_s=null;d.charts.swell_daily[4].value=null;
-    s.requests[0].resolve({status:200,ok:true,json:async()=>d});await flush();
-    const chart=s.charts[3],svg=chart.children[1].children[0];
-    assert.equal(svg.children.filter(n=>n.tag==='rect').length,6);
-    assert.equal(svg.children.filter(n=>n.attrs.class==='marine-period-dot').length,6);
-    assert.equal(svg.children.filter(n=>n.attrs.class==='marine-period-line').length,2);
-    assert.ok(chart.children[0].children.every(n=>n.textContent.endsWith(' m')));
-    assert.equal(chart.children[2].children[1].textContent,'0.36 m; period 8 s');
-    assert.equal(d.charts.swell_daily[0].value,.36);
 });
 test('compass headings snap to 16 points and preserve north across wraparound', () => {
     const api=setup('false').context.module.exports;

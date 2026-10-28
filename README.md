@@ -323,16 +323,16 @@ when that day has no logged temperature. Logged temperature renders immediately 
 stays visible without a forecast. Pelagia first classifies the site's coordinates with Is On Water and
 persists that feature per dive site. Later views reuse the classification without another upstream request;
 changing a site's coordinates invalidates it. Only `OCEAN` proceeds to Open-Meteo. Every other feature
-skips Open-Meteo and replaces the current and tide charts with availability messages. Tide phase and the
-two regional forecast charts for ocean sites come from Open-Meteo using the site's stored coordinates. Logged
+skips Open-Meteo and replaces the current, tide, and wind charts with availability messages. Tide phase and the
+three regional forecast charts for ocean sites come from Open-Meteo using the site's stored coordinates. Logged
 dive measurements remain unchanged. Public previews show only the gated labels.
 
 The server concurrently requests the marine and main weather APIs for seven local calendar
-forecast days plus yesterday. The marine request includes hourly/current swell height and period;
+forecast days plus yesterday. The marine request includes hourly/current ocean velocity, sea level, and sea surface temperature;
 the weather request includes hourly 10 m wind speed and direction plus daily moon phase. The
-conditions response exposes 48-hour paired `swell_hourly` and `wind_hourly` series, seven
-`wind_daily` / `swell_daily` maxima and `moon_phase_daily` values, and current swell height/period. The conditions
-box shows swell height to one decimal in the account's meters/feet preference and today's nearest
+conditions response exposes 48-hour paired `wind_hourly` series, seven
+`wind_daily` maxima and `moon_phase_daily` values, and current wind speed from the current hourly sample. The conditions
+box shows wind speed to one decimal in knots, matching the wind chart, and today's nearest
 major moon phase (New, First Quarter, Full, or Last Quarter). The seven-day current chart shows
 one small moon icon on the day closest to any of these four phases, including wraparound at new
 moon. Equally close days use the earlier day; missing moon data omits the icon. Hourly current bars
@@ -355,14 +355,10 @@ and tide values respect account units. Below tide level, the wind chart uses the
 bar layout with a numeric knots axis. Daily bars use maximum 10 m wind speed and the direction at
 that peak (the earliest peak wins ties); hourly bars use each hourly speed/direction. Tiny compass
 arrows above the bars point toward the wind's origin, rounded to 16 headings at 22.5° increments.
-The fourth chart, Swell Height, uses height bars in the account's meters/feet preference plus a
-contrasting period line with dots and its own fixed seconds axis on the right. Its daily view pairs
-each day's maximum height with the period at that hour (earliest maximum wins ties); the hourly
-view shows the next 48 paired samples, preserving gaps in either measurement independently.
-A compact Height/Period legend identifies both series. Only Current Strength retains the regional
+Only Current Strength retains the regional
 forecast note; chart titles omit the regional suffix and the other charts have no explanatory copy.
-Direction, moon, and swell-period labels are also available in chart inspection and accessible text.
-The current, wind, and swell toggles operate independently and do not issue additional API requests.
+Direction and moon labels are also available in chart inspection and accessible text.
+The current and wind toggles operate independently and do not issue additional API requests.
 
 The idempotent schema initialization adds `marine_forecast_cache`. Responses are
 shared across workers for 15 minutes, capped at site-local midnight, and invalidated
