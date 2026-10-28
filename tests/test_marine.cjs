@@ -15,11 +15,11 @@ function node(tag = 'div') {
 const flush = async () => { for (let i = 0; i < 12; i++) await Promise.resolve(); };
 function setup(coordinates = 'true') {
     const equipment=node(), exposureAdvice=node(), exposureName=node(), weightAsterisk=node(), exposureAsterisk=node(), exposureHistory=node(), exposureHistoryLink=node(), weightAdvice=node(), weightCaveat=node(), source=node();
-    const host = node(), status = node(), retry = node(), charts = [node(), node(), node()], values = ['temperature', 'tide', 'moon', 'wind'].map(v => { const n = node(); n.dataset.marineValue = v; return n; });
+    const host = node(), status = node(), retry = node(), charts = [node(), node(), node(), node()], values = ['temperature', 'tide', 'moon', 'wind'].map(v => { const n = node(); n.dataset.marineValue = v; return n; });
     charts.forEach(n => { n.dataset.chart = true; });
     const buttons = ['daily', 'hourly', 'daily', 'hourly'].map((v, i) => { const n = node(); n.dataset.marineRange = v; if (i > 1) n.dataset.marineTarget = 'wind'; return n; });
     host.dataset = {coordinates, url: '/api/dive-sites/1/conditions', temperatureUnit: 'f', lengthUnit: 'ft'};
-    host.querySelector = s => ({'[data-equipment-advice]':equipment,'[data-exposure-advice]':exposureAdvice,'[data-exposure-name]':exposureName,'[data-weight-asterisk]':weightAsterisk,'[data-exposure-asterisk]':exposureAsterisk,'[data-exposure-history]':exposureHistory,'[data-exposure-history-link]':exposureHistoryLink,'[data-weight-advice]':weightAdvice,'[data-weight-caveat]':weightCaveat,'[data-marine-status]':status,'[data-marine-retry]':retry,'[data-marine-source]':source,'[data-marine-chart="current"]':charts[0],'[data-marine-chart="tide"]':charts[1],'[data-marine-chart="wind"]':charts[2]})[s];
+    host.querySelector = s => ({'[data-equipment-advice]':equipment,'[data-exposure-advice]':exposureAdvice,'[data-exposure-name]':exposureName,'[data-weight-asterisk]':weightAsterisk,'[data-exposure-asterisk]':exposureAsterisk,'[data-exposure-history]':exposureHistory,'[data-exposure-history-link]':exposureHistoryLink,'[data-weight-advice]':weightAdvice,'[data-weight-caveat]':weightCaveat,'[data-marine-status]':status,'[data-marine-retry]':retry,'[data-marine-source]':source,'[data-marine-chart="current"]':charts[0],'[data-marine-chart="tide"]':charts[1],'[data-marine-chart="wind"]':charts[2],'[data-marine-chart="rainfall"]':charts[3]})[s];
     host.querySelectorAll = s => s.includes('value') ? values : buttons;
     const window = node(); let id = 0; const timers = new Map(); const requests = []; let ended = 0;
     window.setTimeout = (fn, delay) => { timers.set(++id, {fn, delay}); return id; }; window.clearTimeout = n => timers.delete(n);
@@ -34,6 +34,7 @@ function data() {
     return {status:'complete', timezone:'Pacific/Galapagos', fetched_at:1792940400,
         current:{strength:'Moderate', temperature_c:28.3, tide:'Rising', velocity_kn:.5, wind_speed_kn:12.3, moon_phase:'Full', timestamps:{ocean_current_velocity:1792940400}},
         charts:{current_daily:points.slice(0,7), current_hourly:points, tide_hourly:points.slice(0,24),
+            rainfall_monthly:Array.from({length:12},(_,i)=>({time:Date.UTC(2025,9+i,1,12)/1000,value:40+i*5})),
             moon_phase_daily:[{time:points[0].time,phase:'Full'}],
             wind_daily:points.slice(0,7).map(p=>({...p,value:12,direction_deg:350})),
             wind_hourly:points.map(p=>({time:p.time,speed_kn:10,direction_deg:225}))}};
@@ -41,13 +42,13 @@ function data() {
 test('forecast renders Fahrenheit, accessible charts, and range toggle without another request', async () => {
     const s = setup(); s.requests[0].resolve({status:200,ok:true,json:async()=>data()}); await flush();
     assert.equal(s.values[0].textContent,'83°F'); assert.equal(s.values[1].textContent,'Rising');
-    assert.equal(s.ended(),7); assert.equal(s.timers.size,0); assert.equal(s.retry.hidden,true);
+    assert.equal(s.ended(),8); assert.equal(s.timers.size,0); assert.equal(s.retry.hidden,true);
     s.buttons[1].handlers.click(); assert.equal(s.requests.length,1); assert.equal(s.buttons[1].attrs['aria-pressed'],'true');
     assert.equal(s.charts[0].children[1].children[0].children.filter(n=>n.tag==='rect').length,48);
 });
 test('failure stops loading and retry issues one new request', async () => {
     const s=setup();s.requests[0].reject(new Error());await flush();
-    assert.equal(s.status.textContent,'Forecast unavailable');assert.equal(s.retry.hidden,false);assert.equal(s.ended(),7);
+    assert.equal(s.status.textContent,'Forecast unavailable');assert.equal(s.retry.hidden,false);assert.equal(s.ended(),8);
     s.retry.handlers.click();assert.equal(s.requests.length,2);
 });
 test('non-ocean sites show availability messages without charts or retry', async () => {
@@ -57,16 +58,17 @@ test('non-ocean sites show availability messages without charts or retry', async
     assert.equal(s.charts[1].children[0].textContent,'Tide level is only available for ocean dive sites');
     assert.equal(s.charts[0].children.length,1);assert.equal(s.charts[1].children.length,1);
     assert.equal(s.charts[2].children[0].textContent,'Wind forecast is only available for ocean dive sites');
-    assert.equal(s.retry.hidden,true);assert.equal(s.source.hidden,true);assert.equal(s.ended(),7);
+    assert.equal(s.charts[3].children[0].textContent,'Rainfall history is only available for ocean dive sites');
+    assert.equal(s.retry.hidden,true);assert.equal(s.source.hidden,true);assert.equal(s.ended(),8);
 });
 test('missing coordinates never fetch; leaving page aborts and cancels timers', () => {
     const missing=setup('false');assert.equal(missing.requests.length,0);assert.equal(missing.retry.hidden,true);
-    const s=setup();s.window.handlers.pagehide();assert.equal(s.requests[0].options.signal.aborted,true);assert.equal(s.timers.size,0);assert.equal(s.ended(),7);
+    const s=setup();s.window.handlers.pagehide();assert.equal(s.requests[0].options.signal.aborted,true);assert.equal(s.timers.size,0);assert.equal(s.ended(),8);
 });
 test('pending response polls; deadline aborts requests', async () => {
     const s=setup();s.requests[0].resolve({status:202});await flush();
     const poll=[...s.timers.values()].find(t=>t.delay===2000);assert.ok(poll);poll.fn();assert.equal(s.requests.length,2);
-    [...s.timers.values()].find(t=>t.delay===20000).fn();assert.equal(s.requests[1].options.signal.aborted,true);
+    [...s.timers.values()].find(t=>t.delay===30000).fn();assert.equal(s.requests[1].options.signal.aborted,true);
     assert.equal(s.status.textContent,'Forecast unavailable');
 });
 test('site-local labels include 12am and handle DST hours', () => {
@@ -138,6 +140,18 @@ test('daily chart fits a narrow phone and pointer selection does not add dozens 
     svg.getBoundingClientRect=()=>({left:0,width:270});
     svg.handlers.pointerdown({clientX:200,type:'pointerdown',pointerType:'touch'});
     assert.ok(Number(s.charts[0].dataset.selectedIndex)>0);
+});
+
+test('rainfall chart shows twelve monthly totals in millimeters and fits a narrow phone', async () => {
+    const s=setup();s.charts[3].clientWidth=270;
+    s.requests[0].resolve({status:200,ok:true,json:async()=>data()});await flush();
+    const chart=s.charts[3],axis=chart.children[0],svg=chart.children[1].children[0];
+    assert.equal(svg.attrs.width,'270');
+    assert.equal(svg.children.filter(n=>n.tag==='rect').length,12);
+    assert.ok(axis.children.every(n=>n.textContent.endsWith(' mm')));
+    assert.equal(chart.children[2].children[0].textContent,'Oct 2025 · Monthly total');
+    assert.equal(chart.children[2].children[1].textContent,'40 mm');
+    assert.equal(svg.children.filter(n=>n.attrs.class==='marine-moon-marker').length,0);
 });
 
 test('tide forecast is line-only and chart readouts are not visible beneath the axes', async () => {

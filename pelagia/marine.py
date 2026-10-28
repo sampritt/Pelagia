@@ -144,6 +144,45 @@ def validate_weather(payload):
     return payload
 
 
+def trailing_month_range(now, zone):
+    """Return the twelve complete calendar months before the site's current month."""
+    current = datetime.fromtimestamp(now, zone).date().replace(day=1)
+    month_index = current.year * 12 + current.month - 1 - 12
+    start = current.replace(year=month_index // 12, month=month_index % 12 + 1)
+    return start, current - timedelta(days=1)
+
+
+def validate_rainfall(payload, start, end, zone):
+    """Validate daily rain and reduce it to complete calendar-month totals."""
+    if not isinstance(payload, dict) or payload.get('error') or payload.get('timezone') != str(zone):
+        raise ValueError('Invalid rainfall response')
+    daily = payload.get('daily') or {}
+    times, values = daily.get('time'), daily.get('rain_sum')
+    if (not isinstance(times, list) or not isinstance(values, list) or len(times) != len(values)
+            or payload.get('daily_units', {}).get('rain_sum') != 'mm'):
+        raise ValueError('Invalid rainfall arrays')
+    expected = []
+    day = start
+    while day <= end:
+        expected.append(day.isoformat())
+        day += timedelta(days=1)
+    if times != expected or not all(number(value) and value >= 0 for value in values):
+        raise ValueError('Incomplete rainfall history')
+    totals = {}
+    for stamp, value in zip(times, values):
+        day = datetime.strptime(stamp, '%Y-%m-%d').date()
+        totals[(day.year, day.month)] = totals.get((day.year, day.month), 0) + value
+    points = []
+    year, month = start.year, start.month
+    for _ in range(12):
+        points.append(dict(time=datetime(year, month, 1, tzinfo=zone).timestamp(),
+                           value=round(totals[(year, month)], 2)))
+        month = month % 12 + 1
+        if month == 1:
+            year += 1
+    return points
+
+
 def normalize(payload, now, fetched):
     zone = ZoneInfo(payload['timezone'])
     today = datetime.fromtimestamp(now, zone).date()
@@ -216,7 +255,8 @@ def normalize(payload, now, fetched):
                              wind_speed_kn=wind_speed,
                              moon_phase=moon_phase(moon[0]['value']),
                              tide=tide_phase(series[FIELDS[1]], now), timestamps=timestamps),
-                charts=dict(current_daily=daily, current_hourly=window(FIELDS[0], 48),
+                charts=dict(rainfall_monthly=payload.get('rainfall_monthly') or [],
+                            current_daily=daily, current_hourly=window(FIELDS[0], 48),
                             tide_hourly=window(FIELDS[1], 24),
                             wind_hourly=wind, wind_daily=wind_daily, moon_phase_daily=moon))
 
@@ -227,7 +267,8 @@ def request_json(url, params):
     return response.json()
 
 
-def fetch(lat, lon):
+def fetch(lat, lon, now=None):
+    now = time.time() if now is None else now
     key = current_app.config.get('OPEN_METEO_API_KEY') or os.environ.get('OPEN_METEO_API_KEY')
     common = dict(latitude=lat, longitude=lon, forecast_days=7, past_days=1,
                   timezone='auto', timeformat='unixtime', wind_speed_unit='kn')
@@ -246,6 +287,16 @@ def fetch(lat, lon):
     if weather_payload['timezone'] != marine_payload['timezone']:
         raise ValueError('Mismatched forecast timezones')
     marine_payload['weather'] = weather_payload
+    zone = ZoneInfo(marine_payload['timezone'])
+    start, end = trailing_month_range(now, zone)
+    rainfall_params = dict(latitude=lat, longitude=lon, start_date=start.isoformat(),
+                           end_date=end.isoformat(), daily='rain_sum', timezone=str(zone),
+                           precipitation_unit='mm', cell_selection='nearest')
+    if key:
+        rainfall_params['apikey'] = key
+    archive_host = 'customer-archive-api.open-meteo.com' if key else 'archive-api.open-meteo.com'
+    rainfall_payload = request_json(f'https://{archive_host}/v1/archive', rainfall_params)
+    marine_payload['rainfall_monthly'] = validate_rainfall(rainfall_payload, start, end, zone)
     return marine_payload
 
 
@@ -281,7 +332,7 @@ def load(site, now):
         db.rollback()
         raise
     try:
-        payload = fetch(lat, lon)
+        payload = fetch(lat, lon, now)
         fetched = time.time()
         zone = ZoneInfo(payload['timezone'])
         tomorrow = datetime.fromtimestamp(fetched, zone).date() + timedelta(days=1)

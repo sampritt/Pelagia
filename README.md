@@ -328,7 +328,9 @@ three regional forecast charts for ocean sites come from Open-Meteo using the si
 dive measurements remain unchanged. Public previews show only the gated labels.
 
 The server concurrently requests the marine and main weather APIs for seven local calendar
-forecast days plus yesterday. The marine request includes hourly/current ocean velocity, sea level, and sea surface temperature;
+forecast days plus yesterday, then requests the Historical Weather API for daily rain over the twelve
+complete calendar months before the current site-local month. Those daily values are aggregated into
+monthly totals in millimeters. The marine request includes hourly/current ocean velocity, sea level, and sea surface temperature;
 the weather request includes hourly 10 m wind speed and direction plus daily moon phase. The
 conditions response exposes 48-hour paired `wind_hourly` series, seven
 `wind_daily` maxima and `moon_phase_daily` values, and current wind speed from the current hourly sample. The conditions
@@ -344,7 +346,8 @@ modeled surface conditions, not measurements at dive depth; the tide/current gri
 is about 8 km and SST's source resolution is six-hourly. Sea level is relative to
 global mean sea level, not chart datum.
 
-The regional current chart defaults to seven daily maxima; its two-day view shows the next
+The rainfall chart appears below the rainy-season summary and shows the trailing twelve complete monthly
+totals. The regional current chart defaults to seven daily maxima; its two-day view shows the next
 48 hourly samples. Tide level shows the next 24 hourly samples. Both use the site's
 timezone and preserve null-data gaps. The seven daily bars fit on phones; hourly
 charts scroll horizontally with a fixed Y axis. Tap or point at the chart, or focus
@@ -375,6 +378,7 @@ For commercial use, set `OPEN_METEO_API_KEY` server-side; this selects
 [Open-Meteo pricing and usage terms](https://open-meteo.com/en/pricing).
 Attribution: [Open-Meteo marine API](https://open-meteo.com/en/docs/marine-weather-api),
 [Open-Meteo weather API](https://open-meteo.com/en/docs),
+[Open-Meteo Historical Weather API](https://open-meteo.com/en/docs/historical-weather-api),
 Météo-France / Copernicus Marine, and DWD.
 
 Focused tests: `.venv312/bin/python -m unittest discover -s tests -p 'test_marine.py'`
