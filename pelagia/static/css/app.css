@@ -4192,7 +4192,7 @@ input[type="range"] {
 }
 
 .site-conditions-grid {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 20px;
 }
 
@@ -6216,6 +6216,12 @@ img.is-media-loading {
 .marine-chart svg text { fill: var(--muted); font-size: 12px; font-family: inherit; }
 .marine-y-axis { position: absolute; z-index: 1; left: 0; top: 0; width: 80px; height: 220px; background: var(--panel, #fff); pointer-events: none; }
 .marine-current-bar { fill: var(--sea); }
+.marine-moon-disc { fill: var(--ink); }
+.marine-moon-light { fill: var(--panel, #fff); }
+.marine-moon-outline { fill: none; stroke: var(--muted-strong); stroke-width: 1.2; }
+.marine-compass-ring { fill: none; stroke: var(--line-strong); stroke-width: .8; }
+.marine-compass-head { fill: var(--sea); }
+.marine-compass-tail { stroke: var(--muted); stroke-width: 1.2; }
 .marine-guide { stroke: var(--line); stroke-dasharray: 4 5; }
 .marine-baseline { stroke: var(--line-strong); }
 .marine-tide-line { fill: none; stroke: var(--sea); stroke-width: 2.5; pointer-events: none; }

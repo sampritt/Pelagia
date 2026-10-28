@@ -5,6 +5,7 @@ import threading
 from concurrent.futures import ThreadPoolExecutor
 import unittest
 from unittest.mock import Mock, patch
+from zoneinfo import ZoneInfo
 
 import requests
 import test_reference_autocomplete as fixtures
@@ -16,13 +17,24 @@ NOW = datetime(2026, 10, 25, 15, 15, tzinfo=timezone.utc).timestamp()
 def payload(zone='Pacific/Galapagos'):
     start = NOW - 15 * 60 - 36 * 3600
     times = [start + i * 3600 for i in range(216)]
-    return dict(timezone=zone, current=dict(time=NOW - 900, ocean_current_velocity=.5,
-                sea_level_height_msl=.2, sea_surface_temperature=28.3),
-                current_units=dict(zip(marine.FIELDS, ('kn', 'm', '°C'))),
-                hourly_units=dict(zip(marine.FIELDS, ('kn', 'm', '°C'))),
+    marine_data = dict(timezone=zone, current=dict(time=NOW - 900, ocean_current_velocity=.5,
+                sea_level_height_msl=.2, sea_surface_temperature=28.3,
+                swell_wave_height=1.2, swell_wave_period=8.5),
+                current_units=dict(zip(marine.FIELDS, ('kn', 'm', '°C', 'm', 's'))),
+                hourly_units=dict(zip(marine.FIELDS, ('kn', 'm', '°C', 'm', 's'))),
                 hourly=dict(time=times, ocean_current_velocity=[.4] * len(times),
                             sea_level_height_msl=[(i % 12 if i % 12 <= 6 else 12 - i % 12) / 10 for i in range(len(times))],
-                            sea_surface_temperature=[28.1] * len(times)))
+                            sea_surface_temperature=[28.1] * len(times),
+                            swell_wave_height=[1.1] * len(times), swell_wave_period=[8] * len(times)))
+    daily_times = [datetime.combine(datetime.fromtimestamp(NOW, ZoneInfo(zone)).date() + timedelta(days=i),
+                                    datetime.min.time(), ZoneInfo(zone)).timestamp() for i in range(-1, 7)]
+    marine_data['weather'] = dict(timezone=zone,
+        hourly_units={'wind_speed_10m': 'kn', 'wind_direction_10m': '°'},
+        hourly={'time': times, 'wind_speed_10m': [12.3] * len(times),
+                'wind_direction_10m': [225] * len(times)},
+        daily_units={'moon_phase': 'fraction'},
+        daily={'time': daily_times, 'moon_phase': [.4 + i / 100 for i in range(len(daily_times))]})
+    return marine_data
 
 
 class MarineRulesTest(unittest.TestCase):
@@ -31,6 +43,28 @@ class MarineRulesTest(unittest.TestCase):
                                 (1, 'Strong'), (1.999, 'Strong'), (2, 'Very Strong'), (5, 'Very Strong'),
                                 (None, '-'), (-1, '-'), (float('nan'), '-'), (True, '-')]:
             self.assertEqual(marine.strength(value), expected)
+
+    def test_moon_phase_nearest_quarter(self):
+        for value, expected in [(0, 'New'), (1, 'New'), (.99, 'New'), (.25, 'First Quarter'),
+                                (.5, 'Full'), (.75, 'Last Quarter'), (.62, 'Full'), (.63, 'Last Quarter')]:
+            self.assertEqual(marine.moon_phase(value), expected)
+        for value in (None, -1, 1.1, float('nan'), True):
+            self.assertIsNone(marine.moon_phase(value))
+
+    def test_week_has_one_moon_marker_on_closest_day_with_earliest_tie(self):
+        for phases, expected_index, expected_phase in [
+            ([.46, .49, .50, .53, .57, .61, .65], 2, 'Full'),
+            ([.95, .99, .01, .04, .08, .12, .15], 1, 'New'),
+            ([.50, .55, .60, .65, .70, .75, .80], 0, 'Full'),
+            ([.10, .14, .36, .39, .61, .64, .86], 0, 'New'),
+            ([None] * 7, None, None),
+        ]:
+            with self.subTest(phases=phases):
+                data = payload()
+                data['weather']['daily']['moon_phase'] = [None, *phases]
+                moon = marine.normalize(data, NOW, NOW)['charts']['moon_phase_daily']
+                marked = [(i, point['phase']) for i, point in enumerate(moon) if point['phase']]
+                self.assertEqual(marked, [] if expected_index is None else [(expected_index, expected_phase)])
 
     def test_tide_phase_extrema_slope_plateau_gaps(self):
         def phase(values, hour):
@@ -49,9 +83,15 @@ class MarineRulesTest(unittest.TestCase):
 
     def test_normalize_fallback_partial_and_window_sizes(self):
         data = marine.validate(payload())
+        marine.validate_weather(data['weather'])
         result = marine.normalize(data, NOW, NOW)
         self.assertEqual(result['current']['strength'], 'Moderate')
+        self.assertEqual((result['current']['swell_height_m'], result['current']['swell_period_s']), (1.2, 8.5))
         self.assertEqual([len(result['charts'][k]) for k in ('current_daily', 'current_hourly', 'tide_hourly')], [7, 48, 24])
+        self.assertEqual(result['charts']['swell_hourly'][0], {'time': NOW - 900, 'height_m': 1.1, 'period_s': 8})
+        self.assertEqual(result['charts']['wind_hourly'][0], {'time': NOW - 900, 'speed_kn': 12.3, 'direction_deg': 225})
+        self.assertEqual(len(result['charts']['moon_phase_daily']), 7)
+        self.assertEqual(result['current']['moon_phase'], 'Full')
         self.assertEqual(result['charts']['current_hourly'][0]['time'], NOW - 900)
         data['current']['time'] = NOW - 3600
         self.assertEqual(marine.normalize(data, NOW, NOW)['current']['temperature_c'], 28.1)
@@ -83,6 +123,43 @@ class MarineRulesTest(unittest.TestCase):
         data = payload(); data['hourly'].pop('sea_surface_temperature')
         self.assertTrue(all(v is None for v in marine.validate(data)['hourly']['sea_surface_temperature']))
 
+    def test_weather_validation_rejects_bad_arrays_units_and_ranges(self):
+        data = payload()['weather']; data['hourly']['wind_speed_10m'].pop()
+        with self.assertRaises(ValueError): marine.validate_weather(data)
+        data = payload()['weather']; data['daily_units']['moon_phase'] = '%'
+        with self.assertRaises(ValueError): marine.validate_weather(data)
+        data = payload()['weather']; data['hourly']['wind_direction_10m'][0] = 361
+        self.assertIsNone(marine.validate_weather(data)['hourly']['wind_direction_10m'][0])
+
+    def test_daily_wind_maximum_uses_direction_at_peak_and_site_local_days(self):
+        data = payload('Asia/Kathmandu')
+        weather = data['weather']['hourly']
+        zone = ZoneInfo(data['timezone'])
+        today = datetime.fromtimestamp(NOW, zone).date()
+        indexes = [i for i, t in enumerate(weather['time']) if datetime.fromtimestamp(t, zone).date() == today]
+        weather['wind_speed_10m'][indexes[0]] = 25
+        weather['wind_direction_10m'][indexes[0]] = 359
+        result = marine.normalize(data, NOW, NOW)
+        self.assertEqual(result['charts']['wind_daily'][0], {
+            'time': datetime.combine(today, datetime.min.time(), zone).timestamp(), 'value': 25, 'direction_deg': 359})
+        self.assertEqual(len(result['charts']['wind_daily']), 7)
+        data.pop('weather')
+        result = marine.normalize(data, NOW, NOW)
+        self.assertTrue(all(p['value'] is None for p in result['charts']['wind_daily']))
+        self.assertIsNone(result['current']['moon_phase'])
+
+    def test_moon_dates_remain_aligned_when_api_fixed_offset_crosses_dst(self):
+        data = payload('America/New_York')
+        now = datetime(2026, 10, 31, 12, tzinfo=timezone.utc).timestamp()
+        start = datetime(2026, 10, 30, 4, tzinfo=timezone.utc).timestamp()
+        phases = [.65, .68, .71, .74, .77, .80, .83, .86]
+        data['weather']['utc_offset_seconds'] = -4 * 3600
+        data['weather']['daily'] = {'time': [start + i * 86400 for i in range(8)], 'moon_phase': phases}
+        result = marine.normalize(data, now, now)
+        moon = result['charts']['moon_phase_daily']
+        self.assertEqual([point['value'] for point in moon], phases[1:])
+        self.assertEqual(moon[2]['time'] - moon[1]['time'], 25 * 3600)
+
 
 class MarineEndpointTest(unittest.TestCase):
     make_app = fixtures.ReferenceAutocompleteTest.make_app
@@ -107,6 +184,9 @@ class MarineEndpointTest(unittest.TestCase):
         self.assertNotIn(b'<details class="marine-attribution">', page.data)
         self.assertIn(b'Current Strength (Regional Forecast)', page.data)
         self.assertIn(b'Tide Level (Regional Forecast)', page.data)
+        self.assertIn(b'data-marine-value="moon"', page.data)
+        self.assertIn(b'data-marine-value="swell"', page.data)
+        self.assertIn(b'Wind Speed (Regional Forecast)', page.data)
         self.fetch.assert_not_called()
         anonymous = self.app.test_client()
         self.assertEqual(anonymous.get(self.url).status_code, 302)
@@ -233,11 +313,33 @@ class MarineEndpointTest(unittest.TestCase):
 
     def test_customer_request_configuration(self):
         self.upstream.stop()
-        response = Mock(); response.json.return_value = payload()
-        with self.app.app_context(), patch('pelagia.marine.requests.get', return_value=response) as get:
+        marine_response = Mock(); marine_response.json.return_value = payload()
+        weather_response = Mock(); weather_response.json.return_value = payload()['weather']
+        def response_for(url, **kwargs):
+            return marine_response if 'marine-api' in url else weather_response
+        with self.app.app_context(), patch('pelagia.marine.requests.get', side_effect=response_for) as get:
             self.app.config['OPEN_METEO_API_KEY'] = 'secret'
-            marine.fetch(1, 2)
-            self.assertEqual(get.call_args.args[0], 'https://customer-marine-api.open-meteo.com/v1/marine')
-            self.assertEqual(get.call_args.kwargs['params']['apikey'], 'secret')
-            self.assertEqual(get.call_args.kwargs['timeout'], (3, 10))
+            result = marine.fetch(1, 2)
+            calls = {call.args[0]: call.kwargs for call in get.call_args_list}
+            self.assertEqual(set(calls), {'https://customer-marine-api.open-meteo.com/v1/marine',
+                                          'https://customer-api.open-meteo.com/v1/forecast'})
+            self.assertTrue(all(call['params']['apikey'] == 'secret' for call in calls.values()))
+            self.assertTrue(all(call['timeout'] == (3, 10) for call in calls.values()))
+            self.assertEqual(calls['https://customer-api.open-meteo.com/v1/forecast']['params']['daily'], 'moon_phase')
+            self.assertIn('swell_wave_height', calls['https://customer-marine-api.open-meteo.com/v1/marine']['params']['hourly'])
+            self.assertIn('weather', result)
+        self.upstream.start()
+
+    def test_marine_and_weather_requests_start_concurrently(self):
+        self.upstream.stop()
+        rendezvous = threading.Barrier(2)
+        def response_for(url, **kwargs):
+            rendezvous.wait(timeout=2)
+            response = Mock()
+            response.json.return_value = payload() if 'marine-api' in url else payload()['weather']
+            return response
+        with self.app.app_context(), patch('pelagia.marine.requests.get', side_effect=response_for) as get:
+            result = marine.fetch(1, 2)
+        self.assertEqual(get.call_count, 2)
+        self.assertIn('weather', result)
         self.upstream.start()

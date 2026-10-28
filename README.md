@@ -327,8 +327,16 @@ skips Open-Meteo and replaces the current and tide charts with availability mess
 two regional forecast charts for ocean sites come from Open-Meteo using the site's stored coordinates. Logged
 dive measurements remain unchanged. Public previews show only the gated labels.
 
-The server requests seven local calendar forecast days plus yesterday for tide
-context. Current velocities are classified in **knots**: Light below 0.5, Moderate
+The server concurrently requests the marine and main weather APIs for seven local calendar
+forecast days plus yesterday. The marine request includes hourly/current swell height and period;
+the weather request includes hourly 10 m wind speed and direction plus daily moon phase. The
+conditions response exposes 48-hour paired `swell_hourly` and `wind_hourly` series, seven
+`wind_daily` maxima and `moon_phase_daily` values, and current swell height/period. The conditions
+box shows swell height to one decimal in the account's meters/feet preference and today's nearest
+major moon phase (New, First Quarter, Full, or Last Quarter). The seven-day current chart shows
+one small moon icon on the day closest to any of these four phases, including wraparound at new
+moon. Equally close days use the earlier day; missing moon data omits the icon. Hourly current bars
+have no moon icons. Current velocities are classified in **knots**: Light below 0.5, Moderate
 from 0.5 to below 1, Strong from 1 to below 2, Very Strong at 2 or above. Tide
 labels use hourly local extrema (including plateau midpoints) within one hour,
 otherwise the surrounding slope. Flat or incomplete series show `-`. These are
@@ -343,7 +351,12 @@ charts scroll horizontally with a fixed Y axis. Tap or point at the chart, or fo
 it and use arrow keys, to inspect accessible values. Exact chart values remain
 available to screen readers, while the visible charts end at their axes. Tide
 forecasts render as a continuous line without hourly point markers. Temperature
-and tide values respect account units. Chart toggles do not issue additional API requests.
+and tide values respect account units. Below tide level, the wind chart uses the same 7-day/2-day
+bar layout with a numeric knots axis. Daily bars use maximum 10 m wind speed and the direction at
+that peak (the earliest peak wins ties); hourly bars use each hourly speed/direction. Tiny compass
+arrows above the bars point toward the wind's origin, rounded to 16 headings at 22.5° increments.
+Direction and moon labels are also available in chart inspection and accessible text. The current
+and wind toggles operate independently and do not issue additional API requests.
 
 The idempotent schema initialization adds `marine_forecast_cache`. Responses are
 shared across workers for 15 minutes, capped at site-local midnight, and invalidated
@@ -356,9 +369,10 @@ from the service worker cache.
 
 The default public endpoint needs no key for evaluation and noncommercial use.
 For commercial use, set `OPEN_METEO_API_KEY` server-side; this selects
-`customer-marine-api.open-meteo.com`. Never expose the key to the browser. See
+`customer-marine-api.open-meteo.com` and `customer-api.open-meteo.com`. Never expose the key to the browser. See
 [Open-Meteo pricing and usage terms](https://open-meteo.com/en/pricing).
 Attribution: [Open-Meteo marine API](https://open-meteo.com/en/docs/marine-weather-api),
+[Open-Meteo weather API](https://open-meteo.com/en/docs),
 Météo-France / Copernicus Marine, and DWD.
 
 Focused tests: `.venv312/bin/python -m unittest discover -s tests -p 'test_marine.py'`
