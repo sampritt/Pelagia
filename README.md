@@ -331,7 +331,7 @@ The server concurrently requests the marine and main weather APIs for seven loca
 forecast days plus yesterday. The marine request includes hourly/current swell height and period;
 the weather request includes hourly 10 m wind speed and direction plus daily moon phase. The
 conditions response exposes 48-hour paired `swell_hourly` and `wind_hourly` series, seven
-`wind_daily` maxima and `moon_phase_daily` values, and current swell height/period. The conditions
+`wind_daily` / `swell_daily` maxima and `moon_phase_daily` values, and current swell height/period. The conditions
 box shows swell height to one decimal in the account's meters/feet preference and today's nearest
 major moon phase (New, First Quarter, Full, or Last Quarter). The seven-day current chart shows
 one small moon icon on the day closest to any of these four phases, including wraparound at new
@@ -355,8 +355,14 @@ and tide values respect account units. Below tide level, the wind chart uses the
 bar layout with a numeric knots axis. Daily bars use maximum 10 m wind speed and the direction at
 that peak (the earliest peak wins ties); hourly bars use each hourly speed/direction. Tiny compass
 arrows above the bars point toward the wind's origin, rounded to 16 headings at 22.5° increments.
-Direction and moon labels are also available in chart inspection and accessible text. The current
-and wind toggles operate independently and do not issue additional API requests.
+The fourth chart, Swell Height, uses height bars in the account's meters/feet preference plus a
+contrasting period line with dots and its own fixed seconds axis on the right. Its daily view pairs
+each day's maximum height with the period at that hour (earliest maximum wins ties); the hourly
+view shows the next 48 paired samples, preserving gaps in either measurement independently.
+A compact Height/Period legend identifies both series. Only Current Strength retains the regional
+forecast note; chart titles omit the regional suffix and the other charts have no explanatory copy.
+Direction, moon, and swell-period labels are also available in chart inspection and accessible text.
+The current, wind, and swell toggles operate independently and do not issue additional API requests.
 
 The idempotent schema initialization adds `marine_forecast_cache`. Responses are
 shared across workers for 15 minutes, capped at site-local midnight, and invalidated

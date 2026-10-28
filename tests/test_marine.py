@@ -148,6 +148,24 @@ class MarineRulesTest(unittest.TestCase):
         self.assertTrue(all(p['value'] is None for p in result['charts']['wind_daily']))
         self.assertIsNone(result['current']['moon_phase'])
 
+    def test_daily_swell_pairs_peak_height_with_its_period_and_preserves_missing_data(self):
+        data = payload()
+        zone = ZoneInfo(data['timezone'])
+        today = datetime.fromtimestamp(NOW, zone).date()
+        indexes = [i for i, t in enumerate(data['hourly']['time']) if datetime.fromtimestamp(t, zone).date() == today]
+        peak_index = indexes[3]
+        data['hourly']['swell_wave_height'][peak_index] = 2.3
+        data['hourly']['swell_wave_period'][peak_index] = 9.5
+        data['hourly']['swell_wave_period'][indexes[4]] = 12
+        result = marine.normalize(data, NOW, NOW)
+        self.assertEqual(result['charts']['swell_daily'][0], {
+            'time': datetime.combine(today, datetime.min.time(), zone).timestamp(), 'value': 2.3, 'period_s': 9.5})
+        self.assertEqual(len(result['charts']['swell_daily']), 7)
+        data['hourly']['swell_wave_period'][peak_index] = None
+        self.assertIsNone(marine.normalize(data, NOW, NOW)['charts']['swell_daily'][0]['period_s'])
+        data['hourly'].pop('swell_wave_height')
+        self.assertTrue(all(p['value'] is None for p in marine.normalize(data, NOW, NOW)['charts']['swell_daily']))
+
     def test_moon_dates_remain_aligned_when_api_fixed_offset_crosses_dst(self):
         data = payload('America/New_York')
         now = datetime(2026, 10, 31, 12, tzinfo=timezone.utc).timestamp()
@@ -182,11 +200,14 @@ class MarineEndpointTest(unittest.TestCase):
         self.assertIn(b'data-site-current-strength>-</span>', page.data)
         self.assertNotIn(b'data-marine-value="strength"', page.data)
         self.assertNotIn(b'<details class="marine-attribution">', page.data)
-        self.assertIn(b'Current Strength (Regional Forecast)', page.data)
-        self.assertIn(b'Tide Level (Regional Forecast)', page.data)
+        self.assertIn(b'<h2>Current Strength</h2>', page.data)
+        self.assertIn(b'<h2>Tide Level</h2>', page.data)
         self.assertIn(b'data-marine-value="moon"', page.data)
         self.assertIn(b'data-marine-value="swell"', page.data)
-        self.assertIn(b'Wind Speed (Regional Forecast)', page.data)
+        self.assertIn(b'<h2>Wind Speed</h2>', page.data)
+        self.assertIn(b'<h2>Swell Height</h2>', page.data)
+        self.assertNotIn(b'(Regional Forecast)', page.data)
+        self.assertEqual(page.data.count(b'class="marine-chart-note"'), 1)
         self.fetch.assert_not_called()
         anonymous = self.app.test_client()
         self.assertEqual(anonymous.get(self.url).status_code, 302)

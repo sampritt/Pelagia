@@ -43,7 +43,7 @@
         {% endif %}
         <div class="site-chart-block">
             <div class="site-chart-head">
-                <h2>Current Strength (Regional Forecast)</h2>
+                <h2>Current Strength</h2>
                 <div class="marine-toggle" role="group" aria-label="Current forecast range">
                     <button type="button" data-marine-range="daily" aria-pressed="true">7-day</button>
                     <button type="button" data-marine-range="hourly" aria-pressed="false">2-day</button>
@@ -53,19 +53,32 @@
             <div class="marine-chart" data-marine-chart="current"><p class="muted">Forecast unavailable</p></div>
         </div>
         <div class="site-chart-block">
-            <div class="site-chart-head"><h2>Tide Level (Regional Forecast)</h2><span class="chart-unit">Next 24 hours</span></div>
+            <div class="site-chart-head"><h2>Tide Level</h2><span class="chart-unit">Next 24 hours</span></div>
             <div class="marine-chart" data-marine-chart="tide"><p class="muted">Forecast unavailable</p></div>
         </div>
         <div class="site-chart-block">
             <div class="site-chart-head">
-                <h2>Wind Speed (Regional Forecast)</h2>
+                <h2>Wind Speed</h2>
                 <div class="marine-toggle" role="group" aria-label="Wind forecast range">
                     <button type="button" data-marine-range="daily" data-marine-target="wind" aria-pressed="true">7-day</button>
                     <button type="button" data-marine-range="hourly" data-marine-target="wind" aria-pressed="false">2-day</button>
                 </div>
             </div>
-            <p class="marine-chart-note">Wind at 10 m above the surface, in knots. Daily bars show the maximum; arrows point toward the direction the wind comes from, at that peak.</p>
             <div class="marine-chart" data-marine-chart="wind"><p class="muted">Forecast unavailable</p></div>
+        </div>
+        <div class="site-chart-block">
+            <div class="site-chart-head">
+                <h2>Swell Height</h2>
+                <div class="marine-toggle" role="group" aria-label="Swell forecast range">
+                    <button type="button" data-marine-range="daily" data-marine-target="swell" aria-pressed="true">7-day</button>
+                    <button type="button" data-marine-range="hourly" data-marine-target="swell" aria-pressed="false">2-day</button>
+                </div>
+            </div>
+            <div class="marine-chart-legend" aria-label="Swell chart legend">
+                <span class="marine-legend-height">Height ({{ units.length }})</span>
+                <span class="marine-legend-period">Period (s)</span>
+            </div>
+            <div class="marine-chart" data-marine-chart="swell"><p class="muted">Forecast unavailable</p></div>
         </div>
         <div class="marine-status" role="status" aria-live="polite">
             <span data-marine-status>Forecast unavailable</span>

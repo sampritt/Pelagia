@@ -213,6 +213,16 @@ def normalize(payload, now, fetched):
     swell_period = window('swell_wave_period', 48)
     swell_hourly = [dict(time=height['time'], height_m=height['value'], period_s=period['value'])
                     for height, period in zip(swell_height, swell_period)]
+    height_lookup = {point['time']: point['value'] for point in series['swell_wave_height']}
+    period_lookup = {point['time']: point['value'] for point in series['swell_wave_period']}
+    swell_daily = []
+    for offset in range(7):
+        day = today + timedelta(days=offset)
+        samples = [(t, height) for t, height in height_lookup.items()
+                   if number(height) and datetime.fromtimestamp(t, zone).date() == day]
+        peak_time, peak = max(samples, key=lambda sample: sample[1]) if samples else (None, None)
+        swell_daily.append(dict(time=datetime.combine(day, datetime.min.time(), zone).timestamp(),
+                                value=peak, period_s=period_lookup.get(peak_time)))
     return dict(status='complete', timezone=payload['timezone'], fetched_at=fetched,
                 current=dict(velocity_kn=values[FIELDS[0]], strength=strength(values[FIELDS[0]]),
                              temperature_c=values[FIELDS[2]], sea_level_m=values[FIELDS[1]],
@@ -221,7 +231,7 @@ def normalize(payload, now, fetched):
                              moon_phase=moon_phase(moon[0]['value']),
                              tide=tide_phase(series[FIELDS[1]], now), timestamps=timestamps),
                 charts=dict(current_daily=daily, current_hourly=window(FIELDS[0], 48),
-                            tide_hourly=window(FIELDS[1], 24), swell_hourly=swell_hourly,
+                            tide_hourly=window(FIELDS[1], 24), swell_hourly=swell_hourly, swell_daily=swell_daily,
                             wind_hourly=wind, wind_daily=wind_daily, moon_phase_daily=moon))
 
 
