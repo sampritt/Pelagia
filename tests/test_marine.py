@@ -191,7 +191,8 @@ class MarineEndpointTest(unittest.TestCase):
     def test_page_no_upstream_auth_public_gate_and_no_store(self):
         page = self.client.get('/dive-sites/1')
         self.assertIn(b'data-marine-forecast', page.data)
-        self.assertIn(b'data-site-current-strength>-</span>', page.data)
+        self.assertNotIn(b'data-site-current-strength', page.data)
+        self.assertNotIn(b'<small>VISIBILITY</small>', page.data)
         self.assertNotIn(b'data-marine-value="strength"', page.data)
         self.assertNotIn(b'<details class="marine-attribution">', page.data)
         self.assertIn(b'<h2>Current Strength</h2>', page.data)
@@ -205,7 +206,10 @@ class MarineEndpointTest(unittest.TestCase):
         self.fetch.assert_not_called()
         anonymous = self.app.test_client()
         self.assertEqual(anonymous.get(self.url).status_code, 302)
-        self.assertIn(b'Tide level', anonymous.get('/share/dive-site/1').data)
+        preview = anonymous.get('/share/dive-site/1').data
+        self.assertIn(b'Tide level', preview)
+        self.assertNotIn(b'<small>Visibility</small>', preview)
+        self.assertNotIn(b'<small>Current</small>', preview)
         self.fetch.assert_not_called()
         self.assertEqual(self.client.get(self.url).headers['Cache-Control'], 'private, no-store')
         self.assertEqual(self.client.get('/api/dive-sites/999999/conditions').status_code, 404)

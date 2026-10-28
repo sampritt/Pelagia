@@ -316,8 +316,8 @@ Before production release, run `.venv312/bin/python -m unittest tests.test_email
 ## Dive-site marine conditions
 
 Signed-in dive-site pages load marine conditions after the page renders through
-`GET /api/dive-sites/<id>/conditions`. Visibility and current strength keep the existing recent-dive
-aggregation, falling back to `-`. Water temperature uses the same median from the latest
+`GET /api/dive-sites/<id>/conditions`. The conditions box shows water temperature, tide level,
+moon phase, and wind speed. Water temperature uses the median from the latest
 logged dive day within seven days, falling back to Open-Meteo sea surface temperature
 when that day has no logged temperature. Logged temperature renders immediately and
 stays visible without a forecast. Pelagia first classifies the site's coordinates with Is On Water and
@@ -365,7 +365,7 @@ shared across workers for 15 minutes, capped at site-local midnight, and invalid
 when coordinates change. A 30-second claim prevents duplicate upstream requests;
 failures have a 60-second cooldown. No database transaction stays open during the
 network call. Missing coordinates or upstream failures stop loading, retain
-visibility, current strength and logged water temperature, and show an unavailable state. Browser requests time out after 20
+logged water temperature, and show an unavailable state. Browser requests time out after 20
 seconds and stop on navigation. API responses are private/no-store and excluded
 from the service worker cache.
 
