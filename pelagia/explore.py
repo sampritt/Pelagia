@@ -11,6 +11,19 @@ from .db import get_db
 
 PAGE_SIZE = 24
 SITE_COLUMNS = "id, name, country_or_area, latitude, longitude, logged_dive_count"
+SPECIES_COUNT = """(
+    SELECT count(*) FROM (
+        SELECT lower(trim(ds.common_name)) AS common_name
+        FROM dives d JOIN dive_species ds ON ds.dive_id = d.id
+        WHERE d.dive_site_id = dive_sites.id AND coalesce(d.is_deleted, 0) = 0
+            AND trim(ds.common_name) <> ''
+        UNION
+        SELECT lower(trim(s.common_name)) AS common_name
+        FROM dive_site_obis_occurrences occurrence
+        JOIN species s ON s.id = occurrence.species_id
+        WHERE occurrence.dive_site_id = dive_sites.id AND trim(s.common_name) <> ''
+    )
+) AS observed_species_count"""
 EARTH_RADIUS_KM = 6371.0088
 NOMINATIM_ENDPOINT = "https://nominatim.openstreetmap.org/search"
 RADIUS_LIMITS = {"mi": 100, "km": 160}
@@ -70,7 +83,7 @@ def cartesian_distance_km(latitude, longitude, other_latitude, other_longitude):
 
 
 def nearby_feed_data(latitude, longitude, radius_km, display_name, page=1):
-    """Return one distance-sorted page of dive sites around a coordinate."""
+    """Return one page of nearby sites ranked by dives, then observed species."""
     rows = get_db().execute(
         f"""SELECT {SITE_COLUMNS} FROM dive_sites
             WHERE latitude IS NOT NULL AND longitude IS NOT NULL"""
@@ -81,22 +94,21 @@ def nearby_feed_data(latitude, longitude, radius_km, display_name, page=1):
             latitude, longitude, row["latitude"], row["longitude"]
         )
         if distance <= radius_km:
-            matches.append((distance, row))
+            matches.append(row)
+    matches = add_observations(matches)
     matches.sort(
-        key=lambda match: (
-            match[0],
-            -match[1]["logged_dive_count"],
-            match[1]["name"].casefold(),
-            match[1]["id"],
+        key=lambda item: (
+            -item["logged_dive_count"],
+            -len(item["sightings"]),
+            item["name"].casefold(),
+            item["id"],
         )
     )
     start = (page - 1) * PAGE_SIZE
     result = {
         "location": display_name,
         "nearby": True,
-        "items": add_observations(
-            [row for _distance, row in matches[start:start + PAGE_SIZE]]
-        ),
+        "items": matches[start:start + PAGE_SIZE],
         "total": len(matches),
         "next_page": page + 1 if page * PAGE_SIZE < len(matches) else None,
     }
@@ -215,6 +227,22 @@ def add_observations(rows):
     )
     for sighting in sightings:
         by_id[sighting["dive_site_id"]]["sightings"].append(dict(sighting))
+    seen = {
+        site_id: {sighting["common_name"].casefold() for sighting in item["sightings"]}
+        for site_id, item in by_id.items()
+    }
+    nearby = get_db().execute(
+        f"""SELECT occurrence.dive_site_id, min(trim(s.common_name)) AS common_name
+            FROM dive_site_obis_occurrences occurrence
+            JOIN species s ON s.id = occurrence.species_id
+            WHERE occurrence.dive_site_id IN ({placeholders}) AND trim(s.common_name) <> ''
+            GROUP BY occurrence.dive_site_id, lower(trim(s.common_name))
+            ORDER BY common_name COLLATE NOCASE""", list(by_id)
+    )
+    for sighting in nearby:
+        site_id = sighting["dive_site_id"]
+        if sighting["common_name"].casefold() not in seen[site_id]:
+            by_id[site_id]["sightings"].append(dict(sighting, dive_count=0))
     return items
 
 
@@ -227,9 +255,9 @@ def feed_data(location, page=1):
         "SELECT count(*) FROM dive_sites WHERE trim(country_or_area) = ? COLLATE NOCASE", (location,)
     ).fetchone()[0]
     rows = db.execute(
-        f"""SELECT {SITE_COLUMNS} FROM dive_sites
+        f"""SELECT {SITE_COLUMNS}, {SPECIES_COUNT} FROM dive_sites
            WHERE trim(country_or_area) = ? COLLATE NOCASE
-           ORDER BY logged_dive_count DESC, name COLLATE NOCASE, id
+           ORDER BY logged_dive_count DESC, observed_species_count DESC, name COLLATE NOCASE, id
            LIMIT ? OFFSET ?""", (location, PAGE_SIZE, (page - 1) * PAGE_SIZE)
     ).fetchall()
     result["items"] = add_observations(rows)

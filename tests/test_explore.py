@@ -43,6 +43,24 @@ class ExploreTest(unittest.TestCase):
         self.db.commit()
         return cursor.lastrowid
 
+    def add_obis_species(self, site_id, common_name, record_id):
+        species_id = self.db.execute(
+            "INSERT INTO species (country_or_area, common_name) VALUES (?, ?)",
+            (record_id, common_name),
+        ).lastrowid
+        self.db.execute(
+            """INSERT INTO obis_occurrences
+               (obis_id, queried_taxon_id, decimal_latitude, decimal_longitude,
+                coordinate_uncertainty_m, raw_json) VALUES (?, 1, 48.4, -123.3, 10, '{}')""",
+            (record_id,),
+        )
+        self.db.execute(
+            """INSERT INTO dive_site_obis_occurrences
+               (dive_site_id, species_id, obis_id, distance_meters) VALUES (?, ?, ?, 10)""",
+            (site_id, species_id, record_id),
+        )
+        self.db.commit()
+
     def test_requires_login_and_adds_explore_in_both_navigation_bars(self):
         anonymous = self.app.test_client()
         for path in ("/explore", "/api/explore", "/api/explore/locations?q=Canada",
@@ -309,6 +327,74 @@ class ExploreTest(unittest.TestCase):
         unknown = self.client.get("/api/explore?location=%27%20OR%201=1").get_json()
         self.assertEqual(unknown["total"], 0)
         self.assertNotIn('class="explore-card ', unknown["html"])
+
+    def test_feed_combines_logged_and_obis_species_without_duplicate_tags_or_dive_counts(self):
+        for _ in range(2):
+            dive_id = self.add_dive(1)
+            self.db.execute(
+                "INSERT INTO dive_species (dive_id, common_name) VALUES (?, 'Turtle')",
+                (dive_id,),
+            )
+        self.add_obis_species(1, " turtle ", "overlap")
+        self.add_obis_species(1, "Octopus <&>", "octopus-1")
+        self.add_obis_species(1, " Octopus <&> ", "octopus-2")
+        self.add_obis_species(2, "Seal", "seal")
+        for html in (
+            self.client.get("/explore?location=Canada").get_data(as_text=True),
+            self.client.get("/api/explore?location=Canada").get_json()["html"],
+            self.client.get("/api/explore/nearby", query_string={
+                "query": "Victoria", "display_name": "Victoria", "latitude": 48.4,
+                "longitude": -123.3, "radius": 10, "unit": "km",
+            }).get_json()["html"],
+        ):
+            self.assertEqual(html.count("Turtle <strong>2</strong>"), 1)
+            self.assertNotIn(">turtle", html)
+            self.assertEqual(html.count("Octopus &lt;&amp;&gt;"), 1)
+            self.assertIn("2 logged dives", html)
+        html = self.client.get("/api/explore?location=Canada").get_json()["html"]
+        self.assertIn("Seal</span>", html)
+
+    def test_feed_ranks_by_dives_then_combined_species_before_pagination(self):
+        # Put the species-rich site on the second page under alphabetical sorting.
+        self.db.executemany(
+            """INSERT INTO dive_sites (name, country_or_area, latitude, longitude)
+               VALUES (?, 'Canada', 48.4, -123.3)""",
+            [(f"A Reef {index:02}",) for index in range(PAGE_SIZE)],
+        )
+        rich_site = self.db.execute(
+            """INSERT INTO dive_sites (name, country_or_area, latitude, longitude)
+               VALUES ('Z Rich Reef', 'Canada', 48.45, -123.3)"""
+        ).lastrowid
+        self.add_dive(1)
+        rich_dive = self.add_dive(rich_site)
+        self.db.execute(
+            "INSERT INTO dive_species (dive_id, common_name) VALUES (?, 'Turtle')",
+            (rich_dive,),
+        )
+        self.add_obis_species(rich_site, "Turtle", "overlap")
+        self.add_obis_species(rich_site, "Octopus", "octopus")
+        self.add_obis_species(rich_site, " Octopus ", "duplicate")
+        # More dives take precedence over the richer site's species count.
+        self.add_dive(2)
+        self.add_dive(2)
+        deleted_dive = self.add_dive(1, deleted=1)
+        self.db.executemany(
+            "INSERT INTO dive_species (dive_id, common_name) VALUES (?, ?)",
+            [(deleted_dive, name) for name in ("Deleted A", "Deleted B", "Deleted C")],
+        )
+        self.db.execute("UPDATE dive_sites SET latitude = 48.4, longitude = -123.3 WHERE id = 2")
+        self.db.commit()
+        nearby = {"query": "Victoria", "display_name": "Victoria", "latitude": 48.4,
+                  "longitude": -123.3, "radius": 10, "unit": "km"}
+        for endpoint, query in (("/api/explore", {"location": "Canada"}),
+                                ("/api/explore/nearby", nearby)):
+            first = self.client.get(endpoint, query_string=query).get_json()
+            second = self.client.get(endpoint, query_string=dict(query, page=2)).get_json()
+            ids = lambda data: re.findall(r'href="/dive-sites/(\d+)"', data["html"])
+            self.assertEqual(ids(first)[:3], ["2", str(rich_site), "1"])
+            self.assertEqual(len(ids(first)), PAGE_SIZE)
+            self.assertFalse(set(ids(first)) & set(ids(second)))
+            self.assertEqual(len(ids(first)) + len(ids(second)), first["total"])
 
     def test_feed_is_paginated_without_duplicates(self):
         self.db.executemany("INSERT INTO dive_sites (name, country_or_area) VALUES (?, 'Canada')",
