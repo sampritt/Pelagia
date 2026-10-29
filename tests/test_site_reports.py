@@ -214,6 +214,9 @@ class SiteReportTest(unittest.TestCase):
             self.assertFalse(body['store'])
             self.assertIn('ONLY the supplied', body['instructions'])
             self.assertIn('Do not include wetsuit or exposure recommendations', body['instructions'])
+            self.assertIn('ALWAYS write this as a MORNING REPORT', body['instructions'])
+            self.assertIn('supplied local_time or request time is later in the day',
+                          body['instructions'].replace('\n', ' '))
             self.assertEqual(post.call_args.kwargs['headers']['Authorization'], 'Bearer test-secret')
             response.close.assert_called_once()
         with self.app.app_context():

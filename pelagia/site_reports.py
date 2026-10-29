@@ -57,8 +57,16 @@ Do not invent visibility, surge, entry hazards, or safe/diveable windows, imply
 that moon phase proves current strength, or guarantee safety from regional models.
 Omit unknowns and do not invent rain forecasts from historical rainfall.
 Do not include wetsuit or exposure recommendations; these depend on the individual diver.
-Frame timing relative to the supplied site-local date and time. The report is
-cached for the local day, so avoid 'right now' or wording implying live updates."""
+ALWAYS write this as a MORNING REPORT and outlook for the full site-local day,
+as though it were prepared first thing that morning. This framing applies even
+when the supplied local_time or request time is later in the day. Describe today's
+conditions from morning onward using phrases such as 'this morning', 'through the
+day', 'later today', and 'by evening' when supported. Do not describe already-past
+hours as current or future merely because generation occurs later, and do not say
+'currently', 'right now', 'so far today', 'this afternoon' as the present moment,
+or mention that the report was generated late. Use the full day's time series to
+write a morning-to-evening outlook. The report is cached for the local day and
+must read naturally whenever it is opened that day."""
 
 
 def cached_result(row, now):
