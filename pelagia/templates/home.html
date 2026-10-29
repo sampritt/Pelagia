@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "_action_icons.html" import action_icon %}
 {% block title %}Home - Pelagia{% endblock %}
 {% block body_class %}{% if show_welcome %}welcome-pending{% endif %}{% endblock %}
 {% block head %}
@@ -19,13 +20,16 @@
             <section class="site-reports" aria-labelledby="siteReportsTitle">
                 <div class="site-reports-heading">
                     <h2 id="siteReportsTitle">Site reports</h2>
-                    {% if favorite_sites %}<span>{{ favorite_sites|length }}/10 followed</span>{% endif %}
+                    <time datetime="{{ today_iso }}">{{ today_label }}</time>
                 </div>
                 {% if favorite_sites %}
                 <div class="site-reports-track" aria-label="Followed dive sites">
                     {% for item in favorite_sites %}
                         {% include "_favorite_site_card.html" %}
                     {% endfor %}
+                    <a class="site-reports-add" href="{{ url_for('explore.index') }}" aria-label="Explore more dive sites" title="Explore more dive sites">
+                        {{ action_icon("plus") }}
+                    </a>
                 </div>
                 {% else %}
                 <div class="site-reports-empty">

@@ -3,7 +3,7 @@ import unittest
 from pathlib import Path
 
 import test_reference_autocomplete as fixtures
-from pelagia import db as database
+from pelagia import db as database, dive_brief
 
 
 class DiveSiteFavoritesTest(unittest.TestCase):
@@ -20,8 +20,11 @@ class DiveSiteFavoritesTest(unittest.TestCase):
     def test_empty_state_follow_toggle_and_home_site_reports(self):
         empty_home = self.client.get("/home").get_data(as_text=True)
         self.assertIn("Site reports", empty_home)
+        today = dive_brief.effective_date()
+        self.assertIn(f'<time datetime="{today.isoformat()}">{today.day} {today:%b %Y}</time>', empty_home)
         self.assertIn("You aren’t following dive sites.", empty_home)
         self.assertIn('href="/explore">Explore dive sites</a>', empty_home)
+        self.assertNotIn("site-reports-add", empty_home)
         self.assertLess(empty_home.index("Site reports"), empty_home.index("No dives yet"))
 
         profile = self.client.get("/dive-sites/1").get_data(as_text=True)
@@ -46,6 +49,9 @@ class DiveSiteFavoritesTest(unittest.TestCase):
         self.assertIn('class="explore-card explore-site-card site-report-card"', reports)
         self.assertNotIn("species-row", reports)
         self.assertNotIn("Explore dive site", reports)
+        self.assertIn('class="site-reports-add" href="/explore"', reports)
+        self.assertIn('aria-label="Explore more dive sites"', reports)
+        self.assertLess(reports.index("Alert Rock"), reports.index("site-reports-add"))
 
         self.assertEqual(
             self.client.post("/api/dive-sites/1/favorite").get_json(),
@@ -80,7 +86,9 @@ class DiveSiteFavoritesTest(unittest.TestCase):
             {"favorited": True},
         )
         home = self.client.get("/home").get_data(as_text=True)
-        self.assertIn("10/10 followed", home)
+        today = dive_brief.effective_date()
+        self.assertIn(f"{today.day} {today:%b %Y}", home)
+        self.assertNotIn("10/10 followed", home)
         self.assertNotIn('href="/dive-sites/1"', home.split('<section class="site-reports"', 1)[1].split("</section>", 1)[0])
 
     def test_legacy_site_likes_migrate_once_and_are_retired(self):
