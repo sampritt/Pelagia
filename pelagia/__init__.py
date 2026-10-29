@@ -264,6 +264,7 @@ def register_routes(app):
         return render_template(
             "home.html",
             dives=dives,
+            favorite_sites=fetch_favorite_dive_sites(session["user_id"]),
             latest_my_dive=latest_my_dives[0] if latest_my_dives else None,
             stats=stats,
             user=current_user(),
@@ -874,34 +875,37 @@ def register_routes(app):
         center = fetch_dive_center(center_id, session["user_id"])
         return jsonify({"comments": [dict(comment) for comment in center["comments"]]})
 
-    @app.route("/api/dive-sites/<int:site_id>/like", methods=("POST",))
+    @app.route("/api/dive-sites/<int:site_id>/favorite", methods=("POST",))
     @login_required
-    def api_dive_site_like(site_id):
+    def api_dive_site_favorite(site_id):
         db = database.get_db()
         if db.execute("SELECT 1 FROM dive_sites WHERE id = ?", (site_id,)).fetchone() is None:
             abort(404)
-        exists = db.execute(
-            "SELECT 1 FROM dive_site_likes WHERE dive_site_id = ? AND user_id = ?",
-            (site_id, session["user_id"]),
-        ).fetchone()
-        if exists:
-            db.execute(
-                "DELETE FROM dive_site_likes WHERE dive_site_id = ? AND user_id = ?",
+        with db:
+            db.execute("BEGIN IMMEDIATE")
+            exists = db.execute(
+                "SELECT 1 FROM dive_site_favorites WHERE dive_site_id = ? AND user_id = ?",
                 (site_id, session["user_id"]),
-            )
-            liked = False
-        else:
-            db.execute(
-                "INSERT OR IGNORE INTO dive_site_likes (dive_site_id, user_id) VALUES (?, ?)",
-                (site_id, session["user_id"]),
-            )
-            liked = True
-        db.commit()
-        count = db.execute(
-            "SELECT COUNT(*) AS count FROM dive_site_likes WHERE dive_site_id = ?",
-            (site_id,),
-        ).fetchone()["count"]
-        return jsonify({"liked": liked, "count": count})
+            ).fetchone()
+            if exists:
+                db.execute(
+                    "DELETE FROM dive_site_favorites WHERE dive_site_id = ? AND user_id = ?",
+                    (site_id, session["user_id"]),
+                )
+                favorited = False
+            else:
+                favorite_count = db.execute(
+                    "SELECT COUNT(*) FROM dive_site_favorites WHERE user_id = ?",
+                    (session["user_id"],),
+                ).fetchone()[0]
+                if favorite_count >= 10:
+                    return jsonify({"error": "You can follow up to 10 dive sites."}), 409
+                db.execute(
+                    "INSERT INTO dive_site_favorites (dive_site_id, user_id) VALUES (?, ?)",
+                    (site_id, session["user_id"]),
+                )
+                favorited = True
+        return jsonify({"favorited": favorited})
 
     @app.route("/api/dive-sites/<int:site_id>/comments", methods=("POST",))
     @login_required
@@ -1747,12 +1751,11 @@ def fetch_dive_site(site_id, viewer_user_id):
         """
         SELECT
             ds.*,
-            (SELECT COUNT(*) FROM dive_site_likes WHERE dive_site_id = ds.id) AS like_count,
             (SELECT COUNT(*) FROM dive_site_comments WHERE dive_site_id = ds.id) AS comment_count,
             EXISTS(
-                SELECT 1 FROM dive_site_likes
+                SELECT 1 FROM dive_site_favorites
                 WHERE dive_site_id = ds.id AND user_id = ?
-            ) AS liked_by_me
+            ) AS favorited_by_me
         FROM dive_sites ds
         WHERE ds.id = ?
         """,
@@ -1772,6 +1775,24 @@ def fetch_dive_site(site_id, viewer_user_id):
         (site_id,),
     ).fetchall()
     return site
+
+
+def fetch_favorite_dive_sites(user_id):
+    return [
+        dict(row)
+        for row in database.get_db().execute(
+            """
+            SELECT ds.id, ds.name, ds.country_or_area, ds.latitude, ds.longitude,
+                   ds.logged_dive_count, favorites.created_at AS followed_at
+            FROM dive_site_favorites favorites
+            JOIN dive_sites ds ON ds.id = favorites.dive_site_id
+            WHERE favorites.user_id = ?
+            ORDER BY favorites.created_at DESC, ds.name COLLATE NOCASE, ds.id
+            LIMIT 10
+            """,
+            (user_id,),
+        ).fetchall()
+    ]
 
 
 def dive_site_recent_conditions(site_id):

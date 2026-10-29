@@ -49,7 +49,7 @@ class DiveSiteSharingTest(unittest.TestCase):
                 db.execute("INSERT INTO dive_species (dive_id, common_name) VALUES (?, ?)",
                            (cursor.lastrowid, "DELETED_SPECIES" if deleted else "Harbor Seal"))
             db.execute("INSERT INTO dive_site_comments (dive_site_id, user_id, body) VALUES (1, 1, 'PRIVATE_SITE_COMMENT')")
-            db.execute("INSERT INTO dive_site_likes (dive_site_id, user_id) VALUES (1, 1)")
+            db.execute("INSERT INTO dive_site_favorites (dive_site_id, user_id) VALUES (1, 1)")
             db.commit()
 
     def test_public_preview_shows_headline_description_and_aggregated_sightings(self):
@@ -59,7 +59,8 @@ class DiveSiteSharingTest(unittest.TestCase):
         for visible in ("Alert Rock", "Alaska", "54.10000, -132.90000", "A rocky reef reached by boat", "Harbor Seal", "<strong>2</strong>", "Create your free account"):
             self.assertIn(visible, html)
         for private in ("PRIVATE_DIVER", "PRIVATE_LOG_TITLE", "PRIVATE_LOG_NOTES", "PRIVATE_SITE_COMMENT", "DELETED_SPECIES",
-                        "data-site-comment", 'class="feed-list', 'class="site-line-chart"', 'class="site-bar-chart"', "data-site-like", "data-description-url"):
+                        "data-site-comment", 'class="feed-list', 'class="site-line-chart"', 'class="site-bar-chart"',
+                        "data-site-like", "data-site-favorite", "data-description-url"):
             self.assertNotIn(private, html)
         self.assertIn('class="dive-preview-placeholder" aria-hidden="true" inert', html)
         self.assertIn("live dive site conditions and the dive log", html)
@@ -75,12 +76,13 @@ class DiveSiteSharingTest(unittest.TestCase):
              patch("pelagia.dive_site_condition_series", side_effect=AssertionError("Conditions loaded")):
             self.assertEqual(self.app.test_client().get("/share/dive-site/1").status_code, 200)
         with self.app.app_context():
-            self.assertEqual(set(fetch_public_dive_site(1)), {"id", "name", "country_or_area", "latitude", "longitude", "like_count"})
+            self.assertEqual(set(fetch_public_dive_site(1)), {"id", "name", "country_or_area", "latitude", "longitude"})
 
-    def test_share_is_next_to_like_beneath_description_on_full_site(self):
+    def test_share_is_next_to_follow_beneath_description_on_full_site(self):
         html = self.client.get("/dive-sites/1").get_data(as_text=True)
         actions = html.split('<div class="profile-actions">', 1)[1].split("</div>", 1)[0]
-        self.assertLess(actions.index("data-site-like"), actions.index("data-site-share"))
+        self.assertLess(actions.index("data-site-favorite"), actions.index("data-site-share"))
+        self.assertIn("Following", actions)
         self.assertIn('href="https://pelagia.example/share/dive-site/1"', actions)
         self.assertIn('class="primary-button compact" href="/dive/new?dive_site_id=1"', actions)
         self.assertLess(actions.index("data-site-share"), actions.index("/dive/new?dive_site_id=1"))

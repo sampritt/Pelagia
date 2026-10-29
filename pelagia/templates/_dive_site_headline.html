@@ -20,14 +20,10 @@
             {% endif %}
         </div>
         <div class="profile-actions">
-            {% if public_preview %}
-            <span class="chip-button social-action site-public-likes" aria-label="{{ site.like_count }} likes">
-                {{ action_icon("like") }}<span>{{ site.like_count }}</span>
-            </span>
-            {% else %}
-            <button class="chip-button social-action like-button {{ 'liked' if site.liked_by_me else '' }}" type="button" aria-pressed="{{ 'true' if site.liked_by_me else 'false' }}" data-site-like data-site-id="{{ site.id }}">
-                {{ action_icon("like") }}
-                <span class="sr-only">Like dive site. Likes:</span><span data-site-like-count>{{ site.like_count }}</span>
+            {% if not public_preview %}
+            <button class="chip-button social-action site-favorite-button {{ 'following' if site.favorited_by_me else '' }}" type="button" aria-pressed="{{ 'true' if site.favorited_by_me else 'false' }}" aria-label="{{ 'Unfollow' if site.favorited_by_me else 'Follow' }} {{ site.name }}" title="{{ 'Unfollow dive site' if site.favorited_by_me else 'Follow dive site' }}" data-site-favorite data-site-id="{{ site.id }}" data-site-name="{{ site.name }}">
+                {{ action_icon("favorite") }}
+                <span data-site-favorite-label>{{ 'Following' if site.favorited_by_me else 'Follow' }}</span>
             </button>
             {% endif %}
             <a class="chip-button social-action share-button site-share-button" href="{{ public_url('shared_dive_site', site_id=site.id) }}" data-site-share data-share-title="{{ site.name }} · Dive site on Pelagia" aria-label="Share dive site {{ site.name }}" title="Share dive site">

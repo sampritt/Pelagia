@@ -52,10 +52,13 @@ class AccountDeletionTest(unittest.TestCase):
                 for commenter in (1, 2):
                     db.execute("INSERT INTO likes (dive_id, user_id) VALUES (?, ?)", (dive_id, commenter))
                     db.execute("INSERT INTO comments (dive_id, user_id, body) VALUES (?, ?, 'A comment')", (dive_id, commenter))
-            for prefix, entity in (("dive_site", "dive_site_id"), ("dive_center", "dive_center_id")):
+            for prefix, entity in (("dive_center", "dive_center_id"),):
                 for user_id in (1, 2):
                     db.execute(f"INSERT INTO {prefix}_likes ({entity}, user_id) VALUES (1, ?)", (user_id,))
                     db.execute(f"INSERT INTO {prefix}_comments ({entity}, user_id, body) VALUES (1, ?, 'Comment')", (user_id,))
+            for user_id in (1, 2):
+                db.execute("INSERT INTO dive_site_favorites (dive_site_id, user_id) VALUES (1, ?)", (user_id,))
+                db.execute("INSERT INTO dive_site_comments (dive_site_id, user_id, body) VALUES (1, ?, 'Comment')", (user_id,))
             for index, (email, link_user) in enumerate((
                 ("OWNER@example.test", None), ("google@example.test", None),
                 ("old@example.test", 1), ("other@example.test", 2),
@@ -113,7 +116,7 @@ class AccountDeletionTest(unittest.TestCase):
             self.assertEqual([tuple(row) for row in db.execute("SELECT id, user_id, buddy_user_id FROM dives")], [(3, 2, None)])
             for table in ("photos", "dive_species", "likes", "comments"):
                 self.assertEqual([row[0] for row in db.execute(f"SELECT dive_id FROM {table}")], [3], table)
-            for table in ("likes", "comments", "dive_site_likes", "dive_site_comments", "dive_center_likes", "dive_center_comments"):
+            for table in ("likes", "comments", "dive_site_favorites", "dive_site_comments", "dive_center_likes", "dive_center_comments"):
                 self.assertEqual([row[0] for row in db.execute(f"SELECT user_id FROM {table}")], [2], table)
             self.assertEqual([row[0] for row in db.execute("SELECT email FROM email_challenges")], ["other@example.test"])
             self.assertEqual(db.execute("SELECT logged_dive_count FROM dive_sites WHERE id = 1").fetchone()[0], 1)

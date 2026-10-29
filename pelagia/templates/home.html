@@ -16,6 +16,24 @@
             {% if brief %}
                 {% include "_dive_brief_card.html" %}
             {% endif %}
+            <section class="site-reports" aria-labelledby="siteReportsTitle">
+                <div class="site-reports-heading">
+                    <h2 id="siteReportsTitle">Site reports</h2>
+                    {% if favorite_sites %}<span>{{ favorite_sites|length }}/10 followed</span>{% endif %}
+                </div>
+                {% if favorite_sites %}
+                <div class="site-reports-track" aria-label="Followed dive sites">
+                    {% for item in favorite_sites %}
+                        {% include "_favorite_site_card.html" %}
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="site-reports-empty">
+                    <p>You aren’t following dive sites.</p>
+                    <a class="primary-button compact" href="{{ url_for('explore.index') }}">Explore dive sites</a>
+                </div>
+                {% endif %}
+            </section>
             {% if dives %}
                 {% for dive in dives %}
                     {% include "_dive_card.html" %}

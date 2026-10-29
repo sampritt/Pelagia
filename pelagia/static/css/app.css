@@ -5187,7 +5187,7 @@ body:has(.pwa-install-dialog[open]) { overflow: hidden; }
 .site-map-banner.map-pending { background: var(--accent-soft); }
 .site-profile-identity { flex-direction: column; align-items: stretch; gap: 18px; border: 0; border-radius: 0; }
 .site-share-button, .entity-share-button { justify-content: center; width: 44px; min-width: 44px; height: 44px; padding: 0; }
-.site-public-likes, .entity-public-likes { cursor: default; }
+.entity-public-likes { cursor: default; }
 .site-share-status, .entity-share-status { margin: 0; color: var(--muted-strong); font-size: .8rem; }
 .site-share-status:empty, .entity-share-status:empty { display: none; }
 .site-share-fallback, .entity-share-fallback { width: 100%; }
@@ -5936,6 +5936,16 @@ img.is-media-loading {
     fill: currentColor;
 }
 
+.social-action.following {
+    color: var(--accent-deep);
+    border-color: var(--accent-line);
+    background: var(--accent-soft);
+}
+
+.social-action.following .action-icon {
+    fill: currentColor;
+}
+
 .social-action:disabled {
     cursor: wait;
     opacity: .6;
@@ -5977,11 +5987,95 @@ img.is-media-loading {
     box-shadow: none;
 }
 
-.site-public-likes:hover,
 .entity-public-likes:hover {
     color: var(--muted-strong);
     border-color: var(--line);
     background: #f4f7f9;
+}
+
+/* Followed sites sit directly below the brief and retain the Explore card language. */
+.site-reports {
+    display: grid;
+    gap: 12px;
+    min-width: 0;
+    padding: 2px 0 6px;
+}
+
+.site-reports-heading {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 14px;
+    padding: 0 2px;
+}
+
+.site-reports-heading h2 {
+    margin: 0;
+    color: var(--ink);
+    font-size: 1.16rem;
+    letter-spacing: -.025em;
+}
+
+.site-reports-heading span {
+    color: var(--muted);
+    font-size: .72rem;
+    font-weight: 650;
+}
+
+.site-reports-track {
+    display: flex;
+    gap: 12px;
+    max-width: 100%;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    padding: 2px 2px 12px;
+    scroll-padding-inline: 2px;
+    scroll-snap-type: x proximity;
+    scrollbar-color: var(--line-strong) transparent;
+    -webkit-overflow-scrolling: touch;
+}
+
+.site-reports .site-report-card {
+    flex: 0 0 min(88%, 340px);
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto 150px;
+    gap: 10px;
+    min-height: 286px;
+    padding: 13px;
+    scroll-snap-align: start;
+}
+
+.site-report-card .explore-card-copy {
+    min-height: 98px;
+    padding: 3px 4px 0;
+}
+
+.site-report-card .explore-card-kind { margin-bottom: 5px; }
+.site-report-card .explore-card-copy p { margin: 5px 0 8px; }
+.site-report-card .explore-dive-count { margin: auto 0 0; }
+.site-reports .site-report-card .explore-card-map {
+    height: 150px;
+    min-height: 150px;
+    max-height: 150px;
+}
+
+.site-reports-empty {
+    display: grid;
+    justify-items: start;
+    gap: 12px;
+    padding: 18px;
+    border: 1px dashed var(--line-strong);
+    border-radius: var(--radius);
+    background: var(--panel);
+}
+
+.site-reports-empty p {
+    margin: 0;
+    color: var(--muted-strong);
+}
+
+@media (max-width: 560px) {
+    .site-reports .site-report-card { flex-basis: min(88%, 310px); }
 }
 
 .comment-form {

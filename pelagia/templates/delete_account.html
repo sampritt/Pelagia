@@ -11,7 +11,7 @@
     </header>
     <section class="settings-card account-deletion-card" aria-describedby="deleteAccountWarning">
         <p id="deleteAccountWarning">Are you sure you want to delete your account? This action cannot be undone.</p>
-        <p class="settings-description">Your profile, settings, logged dives, uploaded photos, likes, and comments will be permanently deleted.</p>
+        <p class="settings-description">Your profile, settings, logged dives, uploaded photos, favorite dive sites, likes, and comments will be permanently deleted.</p>
         <form class="account-deletion-actions" method="post" action="{{ url_for('delete_account') }}">
             <input type="hidden" name="csrf_token" value="{{ google_csrf_token() }}">
             <button class="primary-button account-delete-button" type="submit">Delete account</button>

@@ -152,7 +152,11 @@ async function fetchJson(url, options = {}) {
         ...options,
     });
     if (!response.ok) {
-        throw new Error(`Request failed: ${response.status}`);
+        let payload = {};
+        try { payload = await response.json(); } catch (_error) { /* Response has no JSON body. */ }
+        const error = new Error(payload.error || `Request failed: ${response.status}`);
+        error.status = response.status;
+        throw error;
     }
     return response.json();
 }
@@ -276,10 +280,10 @@ function initDiveInteractions() {
             return;
         }
 
-        const siteLikeButton = event.target.closest("[data-site-like]");
-        if (siteLikeButton) {
+        const siteFavoriteButton = event.target.closest("[data-site-favorite]");
+        if (siteFavoriteButton) {
             event.preventDefault();
-            await toggleSiteLike(siteLikeButton.dataset.siteId);
+            await toggleSiteFavorite(siteFavoriteButton.dataset.siteId);
         }
     });
 
@@ -560,16 +564,25 @@ async function toggleCenterLike(centerId) {
     });
 }
 
-async function toggleSiteLike(siteId) {
-    await withPendingAction(document.querySelectorAll(`[data-site-like][data-site-id='${siteId}']`), async () => {
-        const data = await fetchJson(`/api/dive-sites/${siteId}/like`, { method: "POST" });
-        document.querySelectorAll(`[data-site-like][data-site-id='${siteId}']`).forEach((button) => {
-            button.classList.toggle("liked", data.liked);
-            button.setAttribute("aria-pressed", String(data.liked));
-            const count = button.querySelector("[data-site-like-count]");
-            if (count) {
-                count.textContent = data.count;
+async function toggleSiteFavorite(siteId) {
+    await withPendingAction(document.querySelectorAll(`[data-site-favorite][data-site-id='${siteId}']`), async () => {
+        let data;
+        try {
+            data = await fetchJson(`/api/dive-sites/${siteId}/favorite`, { method: "POST" });
+        } catch (error) {
+            if (error.status === 409) {
+                window.PelagiaLoading?.announce(error.message, true);
+                return;
             }
+            throw error;
+        }
+        document.querySelectorAll(`[data-site-favorite][data-site-id='${siteId}']`).forEach((button) => {
+            const label = data.favorited ? "Following" : "Follow";
+            button.classList.toggle("following", data.favorited);
+            button.setAttribute("aria-pressed", String(data.favorited));
+            button.setAttribute("aria-label", `${data.favorited ? "Unfollow" : "Follow"} ${button.dataset.siteName}`);
+            button.title = data.favorited ? "Unfollow dive site" : "Follow dive site";
+            button.querySelector("[data-site-favorite-label]").textContent = label;
         });
     });
 }

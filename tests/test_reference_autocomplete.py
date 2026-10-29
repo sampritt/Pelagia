@@ -1340,8 +1340,8 @@ Kelp House,2 Harbor Way,Alaska,https://kelp.example.test
             self.assertIn(b'data-marine-chart="current"', profile_response.data)
             self.assertNotIn(empty_day.strftime("%b %-d").encode(), profile_response.data)
 
-            like_response = client.post("/api/dive-sites/1/like").get_json()
-            self.assertEqual(like_response, {"liked": True, "count": 1})
+            favorite_response = client.post("/api/dive-sites/1/favorite").get_json()
+            self.assertEqual(favorite_response, {"favorited": True})
             comment_response = client.post("/api/dive-sites/1/comments", data={"body": "Great site"}).get_json()
             self.assertEqual(comment_response["comments"][0]["body"], "Great site")
 

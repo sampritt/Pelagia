@@ -29,6 +29,7 @@ def init_db():
     db = get_db()
     schema = Path(current_app.root_path, "schema.sql").read_text()
     db.executescript(schema)
+    _migrate_dive_site_favorites(db)
     # Retire the former page-load OBIS/Luna cache after the offline catalogue
     # has become the only source of imported site sightings.
     db.executescript(
@@ -93,6 +94,30 @@ def init_db():
     db.execute("CREATE INDEX IF NOT EXISTS idx_dives_user_date ON dives(user_id, date)")
     db.execute("CREATE INDEX IF NOT EXISTS idx_dive_sites_logged_dive_count ON dive_sites(logged_dive_count DESC)")
     db.commit()
+
+
+def _migrate_dive_site_favorites(db):
+    """Turn the retired site-like relationship into a private saved-site list."""
+    legacy_table = db.execute(
+        "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'dive_site_likes'"
+    ).fetchone()
+    if legacy_table is None:
+        return
+    db.execute(
+        """
+        INSERT OR IGNORE INTO dive_site_favorites (dive_site_id, user_id, created_at)
+        SELECT dive_site_id, user_id, created_at
+        FROM (
+            SELECT dive_site_id, user_id, created_at,
+                   ROW_NUMBER() OVER (
+                       PARTITION BY user_id ORDER BY created_at DESC, dive_site_id
+                   ) AS favorite_number
+            FROM dive_site_likes
+        )
+        WHERE favorite_number <= 10
+        """
+    )
+    db.execute("DROP TABLE dive_site_likes")
 
 
 def _ensure_column(db, table_name, column_name, column_type):

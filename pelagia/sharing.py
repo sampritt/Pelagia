@@ -49,8 +49,7 @@ def fetch_public_dive(dive_id):
 def fetch_public_dive_site(site_id):
     row = get_db().execute(
         """
-        SELECT ds.id, ds.name, ds.country_or_area, ds.latitude, ds.longitude,
-               (SELECT COUNT(*) FROM dive_site_likes WHERE dive_site_id = ds.id) AS like_count
+        SELECT ds.id, ds.name, ds.country_or_area, ds.latitude, ds.longitude
         FROM dive_sites ds WHERE ds.id = ?
         """, (site_id,),
     ).fetchone()
