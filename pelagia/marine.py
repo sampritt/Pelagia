@@ -215,7 +215,7 @@ def normalize(payload, now, fetched):
     wind = []
     speed_lookup = dict(zip(weather_times, weather_hourly.get('wind_speed_10m') or []))
     direction_lookup = dict(zip(weather_times, weather_hourly.get('wind_direction_10m') or []))
-    for i in range(48):
+    for i in range(24):
         timestamp = hour + i * 3600
         wind.append(dict(time=timestamp, speed_kn=speed_lookup.get(timestamp),
                          direction_deg=direction_lookup.get(timestamp)))
@@ -256,7 +256,7 @@ def normalize(payload, now, fetched):
                              moon_phase=moon_phase(moon[0]['value']),
                              tide=tide_phase(series[FIELDS[1]], now), timestamps=timestamps),
                 charts=dict(rainfall_monthly=payload.get('rainfall_monthly') or [],
-                            current_daily=daily, current_hourly=window(FIELDS[0], 48),
+                            current_daily=daily, current_hourly=window(FIELDS[0], 24),
                             tide_hourly=window(FIELDS[1], 24),
                             wind_hourly=wind, wind_daily=wind_daily, moon_phase_daily=moon))
 

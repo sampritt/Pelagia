@@ -1286,7 +1286,7 @@ Kelp House,2 Harbor Way,Alaska,https://kelp.example.test
             self.assertNotIn(b"<small>CURRENT</small>", profile_response.data)
             self.assertIn(b"Water temperature", profile_response.data)
             self.assertIn(b"Tide level", profile_response.data)
-            self.assertIn(b"<h2>Current Strength</h2>", profile_response.data)
+            self.assertIn(b"<h2>Current</h2>", profile_response.data)
             self.assertNotIn(b"(Regional Forecast)", profile_response.data)
             self.assertNotIn(b"<small>Latitude</small>", profile_response.data)
             self.assertNotIn(b"<small>Longitude</small>", profile_response.data)

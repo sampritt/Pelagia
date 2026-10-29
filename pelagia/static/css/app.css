@@ -6224,10 +6224,11 @@ img.is-media-loading {
 .marine-compass-tail { stroke: var(--muted); stroke-width: 1.2; }
 .marine-guide { stroke: var(--line); stroke-dasharray: 4 5; }
 .marine-baseline { stroke: var(--line-strong); }
-.marine-tide-line { fill: none; stroke: var(--sea); stroke-width: 2.5; pointer-events: none; }
+.marine-tide-fill { fill: var(--accent-soft); pointer-events: none; }
+.marine-tide-line { fill: none; stroke: var(--sea); stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; pointer-events: none; }
 .marine-toggle { display: inline-flex; flex-shrink: 0; border: 1px solid var(--line); border-radius: 7px; padding: 2px; gap: 2px; }
-.marine-toggle button { border: 0; border-radius: 5px; background: transparent; color: var(--muted); font: inherit; font-size: .76rem; min-height: 44px; min-width: 48px; padding: 8px 10px; cursor: pointer; }
-.marine-toggle button[aria-pressed="true"] { background: var(--panel-tint); color: var(--ink); font-weight: 700; }
+.marine-toggle button { border: 0; border-radius: 5px; background: transparent; color: var(--muted); font: inherit; font-size: .76rem; min-height: 44px; min-width: 58px; padding: 8px 12px; cursor: pointer; transition: color .16s ease, background-color .16s ease; }
+.marine-toggle button[aria-pressed="true"] { background: var(--accent-soft); color: var(--ink); font-weight: 700; }
 .marine-toggle button:disabled { cursor: default; opacity: .6; }
 .marine-status { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; color: var(--muted); font-size: .76rem; }
 .marine-chart .skeleton-chart { display: block; height: 220px; }
@@ -6239,12 +6240,21 @@ img.is-media-loading {
 .marine-cursor { stroke: var(--muted); stroke-width: 1; stroke-dasharray: 2 4; opacity: .4; pointer-events: none; }
 .marine-chart-scroll { overscroll-behavior-x: contain; -webkit-overflow-scrolling: touch; }
 .marine-chart-scroll:focus-visible, .marine-toggle button:focus-visible { outline: 2px solid var(--sea); outline-offset: 3px; border-radius: 5px; }
-.marine-forecast .site-chart-block { gap: 4px; }
+.marine-forecast .site-chart-block { gap: 4px; padding: 20px; }
 @media (max-width: 560px) {
     .marine-forecast { gap: 18px; }
     .marine-forecast .site-chart-head h2 { font-size: 1.05rem; }
-    .marine-toggle button { min-height: 44px; min-width: 46px; }
+    .marine-toggle button { min-height: 44px; min-width: 58px; padding-inline: 10px; }
+    .marine-forecast .site-chart-block { padding: 16px; }
     .marine-forecast .site-conditions-panel { padding: 18px; }
+}
+
+@media (hover: hover) and (pointer: fine) {
+    .marine-toggle button:not(:disabled):not([aria-pressed="true"]):hover { color: var(--ink); background: var(--panel-tint); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .marine-toggle button { transition: none; }
 }
 
 .marine-chart[data-can-scroll="true"]::after { content: ''; position: absolute; right: 0; top: 0; height: 220px; width: 20px; background: linear-gradient(to right, transparent, var(--panel)); pointer-events: none; }

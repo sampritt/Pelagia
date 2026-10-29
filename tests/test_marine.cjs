@@ -44,7 +44,7 @@ test('forecast renders Fahrenheit, accessible charts, and range toggle without a
     assert.equal(s.values[0].textContent,'83°F'); assert.equal(s.values[1].textContent,'Rising');
     assert.equal(s.ended(),8); assert.equal(s.timers.size,0); assert.equal(s.retry.hidden,true);
     s.buttons[1].handlers.click(); assert.equal(s.requests.length,1); assert.equal(s.buttons[1].attrs['aria-pressed'],'true');
-    assert.equal(s.charts[0].children[1].children[0].children.filter(n=>n.tag==='rect').length,48);
+    assert.equal(s.charts[0].children[1].children[0].children.filter(n=>n.tag==='rect').length,24);
 });
 test('failure stops loading and retry issues one new request', async () => {
     const s=setup();s.requests[0].reject(new Error());await flush();
@@ -104,11 +104,17 @@ test('wind chart uses numeric knots and independently toggles daily and hourly a
     assert.ok(chart.children[0].children.every(n=>n.textContent.endsWith(' kn')));
     let svg=chart.children[1].children[0];
     assert.equal(svg.children.filter(n=>n.tag==='rect').length,7);
-    assert.equal(svg.children.filter(n=>n.attrs.class==='marine-wind-marker').length,7);
+    let markers=svg.children.filter(n=>n.attrs.class==='marine-wind-marker');
+    assert.equal(markers.length,7);
+    assert.equal(markers[0].attrs['aria-label'],'Wind toward S');
+    assert.equal(markers[0].children[2].attrs.transform,'rotate(180)');
     assert.equal(chart.children[2].children[1].textContent,'12 kn; wind from N');
     s.buttons[3].handlers.click();svg=chart.children[1].children[0];
-    assert.equal(svg.children.filter(n=>n.tag==='rect').length,48);
-    assert.equal(svg.children.filter(n=>n.attrs.class==='marine-wind-marker').length,48);
+    assert.equal(svg.children.filter(n=>n.tag==='rect').length,24);
+    markers=svg.children.filter(n=>n.attrs.class==='marine-wind-marker');
+    assert.equal(markers.length,24);
+    assert.equal(markers[0].attrs['aria-label'],'Wind toward NE');
+    assert.equal(markers[0].children[2].attrs.transform,'rotate(45)');
     assert.equal(chart.children[2].children[1].textContent,'10 kn; wind from SW');
     assert.equal(s.buttons[2].attrs['aria-pressed'],'false');assert.equal(s.buttons[3].attrs['aria-pressed'],'true');
     assert.equal(s.charts[0].children[1].children[0].children.filter(n=>n.tag==='rect').length,7);
@@ -120,6 +126,8 @@ test('compass headings snap to 16 points and preserve north across wraparound', 
         assert.equal(api.compassHeading(degrees).label,label);
     }
     assert.equal(api.compassHeading(null),null);assert.equal(api.compassHeading(-1),null);
+    assert.equal(api.windHeading(0).label,'S');assert.equal(api.windHeading(225).label,'NE');
+    assert.equal(api.windHeading(null),null);
 });
 test('chart inspection works with arrow keys, preserves selection on resize, and exposes exact values', async () => {
     const s=setup();const d=data();d.charts.current_daily[6].value=1.25;
@@ -154,10 +162,11 @@ test('rainfall chart shows twelve monthly totals in millimeters and fits a narro
     assert.equal(svg.children.filter(n=>n.attrs.class==='marine-moon-marker').length,0);
 });
 
-test('tide forecast is line-only and chart readouts are not visible beneath the axes', async () => {
+test('tide forecast is filled and chart readouts are not visible beneath the axes', async () => {
     const s=setup();s.requests[0].resolve({status:200,ok:true,json:async()=>data()});await flush();
     const tide=s.charts[1].children[1].children[0];
     assert.equal(tide.children.filter(n=>n.tag==='circle').length,0);
+    assert.equal(tide.children.filter(n=>n.attrs.class==='marine-tide-fill').length,1);
     assert.equal(tide.children.filter(n=>n.tag==='polyline').length,1);
     assert.equal(s.charts[0].children[2].className,'sr-only');
     assert.equal(s.charts[1].children[2].className,'sr-only');

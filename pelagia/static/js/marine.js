@@ -26,6 +26,10 @@
         const index = Math.round(degrees / 22.5) % 16;
         return { label: compassPoints[index], degrees: index * 22.5 };
     };
+    const windHeading = degrees => {
+        if (!finite(degrees) || degrees < 0 || degrees > 360) return null;
+        return compassHeading((degrees + 180) % 360);
+    };
     function moonMarker(phase, x) {
         const marker = el('g', { transform: `translate(${x} 12)`, class: 'marine-moon-marker', role: 'img', 'aria-label': `${phase} moon` });
         marker.appendChild(el('title', {}, `${phase} moon`));
@@ -38,8 +42,8 @@
         return marker;
     }
     function windMarker(heading, x) {
-        const marker = el('g', { transform: `translate(${x} 12)`, class: 'marine-wind-marker', role: 'img', 'aria-label': `Wind from ${heading.label}` });
-        marker.appendChild(el('title', {}, `Wind from ${heading.label} (${heading.degrees}°)`));
+        const marker = el('g', { transform: `translate(${x} 12)`, class: 'marine-wind-marker', role: 'img', 'aria-label': `Wind toward ${heading.label}` });
+        marker.appendChild(el('title', {}, `Wind toward ${heading.label} (${heading.degrees}°)`));
         marker.appendChild(el('circle', { r: 7, class: 'marine-compass-ring' }));
         const needle = el('g', { transform: `rotate(${heading.degrees})` });
         needle.appendChild(el('path', { d: 'M0,-6 L3,2 L0,0 L-3,2 Z', class: 'marine-compass-head' }));
@@ -82,7 +86,7 @@
         scroll.setAttribute('role', 'region');
         scroll.setAttribute('aria-label', rainfall ? `${name} history` : `${name} forecast; scroll for more hours`);
         const svg = el('svg', { viewBox: `0 0 ${width} ${height}`, width, height,
-            role: 'img', 'aria-label': rainfall ? `${name} history in ${zone}. Monthly totals for the past 12 complete months.` : `${name} forecast in ${zone}. ${daily ? 'Daily maximum values.' : 'Hourly values.'}${wind ? ' Arrows indicate where the wind comes from, rounded to 16 compass points.' : ''}` });
+            role: 'img', 'aria-label': rainfall ? `${name} history in ${zone}. Monthly totals for the past 12 complete months.` : `${name} forecast in ${zone}. ${daily ? 'Daily maximum values.' : 'Hourly values.'}${wind ? ' Arrows indicate the direction the wind is blowing, rounded to 16 compass points.' : ''}` });
         const readout = document.createElement('div'); readout.className = 'sr-only';
         readout.setAttribute('role', 'status');
         const readoutDate = document.createElement('span');
@@ -112,7 +116,7 @@
         };
         points.forEach((point, i) => {
             if (wind) {
-                const heading = compassHeading(point.direction_deg);
+                const heading = windHeading(point.direction_deg);
                 if (heading) svg.appendChild(windMarker(heading, x(i)));
             } else if (daily && !tide && moonLookup.get(point.time)) {
                 svg.appendChild(moonMarker(moonLookup.get(point.time), x(i)));
@@ -120,7 +124,12 @@
         });
         let segment = [];
         const flush = () => {
-            if (segment.length > 1) svg.appendChild(el('polyline', { points: segment.join(' '), class: 'marine-tide-line' }));
+            if (segment.length > 1) {
+                const firstX = segment[0].split(',')[0];
+                const lastX = segment[segment.length - 1].split(',')[0];
+                svg.appendChild(el('polygon', { points: `${firstX},${bottom} ${segment.join(' ')} ${lastX},${bottom}`, class: 'marine-tide-fill' }));
+                svg.appendChild(el('polyline', { points: segment.join(' '), class: 'marine-tide-line' }));
+            }
             segment = [];
         };
         points.forEach((point, i) => {
@@ -228,10 +237,13 @@
         const clear = () => { window.clearTimeout(poll); window.clearTimeout(deadline); finish(); };
         const charts = (target) => {
             if (!target && rainfallChart) renderChart(rainfallChart, result.charts.rainfall_monthly, { rainfall: true, zone: result.timezone });
-            if (!target || target === 'current') renderChart(currentChart, result.charts[ranges.current === 'daily' ? 'current_daily' : 'current_hourly'], { daily: ranges.current === 'daily', zone: result.timezone, moons: result.charts.moon_phase_daily || [] });
+            if (!target || target === 'current') {
+                const points = result.charts[ranges.current === 'daily' ? 'current_daily' : 'current_hourly'];
+                renderChart(currentChart, ranges.current === 'daily' ? points : points?.slice(0, 24), { daily: ranges.current === 'daily', zone: result.timezone, moons: result.charts.moon_phase_daily || [] });
+            }
             if (!target) renderChart(tideChart, result.charts.tide_hourly, { tide: true, zone: result.timezone, lengthUnit: host.dataset.lengthUnit });
             if (windChart && (!target || target === 'wind')) {
-                const points = ranges.wind === 'daily' ? result.charts.wind_daily : result.charts.wind_hourly?.map(point => ({ ...point, value: point.speed_kn }));
+                const points = ranges.wind === 'daily' ? result.charts.wind_daily : result.charts.wind_hourly?.slice(0, 24).map(point => ({ ...point, value: point.speed_kn }));
                 renderChart(windChart, points, { wind: true, daily: ranges.wind === 'daily', zone: result.timezone });
             }
         };
@@ -354,5 +366,5 @@
     }
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initMarine);
     else initMarine();
-    if (typeof module !== 'undefined') module.exports = { renderChart, localDate, localMonth, localHour, hourNumber, compassHeading };
+    if (typeof module !== 'undefined') module.exports = { renderChart, localDate, localMonth, localHour, hourNumber, compassHeading, windHeading };
 })();
