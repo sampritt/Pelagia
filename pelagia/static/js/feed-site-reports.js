@@ -52,6 +52,13 @@
             });
         }
 
+        function alignMaps() {
+            const headers = cards.map((card) => card.querySelector('.explore-card-copy'));
+            headers.forEach((header) => { header.style.minHeight = ''; });
+            const height = Math.max(...headers.map((header) => header.getBoundingClientRect().height));
+            headers.forEach((header) => { header.style.minHeight = `${height}px`; });
+        }
+
         async function loadCard(card) {
             const body = card.querySelector('[data-followed-report-body]');
             const text = card.querySelector('[data-followed-report-text]');
@@ -107,11 +114,15 @@
             loadCard(card);
         });
 
-        window.addEventListener('resize', () => {
+        function refreshLayout() {
+            alignMaps();
             cards.forEach((card) => {
                 if (card.dataset.reportState === 'ready' && !card.classList.contains('is-report-expanded')) revealToggle(card);
             });
-        });
+        }
+        refreshLayout();
+        document.fonts?.ready.then(() => { if (!stopped) refreshLayout(); });
+        window.addEventListener('resize', refreshLayout);
 
         window.addEventListener('pagehide', () => {
             stopped = true;

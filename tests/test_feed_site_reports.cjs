@@ -16,7 +16,10 @@ function node() {
 }
 
 function card(id) {
-    const reportBody = node(), reportText = node(), toggle = node();
+    const reportBody = node(), reportText = node(), toggle = node(), header = node();
+    header.style = {};
+    header.height = 60;
+    header.getBoundingClientRect = () => ({height: header.height});
     toggle.hidden = true;
     toggle.attrs['aria-expanded'] = 'false';
     const item = node();
@@ -29,9 +32,23 @@ function card(id) {
         '[data-followed-report-body]': reportBody,
         '[data-followed-report-text]': reportText,
         '[data-followed-report-toggle]': toggle,
+        '.explore-card-copy': header,
     })[selector];
-    return {item, reportBody, reportText, toggle};
+    return {item, reportBody, reportText, toggle, header};
 }
+
+test('maps align to the tallest natural header and recalculate when the viewport changes', async () => {
+    const cards = [card(1), card(2)];
+    cards[1].header.height = 85;
+    const state = setup(cards, async () => response(200, {status: 'complete', report: 'A calm morning.'}));
+    await flush();
+    assert.equal(cards[0].header.style.minHeight, '85px');
+    assert.equal(cards[1].header.style.minHeight, '85px');
+    cards[1].header.height = 60;
+    state.window.handlers.resize();
+    assert.equal(cards[0].header.style.minHeight, '60px');
+    assert.equal(cards[1].header.style.minHeight, '60px');
+});
 
 const response = (status, data) => ({status, ok: status >= 200 && status < 300, json: async () => data});
 const flush = async () => {
