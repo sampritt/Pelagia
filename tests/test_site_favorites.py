@@ -23,9 +23,9 @@ class DiveSiteFavoritesTest(unittest.TestCase):
         with self.app.app_context():
             today = dive_brief.effective_date()
         self.assertIn(f'<time datetime="{today.isoformat()}">{today.day} {today:%b %Y}</time>', empty_home)
-        self.assertIn("You aren’t following dive sites.", empty_home)
+        self.assertIn("Follow dive sites to keep their daily reports in your feed.", empty_home)
         self.assertIn('href="/explore">Explore dive sites</a>', empty_home)
-        self.assertNotIn("site-reports-add", empty_home)
+        self.assertNotIn("data-site-reports-track", empty_home)
         self.assertLess(empty_home.index("Site reports"), empty_home.index("No dives yet"))
 
         profile = self.client.get("/dive-sites/1").get_data(as_text=True)
@@ -47,26 +47,31 @@ class DiveSiteFavoritesTest(unittest.TestCase):
         reports = home.split('<section class="site-reports"', 1)[1].split("</section>", 1)[0]
         self.assertIn("Alert Rock", reports)
         self.assertIn('class="site-reports-track"', reports)
-        self.assertIn('class="explore-card explore-site-card site-report-card"', reports)
+        self.assertIn('class="site-report-card"', reports)
+        self.assertIn('aria-labelledby="followedSiteTitle1"', reports)
         self.assertIn('data-followed-site-report', reports)
         self.assertIn('data-report-url="/api/dive-sites/1/report"', reports)
         self.assertIn('data-description-url="/api/dive-sites/1/description"', reports)
         self.assertIn('data-conditions-url="/api/dive-sites/1/conditions"', reports)
         self.assertIn('data-followed-report-text', reports)
         self.assertIn('data-followed-report-toggle', reports)
+        self.assertIn('aria-controls="followedReport1"', reports)
+        self.assertIn('data-site-reports-navigation hidden', reports)
+        self.assertIn('aria-controls="siteReportsTrack"', reports)
         self.assertNotIn("species-row", reports)
         self.assertNotIn("Explore dive site", reports)
         self.assertNotIn("logged dive", reports)
-        self.assertIn('class="site-reports-add" href="/explore"', reports)
-        self.assertIn('aria-label="Explore more dive sites"', reports)
-        self.assertLess(reports.index("Alert Rock"), reports.index("site-reports-add"))
+        self.assertIn('class="site-reports-explore" href="/explore"', reports)
+        self.assertLess(reports.index("site-reports-explore"), reports.index("Alert Rock"))
+        self.assertIn("1 site followed", reports)
+        self.assertIn('class="site-report-view" href="/dive-sites/1"', reports)
         self.assertIn('js/feed-site-reports.js', home)
 
         self.assertEqual(
             self.client.post("/api/dive-sites/1/favorite").get_json(),
             {"favorited": False},
         )
-        self.assertIn("You aren’t following dive sites.", self.client.get("/home").get_data(as_text=True))
+        self.assertIn("Follow dive sites to keep their daily reports in your feed.", self.client.get("/home").get_data(as_text=True))
 
     def test_ten_site_limit_does_not_block_unfollow(self):
         with self.app.app_context():

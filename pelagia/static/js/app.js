@@ -113,8 +113,8 @@ function renderMiniTileMap(map) {
     map.classList.remove("map-pending");
     map.classList.add("is-tiled");
 
-    const width = Math.max(220, map.clientWidth);
-    const height = Math.max(160, map.clientHeight);
+    const width = map.clientWidth || 220;
+    const height = map.clientHeight || 160;
     const zoom = clamp(map.dataset.mapZoom || MAP_STATIC_ZOOM, MAP_MIN_ZOOM, MAP_MAX_ZOOM);
     const layer = ensureTileLayer(map);
     renderTileGrid(layer, {

@@ -7,11 +7,18 @@
         if (!cards.length) return;
         let stopped = false;
         const controllers = new Set();
-        const timers = new Set();
+        const timers = new Map();
+        const loading = new Map();
+        let generation = 0;
+        const track = document.querySelector('[data-site-reports-track]');
+        const navigation = document.querySelector('[data-site-reports-navigation]');
+        const position = document.querySelector('[data-site-reports-position]');
+        const previous = document.querySelector('[data-site-reports-prev]');
+        const next = document.querySelector('[data-site-reports-next]');
 
         const delay = (milliseconds) => new Promise((resolve) => {
             const timer = window.setTimeout(() => { timers.delete(timer); resolve(); }, milliseconds);
-            timers.add(timer);
+            timers.set(timer, resolve);
         });
 
         async function requestJson(url, method, controller) {
@@ -25,7 +32,7 @@
         }
 
         async function warmDependency(url, method, controller, deadline) {
-            while (!stopped && Date.now() < deadline) {
+            while (!stopped && !controller.signal.aborted && Date.now() < deadline) {
                 const {response, data} = await requestJson(url, method, controller);
                 if (response.status === 202 || data?.status === 'pending') { await delay(POLL_MS); continue; }
                 if (!response.ok) throw new Error('Dependency unavailable');
@@ -40,26 +47,52 @@
             text.classList.toggle('is-expanded', expanded);
             card.classList.toggle('is-report-expanded', expanded);
             toggle.setAttribute('aria-expanded', String(expanded));
-            toggle.textContent = expanded ? 'Show less' : 'Read more';
+            toggle.querySelector('[data-followed-report-toggle-label]').textContent = expanded ? 'Show less' : 'Read more';
         }
 
         function revealToggle(card) {
             const text = card.querySelector('[data-followed-report-text]');
             const toggle = card.querySelector('[data-followed-report-toggle]');
             window.requestAnimationFrame(() => {
-                if (stopped || !text.isConnected) return;
+                if (stopped || !text.isConnected || card.classList.contains('is-report-expanded')) return;
                 toggle.hidden = text.scrollHeight <= text.clientHeight + 1;
             });
         }
 
-        function alignMaps() {
-            const headers = cards.map((card) => card.querySelector('.explore-card-copy'));
-            headers.forEach((header) => { header.style.minHeight = ''; });
-            const height = Math.max(...headers.map((header) => header.getBoundingClientRect().height));
-            headers.forEach((header) => { header.style.minHeight = `${height}px`; });
+        function updateNavigation() {
+            if (!track || !navigation) return;
+            const overflow = track.scrollWidth > track.clientWidth + 2;
+            navigation.hidden = !overflow;
+            track.setAttribute('tabindex', overflow ? '0' : '-1');
+            if (!overflow) return;
+            const viewport = track.getBoundingClientRect();
+            const visible = cards.map((card, index) => ({rect: card.getBoundingClientRect(), index}))
+                .filter(({rect}) => Math.min(rect.right, viewport.right) - Math.max(rect.left, viewport.left) > rect.width / 2);
+            if (visible.length) {
+                const first = visible[0].index + 1;
+                const last = visible[visible.length - 1].index + 1;
+                const label = `${first === last ? first : `${first}–${last}`} of ${cards.length} sites`;
+                if (position.textContent !== label) position.textContent = label;
+            }
+            previous.setAttribute('aria-disabled', String(track.scrollLeft <= 2));
+            next.setAttribute('aria-disabled', String(track.scrollLeft + track.clientWidth >= track.scrollWidth - 2));
+        }
+
+        function browse(direction) {
+            const button = direction < 0 ? previous : next;
+            if (button.getAttribute('aria-disabled') === 'true') return;
+            const origin = track.getBoundingClientRect().left + 2;
+            // Move to a card boundary even after a partial touch or trackpad scroll.
+            const candidates = direction < 0 ? [...cards].reverse() : cards;
+            const target = candidates.find((card) => direction * (card.getBoundingClientRect().left - origin) > 4);
+            const left = target
+                ? track.scrollLeft + target.getBoundingClientRect().left - origin
+                : direction < 0 ? 0 : track.scrollWidth;
+            track.scrollTo({left, behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth'});
         }
 
         async function loadCard(card) {
+            const loadGeneration = generation;
             const body = card.querySelector('[data-followed-report-body]');
             const text = card.querySelector('[data-followed-report-text]');
             const toggle = card.querySelector('[data-followed-report-toggle]');
@@ -70,11 +103,14 @@
                 body, 'Loading daily dive site report',
                 '<span class="skeleton skeleton-line"></span><span class="skeleton skeleton-line"></span><span class="skeleton skeleton-line"></span><span class="skeleton skeleton-line"></span>'
             ) || (() => {});
+            const timeout = window.setTimeout(() => controller.abort(), DEADLINE_MS);
+            loading.set(controller, {finish: finishLoading, timeout});
             let dependenciesStarted = false;
             try {
-                while (!stopped && Date.now() < deadline) {
+                while (!stopped && loadGeneration === generation && Date.now() < deadline) {
                     const {response, data} = await requestJson(card.dataset.reportUrl, 'POST', controller);
-                    if (response.ok && data?.status === 'complete' && typeof data.report === 'string') {
+                    if (stopped || loadGeneration !== generation) return;
+                    if (response.ok && data?.status === 'complete' && typeof data.report === 'string' && data.report.trim()) {
                         finishLoading();
                         text.textContent = data.report;
                         card.dataset.reportState = 'ready';
@@ -96,12 +132,15 @@
                 }
                 throw new Error('Report timeout');
             } catch (_error) {
-                if (stopped || controller.signal.aborted) return;
+                if (stopped || loadGeneration !== generation) return;
                 finishLoading();
-                text.textContent = 'Today’s report is unavailable.';
+                text.textContent = 'Today’s report is unavailable. Open the site for conditions and forecasts.';
                 toggle.hidden = true;
                 card.dataset.reportState = 'unavailable';
             } finally {
+                controller.abort();
+                window.clearTimeout(timeout);
+                loading.delete(controller);
                 controllers.delete(controller);
             }
         }
@@ -109,13 +148,15 @@
         cards.forEach((card) => {
             card.querySelector('[data-followed-report-toggle]').addEventListener('click', () => {
                 const toggle = card.querySelector('[data-followed-report-toggle]');
-                setExpanded(card, toggle.getAttribute('aria-expanded') !== 'true');
+                const expanded = toggle.getAttribute('aria-expanded') !== 'true';
+                setExpanded(card, expanded);
+                if (!expanded) revealToggle(card);
             });
             loadCard(card);
         });
 
         function refreshLayout() {
-            alignMaps();
+            updateNavigation();
             cards.forEach((card) => {
                 if (card.dataset.reportState === 'ready' && !card.classList.contains('is-report-expanded')) revealToggle(card);
             });
@@ -124,12 +165,36 @@
         document.fonts?.ready.then(() => { if (!stopped) refreshLayout(); });
         window.addEventListener('resize', refreshLayout);
 
+        if (track) {
+            track.addEventListener('scroll', updateNavigation, {passive: true});
+            previous.addEventListener('click', () => browse(-1));
+            next.addEventListener('click', () => browse(1));
+            track.addEventListener('keydown', (event) => {
+                if (event.target !== track || !['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+                event.preventDefault();
+                if (event.key === 'Home' || event.key === 'End') {
+                    track.scrollTo({left: event.key === 'Home' ? 0 : track.scrollWidth, behavior: 'instant'});
+                } else browse(event.key === 'ArrowLeft' ? -1 : 1);
+            });
+            if (window.ResizeObserver) new window.ResizeObserver(refreshLayout).observe(track);
+        }
+
         window.addEventListener('pagehide', () => {
             stopped = true;
+            generation++;
             controllers.forEach((controller) => controller.abort());
-            timers.forEach((timer) => window.clearTimeout(timer));
+            loading.forEach(({finish, timeout}) => { finish(); window.clearTimeout(timeout); });
+            timers.forEach((resolve, timer) => { window.clearTimeout(timer); resolve(); });
             timers.clear();
-        }, {once: true});
+        });
+        window.addEventListener('pageshow', (event) => {
+            if (!event.persisted) return;
+            stopped = false;
+            cards.forEach((card) => {
+                if (card.dataset.reportState === 'loading') loadCard(card);
+            });
+            refreshLayout();
+        });
     }
 
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initFollowedSiteReports);

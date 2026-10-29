@@ -16,14 +16,13 @@ function node() {
 }
 
 function card(id) {
-    const reportBody = node(), reportText = node(), toggle = node(), header = node();
-    header.style = {};
-    header.height = 60;
-    header.getBoundingClientRect = () => ({height: header.height});
+    const reportBody = node(), reportText = node(), toggle = node(), label = node();
+    toggle.querySelector = () => label;
     toggle.hidden = true;
     toggle.attrs['aria-expanded'] = 'false';
     const item = node();
     item.dataset = {
+        reportState: 'loading',
         reportUrl: `/api/dive-sites/${id}/report`,
         descriptionUrl: `/api/dive-sites/${id}/description`,
         conditionsUrl: `/api/dive-sites/${id}/conditions`,
@@ -32,43 +31,55 @@ function card(id) {
         '[data-followed-report-body]': reportBody,
         '[data-followed-report-text]': reportText,
         '[data-followed-report-toggle]': toggle,
-        '.explore-card-copy': header,
     })[selector];
-    return {item, reportBody, reportText, toggle, header};
+    return {item, reportBody, reportText, toggle, label};
 }
-
-test('maps align to the tallest natural header and recalculate when the viewport changes', async () => {
-    const cards = [card(1), card(2)];
-    cards[1].header.height = 85;
-    const state = setup(cards, async () => response(200, {status: 'complete', report: 'A calm morning.'}));
-    await flush();
-    assert.equal(cards[0].header.style.minHeight, '85px');
-    assert.equal(cards[1].header.style.minHeight, '85px');
-    cards[1].header.height = 60;
-    state.window.handlers.resize();
-    assert.equal(cards[0].header.style.minHeight, '60px');
-    assert.equal(cards[1].header.style.minHeight, '60px');
-});
 
 const response = (status, data) => ({status, ok: status >= 200 && status < 300, json: async () => data});
 const flush = async () => {
     for (let i = 0; i < 3; i++) await new Promise(resolve => setImmediate(resolve));
 };
 
-function setup(cards, fetch) {
+function setup(cards, fetch, {width = 656, cardWidth = 320} = {}) {
     const window = node();
     let timer = 0;
     const timers = new Map();
     window.setTimeout = (callback, delay) => { const id = ++timer; timers.set(id, {callback, delay}); return id; };
     window.clearTimeout = id => timers.delete(id);
     window.requestAnimationFrame = callback => callback();
+    window.matchMedia = () => ({matches: true});
     let starts = 0, finishes = 0;
     window.PelagiaLoading = {begin() { starts++; return () => { finishes++; }; }};
-    const document = {readyState: 'complete', querySelectorAll: () => cards.map(item => item.item)};
+    const track = node(), navigation = node(), position = node(), previous = node(), next = node();
+    track.clientWidth = width;
+    track.scrollWidth = cards.length * (cardWidth + 12) - 12 + 4;
+    track.scrollLeft = 0;
+    track.getBoundingClientRect = () => ({left: 0, right: track.clientWidth});
+    track.scrollTo = ({left, behavior}) => {
+        track.behavior = behavior;
+        track.scrollLeft = Math.max(0, Math.min(left, track.scrollWidth - track.clientWidth));
+        track.handlers.scroll();
+    };
+    cards.forEach((card, index) => {
+        card.item.getBoundingClientRect = () => {
+            const left = 2 + index * (cardWidth + 12) - track.scrollLeft;
+            return {left, right: left + cardWidth, width: cardWidth};
+        };
+    });
+    const document = {
+        readyState: 'complete', querySelectorAll: () => cards.map(item => item.item),
+        querySelector: selector => ({
+            '[data-site-reports-track]': track,
+            '[data-site-reports-navigation]': navigation,
+            '[data-site-reports-position]': position,
+            '[data-site-reports-prev]': previous,
+            '[data-site-reports-next]': next,
+        })[selector],
+    };
     vm.runInNewContext(fs.readFileSync('pelagia/static/js/feed-site-reports.js', 'utf8'), {
         window, document, fetch, AbortController, Date, Promise, Error,
     });
-    return {window, timers, starts: () => starts, finishes: () => finishes};
+    return {window, timers, track, navigation, position, previous, next, starts: () => starts, finishes: () => finishes};
 }
 
 test('every followed card loads its cached report and expands without another request', async () => {
@@ -86,10 +97,10 @@ test('every followed card loads its cached report and expands without another re
         assert.match(card.reportText.textContent, new RegExp(index ? 'two' : 'one'));
         assert.equal(card.item.dataset.reportState, 'ready');
         assert.equal(card.toggle.hidden, false);
-        assert.equal(card.toggle.textContent, 'Read more');
+        assert.equal(card.label.textContent, 'Read more');
         card.toggle.handlers.click();
         assert.equal(card.reportText.classList.contains('is-expanded'), true);
-        assert.equal(card.toggle.textContent, 'Show less');
+        assert.equal(card.label.textContent, 'Show less');
         assert.equal(calls.length, 2);
     }
 });
@@ -129,7 +140,7 @@ test('short reports do not show a redundant disclosure and failures stay compact
         : response(503, {status: 'unavailable'}));
     await flush();
     assert.equal(short.toggle.hidden, true);
-    assert.equal(failed.reportText.textContent, 'Today’s report is unavailable.');
+    assert.equal(failed.reportText.textContent, 'Today’s report is unavailable. Open the site for conditions and forecasts.');
     assert.equal(failed.toggle.hidden, true);
     assert.equal(failed.item.dataset.reportState, 'unavailable');
 });
@@ -146,4 +157,76 @@ test('leaving the feed aborts all in-flight site report requests', async () => {
     assert.equal(signals.length, 2);
     assert.ok(signals.every(signal => signal.aborted));
     assert.equal(state.timers.size, 0);
+});
+
+
+test('carousel controls track the visible range, boundaries and reduced-motion preference', async () => {
+    const cards = [card(1), card(2), card(3)];
+    const state = setup(cards, async () => response(200, {status: 'complete', report: 'Calm seas.'}));
+    await flush();
+    assert.equal(state.navigation.hidden, false);
+    assert.equal(state.position.textContent, '1–2 of 3 sites');
+    assert.equal(state.previous.getAttribute('aria-disabled'), 'true');
+    state.next.handlers.click();
+    assert.equal(state.track.scrollLeft, 332);
+    assert.equal(state.track.behavior, 'instant');
+    assert.equal(state.position.textContent, '2–3 of 3 sites');
+    assert.equal(state.next.getAttribute('aria-disabled'), 'true');
+    state.next.handlers.click();
+    assert.equal(state.track.scrollLeft, 332);
+    state.previous.handlers.click();
+    assert.equal(state.track.scrollLeft, 0);
+    state.track.clientWidth = state.track.scrollWidth;
+    state.window.handlers.resize();
+    assert.equal(state.navigation.hidden, true);
+    assert.equal(state.track.getAttribute('tabindex'), '-1');
+});
+
+test('phone navigation advances one site and supports arrows, Home and End without capturing child keys', async () => {
+    const state = setup([card(1), card(2), card(3)], async () => response(200, {status: 'complete', report: 'Calm seas.'}), {width: 300, cardWidth: 254});
+    await flush();
+    assert.equal(state.position.textContent, '1 of 3 sites');
+    let prevented = 0;
+    const press = (key, target = state.track) => state.track.handlers.keydown({key, target, preventDefault() { prevented++; }});
+    press('ArrowRight');
+    assert.equal(state.position.textContent, '2 of 3 sites');
+    press('End');
+    assert.equal(state.position.textContent, '3 of 3 sites');
+    press('Home');
+    assert.equal(state.track.scrollLeft, 0);
+    press('ArrowRight', state.next);
+    assert.equal(state.track.scrollLeft, 0);
+    assert.equal(prevented, 3);
+});
+
+test('a stalled request times out with an actionable unavailable state', async () => {
+    const followed = card(1);
+    const state = setup([followed], (_url, {signal}) => new Promise((_resolve, reject) => {
+        signal.addEventListener('abort', () => reject(new Error('Aborted')));
+    }));
+    [...state.timers.values()].find(timer => timer.delay === 120000).callback();
+    await flush();
+    assert.equal(followed.item.dataset.reportState, 'unavailable');
+    assert.match(followed.reportText.textContent, /Open the site/);
+    assert.equal(state.finishes(), 1);
+});
+
+test('returning through browser Back resumes interrupted reports and preserves completed ones', async () => {
+    const cards = [card(1), card(2)];
+    let resumed = false;
+    const calls = [];
+    const state = setup(cards, (url, {signal}) => {
+        calls.push(url);
+        if (url.includes('/2/') && !resumed) return new Promise((_resolve, reject) => signal.addEventListener('abort', () => reject(new Error('Aborted'))));
+        return Promise.resolve(response(200, {status: 'complete', report: 'Settled conditions.'}));
+    });
+    await flush();
+    state.window.handlers.pagehide();
+    await flush();
+    assert.equal(state.timers.size, 0);
+    resumed = true;
+    state.window.handlers.pageshow({persisted: true});
+    await flush();
+    assert.deepEqual(calls, ['/api/dive-sites/1/report', '/api/dive-sites/2/report', '/api/dive-sites/2/report']);
+    assert.ok(cards.every(card => card.item.dataset.reportState === 'ready'));
 });
