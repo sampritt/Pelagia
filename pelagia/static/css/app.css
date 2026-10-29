@@ -6060,12 +6060,11 @@ img.is-media-loading {
 }
 
 .site-report-card .explore-card-copy {
-    min-height: 98px;
     padding: 3px 4px 0;
 }
 
 .site-report-card .explore-card-kind { margin-bottom: 5px; }
-.site-report-card .explore-card-copy p { margin: 5px 0 8px; }
+.site-report-card .explore-card-copy p { margin: 5px 0 0; }
 .site-reports .site-report-card .explore-card-map {
     height: 150px;
     min-height: 150px;
