@@ -1,3 +1,4 @@
+import base64
 import io
 import json
 import re
@@ -107,6 +108,10 @@ class PWATest(unittest.TestCase):
             html = self.get(page).get_data(as_text=True)
             self.assertIn('<meta name="color-scheme" content="dark">', html)
             self.assertLess(html.index("html { background: #031e33;"), html.index('rel="stylesheet"'))
+            self.assertLess(html.index("root.classList.add('pwa-launching')"), html.index('rel="stylesheet"'))
+            embedded_icon = re.search(r'data:image/png;base64,([^\"]+)', html).group(1)
+            self.assertEqual(base64.b64decode(embedded_icon),
+                             (Path(self.app.static_folder) / "img" / "icon-192.png").read_bytes())
 
     def test_root_worker_has_correct_scope_mime_and_revalidates(self):
         response = self.get("/service-worker.js")

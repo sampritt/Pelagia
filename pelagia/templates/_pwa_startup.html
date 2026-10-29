@@ -1,6 +1,20 @@
 {# Paint the launch background even before the external stylesheet arrives. #}
 <meta name="color-scheme" content="dark">
-<style>html { background: #031e33; color-scheme: dark; }</style>
+<style>
+html { background: #031e33; color-scheme: dark; }
+html.pwa-launching { overflow: hidden; }
+html.pwa-launching::before {
+    content: ""; position: fixed; inset: 0; z-index: 2147483646;
+    background: #031e33;
+}
+html.pwa-launching::after {
+    content: ""; position: fixed; top: 50%; left: 50%; z-index: 2147483647;
+    width: 112px; height: 112px; transform: translate(-50%, -50%);
+    border-radius: 24px;
+    background: url("data:image/png;base64,{{ pwa_launch_icon }}") center / contain no-repeat;
+}
+</style>
+<script>{% include '_pwa_launch.js' %}</script>
 {% for screen in pwa_startup_screens %}
 <link rel="apple-touch-startup-image" href="{{ url_for('static', filename=screen.filename) }}" media="{{ screen.media }}">
 {% endfor %}
