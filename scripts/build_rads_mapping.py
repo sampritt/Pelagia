@@ -1,29 +1,124 @@
-"""Map Pelagia dive sites to the nearest 2025 RADS CPC_UNI grid cell."""
+"""Map dive sites to five-year median RADS CPC_UNI season boundaries."""
 
 import csv
+import warnings
 from datetime import date, timedelta
 from pathlib import Path
 
-import h5py
 import numpy as np
 
 
 ROOT = Path(__file__).resolve().parents[1]
 SITES = ROOT / "data" / "global_dive_sites_master.csv"
-RADS = ROOT / "data" / "RainyAndDrySeason.dayofyear.CPC_UNI.2025.nc"
-OUTPUT = ROOT / "data" / "dive_site_rainy_seasons_rads_2025.csv"
-EPOCH = date(1970, 1, 1)
+RADS_YEARS = tuple(range(2021, 2026))
+RADS_FILES = tuple(
+    ROOT / "data" / f"RainyAndDrySeason.dayofyear.CPC_UNI.{year}.nc"
+    for year in RADS_YEARS
+)
+OUTPUT = ROOT / "data" / "dive_site_rainy_seasons_rads_2021_2025_median.csv"
+OUTPUT_YEAR = RADS_YEARS[-1]
+DAY_OF_YEAR_REFERENCE = date(2001, 1, 1)  # Non-leap year; RADS uses 1–365.
+DAYS_PER_YEAR = 365
+MIN_VALID_YEARS = 3
 MIN_VALID_YEAR = 2000
 MIN_SEASON_DAYS = 30
 MAX_SEASON_DAYS = 366
 
 
-def as_iso_day(days_since_epoch: int) -> str:
-    # RADS' unmasked date variables use the Unix epoch (0) when no boundary
-    # was detected. It is a sentinel, not a 1970 rainy-season observation.
-    if days_since_epoch <= 0:
+def as_iso_day(day_of_year: float) -> str:
+    """Convert a RADS 1–365 day of year to the output reference year."""
+    if not np.isfinite(day_of_year):
         return ""
-    return (EPOCH + timedelta(days=int(days_since_epoch))).isoformat()
+    rounded_day = int(np.floor(day_of_year + 0.5))
+    if not 1 <= rounded_day <= DAYS_PER_YEAR:
+        return ""
+    reference = DAY_OF_YEAR_REFERENCE + timedelta(days=rounded_day - 1)
+    return date(OUTPUT_YEAR, reference.month, reference.day).isoformat()
+
+
+def median_dayofyear_grid(grids: list[np.ndarray]) -> np.ndarray:
+    """Return robust medians for annual 1–365 boundary grids.
+
+    Most cells use the ordinary median, which rejects a single annual outlier.
+    When at least two observations fall on each side of the largest internal
+    gap and that gap is larger than the gap across New Year, the observations
+    are a genuine December/January cluster. In that case the low days are
+    unwrapped into the following year before taking the median.
+    """
+    values = np.stack(grids).astype(float, copy=False)
+    valid = np.isfinite(values) & (values >= 1) & (values <= DAYS_PER_YEAR)
+    values = np.where(valid, values, np.nan)
+    valid_count = valid.sum(axis=0)
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", category=RuntimeWarning)
+        ordinary_median = np.nanmedian(values, axis=0)
+
+    sorted_values = np.sort(values, axis=0)
+    internal_gaps = np.diff(sorted_values, axis=0)
+    internal_gaps = np.where(np.isfinite(internal_gaps), internal_gaps, -np.inf)
+    split_index = np.argmax(internal_gaps, axis=0)
+    largest_internal_gap = np.max(internal_gaps, axis=0)
+    split_value = np.take_along_axis(
+        sorted_values, split_index[np.newaxis, ...], axis=0
+    )[0]
+
+    last_index = np.maximum(valid_count - 1, 0)[np.newaxis, ...]
+    last_value = np.take_along_axis(sorted_values, last_index, axis=0)[0]
+    wrap_gap = sorted_values[0] + DAYS_PER_YEAR - last_value
+    lower_count = split_index + 1
+    upper_count = valid_count - lower_count
+    unwrap = (
+        (valid_count >= MIN_VALID_YEARS)
+        & (lower_count >= 2)
+        & (upper_count >= 2)
+        & (largest_internal_gap > wrap_gap)
+    )
+
+    unwrapped_values = np.where(
+        np.isfinite(values) & (values <= split_value),
+        values + DAYS_PER_YEAR,
+        values,
+    )
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", category=RuntimeWarning)
+        unwrapped_median = np.nanmedian(unwrapped_values, axis=0)
+    unwrapped_median = ((unwrapped_median - 1) % DAYS_PER_YEAR) + 1
+
+    result = np.where(unwrap, unwrapped_median, ordinary_median)
+    return np.where(valid_count >= MIN_VALID_YEARS, result, np.nan)
+
+
+def load_median_boundaries() -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    """Load annual RADS grids and return shared coordinates plus medians."""
+    import h5py
+
+    latitudes = None
+    longitudes = None
+    onset_grids = []
+    demise_grids = []
+    for path in RADS_FILES:
+        with h5py.File(path, "r") as grid:
+            annual_latitudes = grid["latitude"][:]
+            annual_longitudes = grid["longitude"][:]
+            if latitudes is None:
+                latitudes = annual_latitudes
+                longitudes = annual_longitudes
+            elif not (
+                np.array_equal(latitudes, annual_latitudes)
+                and np.array_equal(longitudes, annual_longitudes)
+            ):
+                raise RuntimeError(f"RADS grid coordinates differ in {path}")
+            onset_grids.append(grid["onset_dayofyear"][0])
+            demise_grids.append(grid["demise_dayofyear"][0])
+
+    assert latitudes is not None and longitudes is not None
+    return (
+        latitudes,
+        longitudes,
+        median_dayofyear_grid(onset_grids),
+        median_dayofyear_grid(demise_grids),
+    )
 
 
 def nearest_index(values: np.ndarray, point: float) -> int:
@@ -108,11 +203,7 @@ def replace_bad_seasons(rows: list[dict[str, object]]) -> int:
 
 
 def main() -> None:
-    with h5py.File(RADS, "r") as grid:
-        latitudes = grid["latitude"][:]
-        longitudes = grid["longitude"][:]
-        onset = grid["onset_date"][0]
-        demise = grid["demise_date"][0]
+    latitudes, longitudes, onset, demise = load_median_boundaries()
 
     rows = []
     with SITES.open(newline="", encoding="utf-8") as source:
@@ -153,7 +244,7 @@ def main() -> None:
 
     print(
         f"Wrote {len(rows):,} rows to {OUTPUT}; "
-        f"replaced {replaced_count:,} invalid seasons"
+        f"replaced {replaced_count:,} invalid median seasons"
     )
 
 

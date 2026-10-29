@@ -10,7 +10,11 @@ from flask import current_app
 
 
 def init_app(app):
-    path = Path(app.root_path).parent / "data" / "dive_site_rainy_seasons_rads_2025.csv"
+    path = (
+        Path(app.root_path).parent
+        / "data"
+        / "dive_site_rainy_seasons_rads_2021_2025_median.csv"
+    )
     seasons = {}
     with path.open(newline="", encoding="utf-8") as source:
         for row in csv.DictReader(source):
