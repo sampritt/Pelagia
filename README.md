@@ -52,6 +52,8 @@ The collapsible **Today's report** section below the dive site description gener
 
 `dive_site_reports` stores one row per site and replaces it when the date changes in the site's forecast timezone. A short atomic SQLite claim prevents concurrent calls across workers; the API call runs outside the transaction. Each site/date permits at most one upstream attempt, including failed or uncertain attempts, to avoid duplicate charges. Failure displays an unavailable state until the next local date. Missing configuration or dependencies do not consume the daily attempt. Browser requests require login and the same-origin fetch header and are never browser/PWA cached. Opening the report shows skeleton loading while dependencies finish and the report generates.
 
+The signed-in feed starts report loading for every followed site as soon as the page is ready. It first checks the shared daily report cache; on a cold site it populates the description and marine caches in parallel, then requests the report. Cards show a four-line preview with an accessible **Read more** / **Show less** disclosure and omit the logged-dive count from this section.
+
 ## Dive site descriptions
 
 Set `OPENAI_API_KEY` in the server environment to enable on-demand dive site summaries. The key stays server-side; do not commit it. Generation uses `gpt-5.6-luna` through the Responses API with one required, low-context web search, low reasoning effort, and bounded output and network timeouts. There are no automatic upstream retries or model substitutions. Search tool calls and model tokens are billed to the key's OpenAI account.

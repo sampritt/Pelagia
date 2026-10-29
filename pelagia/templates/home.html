@@ -87,3 +87,7 @@
 </dialog>
 {% endif %}
 {% endblock %}
+
+{% block scripts %}
+<script defer src="{{ url_for('static', filename='js/feed-site-reports.js', v=pwa_asset_version) }}"></script>
+{% endblock %}

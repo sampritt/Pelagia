@@ -1788,7 +1788,7 @@ def fetch_favorite_dive_sites(user_id):
         for row in database.get_db().execute(
             """
             SELECT ds.id, ds.name, ds.country_or_area, ds.latitude, ds.longitude,
-                   ds.logged_dive_count, favorites.created_at AS followed_at
+                   favorites.created_at AS followed_at
             FROM dive_site_favorites favorites
             JOIN dive_sites ds ON ds.id = favorites.dive_site_id
             WHERE favorites.user_id = ?

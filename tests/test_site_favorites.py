@@ -48,11 +48,19 @@ class DiveSiteFavoritesTest(unittest.TestCase):
         self.assertIn("Alert Rock", reports)
         self.assertIn('class="site-reports-track"', reports)
         self.assertIn('class="explore-card explore-site-card site-report-card"', reports)
+        self.assertIn('data-followed-site-report', reports)
+        self.assertIn('data-report-url="/api/dive-sites/1/report"', reports)
+        self.assertIn('data-description-url="/api/dive-sites/1/description"', reports)
+        self.assertIn('data-conditions-url="/api/dive-sites/1/conditions"', reports)
+        self.assertIn('data-followed-report-text', reports)
+        self.assertIn('data-followed-report-toggle', reports)
         self.assertNotIn("species-row", reports)
         self.assertNotIn("Explore dive site", reports)
+        self.assertNotIn("logged dive", reports)
         self.assertIn('class="site-reports-add" href="/explore"', reports)
         self.assertIn('aria-label="Explore more dive sites"', reports)
         self.assertLess(reports.index("Alert Rock"), reports.index("site-reports-add"))
+        self.assertIn('js/feed-site-reports.js', home)
 
         self.assertEqual(
             self.client.post("/api/dive-sites/1/favorite").get_json(),

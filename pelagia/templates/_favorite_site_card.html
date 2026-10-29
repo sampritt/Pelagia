@@ -1,12 +1,20 @@
 {% set has_coords = item.latitude is not none and item.longitude is not none %}
-<a class="explore-card explore-site-card site-report-card" href="{{ url_for('dive_site_profile', site_id=item.id) }}">
-    <div class="explore-card-copy">
-        <span class="explore-card-kind">Dive site</span>
-        <h2>{{ item.name }}</h2>
-        <p>{{ item.country_or_area or 'Location pending' }}</p>
-        {% if item.logged_dive_count %}<span class="explore-dive-count">{{ item.logged_dive_count }} logged {{ 'dive' if item.logged_dive_count == 1 else 'dives' }}</span>{% endif %}
+<article class="explore-card explore-site-card site-report-card" data-followed-site-report
+         data-report-url="{{ url_for('api_site_report', site_id=item.id) }}"
+         data-description-url="{{ url_for('api_dive_site_description', site_id=item.id) }}"
+         data-conditions-url="{{ url_for('api_site_conditions', site_id=item.id) }}">
+    <a class="site-report-card-main" href="{{ url_for('dive_site_profile', site_id=item.id) }}" aria-label="View {{ item.name }} dive site">
+        <div class="explore-card-copy">
+            <span class="explore-card-kind">Dive site</span>
+            <h2>{{ item.name }}</h2>
+            <p>{{ item.country_or_area or 'Location pending' }}</p>
+        </div>
+        <div class="mini-map explore-card-map {{ 'map-pending' if not has_coords else '' }}" role="img" aria-label="Map of {{ item.name }}{% if not has_coords %}: coordinates pending{% endif %}" {% if has_coords %}data-static-map data-map-lat="{{ item.latitude }}" data-map-lng="{{ item.longitude }}" data-map-zoom="10"{% endif %}>
+            {% if has_coords %}<span class="map-pin"></span>{% else %}<span class="coordinate-label">Coordinates pending</span>{% endif %}
+        </div>
+    </a>
+    <div class="followed-site-report" data-followed-report-body>
+        <p class="followed-site-report-text" data-followed-report-text role="status" aria-live="polite" aria-atomic="true">Preparing today’s report…</p>
+        <button type="button" class="followed-site-report-toggle" data-followed-report-toggle aria-expanded="false" hidden>Read more</button>
     </div>
-    <div class="mini-map explore-card-map {{ 'map-pending' if not has_coords else '' }}" role="img" aria-label="Map of {{ item.name }}{% if not has_coords %}: coordinates pending{% endif %}" {% if has_coords %}data-static-map data-map-lat="{{ item.latitude }}" data-map-lng="{{ item.longitude }}" data-map-zoom="10"{% endif %}>
-        {% if has_coords %}<span class="map-pin"></span>{% else %}<span class="coordinate-label">Coordinates pending</span>{% endif %}
-    </div>
-</a>
+</article>
