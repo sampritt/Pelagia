@@ -46,6 +46,12 @@ For Render, attach a persistent disk at `/var/data`. No database or upload-path 
 
 On first app startup, Pelagia initializes SQLite and imports reference data from the configured CSVs with pandas. Application data, reference data, uploaded-photo paths, likes, and comments are stored in SQLite. Uploaded image files are stored beneath the configured upload directory and served from `/uploads/`.
 
+## Daily dive site reports
+
+The collapsible **Today's report** section below the dive site description generates a shared report on first expansion. It uses the server's `OPENAI_API_KEY` and `gpt-5.6-luna` Responses API, with no search tools, to produce at most two sentences from cached site metadata, description, temperature, season classification, and all retrieved marine/weather/rainfall data. The voice is a brisk, natural, lightly sporty dive-weather briefing without hype or forced slang. Personal dive history and exposure recommendations are not sent; the prompt excludes wetsuit advice from the shared report. A completed description lookup with no verified description and a missing catalog season are explicitly unknown; missing, expired, or incomplete marine data prevents generation.
+
+`dive_site_reports` stores one row per site and replaces it when the date changes in the site's forecast timezone. A short atomic SQLite claim prevents concurrent calls across workers; the API call runs outside the transaction. Each site/date permits at most one upstream attempt, including failed or uncertain attempts, to avoid duplicate charges. Failure displays an unavailable state until the next local date. Missing configuration or dependencies do not consume the daily attempt. Browser requests require login and the same-origin fetch header and are never browser/PWA cached. Opening the report shows skeleton loading while dependencies finish and the report generates.
+
 ## Dive site descriptions
 
 Set `OPENAI_API_KEY` in the server environment to enable on-demand dive site summaries. The key stays server-side; do not commit it. Generation uses `gpt-5.6-luna` through the Responses API with one required, low-context web search, low reasoning effort, and bounded output and network timeouts. There are no automatic upstream retries or model substitutions. Search tool calls and model tokens are billed to the key's OpenAI account.

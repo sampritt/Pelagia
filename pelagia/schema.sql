@@ -309,3 +309,14 @@ CREATE TABLE IF NOT EXISTS marine_forecast_cache (
     lease_until REAL NOT NULL DEFAULT 0,
     retry_after REAL NOT NULL DEFAULT 0
 );
+
+CREATE TABLE IF NOT EXISTS dive_site_reports (
+    site_id INTEGER PRIMARY KEY REFERENCES dive_sites(id) ON DELETE CASCADE,
+    report_date TEXT NOT NULL,
+    timezone TEXT NOT NULL,
+    status TEXT NOT NULL CHECK (status IN ('pending', 'complete', 'unavailable')),
+    report TEXT,
+    token TEXT NOT NULL,
+    started_at REAL NOT NULL,
+    model TEXT NOT NULL
+);

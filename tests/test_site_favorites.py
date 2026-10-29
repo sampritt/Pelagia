@@ -20,7 +20,8 @@ class DiveSiteFavoritesTest(unittest.TestCase):
     def test_empty_state_follow_toggle_and_home_site_reports(self):
         empty_home = self.client.get("/home").get_data(as_text=True)
         self.assertIn("Site reports", empty_home)
-        today = dive_brief.effective_date()
+        with self.app.app_context():
+            today = dive_brief.effective_date()
         self.assertIn(f'<time datetime="{today.isoformat()}">{today.day} {today:%b %Y}</time>', empty_home)
         self.assertIn("You aren’t following dive sites.", empty_home)
         self.assertIn('href="/explore">Explore dive sites</a>', empty_home)
@@ -86,7 +87,8 @@ class DiveSiteFavoritesTest(unittest.TestCase):
             {"favorited": True},
         )
         home = self.client.get("/home").get_data(as_text=True)
-        today = dive_brief.effective_date()
+        with self.app.app_context():
+            today = dive_brief.effective_date()
         self.assertIn(f"{today.day} {today:%b %Y}", home)
         self.assertNotIn("10/10 followed", home)
         self.assertNotIn('href="/dive-sites/1"', home.split('<section class="site-reports"', 1)[1].split("</section>", 1)[0])

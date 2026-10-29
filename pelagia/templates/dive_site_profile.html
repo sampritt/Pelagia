@@ -5,6 +5,14 @@
 <section class="profile-layout">
     {% include "_dive_site_headline.html" %}
 
+    <details class="site-report" data-site-report data-url="{{ url_for('api_site_report', site_id=site.id) }}">
+        <summary aria-controls="siteReportBody"><span>Today’s report</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary>
+        <div id="siteReportBody" class="site-report-body" data-report-body>
+            <p data-report-text role="status" aria-live="polite" aria-atomic="true"></p>
+            <button type="button" class="ghost-button compact" data-report-retry hidden>Try again</button>
+        </div>
+    </details>
+
     <section class="marine-forecast" data-marine-forecast
              data-url="{{ url_for('api_site_conditions', site_id=site.id) }}"
              data-coordinates="{{ 'true' if marine_coordinates_valid else 'false' }}"
@@ -109,4 +117,5 @@
 
 {% block scripts %}
 <script defer src="{{ url_for('static', filename='js/marine.js', v=pwa_asset_version) }}"></script>
+<script defer src="{{ url_for('static', filename='js/site-report.js', v=pwa_asset_version) }}"></script>
 {% endblock %}

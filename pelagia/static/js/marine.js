@@ -354,6 +354,9 @@
             charts(target);
         }));
         retry.addEventListener('click', load);
+        window.addEventListener('pelagia:report-refresh', () => {
+            if (result && !stopped && Date.now() / 1000 - result.fetched_at > 840) load();
+        });
         let chartWidth = host.clientWidth;
         window.addEventListener('resize', () => {
             if (host.clientWidth === chartWidth) return;
