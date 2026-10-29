@@ -38,6 +38,7 @@
             const text = card.querySelector('[data-followed-report-text]');
             const toggle = card.querySelector('[data-followed-report-toggle]');
             text.classList.toggle('is-expanded', expanded);
+            card.classList.toggle('is-report-expanded', expanded);
             toggle.setAttribute('aria-expanded', String(expanded));
             toggle.textContent = expanded ? 'Show less' : 'Read more';
         }
@@ -104,6 +105,12 @@
                 setExpanded(card, toggle.getAttribute('aria-expanded') !== 'true');
             });
             loadCard(card);
+        });
+
+        window.addEventListener('resize', () => {
+            cards.forEach((card) => {
+                if (card.dataset.reportState === 'ready' && !card.classList.contains('is-report-expanded')) revealToggle(card);
+            });
         });
 
         window.addEventListener('pagehide', () => {

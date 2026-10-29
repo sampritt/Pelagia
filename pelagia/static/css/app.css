@@ -3371,7 +3371,7 @@ textarea:focus {
 
 .detail-map,
 .detail-photo-carousel {
-    min-height: 390px;
+    height: 420px;
     max-height: 390px;
 }
 
@@ -6064,7 +6064,14 @@ img.is-media-loading {
 }
 
 .site-report-card .explore-card-kind { margin-bottom: 5px; }
-.site-report-card .explore-card-copy p { margin: 5px 0 0; }
+.site-report-card .explore-card-copy h2,
+.site-report-card .explore-card-copy p {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+}
+.site-report-card .explore-card-copy h2 { -webkit-line-clamp: 2; }
+.site-report-card .explore-card-copy p { margin: 5px 0 0; -webkit-line-clamp: 1; }
 .site-reports .site-report-card .explore-card-map {
     height: 150px;
     min-height: 150px;
@@ -6073,14 +6080,19 @@ img.is-media-loading {
 
 .followed-site-report {
     position: relative;
-    min-height: 112px;
+    display: flex;
+    flex: 1 1 0;
+    flex-direction: column;
+    min-height: 0;
     margin: 13px 4px 1px;
-    padding-top: 13px;
+    padding: 13px 0 40px;
     border-top: 1px solid var(--line);
 }
 
 .followed-site-report-text {
     display: -webkit-box;
+    flex: 0 1 auto;
+    min-height: 0;
     overflow: hidden;
     margin: 0;
     color: var(--ink-soft);
@@ -6098,6 +6110,9 @@ img.is-media-loading {
 }
 
 .followed-site-report-toggle {
+    position: absolute;
+    bottom: -8px;
+    left: 0;
     min-height: 44px;
     margin: 4px 0 -8px;
     padding: 7px 0;
@@ -6112,9 +6127,12 @@ img.is-media-loading {
 }
 
 .followed-site-report-toggle[hidden] { display: none; }
+.site-report-card.is-report-expanded { height: auto; min-height: 420px; }
+.site-report-card.is-report-expanded .followed-site-report { padding-bottom: 0; }
+.site-report-card.is-report-expanded .followed-site-report-toggle { position: static; align-self: flex-start; }
 .followed-site-report-toggle:hover { color: var(--accent); }
 .followed-site-report-toggle:focus-visible { outline: 2px solid var(--sea); outline-offset: 2px; border-radius: 4px; }
-.followed-site-report.is-skeleton-loading { min-height: 112px; }
+.followed-site-report.is-skeleton-loading { min-height: 0; }
 .followed-site-report .component-skeleton { padding: 10px 0 0; }
 .followed-site-report .skeleton-line { width: 96%; height: 9px; margin: 7px 0 12px; }
 .followed-site-report .skeleton-line:nth-child(2) { width: 91%; }
