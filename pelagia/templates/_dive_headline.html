@@ -43,7 +43,12 @@
     <div class="dive-detail-title">
         <h1>
             {% if not public_preview and dive.dive_site_id %}
-                <a class="site-name-link" href="{{ url_for('dive_site_profile', site_id=dive.dive_site_id) }}">{{ dive.site_name }}</a>
+                <a class="site-name-link site-destination-link" href="{{ url_for('dive_site_profile', site_id=dive.dive_site_id) }}" aria-label="View dive site: {{ dive.site_name }}">
+                    <span>{{ dive.site_name }}</span>
+                    <svg viewBox="0 0 20 20" aria-hidden="true">
+                        <path d="m7.5 4.5 5.5 5.5-5.5 5.5"></path>
+                    </svg>
+                </a>
             {% else %}
                 {{ dive.site_name }}
             {% endif %}

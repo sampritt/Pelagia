@@ -95,6 +95,16 @@ class UnitPreferencesTest(unittest.TestCase):
         for expected in ("15<em>m</em>", "11 m", "7.5 kg", "2833 psi", "75°F"):
             self.assertIn(expected, mixed)
 
+    def test_logged_dive_site_is_a_native_style_navigation_target(self):
+        self.seed_dive()
+        detail = self.client.get("/dive/1").get_data(as_text=True)
+        self.assertIn(
+            'class="site-name-link site-destination-link" href="/dive-sites/1" '
+            'aria-label="View dive site: Alert Rock"',
+            detail,
+        )
+        self.assertIn('<path d="m7.5 4.5 5.5 5.5-5.5 5.5"></path>', detail)
+
     def test_form_preferences_are_defaults_and_do_not_override_submitted_units(self):
         self.seed_dive()
         self.client.post("/you/settings", data=IMPERIAL)

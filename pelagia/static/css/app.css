@@ -6472,3 +6472,62 @@ img.is-media-loading {
 @media (prefers-reduced-motion: reduce) {
     .site-report > summary, .site-report > summary svg, .site-report::details-content { transition: none; }
 }
+
+/* Logged-dive destination: a native-style navigation target, not a text link. */
+.dive-detail-title .site-destination-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    max-width: 100%;
+    min-height: 44px;
+    margin: -5px -8px;
+    padding: 5px 8px;
+    border-radius: 10px;
+    color: var(--ink);
+    font-weight: inherit;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+    transition: color .16s ease, background-color .16s ease, transform .1s ease;
+}
+
+.dive-detail-title .site-destination-link span {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.dive-detail-title .site-destination-link svg {
+    flex: 0 0 20px;
+    width: 20px;
+    height: 20px;
+    color: var(--accent);
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.dive-detail-title .site-destination-link:hover {
+    text-decoration: none;
+}
+
+.dive-detail-title .site-destination-link:focus-visible {
+    outline: 2px solid var(--sea);
+    outline-offset: 2px;
+}
+
+.dive-detail-title .site-destination-link:active {
+    background: var(--accent-soft);
+    transform: scale(.985);
+}
+
+@media (hover: hover) and (pointer: fine) {
+    .dive-detail-title .site-destination-link:hover {
+        color: var(--accent);
+        background: var(--panel-tint);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .dive-detail-title .site-destination-link { transition: none; }
+}
