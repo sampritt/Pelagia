@@ -3,7 +3,7 @@ import unittest
 from pathlib import Path
 
 import test_reference_autocomplete as fixtures
-from pelagia import db as database, dive_brief
+from pelagia import db as database
 
 
 class DiveSiteFavoritesTest(unittest.TestCase):
@@ -19,15 +19,15 @@ class DiveSiteFavoritesTest(unittest.TestCase):
 
     def test_empty_state_follow_toggle_and_home_site_reports(self):
         empty_home = self.client.get("/home").get_data(as_text=True)
-        self.assertIn("Site reports", empty_home)
-        with self.app.app_context():
-            today = dive_brief.effective_date()
-        self.assertIn(f'<time datetime="{today.isoformat()}">{today.day} {today:%b %Y}</time>', empty_home)
+        self.assertIn('aria-label="Followed site reports"', empty_home)
+        self.assertNotIn("Site reports", empty_home)
+        self.assertNotIn('site-reports-heading', empty_home)
+        self.assertNotIn('site-reports-meta', empty_home)
         self.assertIn("Check the forecast", empty_home)
         self.assertIn("Follow dive sites to get daily reports in your feed.", empty_home)
         self.assertIn('href="/explore">Explore dive sites</a>', empty_home)
         self.assertNotIn("data-site-reports-track", empty_home)
-        self.assertLess(empty_home.index("Site reports"), empty_home.index("No dives yet"))
+        self.assertLess(empty_home.index("Check the forecast"), empty_home.index("No dives yet"))
 
         profile = self.client.get("/dive-sites/1").get_data(as_text=True)
         self.assertIn('data-site-favorite data-site-id="1"', profile)
@@ -63,8 +63,10 @@ class DiveSiteFavoritesTest(unittest.TestCase):
         self.assertNotIn("species-row", reports)
         self.assertNotIn("Explore dive site", reports)
         self.assertNotIn("logged dive", reports)
-        self.assertIn('class="site-reports-explore" href="/explore"', reports)
-        self.assertLess(reports.index("site-reports-explore"), reports.index("Alert Rock"))
+        self.assertNotIn("Site reports", reports)
+        self.assertNotIn("<time", reports)
+        self.assertNotIn("site-reports-explore", reports)
+        self.assertNotIn('href="/explore"', reports)
         self.assertNotIn("site followed", reports)
         self.assertIn('class="site-report-card" href="/dive-sites/1#daily-report"', reports)
         self.assertEqual(reports.count('href="/dive-sites/1#daily-report"'), 1)
@@ -105,9 +107,8 @@ class DiveSiteFavoritesTest(unittest.TestCase):
             {"favorited": True},
         )
         home = self.client.get("/home").get_data(as_text=True)
-        with self.app.app_context():
-            today = dive_brief.effective_date()
-        self.assertIn(f"{today.day} {today:%b %Y}", home)
+        reports = home.split('<section class="site-reports"', 1)[1].split("</section>", 1)[0]
+        self.assertNotIn("<time", reports)
         self.assertNotIn("10/10 followed", home)
         self.assertNotIn('href="/dive-sites/1"', home.split('<section class="site-reports"', 1)[1].split("</section>", 1)[0])
 

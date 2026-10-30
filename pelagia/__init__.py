@@ -263,13 +263,10 @@ def register_routes(app):
         dives = fetch_dives(scope="all", user_id=session["user_id"])
         latest_my_dives = fetch_dives(scope="mine", user_id=session["user_id"], limit=1)
         stats = get_profile_stats(session["user_id"])
-        today = dive_brief.effective_date()
         return render_template(
             "home.html",
             dives=dives,
             favorite_sites=fetch_favorite_dive_sites(session["user_id"]),
-            today_iso=today.isoformat(),
-            today_label=f"{today.day} {today:%b %Y}",
             latest_my_dive=latest_my_dives[0] if latest_my_dives else None,
             stats=stats,
             user=current_user(),
