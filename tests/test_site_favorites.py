@@ -54,8 +54,9 @@ class DiveSiteFavoritesTest(unittest.TestCase):
         self.assertIn('data-description-url="/api/dive-sites/1/description"', reports)
         self.assertIn('data-conditions-url="/api/dive-sites/1/conditions"', reports)
         self.assertIn('data-followed-report-text', reports)
-        self.assertIn('data-followed-report-toggle', reports)
-        self.assertIn('aria-controls="followedReport1"', reports)
+        self.assertNotIn('data-followed-report-toggle', reports)
+        self.assertNotIn('site-report-view', reports)
+        self.assertNotIn('Read more', reports)
         self.assertNotIn('data-site-reports-navigation', reports)
         self.assertIn('aria-label="Followed dive sites" tabindex="0"', reports)
         self.assertNotIn("species-row", reports)
@@ -64,7 +65,8 @@ class DiveSiteFavoritesTest(unittest.TestCase):
         self.assertIn('class="site-reports-explore" href="/explore"', reports)
         self.assertLess(reports.index("site-reports-explore"), reports.index("Alert Rock"))
         self.assertNotIn("site followed", reports)
-        self.assertIn('class="site-report-view" href="/dive-sites/1"', reports)
+        self.assertIn('class="site-report-card" href="/dive-sites/1#daily-report"', reports)
+        self.assertEqual(reports.count('href="/dive-sites/1#daily-report"'), 1)
         self.assertIn('js/feed-site-reports.js', home)
 
         self.assertEqual(

@@ -16,10 +16,7 @@ function node() {
 }
 
 function card(id) {
-    const reportBody = node(), reportText = node(), toggle = node(), label = node();
-    toggle.querySelector = () => label;
-    toggle.hidden = true;
-    toggle.attrs['aria-expanded'] = 'false';
+    const reportBody = node(), reportText = node();
     const item = node();
     item.dataset = {
         reportState: 'loading',
@@ -30,9 +27,8 @@ function card(id) {
     item.querySelector = selector => ({
         '[data-followed-report-body]': reportBody,
         '[data-followed-report-text]': reportText,
-        '[data-followed-report-toggle]': toggle,
     })[selector];
-    return {item, reportBody, reportText, toggle, label};
+    return {item, reportBody, reportText};
 }
 
 const response = (status, data) => ({status, ok: status >= 200 && status < 300, json: async () => data});
@@ -66,7 +62,7 @@ function setup(cards, fetch) {
     return {window, timers, track, starts: () => starts, finishes: () => finishes};
 }
 
-test('every followed card loads its cached report and expands without another request', async () => {
+test('every followed card loads its cached report preview', async () => {
     const cards = [card(1), card(2)];
     const calls = [];
     const state = setup(cards, async (url, options) => {
@@ -80,13 +76,8 @@ test('every followed card loads its cached report and expands without another re
     for (const [index, card] of cards.entries()) {
         assert.match(card.reportText.textContent, new RegExp(index ? 'two' : 'one'));
         assert.equal(card.item.dataset.reportState, 'ready');
-        assert.equal(card.toggle.hidden, false);
-        assert.equal(card.label.textContent, 'Read more');
-        card.toggle.handlers.click();
-        assert.equal(card.reportText.classList.contains('is-expanded'), true);
-        assert.equal(card.label.textContent, 'Show less');
-        assert.equal(calls.length, 2);
     }
+    assert.equal(calls.length, 2);
 });
 
 test('a cold feed warms description and conditions caches before requesting the report again', async () => {
@@ -116,16 +107,14 @@ test('a cold feed warms description and conditions caches before requesting the 
     assert.equal(followed.item.dataset.reportState, 'ready');
 });
 
-test('short reports do not show a redundant disclosure and failures stay compact', async () => {
+test('short reports stay compact and failures remain actionable', async () => {
     const short = card(1), failed = card(2);
     short.reportText.scrollHeight = short.reportText.clientHeight;
     setup([short, failed], async url => url.includes('/1/')
         ? response(200, {status: 'complete', report: 'Light currents hold through the day.'})
         : response(503, {status: 'unavailable'}));
     await flush();
-    assert.equal(short.toggle.hidden, true);
     assert.equal(failed.reportText.textContent, 'Today’s report is unavailable. Open the site for conditions and forecasts.');
-    assert.equal(failed.toggle.hidden, true);
     assert.equal(failed.item.dataset.reportState, 'unavailable');
 });
 

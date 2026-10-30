@@ -1,9 +1,10 @@
 {% set has_coords = item.latitude is not none and item.longitude is not none %}
-<article class="site-report-card" aria-labelledby="followedSiteTitle{{ item.id }}" data-followed-site-report data-report-state="loading"
-         data-report-url="{{ url_for('api_site_report', site_id=item.id) }}"
-         data-description-url="{{ url_for('api_dive_site_description', site_id=item.id) }}"
-         data-conditions-url="{{ url_for('api_site_conditions', site_id=item.id) }}">
-    <a class="site-report-card-main" href="{{ url_for('dive_site_profile', site_id=item.id) }}" aria-label="View {{ item.name }} dive site">
+<a class="site-report-card" href="{{ url_for('dive_site_profile', site_id=item.id) }}#daily-report"
+   aria-labelledby="followedSiteTitle{{ item.id }}" data-followed-site-report data-report-state="loading"
+   data-report-url="{{ url_for('api_site_report', site_id=item.id) }}"
+   data-description-url="{{ url_for('api_dive_site_description', site_id=item.id) }}"
+   data-conditions-url="{{ url_for('api_site_conditions', site_id=item.id) }}">
+    <div class="site-report-card-main">
         <div class="mini-map site-report-map {{ 'map-pending' if not has_coords else '' }}" aria-hidden="true" {% if has_coords %}data-static-map data-map-lat="{{ item.latitude }}" data-map-lng="{{ item.longitude }}" data-map-zoom="10"{% endif %}>
             {% if has_coords %}<span class="map-pin"></span>{% else %}{{ action_icon("compass") }}{% endif %}
         </div>
@@ -11,13 +12,9 @@
             <h3 id="followedSiteTitle{{ item.id }}" title="{{ item.name }}">{{ item.name }}</h3>
             <p title="{{ item.country_or_area or 'Location pending' }}">{{ item.country_or_area or 'Location pending' }}</p>
         </div>
-    </a>
+    </div>
     <div class="followed-report-label">Today’s report</div>
     <div class="followed-site-report" data-followed-report-body>
-        <p id="followedReport{{ item.id }}" class="followed-site-report-text" data-followed-report-text role="status" aria-live="polite" aria-atomic="true">Preparing today’s report…</p>
+        <p class="followed-site-report-text" data-followed-report-text role="status" aria-live="polite" aria-atomic="true">Preparing today’s report…</p>
     </div>
-    <div class="site-report-actions">
-        <button type="button" class="followed-site-report-toggle" data-followed-report-toggle aria-expanded="false" aria-controls="followedReport{{ item.id }}" hidden><span data-followed-report-toggle-label>Read more</span><span class="sr-only"> about {{ item.name }}</span></button>
-        <a class="site-report-view" href="{{ url_for('dive_site_profile', site_id=item.id) }}">View site<span class="sr-only">: {{ item.name }}</span><svg class="action-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14m-5-5 5 5-5 5"></path></svg></a>
-    </div>
-</article>
+</a>

@@ -82,6 +82,14 @@
         }
         host.addEventListener('toggle', () => { if (host.open) load(); });
         retry.addEventListener('click', load);
+        function openLinkedReport() {
+            if (window.location.hash !== '#daily-report') return;
+            host.open = true;
+            load();
+            window.requestAnimationFrame(() => host.scrollIntoView({block: 'start'}));
+        }
+        window.addEventListener('hashchange', openLinkedReport);
+        openLinkedReport();
         // Recheck a report if this page stays open into the next local day.
         const checkDate = () => { if (host.open && reportDate && localDate() !== reportDate) load(); };
         let rollover = window.setInterval(checkDate, 60000);

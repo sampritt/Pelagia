@@ -2,13 +2,13 @@
 
 October 29, 2026
 
-**Approved for main.** The Site reports section prioritizes the daily outlook, with compact site identities and predictable card sizing that match Pelagia's existing surfaces, ocean colors, typography and actions. The final interaction is a quiet, native horizontal track: no site count, position text, arrows or visible scrollbar.
+**Approved for main.** The Site reports section prioritizes the daily outlook, with compact site identities and predictable card sizing that match Pelagia's existing surfaces, ocean colors, typography and actions. The final interaction is a quiet, native horizontal track: no site count, position text, arrows, visible scrollbar or card-level action links.
 
 ## Design decisions
 
 - Replace the large map panels with 56px mobile / 64px desktop map thumbnails. Names and locations support two lines, retain their complete accessible text and link to the site. Missing coordinates use a compass placeholder.
 - Show two complete cards in wider feed columns and one card with a preview of the next in narrower columns. A single followed site fills the available width. Container queries adapt to the actual feed column, including desktops with a profile rail.
-- Keep four-line report previews aligned across short, long, loading and unavailable reports. Read more expands only its own report; View site remains a separate, explicit action. The action grid also accommodates enlarged text.
+- Keep four-line report previews aligned across short, long, loading and unavailable reports. The whole card links to the automatically expanded daily report on the dive-site page.
 - Keep Explore in the section heading alongside the date.
 - Support touch swipes and trackpad scrolling without visible carousel chrome. The focused track also supports keyboard Left/Right/Home/End and retains a visible focus state.
 - Give the empty state an explanation and a direct Explore action. Unavailable reports retain a route to site conditions. Loading reserves the report's space; stalled requests terminate, outstanding work stops on departure, and interrupted reports resume after browser-cache restoration.
@@ -23,7 +23,7 @@ A disposable fixture database and local Chrome browser exercised 0, 1, 2, 3 and 
 Repository checks passed:
 
 - Python: 338 tests run, one existing skip, no failures (`.venv312/bin/python -m unittest discover -s tests -p 'test_*.py'`).
-- JavaScript: 171 tests passed (`node --test tests/*.cjs`), including keyboard track behavior, report expansion, dependency loading, request timeout/cancellation, restoration and thumbnail geography.
+- JavaScript: 172 tests passed (`node --test tests/*.cjs`), including keyboard track behavior, whole-card deep links, report expansion, dependency loading, request timeout/cancellation, restoration and thumbnail geography.
 - `git diff --check` passed.
 
 Local screenshots and the machine-readable browser results are in `output/followed-sites-overhaul/`. Reports and forecast dependencies used controlled fixture responses; no paid generation calls or production account mutations were needed. Mobile verification used Chrome touch emulation; physical iOS/Android devices and Safari were not exercised.

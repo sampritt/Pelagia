@@ -6068,7 +6068,7 @@ img.is-media-loading {
     display: flex;
     flex-direction: column;
     min-width: 0;
-    padding: 18px 18px 8px;
+    padding: 18px;
     border: 1px solid var(--line);
     border-radius: var(--radius);
     background: var(--panel);
@@ -6140,30 +6140,6 @@ img.is-media-loading {
     -webkit-box-orient: vertical;
     -webkit-line-clamp: 4;
 }
-.followed-site-report-text.is-expanded { display: block; overflow: visible; -webkit-line-clamp: unset; }
-
-.site-report-actions { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: center; gap: 8px; min-height: 44px; margin-top: 10px; }
-.followed-site-report-toggle,
-.site-report-view {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 7px;
-    min-height: 44px;
-    padding: 4px 0;
-    border: 0;
-    border-radius: 6px;
-    color: var(--accent-deep);
-    background: transparent;
-    font-size: .78rem;
-    font-weight: 650;
-    line-height: 1.5;
-    touch-action: manipulation;
-}
-.followed-site-report-toggle { justify-self: start; }
-.site-report-view { grid-column: 2; justify-self: end; min-width: 0; }
-.site-report-view .action-icon { width: 16px; height: 16px; }
-.followed-site-report-toggle[hidden] { display: none; }
 .followed-site-report .component-skeleton { padding: 0; }
 .followed-site-report .skeleton-line { width: 96%; height: 10px; margin: 6px 0 12px; }
 .followed-site-report .skeleton-line:nth-child(2) { width: 90%; }
@@ -6176,9 +6152,8 @@ img.is-media-loading {
 .site-reports-track:focus-visible { border-radius: 4px; outline-offset: 0; }
 @media (hover: hover) and (pointer: fine) {
     .site-report-card:hover { border-color: var(--accent-line); }
-    .site-report-card-main:hover h3 { color: var(--accent-deep); }
+    .site-report-card:hover h3 { color: var(--accent-deep); }
     .site-reports-explore:hover { border-color: var(--accent-line); background: var(--accent-soft); }
-    .followed-site-report-toggle:hover, .site-report-view:hover { text-decoration: underline; text-underline-offset: 4px; }
 }
 .site-reports :is(a, button):active { background-color: var(--accent-soft); }
 
@@ -6197,7 +6172,7 @@ img.is-media-loading {
     .site-reports-heading { align-items: flex-start; }
     .site-reports-meta { max-width: 24ch; font-size: .7rem; }
     .site-reports-explore { padding-inline: 10px; }
-    .site-report-card { padding: 16px 16px 6px; }
+    .site-report-card { padding: 16px; }
     .site-report-card-main { gap: 10px; }
     .site-report-card .site-report-map { flex-basis: 56px; width: 56px; height: 56px; min-height: 56px; max-height: 56px; }
     .site-report-identity h3 { font-size: .9375rem; }

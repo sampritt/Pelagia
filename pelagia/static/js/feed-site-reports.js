@@ -37,29 +37,10 @@
             throw new Error('Dependency timeout');
         }
 
-        function setExpanded(card, expanded) {
-            const text = card.querySelector('[data-followed-report-text]');
-            const toggle = card.querySelector('[data-followed-report-toggle]');
-            text.classList.toggle('is-expanded', expanded);
-            card.classList.toggle('is-report-expanded', expanded);
-            toggle.setAttribute('aria-expanded', String(expanded));
-            toggle.querySelector('[data-followed-report-toggle-label]').textContent = expanded ? 'Show less' : 'Read more';
-        }
-
-        function revealToggle(card) {
-            const text = card.querySelector('[data-followed-report-text]');
-            const toggle = card.querySelector('[data-followed-report-toggle]');
-            window.requestAnimationFrame(() => {
-                if (stopped || !text.isConnected || card.classList.contains('is-report-expanded')) return;
-                toggle.hidden = text.scrollHeight <= text.clientHeight + 1;
-            });
-        }
-
         async function loadCard(card) {
             const loadGeneration = generation;
             const body = card.querySelector('[data-followed-report-body]');
             const text = card.querySelector('[data-followed-report-text]');
-            const toggle = card.querySelector('[data-followed-report-toggle]');
             const controller = new AbortController();
             controllers.add(controller);
             const deadline = Date.now() + DEADLINE_MS;
@@ -78,8 +59,6 @@
                         finishLoading();
                         text.textContent = data.report;
                         card.dataset.reportState = 'ready';
-                        setExpanded(card, false);
-                        revealToggle(card);
                         return;
                     }
                     if (response.status === 202 || data?.status === 'pending') {
@@ -99,7 +78,6 @@
                 if (stopped || loadGeneration !== generation) return;
                 finishLoading();
                 text.textContent = 'Today’s report is unavailable. Open the site for conditions and forecasts.';
-                toggle.hidden = true;
                 card.dataset.reportState = 'unavailable';
             } finally {
                 controller.abort();
@@ -110,23 +88,8 @@
         }
 
         cards.forEach((card) => {
-            card.querySelector('[data-followed-report-toggle]').addEventListener('click', () => {
-                const toggle = card.querySelector('[data-followed-report-toggle]');
-                const expanded = toggle.getAttribute('aria-expanded') !== 'true';
-                setExpanded(card, expanded);
-                if (!expanded) revealToggle(card);
-            });
             loadCard(card);
         });
-
-        function refreshLayout() {
-            cards.forEach((card) => {
-                if (card.dataset.reportState === 'ready' && !card.classList.contains('is-report-expanded')) revealToggle(card);
-            });
-        }
-        refreshLayout();
-        document.fonts?.ready.then(() => { if (!stopped) refreshLayout(); });
-        window.addEventListener('resize', refreshLayout);
 
         track?.addEventListener('keydown', (event) => {
             if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
@@ -153,7 +116,6 @@
             cards.forEach((card) => {
                 if (card.dataset.reportState === 'loading') loadCard(card);
             });
-            refreshLayout();
         });
     }
 

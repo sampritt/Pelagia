@@ -4,11 +4,13 @@ const path = require('node:path');
 const vm = require('node:vm');
 const test = require('node:test');
 
-function setup(responses) {
+function setup(responses, hash = '') {
     const element = () => ({ handlers: {}, addEventListener(name, callback) { this.handlers[name] = callback; } });
     const host = element(), body = element(), text = element(), retry = element(), window = element();
     host.dataset = {url: '/api/dive-sites/1/report'};
     host.open = false;
+    host.scrollCalls = [];
+    host.scrollIntoView = options => host.scrollCalls.push(options);
     host.querySelector = selector => ({'[data-report-body]': body, '[data-report-text]': text, '[data-report-retry]': retry})[selector];
     let now = new Date('2026-10-25T15:00:00Z').getTime(), calls = [], loading = 0, ended = 0;
     const timers = new Map(), intervals = new Map();
@@ -18,6 +20,8 @@ function setup(responses) {
     window.setInterval = callback => { const id = ++nextTimer; intervals.set(id, callback); return id; };
     window.clearInterval = id => intervals.delete(id);
     window.dispatchEvent = event => window.handlers[event.type]?.(event);
+    window.location = {hash};
+    window.requestAnimationFrame = callback => callback();
     window.PelagiaLoading = {begin(node, label, markup) {
         loading++; assert.equal(node, body); assert.match(markup, /skeleton-line/);
         return () => { ended++; };
@@ -59,6 +63,16 @@ test('expansion shows skeleton, polls dependencies, and renders report once', as
     assert.equal(state.calls[0].options.headers['X-Requested-With'], 'fetch');
     state.host.open = false; state.host.handlers.toggle(); state.open(); await flush();
     assert.equal(state.calls.length, 2);
+});
+
+test('the feed deep link opens, loads and scrolls directly to the daily report', async () => {
+    const state = setup([complete()], '#daily-report');
+    assert.equal(state.host.open, true);
+    assert.equal(state.calls.length, 1);
+    assert.equal(state.host.scrollCalls.length, 1);
+    assert.equal(state.host.scrollCalls[0].block, 'start');
+    await flush();
+    assert.equal(state.text.textContent, complete().report);
 });
 
 test('only one request runs during repeated toggles', async () => {

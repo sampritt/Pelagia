@@ -196,6 +196,7 @@ class SiteReportTest(unittest.TestCase):
         self.assertEqual(self.client.get('/api/dive-sites/1/report').status_code, 405)
         self.assertEqual(self.client.post('/api/dive-sites/999/report', headers={'X-Requested-With': 'fetch'}).status_code, 404)
         html = self.client.get('/dive-sites/1').get_data(as_text=True)
+        self.assertIn('id="daily-report" class="site-report"', html)
         self.assertLess(html.index('site-profile-header'), html.index('data-site-report'))
         self.assertLess(html.index('data-site-report'), html.index('data-marine-forecast'))
         self.assertNotIn('test-secret', html)
