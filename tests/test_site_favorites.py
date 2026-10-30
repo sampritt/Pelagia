@@ -23,7 +23,8 @@ class DiveSiteFavoritesTest(unittest.TestCase):
         with self.app.app_context():
             today = dive_brief.effective_date()
         self.assertIn(f'<time datetime="{today.isoformat()}">{today.day} {today:%b %Y}</time>', empty_home)
-        self.assertIn("Follow dive sites to keep their daily reports in your feed.", empty_home)
+        self.assertIn("Check the forecast", empty_home)
+        self.assertIn("Follow dive sites to get daily reports in your feed.", empty_home)
         self.assertIn('href="/explore">Explore dive sites</a>', empty_home)
         self.assertNotIn("data-site-reports-track", empty_home)
         self.assertLess(empty_home.index("Site reports"), empty_home.index("No dives yet"))
@@ -73,7 +74,9 @@ class DiveSiteFavoritesTest(unittest.TestCase):
             self.client.post("/api/dive-sites/1/favorite").get_json(),
             {"favorited": False},
         )
-        self.assertIn("Follow dive sites to keep their daily reports in your feed.", self.client.get("/home").get_data(as_text=True))
+        empty_home = self.client.get("/home").get_data(as_text=True)
+        self.assertIn("Check the forecast", empty_home)
+        self.assertIn("Follow dive sites to get daily reports in your feed.", empty_home)
 
     def test_ten_site_limit_does_not_block_unfollow(self):
         with self.app.app_context():
