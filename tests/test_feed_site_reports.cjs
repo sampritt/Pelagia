@@ -40,46 +40,30 @@ const flush = async () => {
     for (let i = 0; i < 3; i++) await new Promise(resolve => setImmediate(resolve));
 };
 
-function setup(cards, fetch, {width = 656, cardWidth = 320} = {}) {
+function setup(cards, fetch) {
     const window = node();
     let timer = 0;
     const timers = new Map();
     window.setTimeout = (callback, delay) => { const id = ++timer; timers.set(id, {callback, delay}); return id; };
     window.clearTimeout = id => timers.delete(id);
     window.requestAnimationFrame = callback => callback();
-    window.matchMedia = () => ({matches: true});
     let starts = 0, finishes = 0;
     window.PelagiaLoading = {begin() { starts++; return () => { finishes++; }; }};
-    const track = node(), navigation = node(), position = node(), previous = node(), next = node();
-    track.clientWidth = width;
-    track.scrollWidth = cards.length * (cardWidth + 12) - 12 + 4;
+    const track = node();
+    track.scrollWidth = 1000;
     track.scrollLeft = 0;
-    track.getBoundingClientRect = () => ({left: 0, right: track.clientWidth});
-    track.scrollTo = ({left, behavior}) => {
-        track.behavior = behavior;
-        track.scrollLeft = Math.max(0, Math.min(left, track.scrollWidth - track.clientWidth));
-        track.handlers.scroll();
-    };
-    cards.forEach((card, index) => {
-        card.item.getBoundingClientRect = () => {
-            const left = 2 + index * (cardWidth + 12) - track.scrollLeft;
-            return {left, right: left + cardWidth, width: cardWidth};
-        };
-    });
+    track.scrollTo = ({left}) => { track.scrollLeft = left; };
+    track.scrollBy = ({left}) => { track.scrollLeft += left; };
+    cards.forEach(card => { card.item.getBoundingClientRect = () => ({width: 300}); });
     const document = {
-        readyState: 'complete', querySelectorAll: () => cards.map(item => item.item),
-        querySelector: selector => ({
-            '[data-site-reports-track]': track,
-            '[data-site-reports-navigation]': navigation,
-            '[data-site-reports-position]': position,
-            '[data-site-reports-prev]': previous,
-            '[data-site-reports-next]': next,
-        })[selector],
+        readyState: 'complete',
+        querySelectorAll: () => cards.map(item => item.item),
+        querySelector: selector => selector === '[data-site-reports-track]' ? track : null,
     };
     vm.runInNewContext(fs.readFileSync('pelagia/static/js/feed-site-reports.js', 'utf8'), {
         window, document, fetch, AbortController, Date, Promise, Error,
     });
-    return {window, timers, track, navigation, position, previous, next, starts: () => starts, finishes: () => finishes};
+    return {window, timers, track, starts: () => starts, finishes: () => finishes};
 }
 
 test('every followed card loads its cached report and expands without another request', async () => {
@@ -160,45 +144,6 @@ test('leaving the feed aborts all in-flight site report requests', async () => {
 });
 
 
-test('carousel controls track the visible range, boundaries and reduced-motion preference', async () => {
-    const cards = [card(1), card(2), card(3)];
-    const state = setup(cards, async () => response(200, {status: 'complete', report: 'Calm seas.'}));
-    await flush();
-    assert.equal(state.navigation.hidden, false);
-    assert.equal(state.position.textContent, '1–2 of 3 sites');
-    assert.equal(state.previous.getAttribute('aria-disabled'), 'true');
-    state.next.handlers.click();
-    assert.equal(state.track.scrollLeft, 332);
-    assert.equal(state.track.behavior, 'instant');
-    assert.equal(state.position.textContent, '2–3 of 3 sites');
-    assert.equal(state.next.getAttribute('aria-disabled'), 'true');
-    state.next.handlers.click();
-    assert.equal(state.track.scrollLeft, 332);
-    state.previous.handlers.click();
-    assert.equal(state.track.scrollLeft, 0);
-    state.track.clientWidth = state.track.scrollWidth;
-    state.window.handlers.resize();
-    assert.equal(state.navigation.hidden, true);
-    assert.equal(state.track.getAttribute('tabindex'), '-1');
-});
-
-test('phone navigation advances one site and supports arrows, Home and End without capturing child keys', async () => {
-    const state = setup([card(1), card(2), card(3)], async () => response(200, {status: 'complete', report: 'Calm seas.'}), {width: 300, cardWidth: 254});
-    await flush();
-    assert.equal(state.position.textContent, '1 of 3 sites');
-    let prevented = 0;
-    const press = (key, target = state.track) => state.track.handlers.keydown({key, target, preventDefault() { prevented++; }});
-    press('ArrowRight');
-    assert.equal(state.position.textContent, '2 of 3 sites');
-    press('End');
-    assert.equal(state.position.textContent, '3 of 3 sites');
-    press('Home');
-    assert.equal(state.track.scrollLeft, 0);
-    press('ArrowRight', state.next);
-    assert.equal(state.track.scrollLeft, 0);
-    assert.equal(prevented, 3);
-});
-
 test('a stalled request times out with an actionable unavailable state', async () => {
     const followed = card(1);
     const state = setup([followed], (_url, {signal}) => new Promise((_resolve, reject) => {
@@ -229,4 +174,21 @@ test('returning through browser Back resumes interrupted reports and preserves c
     await flush();
     assert.deepEqual(calls, ['/api/dive-sites/1/report', '/api/dive-sites/2/report', '/api/dive-sites/2/report']);
     assert.ok(cards.every(card => card.item.dataset.reportState === 'ready'));
+});
+
+test('the swipe track keeps keyboard navigation without visual controls', async () => {
+    const state = setup([card(1), card(2), card(3)], async () => response(200, {status: 'complete', report: 'Calm seas.'}));
+    await flush();
+    let prevented = 0;
+    const press = key => state.track.handlers.keydown({key, preventDefault() { prevented++; }});
+    press('ArrowRight');
+    assert.equal(state.track.scrollLeft, 312);
+    press('ArrowLeft');
+    assert.equal(state.track.scrollLeft, 0);
+    press('End');
+    assert.equal(state.track.scrollLeft, 1000);
+    press('Home');
+    assert.equal(state.track.scrollLeft, 0);
+    press('Tab');
+    assert.equal(prevented, 4);
 });

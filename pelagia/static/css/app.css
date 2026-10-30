@@ -6056,10 +6056,11 @@ img.is-media-loading {
     padding: 3px 2px 8px;
     scroll-padding-inline: 2px;
     scroll-snap-type: x mandatory;
-    scrollbar-width: thin;
-    scrollbar-color: var(--line-strong) transparent;
+    scrollbar-width: none;
     -webkit-overflow-scrolling: touch;
 }
+
+.site-reports-track::-webkit-scrollbar { display: none; }
 
 .site-report-card {
     position: relative;
@@ -6170,20 +6171,13 @@ img.is-media-loading {
 .followed-site-report .skeleton-line:last-child { width: 62%; }
 .site-report-card[data-report-state="unavailable"] .followed-site-report-text { color: var(--muted-strong); }
 
-.site-reports-navigation { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: -12px; padding-inline: 2px; }
-.site-reports-navigation[hidden] { display: none; }
-.site-reports-position { color: var(--muted-strong); font-size: .75rem; font-variant-numeric: tabular-nums; }
-.site-reports-arrows { display: flex; gap: 8px; }
-.site-reports-arrow { display: grid; place-items: center; width: 44px; height: 44px; padding: 0; border: 1px solid var(--line-strong); border-radius: 50%; color: var(--ink-soft); background: var(--panel); touch-action: manipulation; }
-.site-reports-arrow[aria-disabled="true"] { color: var(--muted); border-color: var(--line); background: transparent; cursor: default; opacity: .55; }
-
 .site-reports :is(a, button):focus-visible,
 .site-reports-track:focus-visible { outline: 2px solid var(--sea); outline-offset: 2px; }
 .site-reports-track:focus-visible { border-radius: 4px; outline-offset: 0; }
 @media (hover: hover) and (pointer: fine) {
     .site-report-card:hover { border-color: var(--accent-line); }
     .site-report-card-main:hover h3 { color: var(--accent-deep); }
-    .site-reports-explore:hover, .site-reports-arrow[aria-disabled="false"]:hover { border-color: var(--accent-line); background: var(--accent-soft); }
+    .site-reports-explore:hover { border-color: var(--accent-line); background: var(--accent-soft); }
     .followed-site-report-toggle:hover, .site-report-view:hover { text-decoration: underline; text-underline-offset: 4px; }
 }
 .site-reports :is(a, button):active { background-color: var(--accent-soft); }

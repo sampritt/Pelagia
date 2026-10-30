@@ -5,16 +5,12 @@
     function initFollowedSiteReports() {
         const cards = [...document.querySelectorAll('[data-followed-site-report]')];
         if (!cards.length) return;
+        const track = document.querySelector('[data-site-reports-track]');
         let stopped = false;
         const controllers = new Set();
         const timers = new Map();
         const loading = new Map();
         let generation = 0;
-        const track = document.querySelector('[data-site-reports-track]');
-        const navigation = document.querySelector('[data-site-reports-navigation]');
-        const position = document.querySelector('[data-site-reports-position]');
-        const previous = document.querySelector('[data-site-reports-prev]');
-        const next = document.querySelector('[data-site-reports-next]');
 
         const delay = (milliseconds) => new Promise((resolve) => {
             const timer = window.setTimeout(() => { timers.delete(timer); resolve(); }, milliseconds);
@@ -57,38 +53,6 @@
                 if (stopped || !text.isConnected || card.classList.contains('is-report-expanded')) return;
                 toggle.hidden = text.scrollHeight <= text.clientHeight + 1;
             });
-        }
-
-        function updateNavigation() {
-            if (!track || !navigation) return;
-            const overflow = track.scrollWidth > track.clientWidth + 2;
-            navigation.hidden = !overflow;
-            track.setAttribute('tabindex', overflow ? '0' : '-1');
-            if (!overflow) return;
-            const viewport = track.getBoundingClientRect();
-            const visible = cards.map((card, index) => ({rect: card.getBoundingClientRect(), index}))
-                .filter(({rect}) => Math.min(rect.right, viewport.right) - Math.max(rect.left, viewport.left) > rect.width / 2);
-            if (visible.length) {
-                const first = visible[0].index + 1;
-                const last = visible[visible.length - 1].index + 1;
-                const label = `${first === last ? first : `${first}–${last}`} of ${cards.length} sites`;
-                if (position.textContent !== label) position.textContent = label;
-            }
-            previous.setAttribute('aria-disabled', String(track.scrollLeft <= 2));
-            next.setAttribute('aria-disabled', String(track.scrollLeft + track.clientWidth >= track.scrollWidth - 2));
-        }
-
-        function browse(direction) {
-            const button = direction < 0 ? previous : next;
-            if (button.getAttribute('aria-disabled') === 'true') return;
-            const origin = track.getBoundingClientRect().left + 2;
-            // Move to a card boundary even after a partial touch or trackpad scroll.
-            const candidates = direction < 0 ? [...cards].reverse() : cards;
-            const target = candidates.find((card) => direction * (card.getBoundingClientRect().left - origin) > 4);
-            const left = target
-                ? track.scrollLeft + target.getBoundingClientRect().left - origin
-                : direction < 0 ? 0 : track.scrollWidth;
-            track.scrollTo({left, behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth'});
         }
 
         async function loadCard(card) {
@@ -156,7 +120,6 @@
         });
 
         function refreshLayout() {
-            updateNavigation();
             cards.forEach((card) => {
                 if (card.dataset.reportState === 'ready' && !card.classList.contains('is-report-expanded')) revealToggle(card);
             });
@@ -165,19 +128,16 @@
         document.fonts?.ready.then(() => { if (!stopped) refreshLayout(); });
         window.addEventListener('resize', refreshLayout);
 
-        if (track) {
-            track.addEventListener('scroll', updateNavigation, {passive: true});
-            previous.addEventListener('click', () => browse(-1));
-            next.addEventListener('click', () => browse(1));
-            track.addEventListener('keydown', (event) => {
-                if (event.target !== track || !['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
-                event.preventDefault();
-                if (event.key === 'Home' || event.key === 'End') {
-                    track.scrollTo({left: event.key === 'Home' ? 0 : track.scrollWidth, behavior: 'instant'});
-                } else browse(event.key === 'ArrowLeft' ? -1 : 1);
-            });
-            if (window.ResizeObserver) new window.ResizeObserver(refreshLayout).observe(track);
-        }
+        track?.addEventListener('keydown', (event) => {
+            if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+            event.preventDefault();
+            if (event.key === 'Home' || event.key === 'End') {
+                track.scrollTo({left: event.key === 'Home' ? 0 : track.scrollWidth});
+                return;
+            }
+            const distance = cards[0].getBoundingClientRect().width + 12;
+            track.scrollBy({left: event.key === 'ArrowLeft' ? -distance : distance});
+        });
 
         window.addEventListener('pagehide', () => {
             stopped = true;

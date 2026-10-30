@@ -21,24 +21,17 @@
                 <div class="site-reports-heading">
                     <div>
                         <h2 id="siteReportsTitle">Site reports</h2>
-                        <p class="site-reports-meta"><time datetime="{{ today_iso }}">{{ today_label }}</time>{% if favorite_sites %}<span aria-hidden="true"> · </span><span>{{ favorite_sites|length }} {{ 'site' if favorite_sites|length == 1 else 'sites' }} followed</span>{% endif %}</p>
+                        <p class="site-reports-meta"><time datetime="{{ today_iso }}">{{ today_label }}</time></p>
                     </div>
                     {% if favorite_sites %}
                     <a class="site-reports-explore" href="{{ url_for('explore.index') }}">{{ action_icon("plus") }}<span>Explore</span><span class="sr-only"> dive sites</span></a>
                     {% endif %}
                 </div>
                 {% if favorite_sites %}
-                <div id="siteReportsTrack" class="site-reports-track" role="region" aria-label="Followed dive sites" data-site-reports-track>
+                <div id="siteReportsTrack" class="site-reports-track" role="region" aria-label="Followed dive sites" tabindex="0" data-site-reports-track>
                     {% for item in favorite_sites %}
                         {% include "_favorite_site_card.html" %}
                     {% endfor %}
-                </div>
-                <div class="site-reports-navigation" data-site-reports-navigation hidden>
-                    <span class="site-reports-position" data-site-reports-position role="status" aria-live="polite" aria-atomic="true"></span>
-                    <div class="site-reports-arrows">
-                        <button type="button" class="site-reports-arrow" data-site-reports-prev aria-label="Previous followed site" aria-controls="siteReportsTrack" aria-disabled="true"><svg class="action-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m14 7-5 5 5 5"></path></svg></button>
-                        <button type="button" class="site-reports-arrow" data-site-reports-next aria-label="Next followed site" aria-controls="siteReportsTrack"><svg class="action-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m10 7 5 5-5 5"></path></svg></button>
-                    </div>
                 </div>
                 {% else %}
                 <div class="site-reports-empty">
