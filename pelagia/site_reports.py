@@ -11,6 +11,7 @@ from flask import current_app, jsonify, request
 
 from . import marine, seasons, site_descriptions
 from .db import get_db
+from .exposure_recommendations import default_exposure_label
 
 MODEL = 'gpt-5.6-luna'
 INSTRUCTIONS = """Using ONLY the supplied dive site data, write a dive site conditions
@@ -40,6 +41,14 @@ an unusually significant wind or current speed may too. Omit tide heights, strin
 of speeds, and full-day tide timetables. Ordinary changes should read like 'light
 winds building later', not a sequence of knot readings.
 
+Always characterize the supplied water temperature qualitatively in natural diving
+language, such as warm, mild, cool, or cold; a number is optional and should not
+stand alone. water.default_exposure_protection is the general temperature-only
+starting point, not personalized advice. Consider mentioning it when it would help
+a diver prepare, phrased naturally as an optional recommendation; for minimal
+warm-water protection, a rash guard may be mentioned when consistent with the
+supplied default. Do not claim that one choice suits every diver.
+
 If tide is worth mentioning, favor its present direction and the next relevant
 high or low, using site-local time. Mark extrema inferred from hourly samples as
 approximate; never invent minute-level precision. Combine tide and current into
@@ -53,10 +62,19 @@ unsupported warning about boat operations or exposure. Rainfall, seasonality,
 moon phase, and week-ahead trends belong only if they add a meaningful diving
 insight; omit routine background and insignificant changes.
 
+You may call out a clear recent rainfall pattern when the supplied monthly totals
+and season context make it noteworthy, such as a dry stretch during rainy season.
+Describe rainfall as an observed recent pattern, not today's rain forecast, and
+call it unusual or uncharacteristic only when the supplied data provides a real
+comparison baseline.
+
+When moon.exact_phase says today is exactly a Full or New moon, generally call it
+out as part of the briefing. Do not describe the nearest-major-phase label as exact
+when exact_phase is null, and do not infer current strength or safety from the moon.
+
 Do not invent visibility, surge, entry hazards, or safe/diveable windows, imply
 that moon phase proves current strength, or guarantee safety from regional models.
 Omit unknowns and do not invent rain forecasts from historical rainfall.
-Do not include wetsuit or exposure recommendations; these depend on the individual diver.
 ALWAYS write this as a MORNING REPORT and outlook for the full site-local day,
 as though it were prepared first thing that morning. This framing applies even
 when the supplied local_time or request time is later in the day. Describe today's
@@ -110,10 +128,16 @@ def report_input(site, now):
                                          (charts['rainfall_monthly'], 'value')))):
         return None
     local_now = datetime.fromtimestamp(now, ZoneInfo(conditions['timezone']))
+    today_moon_fraction = charts['moon_phase_daily'][0]['value']
     return dict(site={key: site[key] for key in ('name', 'country_or_area', 'latitude', 'longitude')},
                 date=local_now.date().isoformat(), local_time=local_now.isoformat(),
                 description=description['description'],
                 season=seasons.for_site(site['master_site_id'], today=local_now.date()),
+                water=dict(temperature_c=current['temperature_c'],
+                           default_exposure_protection=default_exposure_label(current['temperature_c'])),
+                moon=dict(fraction=today_moon_fraction,
+                          nearest_major_phase=current['moon_phase'],
+                          exact_phase=marine.exact_moon_phase(today_moon_fraction)),
                 units=dict(temperature='C', velocity='kn', sea_level='m relative to mean sea level',
                            rain='mm', time='Unix seconds; use timezone'),
                 conditions=conditions, retrieved_data=raw)

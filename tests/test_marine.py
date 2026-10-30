@@ -67,6 +67,11 @@ class MarineRulesTest(unittest.TestCase):
         for value in (None, -1, 1.1, float('nan'), True):
             self.assertIsNone(marine.moon_phase(value))
 
+    def test_exact_moon_phase_only_accepts_new_and_full_fraction(self):
+        for value, expected in ((0, 'New'), (1, 'New'), (.5, 'Full'), (.5000000001, 'Full'),
+                                (.49, None), (.01, None), (.25, None), (None, None)):
+            self.assertEqual(marine.exact_moon_phase(value), expected)
+
     def test_week_has_one_moon_marker_on_closest_day_with_earliest_tie(self):
         for phases, expected_index, expected_phase in [
             ([.46, .49, .50, .53, .57, .61, .65], 2, 'Full'),

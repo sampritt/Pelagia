@@ -20,6 +20,11 @@ def default_exposures(temperature_c):
     return ('dry suit',)
 
 
+def default_exposure_label(temperature_c):
+    """Return the shared, temperature-only protection label."""
+    return ' or '.join(LABELS[choice] for choice in default_exposures(temperature_c))
+
+
 def recommend(db, user_id, site_id, temperature_c, now, salinity):
     if not isinstance(temperature_c, (int, float)) or isinstance(temperature_c, bool):
         return None
