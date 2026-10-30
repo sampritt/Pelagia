@@ -40,18 +40,6 @@ def moon_phase(value):
     return MOON_PHASES[quarter % 4]
 
 
-def exact_moon_phase(value):
-    """Return New or Full only when the supplied daily fraction is exact."""
-    if not number(value) or not 0 <= value <= 1:
-        return None
-    if math.isclose(value, .5, rel_tol=0, abs_tol=1e-9):
-        return 'Full'
-    if math.isclose(value, 0, rel_tol=0, abs_tol=1e-9) or math.isclose(
-            value, 1, rel_tol=0, abs_tol=1e-9):
-        return 'New'
-    return None
-
-
 def coordinates(site):
     try:
         lat, lon = float(site['latitude']), float(site['longitude'])

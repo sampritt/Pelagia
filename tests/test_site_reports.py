@@ -59,7 +59,7 @@ class SiteReportTest(unittest.TestCase):
             self.assertEqual(self.post().get_json()['report'], PROSE)
             generate.assert_called_once()
 
-    def test_payload_includes_temperature_and_shared_default_but_no_personal_advice(self):
+    def test_payload_includes_all_sources_and_excludes_personal_exposure_advice(self):
         self.populate()
         with patch.object(reports, 'generate', return_value=PROSE) as generate:
             result = self.post()
@@ -68,13 +68,7 @@ class SiteReportTest(unittest.TestCase):
             data = generate.call_args.args[0]
             self.assertEqual(data['site']['name'], 'Alert Rock')
             self.assertIn('exposed currents', data['description'])
-            self.assertEqual(data['water'], {
-                'temperature_c': 28.3,
-                'default_exposure_protection': 'swimsuit or shorty',
-            })
-            self.assertAlmostEqual(data['moon']['fraction'], .41)
-            self.assertEqual(data['moon']['nearest_major_phase'], 'Full')
-            self.assertIsNone(data['moon']['exact_phase'])
+            self.assertNotIn('exposure_recommendation', data)
             self.assertNotIn('recommendations', data['conditions'])
             self.assertEqual(data['date'], '2026-10-25')
             self.assertEqual(data['retrieved_data'], payload())
@@ -82,17 +76,6 @@ class SiteReportTest(unittest.TestCase):
             self.assertIn('season', data)
             self.assertNotIn('user_id', data)
             self.assertNotIn('weight', data)
-
-    def test_payload_marks_only_exact_full_and_new_moon_days(self):
-        for fraction, expected in ((.5, 'Full'), (0, 'New'), (.49, None)):
-            with self.subTest(fraction=fraction):
-                data = payload()
-                data['weather']['daily']['moon_phase'][1] = fraction
-                self.populate(data)
-                with self.app.app_context():
-                    db = database.get_db()
-                    site = db.execute('SELECT * FROM dive_sites WHERE id=1').fetchone()
-                    self.assertEqual(reports.report_input(site, NOW)['moon']['exact_phase'], expected)
 
     def test_warm_cache_shared_across_users_and_survives_dependency_expiry(self):
         self.populate()
@@ -231,17 +214,7 @@ class SiteReportTest(unittest.TestCase):
             self.assertNotIn('tools', body)
             self.assertFalse(body['store'])
             self.assertIn('ONLY the supplied', body['instructions'])
-            self.assertIn('Always characterize the supplied water temperature qualitatively',
-                          body['instructions'])
-            self.assertIn('default_exposure_protection', body['instructions'])
-            self.assertIn('a rash guard may be mentioned', body['instructions'])
-            self.assertIn('clear recent rainfall pattern', body['instructions'])
-            self.assertIn('call it unusual or uncharacteristic only when', body['instructions'])
-            compact_instructions = body['instructions'].replace('\n', ' ')
-            self.assertIn('exactly a Full or New moon, generally call it out', compact_instructions)
-            self.assertIn('Do not describe the nearest-major-phase label as exact',
-                          compact_instructions)
-            self.assertNotIn('Do not include wetsuit or exposure recommendations', body['instructions'])
+            self.assertIn('Do not include wetsuit or exposure recommendations', body['instructions'])
             self.assertIn('ALWAYS write this as a MORNING REPORT', body['instructions'])
             self.assertIn('supplied local_time or request time is later in the day',
                           body['instructions'].replace('\n', ' '))
