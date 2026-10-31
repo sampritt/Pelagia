@@ -6077,8 +6077,7 @@ img.is-media-loading {
     color: var(--ink-soft);
 }
 .followed-condition { display: grid; grid-template-rows: auto 1fr auto; gap: 4px; min-width: 0; }
-.followed-condition-label { display: flex; align-items: center; gap: 5px; color: var(--muted-strong); font-size: .65rem; line-height: 1.5; }
-.followed-condition-label .action-icon { width: 13px; height: 13px; stroke-width: 1.6; }
+.followed-condition-label { color: var(--muted-strong); font-size: .65rem; line-height: 1.5; }
 .followed-condition-value { font-size: .875rem; font-weight: 600; line-height: 1.4; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
 .followed-condition-detail { color: var(--muted-strong); font-size: .625rem; line-height: 1.5; }
 .followed-condition [data-grade="green"] { color: #19704c; }
@@ -6088,8 +6087,7 @@ img.is-media-loading {
 
 @media (max-width: 380px) {
     .followed-conditions { gap: 8px; }
-    .followed-condition-label { gap: 4px; font-size: .6rem; }
-    .followed-condition-label .action-icon { width: 11px; height: 11px; }
+    .followed-condition-label { font-size: .6rem; }
     .followed-condition-value { font-size: .8125rem; }
 }
 
