@@ -41,7 +41,7 @@
         const visibilityGrades = {excellent: 'green', good: 'green', fair: 'yellow', poor: 'orange', 'very poor': 'red'};
         const finiteNonnegative = value => typeof value === 'number' && Number.isFinite(value) && value >= 0;
         const windDescriptor = speed => speed < 10 ? ['green', 'Light'] : speed < 15 ? ['yellow', 'Moderate']
-            : speed < 20 ? ['orange', 'Fresh'] : ['red', 'Strong'];
+            : speed < 20 ? ['orange', 'Strong'] : ['red', 'Very strong'];
         function setCondition(card, selector, value, grade, descriptor) {
             const node = card.querySelector(selector);
             node.textContent = value;

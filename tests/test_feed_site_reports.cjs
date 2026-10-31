@@ -120,7 +120,9 @@ test('feet, descriptor colors, and wind boundaries are normalized', async () => 
         assert.equal(card.wind.dataset.grade, grades[i]);
         assert.equal(card.visibility.dataset.grade, grades[i]);
         assert.equal(card.visibilityDetail.textContent, i === 0 ? '0.065 m⁻¹' : '—');
-        assert.match(card.wind.attrs['aria-label'], /Light|Moderate|Fresh|Strong/);
+        const label = ['Light', 'Moderate', 'Strong', 'Very strong'][i];
+        assert.equal(card.wind.textContent, label);
+        assert.ok(card.wind.attrs['aria-label'].startsWith(`${label}, `));
     });
 });
 
