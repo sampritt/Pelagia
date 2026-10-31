@@ -20,9 +20,8 @@ class DiveSiteFavoritesTest(unittest.TestCase):
 
     def test_empty_state_follow_toggle_and_home_site_reports(self):
         empty_home = self.client.get("/home").get_data(as_text=True)
-        self.assertIn('aria-label="Followed site reports"', empty_home)
-        self.assertNotIn("Site reports", empty_home)
-        self.assertNotIn('site-reports-heading', empty_home)
+        self.assertIn('aria-labelledby="siteReportsTitle"', empty_home)
+        self.assertIn('<h2 id="siteReportsTitle" class="site-reports-heading">Site reports</h2>', empty_home)
         self.assertNotIn('site-reports-meta', empty_home)
         self.assertIn("Check the forecast", empty_home)
         self.assertIn("Follow dive sites to get daily reports in your feed.", empty_home)
@@ -64,7 +63,7 @@ class DiveSiteFavoritesTest(unittest.TestCase):
         self.assertNotIn("species-row", reports)
         self.assertNotIn("Explore dive site", reports)
         self.assertNotIn("logged dive", reports)
-        self.assertNotIn("Site reports", reports)
+        self.assertIn("Site reports", reports)
         self.assertNotIn("<time", reports)
         self.assertNotIn("site-reports-explore", reports)
         self.assertNotIn('href="/explore"', reports)
@@ -96,7 +95,7 @@ class DiveSiteFavoritesTest(unittest.TestCase):
 
         home = self.client.get("/home").get_data(as_text=True)
         reports = home.split('<section class="site-reports"', 1)[1].split("</section>", 1)[0]
-        self.assertIn("FEATURED", reports)
+        self.assertIn("Featured", reports)
         self.assertIn("Alert Rock", reports)
         self.assertNotIn("Kelp Garden", reports)
         self.assertNotIn("Blue Wall", reports)
@@ -105,7 +104,7 @@ class DiveSiteFavoritesTest(unittest.TestCase):
         followed = self.client.get("/home").get_data(as_text=True)
         reports = followed.split('<section class="site-reports"', 1)[1].split("</section>", 1)[0]
         self.assertEqual(reports.count('data-followed-site-report'), 1)
-        self.assertEqual(reports.count("FEATURED"), 1)
+        self.assertEqual(reports.count("Featured"), 1)
         with self.app.app_context():
             self.assertEqual(database.get_db().execute("SELECT count(*) FROM daily_featured_sites").fetchone()[0], 1)
 
@@ -118,8 +117,8 @@ class DiveSiteFavoritesTest(unittest.TestCase):
                            [(dive_id, f"Species {i}") for i in range(7)])
             db.commit()
         with patch("pelagia.water_type.classify_site", return_value={"feature": "OCEAN"}) as classify:
-            self.assertIn("FEATURED", self.client.get("/home").get_data(as_text=True))
-            self.assertIn("FEATURED", self.client.get("/home").get_data(as_text=True))
+            self.assertIn("Featured", self.client.get("/home").get_data(as_text=True))
+            self.assertIn("Featured", self.client.get("/home").get_data(as_text=True))
             self.assertEqual(classify.call_count, 1)
 
     def test_ten_site_limit_does_not_block_unfollow(self):

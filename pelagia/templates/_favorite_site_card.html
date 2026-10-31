@@ -6,7 +6,6 @@
    data-description-url="{{ url_for('api_dive_site_description', site_id=item.id) }}"
    data-conditions-url="{{ url_for('api_site_conditions', site_id=item.id) }}"
    data-visibility-url="{{ url_for('api_site_visibility', site_id=item.id) }}">
-    {% if item.featured %}<span class="site-report-featured"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0 10.2 5.8 16 8 10.2 10.2 8 16 5.8 10.2 0 8 5.8 5.8Z"/></svg>FEATURED</span>{% endif %}
     <div class="site-report-card-main">
         <div class="mini-map site-report-map {{ 'map-pending' if not has_coords else '' }}" aria-hidden="true" {% if has_coords %}data-static-map data-map-lat="{{ item.latitude }}" data-map-lng="{{ item.longitude }}" data-map-zoom="10"{% endif %}>
             {% if has_coords %}<span class="map-pin"></span>{% else %}{{ action_icon("compass") }}{% endif %}
@@ -33,7 +32,10 @@
             <span class="followed-condition-detail" data-followed-visibility-detail title="Light attenuation at 490 nm (Kd490)">—</span>
         </div>
     </div>
-    <div class="followed-report-label">Today’s report</div>
+    <div class="followed-report-label">
+        <span>Today’s report</span>
+        {% if item.featured %}<span class="site-report-featured"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0 10.2 5.8 16 8 10.2 10.2 8 16 5.8 10.2 0 8 5.8 5.8Z"/></svg>Featured</span>{% endif %}
+    </div>
     <div class="followed-site-report" data-followed-report-body>
         <p class="followed-site-report-text" data-followed-report-text role="status" aria-live="polite" aria-atomic="true">Preparing today’s report…</p>
     </div>

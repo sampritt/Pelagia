@@ -17,7 +17,8 @@
             {% if brief %}
                 {% include "_dive_brief_card.html" %}
             {% endif %}
-            <section class="site-reports" aria-label="Followed site reports">
+            <section class="site-reports" aria-labelledby="siteReportsTitle">
+                <h2 id="siteReportsTitle" class="site-reports-heading">Site reports</h2>
                 {% if favorite_sites %}
                 <div id="siteReportsTrack" class="site-reports-track" role="region" aria-label="Followed dive sites" tabindex="0" data-site-reports-track>
                     {% for item in favorite_sites %}
