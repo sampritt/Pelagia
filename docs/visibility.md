@@ -38,7 +38,7 @@ edges. The cached category score remains available for text labels.
 
 These categories do not measure horizontal diver visibility. Raw attenuation,
 source coordinates, and observation dates accompany the API response and chart
-tooltips. The live value shows its observation date, since the most recent valid
+tooltips. The live value includes its observation date in its tooltip, since the most recent valid
 day can be substantially older than today. If fewer than 12 monthly values exist,
 all available values are shown; an empty history is explicitly unavailable.
 

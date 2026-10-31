@@ -16,12 +16,12 @@ const flush = async () => { for (let i = 0; i < 12; i++) await Promise.resolve()
 function setup(coordinates = 'true', visibility = false) {
     const equipment=node(), exposureAdvice=node(), exposureName=node(), weightAsterisk=node(), exposureAsterisk=node(), exposureHistory=node(), exposureHistoryLink=node(), weightAdvice=node(), weightCaveat=node(), source=node();
     const host = node(), status = node(), retry = node(), charts = [node(), node(), node(), node()], values = ['temperature', 'tide', 'moon', 'wind'].map(v => { const n = node(); n.dataset.marineValue = v; return n; });
-    const visibilityChart=node(), visibilityValue=node(), visibilityStatus=node(), visibilityRetry=node(), visibilityDate=node();
+    const visibilityChart=node(), visibilityValue=node(), visibilityStatus=node(), visibilityRetry=node();
     charts.forEach(n => { n.dataset.chart = true; });
     const buttons = ['daily', 'hourly', 'daily', 'hourly'].map((v, i) => { const n = node(); n.dataset.marineRange = v; if (i > 1) n.dataset.marineTarget = 'wind'; return n; });
     host.dataset = {coordinates, url: '/api/dive-sites/1/conditions', temperatureUnit: 'f', lengthUnit: 'ft'};
     if (visibility) Object.assign(host.dataset,{visibilityMonthlyUrl:'/monthly',visibilityDailyUrl:'/daily'});
-    host.querySelector = s => ({'[data-visibility-chart]':visibility ? visibilityChart : null,'[data-visibility-value]':visibilityValue,'[data-visibility-status]':visibilityStatus,'[data-visibility-retry]':visibilityRetry,'[data-visibility-date]':visibilityDate,'[data-equipment-advice]':equipment,'[data-exposure-advice]':exposureAdvice,'[data-exposure-name]':exposureName,'[data-weight-asterisk]':weightAsterisk,'[data-exposure-asterisk]':exposureAsterisk,'[data-exposure-history]':exposureHistory,'[data-exposure-history-link]':exposureHistoryLink,'[data-weight-advice]':weightAdvice,'[data-weight-caveat]':weightCaveat,'[data-marine-status]':status,'[data-marine-retry]':retry,'[data-marine-source]':source,'[data-marine-chart="current"]':charts[0],'[data-marine-chart="tide"]':charts[1],'[data-marine-chart="wind"]':charts[2],'[data-marine-chart="rainfall"]':charts[3]})[s];
+    host.querySelector = s => ({'[data-visibility-chart]':visibility ? visibilityChart : null,'[data-visibility-value]':visibilityValue,'[data-visibility-status]':visibilityStatus,'[data-visibility-retry]':visibilityRetry,'[data-equipment-advice]':equipment,'[data-exposure-advice]':exposureAdvice,'[data-exposure-name]':exposureName,'[data-weight-asterisk]':weightAsterisk,'[data-exposure-asterisk]':exposureAsterisk,'[data-exposure-history]':exposureHistory,'[data-exposure-history-link]':exposureHistoryLink,'[data-weight-advice]':weightAdvice,'[data-weight-caveat]':weightCaveat,'[data-marine-status]':status,'[data-marine-retry]':retry,'[data-marine-source]':source,'[data-marine-chart="current"]':charts[0],'[data-marine-chart="tide"]':charts[1],'[data-marine-chart="wind"]':charts[2],'[data-marine-chart="rainfall"]':charts[3]})[s];
     host.querySelectorAll = s => s.includes('value') ? values : buttons;
     const window = node(); let id = 0; const timers = new Map(); const requests = []; let ended = 0;
     window.setTimeout = (fn, delay) => { timers.set(++id, {fn, delay}); return id; }; window.clearTimeout = n => timers.delete(n);
@@ -29,7 +29,7 @@ function setup(coordinates = 'true', visibility = false) {
     const document = {readyState: 'complete', querySelector: () => host, createElement: node, createElementNS: (_, tag) => node(tag)};
     const context = vm.createContext({window, document, Intl, Date, AbortController, module: {exports: {}}, fetch: (url, options) => new Promise((resolve, reject) => requests.push({url, options, resolve, reject}))});
     vm.runInContext(fs.readFileSync('pelagia/static/js/marine.js', 'utf8'), context);
-    return {visibilityChart,visibilityValue,visibilityStatus,visibilityRetry,visibilityDate,equipment,exposureAdvice,exposureName,weightAsterisk,exposureAsterisk,exposureHistory,exposureHistoryLink,weightAdvice,weightCaveat,source,host, status, retry, charts, values, buttons, window, timers, requests, context, ended: () => ended};
+    return {visibilityChart,visibilityValue,visibilityStatus,visibilityRetry,equipment,exposureAdvice,exposureName,weightAsterisk,exposureAsterisk,exposureHistory,exposureHistoryLink,weightAdvice,weightCaveat,source,host, status, retry, charts, values, buttons, window, timers, requests, context, ended: () => ended};
 }
 function data() {
     const points = Array.from({length: 48}, (_, i) => ({time:1792940400 + i * 3600, value: .5}));
@@ -257,14 +257,14 @@ test('visibility shares monthly chart layout with a fixed clarity scale and exac
     chart.children[1].handlers.keydown({key:'ArrowRight',preventDefault(){}});
     assert.ok(chart.children[2].children[0].textContent.includes('Monthly mean'));
 });
-test('visibility loads independently, shows observation date and survives a marine failure',async()=>{
+test('visibility loads independently, keeps observation date in tooltip and survives a marine failure',async()=>{
     const s=setup('true',true);
     assert.equal(s.requests.length,3);
     const point={time:Date.UTC(2026,7,1,12)/1000,value:4,label:'Good',kd490:.07,latitude:-.39375,longitude:-90.28125};
     s.requests[0].resolve({status:200,ok:true,json:async()=>({status:'complete',points:[point]})});
     s.requests[1].resolve({status:200,ok:true,json:async()=>({status:'complete',latest:point})});
     s.requests[2].reject(new Error());await flush();
-    assert.equal(s.visibilityValue.textContent,'Good'); assert.ok(s.visibilityDate.textContent.includes('UTC'));
+    assert.equal(s.visibilityValue.textContent,'Good'); assert.ok(s.visibilityValue.title.includes('UTC'));
     assert.equal(s.visibilityChart.children[0].children.length,5);assert.equal(s.visibilityRetry.hidden,true);
     s.window.handlers.pagehide();assert.ok(s.requests[0].options.signal.aborted);
 });

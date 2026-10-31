@@ -231,7 +231,6 @@
         const chart = host.querySelector('[data-visibility-chart]');
         const value = host.querySelector('[data-visibility-value]');
         const status = host.querySelector('[data-visibility-status]');
-        const date = host.querySelector('[data-visibility-date]');
         const retry = host.querySelector('[data-visibility-retry]');
         if (!chart || !value) return;
         let points = [], active = [], stopped = false, generation = 0;
@@ -278,7 +277,6 @@
                             const latest = data.latest;
                             value.textContent = latest?.label || '-';
                             value.title = latest ? `${localDate(latest.time, 'UTC')} UTC · Kd490 ${latest.kd490.toFixed(4)} m⁻¹ · pixel ${latest.latitude.toFixed(5)}, ${latest.longitude.toFixed(5)}${data.stale ? ' · cached' : ''}` : 'No valid satellite reading at the nearest grid cell';
-                            if (date) date.textContent = latest ? `${localDate(latest.time, 'UTC')} UTC` : '';
                         }
                         update();
                     } catch (_) { fail(); }

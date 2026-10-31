@@ -24,7 +24,7 @@
             <div class="site-conditions-grid">
                 <div><small>Water temperature</small><span {% if conditions.water_temp_c is none %}data-marine-value="temperature"{% else %}data-site-water-temperature{% endif %}>{{ display_metric(conditions.water_temp_c, 'temperature') }}</span></div>
                 <div><small>Tide level</small><span data-marine-value="tide">-</span></div>
-                <div><small>Visibility</small><span data-visibility-value>-</span><small data-visibility-date></small></div>
+                <div><small>Visibility</small><span data-visibility-value>-</span></div>
                 <div><small>Wind speed</small><span data-marine-value="wind">-</span></div>
             </div>
             <div class="site-equipment-advice" data-equipment-advice aria-label="Equipment recommendations" aria-live="polite" hidden>
