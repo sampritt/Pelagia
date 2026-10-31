@@ -5632,13 +5632,6 @@ textarea { resize: vertical; }
     background: linear-gradient(125deg, #edf8f8 0, #fff 58%);
     box-shadow: 0 3px 16px rgba(4, 34, 55, .045);
 }
-.brief-card::before {
-    content: "";
-    position: absolute;
-    inset: 0 0 auto;
-    height: 3px;
-    background: linear-gradient(90deg, #007f89, #0878f9);
-}
 .brief-card-masthead { display: flex; align-items: center; gap: 12px; min-height: 84px; padding: 25px 28px 20px; list-style: none; cursor: pointer; -webkit-tap-highlight-color: transparent; }
 .brief-card-masthead::-webkit-details-marker { display: none; }
 .brief-card-masthead:focus-visible { outline: 2px solid #007e88; outline-offset: -5px; border-radius: var(--radius); }
@@ -6015,6 +6008,8 @@ img.is-media-loading {
     font-weight: 600;
     line-height: 1.5;
 }
+
+.daily-update > .site-reports-heading { font-size: .9375rem; }
 
 .site-reports-track {
     display: grid;
