@@ -31,6 +31,11 @@ Clarity categories are an application interpretation of Kd490 (m^-1):
 | > 0.20 to 0.30 | 2 | Poor |
 | > 0.30 | 1 | Very poor |
 
+Bar heights use raw Kd490 with continuous logarithmic interpolation between
+the category boundaries; they do not snap to the integer category score. Labels
+sit at band centers, and values outside 0.016–32 m^-1 are clipped at the chart
+edges. The cached category score remains available for text labels.
+
 These categories do not measure horizontal diver visibility. Raw attenuation,
 source coordinates, and observation dates accompany the API response and chart
 tooltips. The live value shows its observation date, since the most recent valid

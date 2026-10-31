@@ -53,12 +53,26 @@
     }
     const decimal = value => Number(value.toFixed(2));
 
+    // Keep the five labels as fixed bands, but plot the raw attenuation
+    // continuously. Log interpolation preserves detail across Kd490's range.
+    function visibilityPosition(kd) {
+        if (!finite(kd) || kd <= 0) return null;
+        const anchors = [[.016, 5.5], [.05, 4.5], [.10, 3.5], [.20, 2.5], [.30, 1.5], [32, .5]];
+        if (kd <= anchors[0][0]) return anchors[0][1];
+        for (let i = 1; i < anchors.length; i++) {
+            const [lo, top] = anchors[i - 1], [hi, bottom] = anchors[i];
+            if (kd <= hi) return top + (bottom - top) * Math.log(kd / lo) / Math.log(hi / lo);
+        }
+        return anchors[anchors.length - 1][1];
+    }
+
     function renderChart(host, points, { tide = false, wind = false, rainfall = false, visibility = false, daily = false, zone, lengthUnit = 'm', moons = [] }) {
         const monthly = rainfall || visibility;
         points = points || [];
+        const plotValue = point => visibility ? visibilityPosition(point.kd490) : point.value;
         host.replaceChildren();
         host.removeAttribute('data-can-scroll');
-        if (!points.some(p => finite(p.value))) {
+        if (!points.some(p => finite(plotValue(p)))) {
             const empty = document.createElement('p');
             empty.className = 'muted'; empty.textContent = monthly ? 'History unavailable' : 'Forecast unavailable'; host.appendChild(empty);
             return;
@@ -77,7 +91,7 @@
         const rainfallNormalized = rainfallRoughStep / rainfallMagnitude;
         const rainfallStep = (rainfallNormalized <= 1 ? 1 : rainfallNormalized <= 2 ? 2 : rainfallNormalized <= 5 ? 5 : 10) * rainfallMagnitude;
         if (rainfall) max = Math.max(rainfallStep * 4, 1);
-        if (visibility) { min = 0; max = 5; }
+        if (visibility) { min = .5; max = 5.5; }
         if (min === max) { min -= .05; max += .05; }
         const y = value => bottom - (value - min) / (max - min) * (bottom - top);
         const x = i => left + (i + .5) * (width - left - right) / points.length;
@@ -136,7 +150,8 @@
             segment = [];
         };
         points.forEach((point, i) => {
-            if (!finite(point.value)) { flush(); return; }
+            const plotted = plotValue(point);
+            if (!finite(plotted)) { flush(); return; }
             const title = `${monthly ? localMonth(point.time, zone) : localDate(point.time, zone)}${monthly ? '' : daily ? ', daily maximum' : ', ' + localHour(point.time, zone)}: ${valueLabel(point.value)}${contextLabel(point)}`;
             let mark;
             if (tide) {
@@ -144,8 +159,8 @@
                 return;
             } else {
                 const barWidth = Math.min(daily || monthly ? 34 : 20, (width - left - right) / points.length * .65);
-                mark = el('rect', { x: x(i) - barWidth / 2, y: y(point.value), width: barWidth,
-                    height: Math.max(1, bottom - y(point.value)), rx: 3, class: 'marine-current-bar', 'aria-label': title });
+                mark = el('rect', { x: x(i) - barWidth / 2, y: y(plotted), width: barWidth,
+                    height: Math.max(1, bottom - y(plotted)), rx: 3, class: 'marine-current-bar', 'aria-label': title });
             }
             marks.push({ mark, index: i });
             mark.appendChild(el('title', {}, title)); svg.appendChild(mark);
@@ -440,5 +455,5 @@
     }
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initMarine);
     else initMarine();
-    if (typeof module !== 'undefined') module.exports = { renderChart, localDate, localMonth, localHour, hourNumber, compassHeading, windHeading };
+    if (typeof module !== 'undefined') module.exports = { visibilityPosition, renderChart, localDate, localMonth, localHour, hourNumber, compassHeading, windHeading };
 })();

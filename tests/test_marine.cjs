@@ -277,3 +277,20 @@ test('visibility retry, pending polling and stale cached results are explicit',a
     assert.equal(s.visibilityRetry.hidden,false);
     s.visibilityRetry.handlers.click();assert.equal(s.requests.length,6);
 });
+test('visibility bars preserve differences within each band and remain continuous at thresholds', () => {
+    const s=setup('false'), chart=node();
+    const {visibilityPosition, renderChart}=s.context.module.exports;
+    const values=[.055,.07,.095];
+    const points=values.map((kd490,i)=>({time:Date.UTC(2026,i,1,12)/1000,value:4,kd490,latitude:-.39,longitude:-90.28}));
+    renderChart(chart,points,{visibility:true,zone:'UTC'});
+    const bars=chart.children[1].children[0].children.filter(n=>n.tag==='rect');
+    assert.ok(Number(bars[0].attrs.height)>Number(bars[1].attrs.height));
+    assert.ok(Number(bars[1].attrs.height)>Number(bars[2].attrs.height));
+    assert.ok(bars.every(n=>n.attrs['aria-label'].includes('Good')));
+    for(const kd of [.05,.1,.2,.3]) {
+        assert.ok(Math.abs(visibilityPosition(kd-1e-9)-visibilityPosition(kd+1e-9))<1e-6);
+    }
+    const samples=[.016,.03,.05,.07,.1,.15,.2,.25,.3,.5,1,10,32].map(visibilityPosition);
+    assert.ok(samples.every((v,i)=>i===0||v<samples[i-1]));
+    assert.equal(visibilityPosition(null),null);
+});
