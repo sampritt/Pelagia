@@ -53,6 +53,13 @@ unsupported warning about boat operations or exposure. Rainfall, seasonality,
 moon phase, and week-ahead trends belong only if they add a meaningful diving
 insight; omit routine background and insignificant changes.
 
+When recent visibility measurements are supplied, you may describe the recent
+pattern qualitatively using their clarity categories, such as 'recent visibility
+has been excellent'. These are satellite clarity proxies: describe recent history,
+never predict today's visibility or infer visibility distances. Use dates and gaps
+to avoid presenting old or sparse readings as current conditions. Omit visibility
+when unavailable.
+
 Do not invent visibility, surge, entry hazards, or safe/diveable windows, imply
 that moon phase proves current strength, or guarantee safety from regional models.
 Omit unknowns and do not invent rain forecasts from historical rainfall.

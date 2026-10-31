@@ -12,7 +12,7 @@ import requests
 from flask import current_app, jsonify, session, url_for
 from .db import get_db
 from .exposure_recommendations import recommend
-from . import water_type
+from . import water_type, visibility
 
 FIELDS = ('ocean_current_velocity', 'sea_level_height_msl', 'sea_surface_temperature')
 FIELD_UNITS = dict(zip(FIELDS, ('kn', 'm', '°C')))
@@ -255,7 +255,8 @@ def normalize(payload, now, fetched):
                              wind_speed_kn=wind_speed,
                              moon_phase=moon_phase(moon[0]['value']),
                              tide=tide_phase(series[FIELDS[1]], now), timestamps=timestamps),
-                charts=dict(rainfall_monthly=payload.get('rainfall_monthly') or [],
+                charts=dict(visibility_daily=(payload.get('visibility') or {}).get('points') or [],
+                            rainfall_monthly=payload.get('rainfall_monthly') or [],
                             current_daily=daily, current_hourly=window(FIELDS[0], 24),
                             tide_hourly=window(FIELDS[1], 24),
                             wind_hourly=wind, wind_daily=wind_daily, moon_phase_daily=moon))
@@ -267,7 +268,7 @@ def request_json(url, params):
     return response.json()
 
 
-def fetch(lat, lon, now=None):
+def fetch_weather(lat, lon, now=None):
     now = time.time() if now is None else now
     key = current_app.config.get('OPEN_METEO_API_KEY') or os.environ.get('OPEN_METEO_API_KEY')
     common = dict(latitude=lat, longitude=lon, forecast_days=7, past_days=1,
@@ -300,6 +301,15 @@ def fetch(lat, lon, now=None):
     return marine_payload
 
 
+def fetch(lat, lon, now=None):
+    now = time.time() if now is None else now
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        history = pool.submit(visibility.fetch, lat, lon, now)
+        payload = fetch_weather(lat, lon, now)
+        payload['visibility'] = history.result()
+    return payload
+
+
 def load(site, now):
     coords = coordinates(site)
     if coords is None:
@@ -326,7 +336,7 @@ def load(site, now):
             VALUES (?, ?, ?, ?, ?) ON CONFLICT(site_id) DO UPDATE SET
             latitude=excluded.latitude, longitude=excluded.longitude, lease_token=excluded.lease_token,
             lease_until=excluded.lease_until, expires_at=0, payload=NULL, retry_after=0''',
-            (site['id'], lat, lon, token, now + 30))
+            (site['id'], lat, lon, token, now + 60))
         db.commit()
     except Exception:
         db.rollback()

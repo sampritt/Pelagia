@@ -13,3 +13,5 @@ pelagia/static/uploads/dives/*
 pelagia/static/uploads/profiles/*
 !pelagia/static/uploads/dives/.gitkeep
 !pelagia/static/uploads/profiles/.gitkeep
+
+.venv-copernicus/

@@ -68,7 +68,7 @@ test('missing coordinates never fetch; leaving page aborts and cancels timers', 
 test('pending response polls; deadline aborts requests', async () => {
     const s=setup();s.requests[0].resolve({status:202});await flush();
     const poll=[...s.timers.values()].find(t=>t.delay===2000);assert.ok(poll);poll.fn();assert.equal(s.requests.length,2);
-    [...s.timers.values()].find(t=>t.delay===30000).fn();assert.equal(s.requests[1].options.signal.aborted,true);
+    [...s.timers.values()].find(t=>t.delay===45000).fn();assert.equal(s.requests[1].options.signal.aborted,true);
     assert.equal(s.status.textContent,'Forecast unavailable');
 });
 test('site-local labels include 12am and handle DST hours', () => {
@@ -242,4 +242,18 @@ test('missing marine temperature or failed fetch keeps equipment advice hidden',
     assert.equal(s.equipment.hidden,true);
     const failed=setup(); failed.requests[0].reject(new Error());await flush();
     assert.equal(failed.equipment.hidden,true);
+});
+
+test('visibility uses continuous inverse attenuation with qualitative labels and missing-day gaps', () => {
+    const s=setup('false'), host=node(); host.clientWidth=320;
+    const points=[.04,.045,null,.12,.32].map((value,i)=>({value,time:Date.UTC(2026,9,i+1)/1000}));
+    s.context.module.exports.renderChart(host,points,{visibility:true,zone:'UTC'});
+    const labels=host.children[0].children.map(n=>n.textContent);
+    assert.deepEqual(labels,['Excellent','Good','Fair','Poor','Very poor']);
+    const bars=host.children[1].children[0].children.filter(n=>n.tag==='rect');
+    assert.equal(bars.length,4);
+    assert.ok(Number(bars[0].attrs.height)>Number(bars[1].attrs.height));
+    assert.ok(Number(bars[1].attrs.height)>Number(bars[2].attrs.height));
+    assert.match(bars[0].attrs['aria-label'],/0.0400/);
+    assert.notEqual(bars[0].attrs.height,bars[1].attrs.height);
 });

@@ -53,18 +53,18 @@
     }
     const decimal = value => Number(value.toFixed(2));
 
-    function renderChart(host, points, { tide = false, wind = false, rainfall = false, daily = false, zone, lengthUnit = 'm', moons = [] }) {
+    function renderChart(host, points, { tide = false, wind = false, rainfall = false, visibility = false, daily = false, zone, lengthUnit = 'm', moons = [] }) {
         points = points || [];
         host.replaceChildren();
         host.removeAttribute('data-can-scroll');
         if (!points.some(p => finite(p.value))) {
             const empty = document.createElement('p');
-            empty.className = 'muted'; empty.textContent = rainfall ? 'History unavailable' : 'Forecast unavailable'; host.appendChild(empty);
+            empty.className = 'muted'; empty.textContent = rainfall || visibility ? 'History unavailable' : 'Forecast unavailable'; host.appendChild(empty);
             return;
         }
         const left = 80, right = 22, top = 32, bottom = 168;
-        const name = rainfall ? 'Rainfall' : tide ? 'Tide level' : wind ? 'Wind speed' : 'Current strength';
-        const width = Math.max(rainfall ? 240 : daily ? 240 : tide ? 650 : 900, host.clientWidth || 550), height = 220;
+        const name = visibility ? 'Visibility' : rainfall ? 'Rainfall' : tide ? 'Tide level' : wind ? 'Wind speed' : 'Current strength';
+        const width = Math.max(visibility || rainfall ? 240 : daily ? 240 : tide ? 650 : 900, host.clientWidth || 550), height = 220;
         const values = points.map(p => p.value).filter(finite);
         let min = tide ? Math.min(...values) : 0;
         let max = tide ? Math.max(...values) : Math.max(2.5, Math.ceil(Math.max(...values) * 2) / 2);
@@ -75,36 +75,39 @@
         const rainfallMagnitude = 10 ** Math.floor(Math.log10(rainfallRoughStep || 1));
         const rainfallNormalized = rainfallRoughStep / rainfallMagnitude;
         const rainfallStep = (rainfallNormalized <= 1 ? 1 : rainfallNormalized <= 2 ? 2 : rainfallNormalized <= 5 ? 5 : 10) * rainfallMagnitude;
+        if (visibility) max = Math.max(.35, ...values);
         if (rainfall) max = Math.max(rainfallStep * 4, 1);
         if (min === max) { min -= .05; max += .05; }
-        const y = value => bottom - (value - min) / (max - min) * (bottom - top);
+        // Keep raw attenuation continuous; lower attenuation sits higher on the clarity axis.
+        const y = value => visibility ? top + value / max * (bottom - top) : bottom - (value - min) / (max - min) * (bottom - top);
+        const clarity = value => value <= .05 ? 'Excellent' : value <= .10 ? 'Good' : value <= .20 ? 'Fair' : value <= .30 ? 'Poor' : 'Very poor';
         const x = i => left + (i + .5) * (width - left - right) / points.length;
         // Keep the Y axis visible while hourly data scrolls on narrow screens.
         const axis = el('svg', { viewBox: `0 0 ${left} ${height}`, class: 'marine-y-axis', 'aria-hidden': 'true' });
         const scroll = document.createElement('div'); scroll.className = 'marine-chart-scroll';
         scroll.tabIndex = 0;
         scroll.setAttribute('role', 'region');
-        scroll.setAttribute('aria-label', rainfall ? `${name} history` : `${name} forecast; scroll for more hours`);
+        scroll.setAttribute('aria-label', rainfall || visibility ? `${name} history` : `${name} forecast; scroll for more hours`);
         const svg = el('svg', { viewBox: `0 0 ${width} ${height}`, width, height,
-            role: 'img', 'aria-label': rainfall ? `${name} history in ${zone}. Monthly totals for the past 12 complete months.` : `${name} forecast in ${zone}. ${daily ? 'Daily maximum values.' : 'Hourly values.'}${wind ? ' Arrows indicate the direction the wind is blowing, rounded to 16 compass points.' : ''}` });
+            role: 'img', 'aria-label': visibility ? 'Visibility history. Daily satellite attenuation for the past 30 UTC days; lower attenuation indicates clearer water.' : rainfall ? `${name} history in ${zone}. Monthly totals for the past 12 complete months.` : `${name} forecast in ${zone}. ${daily ? 'Daily maximum values.' : 'Hourly values.'}${wind ? ' Arrows indicate the direction the wind is blowing, rounded to 16 compass points.' : ''}` });
         const readout = document.createElement('div'); readout.className = 'sr-only';
         readout.setAttribute('role', 'status');
         const readoutDate = document.createElement('span');
         const readoutValue = document.createElement('strong'); readout.append(readoutDate, readoutValue);
         const marks = [];
         const cursor = el('line', { y1: top, y2: bottom, class: 'marine-cursor' });
-        const ticks = tide ? [{ value: min, label: 'Low' }, { value: max, label: 'High' }]
+        const ticks = visibility ? [{ value: .025, label: 'Excellent' }, { value: .075, label: 'Good' }, { value: .15, label: 'Fair' }, { value: .25, label: 'Poor' }, { value: (.30 + max) / 2, label: 'Very poor' }] : tide ? [{ value: min, label: 'Low' }, { value: max, label: 'High' }]
             : rainfall ? [0, 1, 2, 3, 4].map(i => ({ value: i * rainfallStep, label: `${Number((i * rainfallStep).toFixed(2))} mm` }))
             : wind ? [0, 1, 2, 3, 4].map(i => ({ value: i * windStep, label: `${i * windStep} kn` }))
             : [{ value: .25, label: 'Light' }, { value: .75, label: 'Moderate' }, { value: 1.5, label: 'Strong' }, { value: 2.25, label: 'Very Strong' }];
         ticks.forEach(tick => {
             axis.appendChild(el('text', { x: left - 10, y: y(tick.value) + 4, 'text-anchor': 'end' }, tick.label));
         });
-        (tide ? [min, max] : rainfall ? [rainfallStep, rainfallStep * 2, rainfallStep * 3, max] : wind ? [windStep, windStep * 2, windStep * 3, max] : [.5, 1, 2]).forEach(value => {
+        (visibility ? [.05, .10, .20, .30] : tide ? [min, max] : rainfall ? [rainfallStep, rainfallStep * 2, rainfallStep * 3, max] : wind ? [windStep, windStep * 2, windStep * 3, max] : [.5, 1, 2]).forEach(value => {
             svg.appendChild(el('line', { x1: left, x2: width - right, y1: y(value), y2: y(value), class: 'marine-guide' }));
         });
         svg.appendChild(el('line', { x1: left, x2: width - right, y1: bottom, y2: bottom, class: 'marine-baseline' }));
-        const valueLabel = value => tide
+        const valueLabel = value => visibility ? `${clarity(value)} · ${value.toFixed(4)} m⁻¹ attenuation` : tide
             ? `${(value * (lengthUnit === 'ft' ? 1 / .3048 : 1)).toFixed(2)} ${lengthUnit} above global mean sea level`
             : rainfall ? `${Number(value.toFixed(2))} mm total rainfall`
             : `${value.toFixed(2)} knots`;
@@ -134,7 +137,7 @@
         };
         points.forEach((point, i) => {
             if (!finite(point.value)) { flush(); return; }
-            const title = `${rainfall ? localMonth(point.time, zone) : localDate(point.time, zone)}${rainfall ? '' : daily ? ', daily maximum' : ', ' + localHour(point.time, zone)}: ${valueLabel(point.value)}${contextLabel(point)}`;
+            const title = `${rainfall ? localMonth(point.time, zone) : localDate(point.time, zone)}${rainfall || visibility ? '' : daily ? ', daily maximum' : ', ' + localHour(point.time, zone)}: ${valueLabel(point.value)}${contextLabel(point)}`;
             let mark;
             if (tide) {
                 segment.push(`${x(i)},${y(point.value)}`);
@@ -149,6 +152,13 @@
         });
         flush();
         points.forEach((point, i) => {
+            if (visibility) {
+                const step = width < 550 ? 7 : 5;
+                const last = i === points.length - 1;
+                if (last || (i % step === 0 && i < points.length - 1 - step / 2)) svg.appendChild(el('text', { x: i === 0 ? left + 2 : last ? width - right - 2 : x(i), y: bottom + 25, 'text-anchor': i === 0 ? 'start' : last ? 'end' : 'middle' }, new Intl.DateTimeFormat('en-US', { timeZone: 'UTC', day: 'numeric' }).format(new Date(point.time * 1000))));
+                if (i === 0 || new Date(point.time * 1000).getUTCDate() === 1) svg.appendChild(el('text', { x: i === 0 ? left + 2 : x(i), y: bottom + 45, 'text-anchor': i === 0 ? 'start' : 'middle' }, new Intl.DateTimeFormat('en-US', { timeZone: 'UTC', month: 'short' }).format(new Date(point.time * 1000))));
+                return;
+            }
             if (rainfall) {
                 if (width >= 550 || i % 2 === 0) svg.appendChild(el('text', { x: x(i), y: bottom + 25, 'text-anchor': 'middle' }, new Intl.DateTimeFormat('en-US', { timeZone: zone, month: 'short' }).format(new Date(point.time * 1000))));
                 if (i === 0 || new Intl.DateTimeFormat('en-US', { timeZone: zone, month: 'numeric' }).format(new Date(point.time * 1000)) === '1') svg.appendChild(el('text', { x: i === 0 ? left + 2 : x(i), y: bottom + 45, 'text-anchor': i === 0 ? 'start' : 'middle' }, new Intl.DateTimeFormat('en-US', { timeZone: zone, year: 'numeric' }).format(new Date(point.time * 1000))));
@@ -166,8 +176,8 @@
             selected = Math.max(0, Math.min(points.length - 1, index));
             host.dataset.selectedIndex = String(selected);
             const point = points[selected];
-            readoutDate.textContent = rainfall ? `${localMonth(point.time, zone)} · Monthly total` : `${localDate(point.time, zone)} · ${daily ? 'Daily max' : localHour(point.time, zone)}`;
-            readoutValue.textContent = finite(point.value) ? (tide
+            readoutDate.textContent = visibility ? localDate(point.time, 'UTC') : rainfall ? `${localMonth(point.time, zone)} · Monthly total` : `${localDate(point.time, zone)} · ${daily ? 'Daily max' : localHour(point.time, zone)}`;
+            readoutValue.textContent = finite(point.value) ? (visibility ? valueLabel(point.value) : tide
                 ? `${(point.value * (lengthUnit === 'ft' ? 1 / .3048 : 1)).toFixed(2)} ${lengthUnit}`
                 : rainfall ? `${Number(point.value.toFixed(2))} mm`
                 : `${decimal(point.value)} kn`) : '—';
@@ -194,12 +204,12 @@
             if (index === undefined) return;
             event.preventDefault(); select(index, true);
         });
-        scroll.setAttribute('aria-label', `${name} ${rainfall ? 'history' : 'forecast'}. Use left and right arrow keys to inspect values.`);
-        readout.title = rainfall ? 'Monthly rainfall total in millimeters' : tide ? 'Height above global mean sea level' : wind ? 'Wind speed in knots and source direction' : 'Current velocity in knots';
+        scroll.setAttribute('aria-label', `${name} ${rainfall || visibility ? 'history' : 'forecast'}. Use left and right arrow keys to inspect values.`);
+        readout.title = visibility ? 'Satellite surface clarity proxy' : rainfall ? 'Monthly rainfall total in millimeters' : tide ? 'Height above global mean sea level' : wind ? 'Wind speed in knots and source direction' : 'Current velocity in knots';
         const list = document.createElement('ul'); list.className = 'sr-only';
         points.forEach(point => {
             const item = document.createElement('li');
-            item.textContent = `${rainfall ? localMonth(point.time, zone) : localDate(point.time, zone)} ${rainfall ? 'monthly total' : daily ? 'Daily maximum' : localHour(point.time, zone)}: ${finite(point.value) ? valueLabel(point.value) : 'Unavailable'}${contextLabel(point)}`;
+            item.textContent = `${rainfall ? localMonth(point.time, zone) : localDate(point.time, zone)} ${visibility ? '' : rainfall ? 'monthly total' : daily ? 'Daily maximum' : localHour(point.time, zone)}: ${finite(point.value) ? valueLabel(point.value) : 'Unavailable'}${contextLabel(point)}`;
             list.appendChild(item);
         });
         select(selected);
@@ -229,13 +239,15 @@
         const tideChart = host.querySelector('[data-marine-chart="tide"]');
         const windChart = host.querySelector('[data-marine-chart="wind"]');
         const rainfallChart = host.querySelector('[data-marine-chart="rainfall"]');
-        const chartNodes = [currentChart, tideChart, windChart, rainfallChart].filter(Boolean);
+        const visibilityChart = host.querySelector('[data-marine-chart="visibility"]');
+        const chartNodes = [currentChart, tideChart, windChart, rainfallChart, visibilityChart].filter(Boolean);
         const buttons = [...host.querySelectorAll('[data-marine-range]')];
         const ranges = { current: 'daily', wind: 'daily' };
         let result, controller, deadline, poll, ends = [], stopped = false, generation = 0;
         const finish = () => { ends.forEach(end => end()); ends = []; };
         const clear = () => { window.clearTimeout(poll); window.clearTimeout(deadline); finish(); };
         const charts = (target) => {
+            if (!target && visibilityChart) renderChart(visibilityChart, result.charts.visibility_daily, { visibility: true, zone: 'UTC' });
             if (!target && rainfallChart) renderChart(rainfallChart, result.charts.rainfall_monthly, { rainfall: true, zone: result.timezone });
             if (!target || target === 'current') {
                 const points = result.charts[ranges.current === 'daily' ? 'current_daily' : 'current_hourly'];
@@ -265,6 +277,7 @@
                 'Tide level is only available for ocean dive sites',
                 'Wind forecast is only available for ocean dive sites',
                 'Rainfall history is only available for ocean dive sites',
+                'Visibility history is only available for ocean dive sites',
             ];
             chartNodes.forEach((node, index) => {
                 node.replaceChildren();
@@ -340,7 +353,7 @@
             const line = '<span class="skeleton skeleton-line"></span>';
             const chart = '<span class="skeleton skeleton-chart"></span>';
             ends = [...values, ...chartNodes].map(node => window.PelagiaLoading?.begin(node, 'Loading marine forecast', node.matches('[data-marine-chart]') ? chart : line) || (() => {}));
-            deadline = window.setTimeout(() => { generation++; controller.abort(); unavailable(); }, 30000);
+            deadline = window.setTimeout(() => { generation++; controller.abort(); unavailable(); }, 45000);
             requestForecast();
         }
         buttons.forEach(button => button.addEventListener('click', () => {
