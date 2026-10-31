@@ -339,9 +339,9 @@
                 }
                 values.forEach(node => {
                     if (node.dataset.marineValue === 'tide') node.textContent = current.tide || '-';
-                    if (node.dataset.marineValue === 'moon') {
-                        node.textContent = current.moon_phase || '-';
-                        node.title = 'Nearest major moon phase for today at this dive site';
+                    if (node.dataset.marineValue === 'swell') {
+                        node.textContent = current.swell || '-';
+                        node.title = 'Regional swell estimate; local surface conditions may differ';
                     }
                     if (node.dataset.marineValue === 'wind') {
                         node.textContent = finite(current.wind_speed_kn) ? `${Number(current.wind_speed_kn.toFixed(1))} kn` : '-';

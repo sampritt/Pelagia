@@ -19,11 +19,12 @@ def payload(zone='Pacific/Galapagos'):
     times = [start + i * 3600 for i in range(216)]
     marine_data = dict(timezone=zone, current=dict(time=NOW - 900, ocean_current_velocity=.5,
                 sea_level_height_msl=.2, sea_surface_temperature=28.3),
-                current_units=dict(zip(marine.FIELDS, ('kn', 'm', '°C'))),
-                hourly_units=dict(zip(marine.FIELDS, ('kn', 'm', '°C'))),
+                current_units=marine.FIELD_UNITS.copy(),
+                hourly_units=marine.FIELD_UNITS.copy(),
                 hourly=dict(time=times, ocean_current_velocity=[.4] * len(times),
                             sea_level_height_msl=[(i % 12 if i % 12 <= 6 else 12 - i % 12) / 10 for i in range(len(times))],
-                            sea_surface_temperature=[28.1] * len(times)))
+                            sea_surface_temperature=[28.1] * len(times),
+                            swell_wave_height=[.8] * len(times), swell_wave_period=[8] * len(times)))
     daily_times = [datetime.combine(datetime.fromtimestamp(NOW, ZoneInfo(zone)).date() + timedelta(days=i),
                                     datetime.min.time(), ZoneInfo(zone)).timestamp() for i in range(-1, 7)]
     marine_data['weather'] = dict(timezone=zone,
@@ -54,6 +55,13 @@ def rainfall_payload(zone='Pacific/Galapagos', now=NOW):
 
 
 class MarineRulesTest(unittest.TestCase):
+    def test_swell_categories_and_invalid_data(self):
+        for height, period, expected in [(0, 0, 'Calm'), (.249, 4, 'Calm'), (.25, 8, 'Light'),
+                (.75, 8, 'Choppy'), (1.5, 8, 'Rough'), (2.5, 8, 'Very rough'),
+                (.25, 5, 'Choppy'), (1.5, 5, 'Very rough'), (None, 8, None),
+                (.5, None, None), (.5, 0, None), (-1, 8, None)]:
+            self.assertEqual(marine.swell_conditions(height, period), expected)
+
     def test_strength_boundaries(self):
         for value, expected in [(0, 'Light'), (.4999, 'Light'), (.5, 'Moderate'), (.999, 'Moderate'),
                                 (1, 'Strong'), (1.999, 'Strong'), (2, 'Very Strong'), (5, 'Very Strong'),
@@ -103,6 +111,11 @@ class MarineRulesTest(unittest.TestCase):
         result = marine.normalize(data, NOW, NOW)
         self.assertEqual(result['current']['strength'], 'Moderate')
         self.assertEqual(result['current']['wind_speed_kn'], 12.3)
+        self.assertEqual(result['current']['swell'], 'Choppy')
+        self.assertEqual(len(result['charts']['swell_hourly']), 24)
+        self.assertEqual(result['charts']['swell_hourly'][0],
+                         {'time': NOW - 900, 'height_m': .8, 'period_s': 8, 'descriptor': 'Choppy'})
+        self.assertEqual(len(result['charts']['swell_seven_days']), 168)
         self.assertEqual([len(result['charts'][k]) for k in ('current_daily', 'current_hourly', 'tide_hourly')], [7, 24, 24])
         self.assertEqual(len(result['charts']['wind_hourly']), 24)
         self.assertEqual(result['charts']['wind_hourly'][0], {'time': NOW - 900, 'speed_kn': 12.3, 'direction_deg': 225})
@@ -243,9 +256,9 @@ class MarineEndpointTest(unittest.TestCase):
         self.assertEqual([page.data.index(title) for title in chart_titles], sorted(page.data.index(title) for title in chart_titles))
         self.assertEqual(page.data.count(b'>7 days</button>'), 2)
         self.assertEqual(page.data.count(b'>24h</button>'), 2)
-        self.assertIn(b'data-marine-value="moon"', page.data)
+        self.assertIn(b'data-marine-value="swell"', page.data)
         self.assertIn(b'data-marine-value="wind"', page.data)
-        self.assertNotIn(b'swell', page.data.lower())
+        self.assertIn(b'<small>Swell</small>', page.data)
         self.assertNotIn(b'(Regional Forecast)', page.data)
         self.assertEqual(page.data.count(b'class="marine-chart-note"'), 1)
         self.fetch.assert_not_called()
@@ -396,7 +409,7 @@ class MarineEndpointTest(unittest.TestCase):
             self.assertEqual((archive['start_date'], archive['end_date']), ('2025-10-01', '2026-09-30'))
             self.assertEqual(archive['daily'], 'rain_sum')
             params = calls['https://customer-marine-api.open-meteo.com/v1/marine']['params']
-            self.assertEqual(params['hourly'], 'ocean_current_velocity,sea_level_height_msl,sea_surface_temperature')
+            self.assertEqual(params['hourly'], 'ocean_current_velocity,sea_level_height_msl,sea_surface_temperature,swell_wave_height,swell_wave_period')
             self.assertEqual(params['current'], params['hourly'])
             self.assertIn('weather', result)
         self.upstream.start()

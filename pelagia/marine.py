@@ -14,9 +14,10 @@ from .db import get_db
 from .exposure_recommendations import recommend
 from . import water_type, visibility
 
-FIELDS = ('ocean_current_velocity', 'sea_level_height_msl', 'sea_surface_temperature')
-FIELD_UNITS = dict(zip(FIELDS, ('kn', 'm', '°C')))
-NONNEGATIVE_FIELDS = {'ocean_current_velocity'}
+FIELDS = ('ocean_current_velocity', 'sea_level_height_msl', 'sea_surface_temperature',
+          'swell_wave_height', 'swell_wave_period')
+FIELD_UNITS = dict(zip(FIELDS, ('kn', 'm', '°C', 'm', 's')))
+NONNEGATIVE_FIELDS = {'ocean_current_velocity', 'swell_wave_height', 'swell_wave_period'}
 WEATHER_FIELDS = ('wind_speed_10m', 'wind_direction_10m')
 WEATHER_UNITS = dict(zip(WEATHER_FIELDS, ('kn', '°')))
 MOON_PHASES = ('New', 'First Quarter', 'Full', 'Last Quarter')
@@ -30,6 +31,17 @@ def strength(value):
     if not number(value) or value < 0:
         return '-'
     return 'Light' if value < .5 else 'Moderate' if value < 1 else 'Strong' if value < 2 else 'Very Strong'
+
+
+def swell_conditions(height, period):
+    """Heuristic for offshore swell, not a complete local sea-state assessment."""
+    if not number(height) or not number(period) or height < 0 or period < 0 or (height > 0 and period == 0):
+        return None
+    level = sum(height >= threshold for threshold in (.25, .75, 1.5, 2.5))
+    # Closely spaced waves can feel steeper; retain calm for negligible swell.
+    if height >= .25 and period <= 5:
+        level = min(level + 1, 4)
+    return ('Calm', 'Light', 'Choppy', 'Rough', 'Very rough')[level]
 
 
 def moon_phase(value):
@@ -209,6 +221,13 @@ def normalize(payload, now, fetched):
     def window(field, count):
         lookup = {p['time']: p['value'] for p in series[field]}
         return [dict(time=hour + i * 3600, value=lookup.get(hour + i * 3600)) for i in range(count)]
+    swell = [dict(time=t, height_m=h, period_s=p, descriptor=swell_conditions(h, p))
+             for t, h, p in zip(times, payload['hourly'].get('swell_wave_height', [None] * len(times)),
+                                payload['hourly'].get('swell_wave_period', [None] * len(times)))
+             if today <= datetime.fromtimestamp(t, zone).date() < today + timedelta(days=7)]
+    swell_lookup = {p['time']: p for p in swell}
+    swell_hourly = [swell_lookup.get(hour + i * 3600, dict(time=hour + i * 3600,
+                    height_m=None, period_s=None, descriptor=None)) for i in range(24)]
     weather = payload.get('weather') or {}
     weather_hourly = weather.get('hourly') or {}
     weather_times = weather_hourly.get('time') or []
@@ -253,12 +272,15 @@ def normalize(payload, now, fetched):
                 current=dict(velocity_kn=values[FIELDS[0]], strength=strength(values[FIELDS[0]]),
                              temperature_c=values[FIELDS[2]], sea_level_m=values[FIELDS[1]],
                              wind_speed_kn=wind_speed,
+                             swell_height_m=values['swell_wave_height'], swell_period_s=values['swell_wave_period'],
+                             swell=swell_conditions(values['swell_wave_height'], values['swell_wave_period']),
                              moon_phase=moon_phase(moon[0]['value']),
                              tide=tide_phase(series[FIELDS[1]], now), timestamps=timestamps),
                 charts=dict(rainfall_monthly=payload.get('rainfall_monthly') or [],
                             current_daily=daily, current_hourly=window(FIELDS[0], 24),
                             tide_hourly=window(FIELDS[1], 24),
-                            wind_hourly=wind, wind_daily=wind_daily, moon_phase_daily=moon))
+                            wind_hourly=wind, wind_daily=wind_daily, moon_phase_daily=moon,
+                            swell_hourly=swell_hourly, swell_seven_days=swell))
 
 
 def request_json(url, params):

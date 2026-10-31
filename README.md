@@ -48,7 +48,7 @@ On first app startup, Pelagia initializes SQLite and imports reference data from
 
 ## Daily dive site reports
 
-The collapsible **Today's report** section below the dive site description generates a shared report on first expansion. It uses the server's `OPENAI_API_KEY` and `gpt-5.6-luna` Responses API, with no search tools, to produce at most two sentences from cached site metadata, description, temperature, season classification, and all retrieved marine/weather/rainfall data. The voice is a brisk, natural, lightly sporty dive-weather briefing without hype or forced slang. Personal dive history and exposure recommendations are not sent; the prompt excludes wetsuit advice from the shared report. A completed description lookup with no verified description and a missing catalog season are explicitly unknown; missing, expired, or incomplete marine data prevents generation.
+The collapsible **Today's report** section below the dive site description generates a shared report on first expansion. It uses the server's `OPENAI_API_KEY` and `gpt-5.6-luna` Responses API, with no search tools, to produce two or three sentences from cached site metadata, description, temperature, season classification, and all retrieved marine/weather/rainfall data. The voice is a brisk, natural, lightly sporty dive-weather briefing without hype or forced slang. Personal dive history and exposure recommendations are not sent; the prompt excludes wetsuit advice from the shared report. A completed description lookup with no verified description and a missing catalog season are explicitly unknown; missing, expired, or incomplete marine data prevents generation.
 
 `dive_site_reports` stores one row per site and replaces it when the date changes in the site's forecast timezone. A short atomic SQLite claim prevents concurrent calls across workers; the API call runs outside the transaction. Each site/date permits at most one upstream attempt, including failed or uncertain attempts, to avoid duplicate charges. Failure displays an unavailable state until the next local date. Missing configuration or dependencies do not consume the daily attempt. Browser requests require login and the same-origin fetch header and are never browser/PWA cached. Opening the report shows skeleton loading while dependencies finish and the report generates.
 
@@ -327,7 +327,7 @@ Before production release, run `.venv312/bin/python -m unittest tests.test_email
 
 Signed-in dive-site pages load marine conditions after the page renders through
 `GET /api/dive-sites/<id>/conditions`. The conditions box shows water temperature, tide level,
-moon phase, and wind speed. Water temperature uses the median from the latest
+swell, and wind speed. Water temperature uses the median from the latest
 logged dive day within seven days, falling back to Open-Meteo sea surface temperature
 when that day has no logged temperature. Logged temperature renders immediately and
 stays visible without a forecast. Pelagia first classifies the site's coordinates with Is On Water and
@@ -340,12 +340,19 @@ dive measurements remain unchanged. Public previews show only the gated labels.
 The server concurrently requests the marine and main weather APIs for seven local calendar
 forecast days plus yesterday, then requests the Historical Weather API for daily rain over the twelve
 complete calendar months before the current site-local month. Those daily values are aggregated into
-monthly totals in millimeters. The marine request includes hourly/current ocean velocity, sea level, and sea surface temperature;
+monthly totals in millimeters. The marine request includes hourly/current ocean velocity, sea level, sea surface temperature,
+swell height, and swell period;
 the weather request includes hourly 10 m wind speed and direction plus daily moon phase. The
 conditions response exposes 48-hour paired `wind_hourly` series, seven
 `wind_daily` maxima and `moon_phase_daily` values, and current wind speed from the current hourly sample. The conditions
-box shows wind speed to one decimal in knots, matching the wind chart, and today's nearest
-major moon phase (New, First Quarter, Full, or Last Quarter). The seven-day current chart shows
+box shows wind speed to one decimal in knots and a regional swell descriptor. The cached hourly
+swell series covers seven site-local forecast days, with a separate next-24-hours window; height
+is in meters and period in seconds. The heuristic uses height thresholds of 0.25, 0.75, 1.5,
+and 2.5 meters for Calm, Light, Choppy, Rough, and Very rough; swell at least 0.25 m with a
+period of five seconds or less moves up one category. Missing or invalid inputs have no descriptor.
+This is a regional swell estimate, not a complete assessment of local surface conditions. The daily
+report receives both values and the descriptor and discusses surface conditions when available.
+The seven-day current chart shows
 one small moon icon on the day closest to any of these four phases, including wraparound at new
 moon. Equally close days use the earlier day; missing moon data omits the icon. Hourly current bars
 have no moon icons. Current velocities are classified in **knots**: Light below 0.5, Moderate

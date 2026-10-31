@@ -19,7 +19,7 @@ function setup(coordinates = 'true', withVisibility = false) {
     visibility.querySelector = () => visibilityText;
     visibility.classList = {add() {}, remove() {}};
     const equipment=node(), exposureAdvice=node(), exposureName=node(), weightAsterisk=node(), exposureAsterisk=node(), exposureHistory=node(), exposureHistoryLink=node(), weightAdvice=node(), weightCaveat=node(), source=node();
-    const host = node(), status = node(), retry = node(), charts = [node(), node(), node(), node()], values = ['temperature', 'tide', 'moon', 'wind'].map(v => { const n = node(); n.dataset.marineValue = v; return n; });
+    const host = node(), status = node(), retry = node(), charts = [node(), node(), node(), node()], values = ['temperature', 'tide', 'swell', 'wind'].map(v => { const n = node(); n.dataset.marineValue = v; return n; });
     charts.forEach(n => { n.dataset.chart = true; });
     const buttons = ['daily', 'hourly', 'daily', 'hourly'].map((v, i) => { const n = node(); n.dataset.marineRange = v; if (i > 1) n.dataset.marineTarget = 'wind'; return n; });
     host.dataset = {coordinates, url: '/api/dive-sites/1/conditions', temperatureUnit: 'f', lengthUnit: 'ft'};
@@ -36,7 +36,7 @@ function setup(coordinates = 'true', withVisibility = false) {
 function data() {
     const points = Array.from({length: 48}, (_, i) => ({time:1792940400 + i * 3600, value: .5}));
     return {status:'complete', timezone:'Pacific/Galapagos', fetched_at:1792940400,
-        current:{strength:'Moderate', temperature_c:28.3, tide:'Rising', velocity_kn:.5, wind_speed_kn:12.3, moon_phase:'Full', timestamps:{ocean_current_velocity:1792940400}},
+        current:{strength:'Moderate', temperature_c:28.3, tide:'Rising', velocity_kn:.5, wind_speed_kn:12.3, moon_phase:'Full', swell:'Choppy', timestamps:{ocean_current_velocity:1792940400}},
         charts:{current_daily:points.slice(0,7), current_hourly:points, tide_hourly:points.slice(0,24),
             rainfall_monthly:Array.from({length:12},(_,i)=>({time:Date.UTC(2025,9+i,1,12)/1000,value:40+i*5})),
             moon_phase_daily:[{time:points[0].time,phase:'Full'}],
@@ -80,14 +80,14 @@ test('site-local labels include 12am and handle DST hours', () => {
     assert.equal(api.localHour(Date.parse('2026-10-25T06:00:00Z')/1000,'Pacific/Galapagos'),'12am');
     assert.equal(api.hourNumber(Date.parse('2026-11-01T06:00:00Z')/1000,'America/New_York'),1);
 });
-test('moon and wind fields render knots for both unit preferences, including zero and missing data', async () => {
+test('swell and wind fields render knots for both unit preferences, including zero and missing data', async () => {
     const imperial=setup();imperial.requests[0].resolve({status:200,ok:true,json:async()=>data()});await flush();
-    assert.equal(imperial.values[2].textContent,'Full');assert.equal(imperial.values[3].textContent,'12.3 kn');
+    assert.equal(imperial.values[2].textContent,'Choppy');assert.equal(imperial.values[3].textContent,'12.3 kn');
     const metric=setup();metric.host.dataset.lengthUnit='m';
-    const d=data();d.current.wind_speed_kn=8.76;d.current.moon_phase='Last Quarter';
+    const d=data();d.current.wind_speed_kn=8.76;d.current.swell='Rough';
     metric.requests[0].resolve({status:200,ok:true,json:async()=>d});await flush();
-    assert.equal(metric.values[3].textContent,'8.8 kn');assert.equal(metric.values[2].textContent,'Last Quarter');
-    const zero=setup();zero.requests[0].resolve({status:200,ok:true,json:async()=>({...data(),current:{...data().current,wind_speed_kn:0,moon_phase:null}})});await flush();
+    assert.equal(metric.values[3].textContent,'8.8 kn');assert.equal(metric.values[2].textContent,'Rough');
+    const zero=setup();zero.requests[0].resolve({status:200,ok:true,json:async()=>({...data(),current:{...data().current,wind_speed_kn:0,swell:null}})});await flush();
     assert.equal(zero.values[3].textContent,'0 kn');assert.equal(zero.values[2].textContent,'-');
     const missing=setup();missing.requests[0].resolve({status:200,ok:true,json:async()=>({...data(),current:{...data().current,wind_speed_kn:null}})});await flush();
     assert.equal(missing.values[3].textContent,'-');

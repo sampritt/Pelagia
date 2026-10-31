@@ -75,6 +75,9 @@ class SiteReportTest(unittest.TestCase):
             self.assertEqual(data['retrieved_data'], payload())
             self.assertIsNone(data['visibility'])
             self.assertEqual(data['conditions']['current']['moon_phase'], 'Full')
+            self.assertEqual(data['conditions']['charts']['swell_hourly'][0]['descriptor'], 'Choppy')
+            self.assertEqual(data['conditions']['charts']['swell_seven_days'][0]['period_s'], 8)
+            self.assertIn('comment on today\'s surface conditions', reports.INSTRUCTIONS)
             self.assertIn('season', data)
             self.assertNotIn('user_id', data)
             self.assertNotIn('weight', data)
@@ -224,7 +227,10 @@ class SiteReportTest(unittest.TestCase):
             self.assertEqual(post.call_args.kwargs['headers']['Authorization'], 'Bearer test-secret')
             response.close.assert_called_once()
         with self.app.app_context():
-            for text in ('First sentence. Second sentence. Third sentence.', 'First. second. third.',
+            response.json.return_value['output'][0]['content'][0]['text'] = 'First sentence. Second sentence. Third sentence.'
+            with patch.object(reports.requests, 'post', return_value=response):
+                self.assertEqual(reports.generate({}), 'First sentence. Second sentence. Third sentence.')
+            for text in ('First sentence.', 'First. Second. Third. Fourth.',
                          ' '.join(['word'] * 101), '', 'First.\nSecond.'):
                 response.json.return_value['output'][0]['content'][0]['text'] = text
                 with patch.object(reports.requests, 'post', return_value=response), self.assertRaises(ValueError):
