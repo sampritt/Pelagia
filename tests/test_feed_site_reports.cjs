@@ -17,7 +17,7 @@ function node() {
 }
 
 function card(id) {
-    const reportBody = node(), reportText = node(), swell = node(), wind = node(), visibility = node();
+    const reportBody = node(), reportText = node(), swell = node(), wind = node(), visibility = node(), swellDetail = node(), windDetail = node();
     const item = node();
     item.dataset = {
         reportState: 'loading',
@@ -32,8 +32,10 @@ function card(id) {
         '[data-followed-swell]': swell,
         '[data-followed-wind]': wind,
         '[data-followed-visibility]': visibility,
+        '[data-followed-swell-detail]': swellDetail,
+        '[data-followed-wind-detail]': windDetail,
     })[selector];
-    return {item, reportBody, reportText, swell, wind, visibility};
+    return {item, reportBody, reportText, swell, wind, visibility, swellDetail, windDetail};
 }
 
 const response = (status, data) => ({status, ok: status >= 200 && status < 300, json: async () => data});
@@ -83,11 +85,13 @@ test('every followed card loads its cached report preview', async () => {
     for (const [index, card] of cards.entries()) {
         assert.match(card.reportText.textContent, new RegExp(index ? 'two' : 'one'));
         assert.equal(card.item.dataset.reportState, 'ready');
-        assert.equal(card.swell.textContent, '0.7m @ 10s');
+        assert.equal(card.swell.textContent, 'Choppy');
+        assert.equal(card.swellDetail.textContent, '0.7 m · 10 s');
+        assert.equal(card.windDetail.textContent, '12.3 kn');
         assert.equal(card.swell.dataset.grade, 'yellow');
         assert.equal(card.wind.dataset.grade, 'yellow');
         assert.equal(card.visibility.dataset.grade, 'green');
-        assert.equal(card.wind.textContent, '12.3 kn');
+        assert.equal(card.wind.textContent, 'Moderate');
         assert.equal(card.visibility.textContent, 'Excellent');
     }
     assert.equal(calls.length, 6);
@@ -108,7 +112,8 @@ test('feet, descriptor colors, and wind boundaries are normalized', async () => 
     await flush();
     const grades = ['green', 'yellow', 'orange', 'red'];
     cards.forEach((card, i) => {
-        assert.equal(card.swell.textContent, '2ft @ 10s');
+        assert.equal(card.swell.textContent, swell[i]);
+        assert.equal(card.swellDetail.textContent, '2 ft · 10 s');
         assert.equal(card.swell.dataset.grade, grades[i]);
         assert.equal(card.wind.dataset.grade, grades[i]);
         assert.equal(card.visibility.dataset.grade, grades[i]);
@@ -125,7 +130,8 @@ test('missing values and visibility failures leave available conditions intact',
     });
     await flush();
     assert.equal(followed.swell.textContent, '—');
-    assert.equal(followed.wind.textContent, '0 kn');
+    assert.equal(followed.wind.textContent, 'Light');
+    assert.equal(followed.windDetail.textContent, '0 kn');
     assert.equal(followed.visibility.textContent, '');
     assert.equal(followed.item.dataset.conditionsState, 'ready');
 });

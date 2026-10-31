@@ -73,12 +73,16 @@
                 const feet = card.dataset.lengthUnit === 'ft';
                 const height = validSwell ? (feet ? Math.round(current.swell_height_m * 3.28084) : Number(current.swell_height_m.toFixed(1))) : null;
                 const period = validSwell ? Number(current.swell_period_s.toFixed(1)) : null;
-                const swell = validSwell ? `${height}${feet ? 'ft' : 'm'} @ ${period}s` : '—';
                 const swellDescriptor = typeof current.swell === 'string' ? current.swell : '';
-                setCondition(card, '[data-followed-swell]', swell, validSwell ? swellGrades[swellDescriptor.toLowerCase()] : null, swellDescriptor);
+                const swell = validSwell ? swellDescriptor || `${height} ${feet ? 'ft' : 'm'}` : '—';
+                const swellDetail = validSwell ? `${height} ${feet ? 'ft' : 'm'} · ${period} s` : 'Height · period';
+                card.querySelector('[data-followed-swell-detail]').textContent = swellDetail;
+                setCondition(card, '[data-followed-swell]', swell, validSwell ? swellGrades[swellDescriptor.toLowerCase()] : null, validSwell ? `${height} ${feet ? 'feet' : 'meters'}, ${period} second period` : '');
                 const validWind = finiteNonnegative(current.wind_speed_kn);
                 const [windGrade, windLabel] = validWind ? windDescriptor(current.wind_speed_kn) : [];
-                setCondition(card, '[data-followed-wind]', validWind ? `${Number(current.wind_speed_kn.toFixed(1))} kn` : '—', windGrade, windLabel);
+                const windDetail = validWind ? `${Number(current.wind_speed_kn.toFixed(1))} kn` : 'Speed in knots';
+                card.querySelector('[data-followed-wind-detail]').textContent = windDetail;
+                setCondition(card, '[data-followed-wind]', windLabel || '—', windGrade, validWind ? windDetail : '');
                 if (conditions.status === 'complete') {
                     const visibility = await warmDependency(card.dataset.visibilityUrl, 'GET', controller, deadline);
                     if (stopped || loadGeneration !== generation) return;
