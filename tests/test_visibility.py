@@ -14,7 +14,7 @@ NOW = datetime(2026, 10, 31, tzinfo=timezone.utc).timestamp()
 
 class VisibilityTest(unittest.TestCase):
     def test_inclusive_thresholds(self):
-        for value, label in ((.04, 'excellent'), (.040001, 'very good'), (.07, 'very good'),
+        for value, label in ((.04, 'excellent'), (.040001, 'good'), (.07, 'good'),
                              (.070001, 'good'), (.095, 'good'), (.095001, 'fair'),
                              (.19, 'fair'), (.190001, 'poor'), (.29, 'poor'), (.290001, 'very poor')):
             self.assertEqual(visibility.clarity(value), label)
@@ -36,7 +36,7 @@ class VisibilityTest(unittest.TestCase):
             result=visibility.collect(0,0,NOW)
         self.assertEqual(result['date'],'2026-10-29')
         self.assertEqual(result['value'],.05)
-        self.assertEqual(result['clarity'],'very good')
+        self.assertEqual(result['clarity'],'good')
         self.assertEqual(result['dataset_id'],visibility.DATASETS[0])
 
     def test_no_data_when_measurements_are_too_old(self):
@@ -55,17 +55,26 @@ class VisibilityTest(unittest.TestCase):
             app,_,_=helper.make_app(Path(tmp))
             with app.app_context():
                 db=database.get_db()
-                db.execute('INSERT INTO marine_forecast_cache (site_id,latitude,longitude,payload,fetched_at,expires_at) VALUES (1,54.1,-132.9,?,?,?)',(json.dumps(payload()),T,T+900))
+                old_marine=payload(); old_marine['visibility']={'date':'2026-10-24','value':.05,'clarity':'very good'}
+                db.execute('INSERT INTO marine_forecast_cache (site_id,latitude,longitude,payload,fetched_at,expires_at) VALUES (1,54.1,-132.9,?,?,?)',(json.dumps(old_marine),T,T+900))
                 db.execute("INSERT INTO dive_site_descriptions (dive_site_id,description,model) VALUES (1,'Rocky reef','test')")
                 db.commit();site=db.execute('SELECT * FROM dive_sites WHERE id=1').fetchone()
                 self.assertIsNone(site_reports.report_input(site,T))
-                with patch('pelagia.visibility.fetch',return_value={'status':'complete','date':'2026-10-24','value':.05,'clarity':'very good'}) as fetch:
+                with patch('pelagia.visibility.fetch',return_value={'status':'complete','date':'2026-10-24','value':.05,'clarity':'good'}) as fetch:
                     with patch('time.time',return_value=T):
                         result,status=visibility.load(site,T,'Pacific/Galapagos')
                         self.assertEqual(status,200)
                         self.assertEqual(visibility.load(site,T+60,'Pacific/Galapagos')[0],result)
                         self.assertEqual(fetch.call_count,1)
-                        self.assertEqual(site_reports.report_input(site,T)['retrieved_data']['visibility'],result)
+                        stale=dict(result, clarity='very good')
+                        db.execute('UPDATE site_visibility_cache SET payload=?',(json.dumps(stale),));db.commit()
+                        self.assertEqual(visibility.read_cache(site,T,'Pacific/Galapagos')['clarity'],'good')
+                        report=site_reports.report_input(site,T)
+                        self.assertEqual(report['visibility'],'good')
+                        self.assertNotIn('visibility',report['retrieved_data'])
+                        serialized=json.dumps(report)
+                        self.assertNotIn('2026-10-24',serialized)
+                        self.assertNotIn('0.05',serialized)
                         visibility.load(site,T+86400,'Pacific/Galapagos')
                         self.assertEqual(fetch.call_count,2)
 

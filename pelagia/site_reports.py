@@ -57,9 +57,9 @@ When recent visibility measurements are supplied, you may describe the recent
 pattern qualitatively using their clarity categories, such as 'recent visibility
 has been excellent'. Use the word 'visibility', never 'satellite clarity' or other
 measurement jargon in the report. Describe recent history,
-never predict today's visibility or infer visibility distances. Use dates and gaps
-to avoid presenting old or sparse readings as current conditions. Omit visibility
-when unavailable.
+never predict today's visibility or infer visibility distances. The supplied rating
+is based on one recent reading within the past week, so do not infer a trend or
+claim conditions were consistent throughout the week. Omit visibility when unavailable.
 
 Do not invent visibility, surge, entry hazards, or safe/diveable windows, imply
 that moon phase proves current strength, or guarantee safety from regional models.
@@ -101,7 +101,9 @@ def report_input(site, now):
     history = marine.visibility.read_cache(site, now, raw['timezone'])
     if history is None:
         return None
-    raw['visibility'] = history
+    # Older marine cache payloads may contain the retired visibility history.
+    raw.pop('visibility', None)
+    visibility_rating = history.get('clarity') if history.get('status') == 'complete' else None
     conditions = marine.normalize(raw, now, row['fetched_at'])
     # Successful upstream retrieval can still contain all-null fields (e.g. no
     # coastal coverage). Do not spend a daily report on missing required data.
@@ -128,7 +130,7 @@ def report_input(site, now):
                 season=seasons.for_site(site['master_site_id'], today=local_now.date()),
                 units=dict(temperature='C', velocity='kn', sea_level='m relative to mean sea level',
                            rain='mm', time='Unix seconds; use timezone'),
-                conditions=conditions, retrieved_data=raw)
+                visibility=visibility_rating, conditions=conditions, retrieved_data=raw)
 
 
 def generate(data):

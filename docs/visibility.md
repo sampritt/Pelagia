@@ -15,14 +15,13 @@ The toolbox runs in a bounded child process with a 24-second overall timeout. Cr
 | Label | KD490 (m⁻¹) |
 | --- | --- |
 | Excellent | 0 < KD490 ≤ 0.04 |
-| Very good | 0.04 < KD490 ≤ 0.07 |
-| Good | 0.07 < KD490 ≤ 0.095 |
+| Good | 0.04 < KD490 ≤ 0.095 |
 | Fair | 0.095 < KD490 ≤ 0.19 |
 | Poor | 0.19 < KD490 ≤ 0.29 |
 | Very poor | KD490 > 0.29 |
 
-These are fixed Pelagia product thresholds, not official Copernicus diver-visibility classes. The [Copernicus Ocean Colour manual](https://documentation.marine.copernicus.eu/PUM/CMEMS-OC-PUM.pdf) defines KD490 as diffuse attenuation of downwelling irradiance, in inverse metres. The [quality document](https://documentation.marine.copernicus.eu/QUID/CMEMS-OC-QUID-009-101to104-111-113-116-118.pdf) describes the retrieval and its validation. Neither supplies a validated six-category diver visibility scale.
+These are fixed Pelagia product thresholds, not official Copernicus diver-visibility classes. The [Copernicus Ocean Colour manual](https://documentation.marine.copernicus.eu/PUM/CMEMS-OC-PUM.pdf) defines KD490 as diffuse attenuation of downwelling irradiance, in inverse metres. The [quality document](https://documentation.marine.copernicus.eu/QUID/CMEMS-OC-QUID-009-101to104-111-113-116-118.pdf) describes the retrieval and its validation. Neither supplies a validated five-category diver visibility scale.
 
-The cutoffs span substantially different optical conditions: their reciprocal attenuation lengths are 25, about 14.3, 10.5, 5.3, and 3.4 metres. This supplies a physically interpretable progression without tuning labels to one site's monthly distribution. These lengths describe vertical irradiance decay, not horizontal viewing distances. Categories should eventually be calibrated against paired dive observations. Missing/invalid values have no category.
+The cutoffs span substantially different optical conditions: their reciprocal attenuation lengths are 25, about 10.5, 5.3, and 3.4 metres. This supplies a physically interpretable progression without tuning labels to one site's monthly distribution. These lengths describe vertical irradiance decay, not horizontal viewing distances. Categories should eventually be calibrated against paired dive observations. Missing/invalid values have no category.
 
-The report receives the most recent measurement and uses its category only for qualitative recent-visibility commentary.
+The report receives only the qualitative rating; the attenuation value, sampling date, and source metadata are excluded from its input.

@@ -16,7 +16,7 @@ DATASETS = ('cmems_obs-oc_glo_bgc-transp_my_l3-multi-4km_P1D',
 def clarity(value):
     if value is None or not math.isfinite(value) or value <= 0:
         return None
-    for upper, label in ((.04, 'excellent'), (.07, 'very good'), (.095, 'good'), (.19, 'fair'), (.29, 'poor')):
+    for upper, label in ((.04, 'excellent'), (.095, 'good'), (.19, 'fair'), (.29, 'poor')):
         if value <= upper:
             return label
     return 'very poor'
@@ -126,6 +126,9 @@ def read_cache(site, now, zone):
             observed = datetime.strptime(payload['date'], '%Y-%m-%d').date()
             today_utc = datetime.fromtimestamp(now, timezone.utc).date()
             if not today_utc - timedelta(days=6) <= observed <= today_utc:
+                return dict(status='no_data')
+            payload['clarity'] = clarity(payload.get('value'))
+            if payload['clarity'] is None:
                 return dict(status='no_data')
         except (KeyError, TypeError, ValueError):
             return dict(status='no_data')
