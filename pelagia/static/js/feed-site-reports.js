@@ -83,7 +83,7 @@
                     const visibility = await warmDependency(card.dataset.visibilityUrl, 'GET', controller, deadline);
                     if (stopped || loadGeneration !== generation) return;
                     const clarity = visibility.status === 'complete' && typeof visibility.clarity === 'string' ? visibility.clarity : '';
-                    setCondition(card, '[data-followed-visibility]', clarity || '—', visibilityGrades[clarity.toLowerCase()]);
+                    setCondition(card, '[data-followed-visibility]', clarity ? clarity.charAt(0).toUpperCase() + clarity.slice(1) : '—', visibilityGrades[clarity.toLowerCase()]);
                 }
             } catch (_error) {
                 // Keep unavailable values as dashes while preserving any conditions already loaded.

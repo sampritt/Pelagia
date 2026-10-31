@@ -6082,6 +6082,7 @@ img.is-media-loading {
 .followed-condition { display: flex; align-items: center; gap: 5px; min-width: 0; }
 .followed-condition:nth-child(2) { justify-content: center; }
 .followed-condition:last-child { justify-content: flex-end; }
+.followed-condition > .action-icon { width: 16px; height: 16px; color: var(--muted-strong); }
 .followed-condition > span:last-child { overflow-wrap: anywhere; }
 .followed-condition [data-grade="green"] { color: #19704c; }
 .followed-condition [data-grade="yellow"] { color: #806000; }

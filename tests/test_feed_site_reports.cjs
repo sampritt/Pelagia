@@ -88,7 +88,7 @@ test('every followed card loads its cached report preview', async () => {
         assert.equal(card.wind.dataset.grade, 'yellow');
         assert.equal(card.visibility.dataset.grade, 'green');
         assert.equal(card.wind.textContent, '12.3 kn');
-        assert.equal(card.visibility.textContent, 'excellent');
+        assert.equal(card.visibility.textContent, 'Excellent');
     }
     assert.equal(calls.length, 6);
 });
