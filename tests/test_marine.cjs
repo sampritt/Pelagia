@@ -260,14 +260,3 @@ test('visibility renders smooth filled continuous curves without points and inte
     assert.ok(Math.abs(firstY-(32+.04/.35*136))<.0001);
     assert.ok(fills.every(n=>n.attrs.d.endsWith(' Z')));
 });
-test('marine conditions finish while the independent visibility request is still pending',async()=>{
-    const s=setup(), host=node();host.dataset.url='/api/dive-sites/1/visibility';
-    s.context.module.exports.initVisibility(host);
-    assert.equal(s.requests.length,2);
-    s.requests[0].resolve({status:200,ok:true,json:async()=>data()});await flush();
-    assert.equal(s.values[0].textContent,'83°F');
-    assert.equal(s.ended(),8);
-    s.requests[1].resolve({status:200,ok:true,json:async()=>({status:'complete',points:[{time:1792940400,value:.04},{time:1793026800,value:.05}]})});await flush();
-    assert.equal(s.ended(),9);
-    assert.ok(host.children[1].children[0].children.some(n=>n.tag==='path'));
-});

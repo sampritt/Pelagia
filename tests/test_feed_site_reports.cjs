@@ -98,7 +98,7 @@ test('a cold feed warms description and conditions caches before requesting the 
     assert.equal(reportCalls, 2);
     assert.deepEqual(calls.map(call => call.url), [
         '/api/dive-sites/7/report', '/api/dive-sites/7/description',
-        '/api/dive-sites/7/conditions', '/api/dive-sites/7/visibility', '/api/dive-sites/7/report',
+        '/api/dive-sites/7/conditions', '/api/dive-sites/7/report',
     ]);
     assert.equal(calls[0].options.method, 'POST');
     assert.equal(calls[1].options.method, 'POST');

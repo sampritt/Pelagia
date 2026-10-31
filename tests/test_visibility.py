@@ -67,41 +67,17 @@ class VisibilityTest(unittest.TestCase):
         from pelagia import db as database, site_reports
         data=payload()
         points=[{'time': FIXTURE_NOW-86400, 'value': .048765, 'clarity':'excellent', 'distance_km':1.5}]
-        history={'points':points, 'status':'complete'}
+        data['visibility']={'points':points, 'status':'complete'}
+        normalized=marine.normalize(data,FIXTURE_NOW,FIXTURE_NOW)
+        self.assertEqual(normalized['charts']['visibility_daily'],points)
         with tempfile.TemporaryDirectory() as tmp:
             app,_,_=fixtures.ReferenceAutocompleteTest().make_app(Path(tmp))
             with app.app_context():
                 db=database.get_db()
                 db.execute('INSERT INTO marine_forecast_cache (site_id, latitude, longitude, payload, fetched_at, expires_at) VALUES (1,54.1,-132.9,?,?,?)',(json.dumps(data),FIXTURE_NOW,FIXTURE_NOW+900))
-                db.execute('INSERT INTO visibility_cache (site_id, latitude, longitude, payload, fetched_at, expires_at) VALUES (1,54.1,-132.9,?,?,?)',(json.dumps(history),FIXTURE_NOW,FIXTURE_NOW+900))
                 db.execute("INSERT INTO dive_site_descriptions (dive_site_id, description, model) VALUES (1, 'Rocky reef', 'test')")
                 db.commit()
                 site=db.execute('SELECT * FROM dive_sites WHERE id=1').fetchone()
                 inputs=site_reports.report_input(site,FIXTURE_NOW)
                 self.assertEqual(inputs['conditions']['charts']['visibility_daily'],points)
                 self.assertEqual(inputs['retrieved_data']['visibility']['points'],points)
-
-    def test_separate_endpoint_cache_lease_and_weather_independence(self):
-        import tempfile,time
-        from pathlib import Path
-        import test_reference_autocomplete as fixtures
-        from pelagia import db as database
-        helper=fixtures.ReferenceAutocompleteTest()
-        with tempfile.TemporaryDirectory() as tmp:
-            app,_,_=helper.make_app(Path(tmp));client=app.test_client();helper.signup(client)
-            data={'status':'complete','points':[{'time':NOW,'value':.04}]}
-            with patch('pelagia.marine.water_type.classify_site',return_value={'feature':'OCEAN','water_type':'salt'}), patch('pelagia.visibility.fetch',return_value=data) as fetch, patch('pelagia.marine.fetch') as weather:
-                result=client.get('/api/dive-sites/1/visibility')
-                self.assertEqual(result.status_code,200)
-                self.assertEqual(result.get_json()['points'],data['points'])
-                self.assertEqual(result.headers['Cache-Control'],'private, no-store')
-                self.assertEqual(client.get('/api/dive-sites/1/visibility').get_json(),result.get_json())
-                fetch.assert_called_once();weather.assert_not_called()
-                with app.app_context():
-                    db=database.get_db()
-                    row=db.execute('SELECT * FROM visibility_cache').fetchone()
-                    self.assertLessEqual(row['expires_at']-row['fetched_at'],900)
-                    self.assertIsNone(database.get_db().execute('SELECT * FROM marine_forecast_cache').fetchone())
-                    db.execute('UPDATE visibility_cache SET expires_at=0,lease_until=?',(time.time()+30,));db.commit()
-                self.assertEqual(client.get('/api/dive-sites/1/visibility').status_code,202)
-                fetch.assert_called_once()

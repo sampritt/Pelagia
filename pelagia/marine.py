@@ -255,7 +255,8 @@ def normalize(payload, now, fetched):
                              wind_speed_kn=wind_speed,
                              moon_phase=moon_phase(moon[0]['value']),
                              tide=tide_phase(series[FIELDS[1]], now), timestamps=timestamps),
-                charts=dict(rainfall_monthly=payload.get('rainfall_monthly') or [],
+                charts=dict(visibility_daily=(payload.get('visibility') or {}).get('points') or [],
+                            rainfall_monthly=payload.get('rainfall_monthly') or [],
                             current_daily=daily, current_hourly=window(FIELDS[0], 24),
                             tide_hourly=window(FIELDS[1], 24),
                             wind_hourly=wind, wind_daily=wind_daily, moon_phase_daily=moon))
@@ -301,7 +302,12 @@ def fetch_weather(lat, lon, now=None):
 
 
 def fetch(lat, lon, now=None):
-    return fetch_weather(lat, lon, now)
+    now = time.time() if now is None else now
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        history = pool.submit(visibility.fetch, lat, lon, now)
+        payload = fetch_weather(lat, lon, now)
+        payload['visibility'] = history.result()
+    return payload
 
 
 def load(site, now):
@@ -356,7 +362,9 @@ def load(site, now):
 
 
 def init_app(app, login_required):
-    def respond(site_id, visibility_only=False):
+    @app.get('/api/dive-sites/<int:site_id>/conditions')
+    @login_required
+    def api_site_conditions(site_id):
         site = get_db().execute('SELECT * FROM dive_sites WHERE id=?', (site_id,)).fetchone()
         if site is None:
             result, status = dict(status='unavailable'), 404
@@ -374,10 +382,10 @@ def init_app(app, login_required):
                 result, status = dict(status='unavailable', reason='classification'), 503
             else:
                 if classification['feature'] == 'OCEAN':
-                    result, status = (visibility.load if visibility_only else load)(site, time.time())
+                    result, status = load(site, time.time())
                 else:
                     result, status = dict(status='not_ocean', feature=classification['feature']), 200
-        if not visibility_only and status == 200 and result.get('status') == 'complete':
+        if status == 200 and result.get('status') == 'complete':
             from . import dive_site_recent_conditions
             logged_temperature = dive_site_recent_conditions(site_id)['water_temp_c']
             if logged_temperature is not None:
@@ -394,13 +402,3 @@ def init_app(app, login_required):
         if status in (202, 503):
             response.headers['Retry-After'] = '2' if status == 202 else '60'
         return response
-
-    @app.get('/api/dive-sites/<int:site_id>/conditions')
-    @login_required
-    def api_site_conditions(site_id):
-        return respond(site_id)
-
-    @app.get('/api/dive-sites/<int:site_id>/visibility')
-    @login_required
-    def api_site_visibility(site_id):
-        return respond(site_id, visibility_only=True)

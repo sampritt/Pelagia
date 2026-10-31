@@ -9,7 +9,7 @@ from zoneinfo import ZoneInfo
 import requests
 from flask import current_app, jsonify, request
 
-from . import marine, seasons, site_descriptions, visibility
+from . import marine, seasons, site_descriptions
 from .db import get_db
 
 MODEL = 'gpt-5.6-luna'
@@ -97,13 +97,8 @@ def report_input(site, now):
     if (description is None or row is None or not row['payload'] or row['expires_at'] <= now
             or marine.coordinates(site) != (row['latitude'], row['longitude'])):
         return None
-    history = visibility.read_cache(site, now)
-    if history is None:
-        return None  # Wait until the separate visibility request has finished, including no-data results.
     raw = json.loads(row['payload'])
-    raw['visibility'] = history
     conditions = marine.normalize(raw, now, row['fetched_at'])
-    conditions['charts']['visibility_daily'] = history.get('points') or []
     # Successful upstream retrieval can still contain all-null fields (e.g. no
     # coastal coverage). Do not spend a daily report on missing required data.
     current, charts = conditions['current'], conditions['charts']

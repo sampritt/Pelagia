@@ -245,39 +245,6 @@
         edge();
     }
 
-    function initVisibility(host) {
-        if (!host) return;
-        let controller, timer, deadline, end = () => {}, result, loadedAt = 0, stopped = false, active = false, ticket = 0;
-        const finish = () => { end(); window.clearTimeout(timer); window.clearTimeout(deadline); active = false; };
-        const unavailable = () => { host.replaceChildren(); const p = document.createElement('p'); p.className = 'muted'; p.textContent = 'History unavailable'; host.appendChild(p); };
-        const draw = () => renderChart(host, result.points, { visibility: true, zone: 'UTC' });
-        function load() {
-            if (active || stopped) return;
-            const generation = ++ticket;
-            active = true; controller = new AbortController();
-            end = window.PelagiaLoading?.begin(host, 'Loading visibility', '<span class="skeleton skeleton-chart"></span>') || (() => {});
-            deadline = window.setTimeout(() => { ticket++; controller.abort(); finish(); unavailable(); }, 35000);
-            async function request() {
-                try {
-                    const response = await fetch(host.dataset.url, { credentials: 'same-origin', cache: 'no-store', headers: { 'X-Requested-With': 'fetch' }, signal: controller.signal });
-                    if (stopped || generation !== ticket) return;
-                    if (response.status === 202) { timer = window.setTimeout(request, 2000); return; }
-                    if (!response.ok) throw new Error('Unavailable');
-                    const data = await response.json();
-                    if (stopped || generation !== ticket) return;
-                    result = data; loadedAt = finite(data.fetched_at) ? data.fetched_at * 1000 : Date.now(); finish(); draw();
-                } catch (_error) { if (!stopped && generation === ticket) { finish(); unavailable(); } }
-            }
-            request();
-        }
-        window.addEventListener('pelagia:report-refresh', () => { if (!active && Date.now() >= Math.min(loadedAt + 840000, finite(result?.expires_at) ? result.expires_at * 1000 : Infinity)) load(); });
-        let width = host.clientWidth;
-        window.addEventListener('resize', () => { if (host.clientWidth !== width) { width = host.clientWidth; if (result && !active && !stopped) draw(); } });
-        window.addEventListener('pagehide', () => { stopped = true; ticket++; controller?.abort(); finish(); });
-        window.addEventListener('pageshow', event => { if (event.persisted) { stopped = false; load(); } });
-        load();
-    }
-
     function initMarine() {
         const host = document.querySelector('[data-marine-forecast]');
         if (!host) return;
@@ -299,14 +266,14 @@
         const windChart = host.querySelector('[data-marine-chart="wind"]');
         const rainfallChart = host.querySelector('[data-marine-chart="rainfall"]');
         const visibilityChart = host.querySelector('[data-marine-chart="visibility"]');
-        initVisibility(visibilityChart);
-        const chartNodes = [currentChart, tideChart, windChart, rainfallChart].filter(Boolean);
+        const chartNodes = [currentChart, tideChart, windChart, rainfallChart, visibilityChart].filter(Boolean);
         const buttons = [...host.querySelectorAll('[data-marine-range]')];
         const ranges = { current: 'daily', wind: 'daily' };
         let result, controller, deadline, poll, ends = [], stopped = false, generation = 0;
         const finish = () => { ends.forEach(end => end()); ends = []; };
         const clear = () => { window.clearTimeout(poll); window.clearTimeout(deadline); finish(); };
         const charts = (target) => {
+            if (!target && visibilityChart) renderChart(visibilityChart, result.charts.visibility_daily, { visibility: true, zone: 'UTC' });
             if (!target && rainfallChart) renderChart(rainfallChart, result.charts.rainfall_monthly, { rainfall: true, zone: result.timezone });
             if (!target || target === 'current') {
                 const points = result.charts[ranges.current === 'daily' ? 'current_daily' : 'current_hourly'];
@@ -336,6 +303,7 @@
                 'Tide level is only available for ocean dive sites',
                 'Wind forecast is only available for ocean dive sites',
                 'Rainfall history is only available for ocean dive sites',
+                'Visibility history is only available for ocean dive sites',
             ];
             chartNodes.forEach((node, index) => {
                 node.replaceChildren();
@@ -440,5 +408,5 @@
     }
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initMarine);
     else initMarine();
-    if (typeof module !== 'undefined') module.exports = { initVisibility, smoothPath, renderChart, localDate, localMonth, localHour, hourNumber, compassHeading, windHeading };
+    if (typeof module !== 'undefined') module.exports = { smoothPath, renderChart, localDate, localMonth, localHour, hourNumber, compassHeading, windHeading };
 })();
