@@ -3,6 +3,15 @@
     const DEADLINE_MS = 120000;
 
     function initFollowedSiteReports() {
+        const greeting = document.querySelector('[data-daily-greeting]');
+        function updateGreeting() {
+            if (!greeting) return;
+            const hour = new Date().getHours();
+            const period = hour < 12 ? 'morning' : hour < 18 ? 'afternoon' : 'evening';
+            greeting.textContent = `Good ${period}! `;
+        }
+        updateGreeting();
+        window.addEventListener('pageshow', updateGreeting);
         const cards = [...document.querySelectorAll('[data-followed-site-report]')];
         if (!cards.length) return;
         const track = document.querySelector('[data-site-reports-track]');

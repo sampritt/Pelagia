@@ -15,7 +15,10 @@
     <div class="feed-main">
         <div class="feed-list">
             {% if brief %}
+            <section class="daily-update" aria-labelledby="dailyUpdateTitle">
+                <h2 id="dailyUpdateTitle" class="site-reports-heading"><span data-daily-greeting></span>Here’s your daily update.</h2>
                 {% include "_dive_brief_card.html" %}
+            </section>
             {% endif %}
             <section class="site-reports" aria-labelledby="siteReportsTitle">
                 <div class="site-reports-header">

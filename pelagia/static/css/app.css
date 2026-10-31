@@ -6002,6 +6002,7 @@ img.is-media-loading {
     padding: 0;
 }
 
+.daily-update,
 .dive-logs { display: grid; gap: 8px; min-width: 0; }
 .dive-logs-list { display: grid; gap: 18px; min-width: 0; }
 

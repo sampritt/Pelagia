@@ -45,7 +45,7 @@ const flush = async () => {
     for (let i = 0; i < 3; i++) await new Promise(resolve => setImmediate(resolve));
 };
 
-function setup(cards, fetch, {viewportWidth = 300} = {}) {
+function setup(cards, fetch, {viewportWidth = 300, localHour = 9} = {}) {
     const window = node();
     let timer = 0;
     const timers = new Map();
@@ -56,6 +56,7 @@ function setup(cards, fetch, {viewportWidth = 300} = {}) {
     window.PelagiaLoading = {begin() { starts++; return () => { finishes++; }; }};
     const track = node();
     const featuredLabel = node();
+    const greeting = node();
     featuredLabel.hidden = true;
     track.getBoundingClientRect = () => ({left: 0, right: viewportWidth});
     track.scrollWidth = 1000;
@@ -66,12 +67,12 @@ function setup(cards, fetch, {viewportWidth = 300} = {}) {
     const document = {
         readyState: 'complete',
         querySelectorAll: () => cards.map(item => item.item),
-        querySelector: selector => selector === '[data-site-reports-track]' ? track : selector === '[data-site-reports-featured]' ? featuredLabel : null,
+        querySelector: selector => selector === '[data-site-reports-track]' ? track : selector === '[data-site-reports-featured]' ? featuredLabel : selector === '[data-daily-greeting]' ? greeting : null,
     };
     vm.runInNewContext(fs.readFileSync('pelagia/static/js/feed-site-reports.js', 'utf8'), {
-        window, document, fetch, AbortController, Date, Promise, Error,
+        window, document, fetch, AbortController, Date: class extends Date { getHours() { return localHour; } }, Promise, Error,
     });
-    return {window, timers, track, featuredLabel, starts: () => starts, finishes: () => finishes};
+    return {window, timers, track, featuredLabel, greeting, starts: () => starts, finishes: () => finishes};
 }
 
 test('every followed card loads its cached report preview', async () => {
@@ -279,4 +280,12 @@ test('section flag handles desktop pairs, single cards, resizing and browser Bac
     const single = setup([only], async () => response(200, {status: 'complete', report: 'Calm seas.'}));
     assert.equal(single.featuredLabel.hidden, false);
     await flush();
+});
+
+
+test('daily greeting uses local time even without any site report cards', () => {
+    for (const [hour, period] of [[0, 'morning'], [9, 'morning'], [11, 'morning'], [12, 'afternoon'], [17, 'afternoon'], [18, 'evening'], [23, 'evening']]) {
+        const state = setup([], async () => {}, {localHour: hour});
+        assert.equal(state.greeting.textContent, `Good ${period}! `);
+    }
 });
