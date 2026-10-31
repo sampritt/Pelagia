@@ -53,18 +53,19 @@
     }
     const decimal = value => Number(value.toFixed(2));
 
-    function renderChart(host, points, { tide = false, wind = false, rainfall = false, daily = false, zone, lengthUnit = 'm', moons = [] }) {
+    function renderChart(host, points, { tide = false, wind = false, rainfall = false, visibility = false, daily = false, zone, lengthUnit = 'm', moons = [] }) {
+        const monthly = rainfall || visibility;
         points = points || [];
         host.replaceChildren();
         host.removeAttribute('data-can-scroll');
         if (!points.some(p => finite(p.value))) {
             const empty = document.createElement('p');
-            empty.className = 'muted'; empty.textContent = rainfall ? 'History unavailable' : 'Forecast unavailable'; host.appendChild(empty);
+            empty.className = 'muted'; empty.textContent = monthly ? 'History unavailable' : 'Forecast unavailable'; host.appendChild(empty);
             return;
         }
         const left = 80, right = 22, top = 32, bottom = 168;
-        const name = rainfall ? 'Rainfall' : tide ? 'Tide level' : wind ? 'Wind speed' : 'Current strength';
-        const width = Math.max(rainfall ? 240 : daily ? 240 : tide ? 650 : 900, host.clientWidth || 550), height = 220;
+        const name = visibility ? 'Visibility' : rainfall ? 'Rainfall' : tide ? 'Tide level' : wind ? 'Wind speed' : 'Current strength';
+        const width = Math.max(monthly ? 240 : daily ? 240 : tide ? 650 : 900, host.clientWidth || 550), height = 220;
         const values = points.map(p => p.value).filter(finite);
         let min = tide ? Math.min(...values) : 0;
         let max = tide ? Math.max(...values) : Math.max(2.5, Math.ceil(Math.max(...values) * 2) / 2);
@@ -76,6 +77,7 @@
         const rainfallNormalized = rainfallRoughStep / rainfallMagnitude;
         const rainfallStep = (rainfallNormalized <= 1 ? 1 : rainfallNormalized <= 2 ? 2 : rainfallNormalized <= 5 ? 5 : 10) * rainfallMagnitude;
         if (rainfall) max = Math.max(rainfallStep * 4, 1);
+        if (visibility) { min = 0; max = 5; }
         if (min === max) { min -= .05; max += .05; }
         const y = value => bottom - (value - min) / (max - min) * (bottom - top);
         const x = i => left + (i + .5) * (width - left - right) / points.length;
@@ -84,32 +86,33 @@
         const scroll = document.createElement('div'); scroll.className = 'marine-chart-scroll';
         scroll.tabIndex = 0;
         scroll.setAttribute('role', 'region');
-        scroll.setAttribute('aria-label', rainfall ? `${name} history` : `${name} forecast; scroll for more hours`);
+        scroll.setAttribute('aria-label', monthly ? `${name} history` : `${name} forecast; scroll for more hours`);
         const svg = el('svg', { viewBox: `0 0 ${width} ${height}`, width, height,
-            role: 'img', 'aria-label': rainfall ? `${name} history in ${zone}. Monthly totals for the past 12 complete months.` : `${name} forecast in ${zone}. ${daily ? 'Daily maximum values.' : 'Hourly values.'}${wind ? ' Arrows indicate the direction the wind is blowing, rounded to 16 compass points.' : ''}` });
+            role: 'img', 'aria-label': visibility ? 'Visibility history. Latest twelve available monthly mean satellite attenuation values, shown on an application clarity scale.' : rainfall ? `${name} history in ${zone}. Monthly totals for the past 12 complete months.` : `${name} forecast in ${zone}. ${daily ? 'Daily maximum values.' : 'Hourly values.'}${wind ? ' Arrows indicate the direction the wind is blowing, rounded to 16 compass points.' : ''}` });
         const readout = document.createElement('div'); readout.className = 'sr-only';
         readout.setAttribute('role', 'status');
         const readoutDate = document.createElement('span');
         const readoutValue = document.createElement('strong'); readout.append(readoutDate, readoutValue);
         const marks = [];
         const cursor = el('line', { y1: top, y2: bottom, class: 'marine-cursor' });
-        const ticks = tide ? [{ value: min, label: 'Low' }, { value: max, label: 'High' }]
+        const ticks = visibility ? ['Very poor', 'Poor', 'Fair', 'Good', 'Excellent'].map((label, i) => ({value: i + 1, label})) : tide ? [{ value: min, label: 'Low' }, { value: max, label: 'High' }]
             : rainfall ? [0, 1, 2, 3, 4].map(i => ({ value: i * rainfallStep, label: `${Number((i * rainfallStep).toFixed(2))} mm` }))
             : wind ? [0, 1, 2, 3, 4].map(i => ({ value: i * windStep, label: `${i * windStep} kn` }))
             : [{ value: .25, label: 'Light' }, { value: .75, label: 'Moderate' }, { value: 1.5, label: 'Strong' }, { value: 2.25, label: 'Very Strong' }];
         ticks.forEach(tick => {
             axis.appendChild(el('text', { x: left - 10, y: y(tick.value) + 4, 'text-anchor': 'end' }, tick.label));
         });
-        (tide ? [min, max] : rainfall ? [rainfallStep, rainfallStep * 2, rainfallStep * 3, max] : wind ? [windStep, windStep * 2, windStep * 3, max] : [.5, 1, 2]).forEach(value => {
+        (visibility ? [1, 2, 3, 4, 5] : tide ? [min, max] : rainfall ? [rainfallStep, rainfallStep * 2, rainfallStep * 3, max] : wind ? [windStep, windStep * 2, windStep * 3, max] : [.5, 1, 2]).forEach(value => {
             svg.appendChild(el('line', { x1: left, x2: width - right, y1: y(value), y2: y(value), class: 'marine-guide' }));
         });
         svg.appendChild(el('line', { x1: left, x2: width - right, y1: bottom, y2: bottom, class: 'marine-baseline' }));
-        const valueLabel = value => tide
+        const valueLabel = value => visibility ? ['Very poor', 'Poor', 'Fair', 'Good', 'Excellent'][value - 1] : tide
             ? `${(value * (lengthUnit === 'ft' ? 1 / .3048 : 1)).toFixed(2)} ${lengthUnit} above global mean sea level`
             : rainfall ? `${Number(value.toFixed(2))} mm total rainfall`
             : `${value.toFixed(2)} knots`;
         const moonLookup = new Map(moons.map(point => [point.time, point.phase]));
         const contextLabel = point => {
+            if (visibility) return `; Kd490 ${point.kd490.toFixed(4)} m⁻¹; pixel ${point.latitude.toFixed(5)}, ${point.longitude.toFixed(5)}`;
             const heading = wind && compassHeading(point.direction_deg);
             const phase = daily && !wind && !tide && moonLookup.get(point.time);
             return heading ? `; wind from ${heading.label}` : phase ? `; ${phase} moon` : '';
@@ -134,13 +137,13 @@
         };
         points.forEach((point, i) => {
             if (!finite(point.value)) { flush(); return; }
-            const title = `${rainfall ? localMonth(point.time, zone) : localDate(point.time, zone)}${rainfall ? '' : daily ? ', daily maximum' : ', ' + localHour(point.time, zone)}: ${valueLabel(point.value)}${contextLabel(point)}`;
+            const title = `${monthly ? localMonth(point.time, zone) : localDate(point.time, zone)}${monthly ? '' : daily ? ', daily maximum' : ', ' + localHour(point.time, zone)}: ${valueLabel(point.value)}${contextLabel(point)}`;
             let mark;
             if (tide) {
                 segment.push(`${x(i)},${y(point.value)}`);
                 return;
             } else {
-                const barWidth = Math.min(daily || rainfall ? 34 : 20, (width - left - right) / points.length * .65);
+                const barWidth = Math.min(daily || monthly ? 34 : 20, (width - left - right) / points.length * .65);
                 mark = el('rect', { x: x(i) - barWidth / 2, y: y(point.value), width: barWidth,
                     height: Math.max(1, bottom - y(point.value)), rx: 3, class: 'marine-current-bar', 'aria-label': title });
             }
@@ -149,7 +152,7 @@
         });
         flush();
         points.forEach((point, i) => {
-            if (rainfall) {
+            if (monthly) {
                 if (width >= 550 || i % 2 === 0) svg.appendChild(el('text', { x: x(i), y: bottom + 25, 'text-anchor': 'middle' }, new Intl.DateTimeFormat('en-US', { timeZone: zone, month: 'short' }).format(new Date(point.time * 1000))));
                 if (i === 0 || new Intl.DateTimeFormat('en-US', { timeZone: zone, month: 'numeric' }).format(new Date(point.time * 1000)) === '1') svg.appendChild(el('text', { x: i === 0 ? left + 2 : x(i), y: bottom + 45, 'text-anchor': i === 0 ? 'start' : 'middle' }, new Intl.DateTimeFormat('en-US', { timeZone: zone, year: 'numeric' }).format(new Date(point.time * 1000))));
                 return;
@@ -166,10 +169,10 @@
             selected = Math.max(0, Math.min(points.length - 1, index));
             host.dataset.selectedIndex = String(selected);
             const point = points[selected];
-            readoutDate.textContent = rainfall ? `${localMonth(point.time, zone)} · Monthly total` : `${localDate(point.time, zone)} · ${daily ? 'Daily max' : localHour(point.time, zone)}`;
+            readoutDate.textContent = monthly ? `${localMonth(point.time, zone)} · ${visibility ? 'Monthly mean' : 'Monthly total'}` : `${localDate(point.time, zone)} · ${daily ? 'Daily max' : localHour(point.time, zone)}`;
             readoutValue.textContent = finite(point.value) ? (tide
                 ? `${(point.value * (lengthUnit === 'ft' ? 1 / .3048 : 1)).toFixed(2)} ${lengthUnit}`
-                : rainfall ? `${Number(point.value.toFixed(2))} mm`
+                : visibility ? valueLabel(point.value) : rainfall ? `${Number(point.value.toFixed(2))} mm`
                 : `${decimal(point.value)} kn`) : '—';
             readoutValue.textContent += contextLabel(point);
             cursor.setAttribute('x1', x(selected)); cursor.setAttribute('x2', x(selected));
@@ -194,12 +197,12 @@
             if (index === undefined) return;
             event.preventDefault(); select(index, true);
         });
-        scroll.setAttribute('aria-label', `${name} ${rainfall ? 'history' : 'forecast'}. Use left and right arrow keys to inspect values.`);
-        readout.title = rainfall ? 'Monthly rainfall total in millimeters' : tide ? 'Height above global mean sea level' : wind ? 'Wind speed in knots and source direction' : 'Current velocity in knots';
+        scroll.setAttribute('aria-label', `${name} ${monthly ? 'history' : 'forecast'}. Use left and right arrow keys to inspect values.`);
+        readout.title = visibility ? 'Satellite clarity estimate from monthly mean Kd490; application categories, not measured dive visibility' : rainfall ? 'Monthly rainfall total in millimeters' : tide ? 'Height above global mean sea level' : wind ? 'Wind speed in knots and source direction' : 'Current velocity in knots';
         const list = document.createElement('ul'); list.className = 'sr-only';
         points.forEach(point => {
             const item = document.createElement('li');
-            item.textContent = `${rainfall ? localMonth(point.time, zone) : localDate(point.time, zone)} ${rainfall ? 'monthly total' : daily ? 'Daily maximum' : localHour(point.time, zone)}: ${finite(point.value) ? valueLabel(point.value) : 'Unavailable'}${contextLabel(point)}`;
+            item.textContent = `${monthly ? localMonth(point.time, zone) : localDate(point.time, zone)} ${visibility ? 'monthly mean' : rainfall ? 'monthly total' : daily ? 'Daily maximum' : localHour(point.time, zone)}: ${finite(point.value) ? valueLabel(point.value) : 'Unavailable'}${contextLabel(point)}`;
             list.appendChild(item);
         });
         select(selected);
@@ -209,9 +212,77 @@
         edge();
     }
 
+    function initVisibility(host) {
+        const chart = host.querySelector('[data-visibility-chart]');
+        const value = host.querySelector('[data-visibility-value]');
+        const status = host.querySelector('[data-visibility-status]');
+        const date = host.querySelector('[data-visibility-date]');
+        const retry = host.querySelector('[data-visibility-retry]');
+        if (!chart || !value) return;
+        let points = [], active = [], stopped = false, generation = 0;
+        const render = () => renderChart(chart, points, { visibility: true, zone: 'UTC' });
+        function clear() { active.forEach(item => { item.controller.abort(); window.clearTimeout(item.timer); window.clearTimeout(item.deadline); }); active = []; }
+        function load() {
+            clear(); stopped = false; const ticket = ++generation;
+            status.textContent = 'Updating visibility…'; retry.hidden = true;
+            const state = { monthly: 'pending', daily: 'pending', stale: false };
+            const update = () => {
+                const errors = Object.values(state).includes('unavailable');
+                status.textContent = Object.values(state).includes('pending') ? 'Updating visibility…' : errors ? 'Some visibility data unavailable' : state.stale ? 'Showing cached visibility; NOAA refresh unavailable' : '';
+                retry.hidden = !(errors || state.stale);
+            };
+            ['monthly', 'daily'].forEach(kind => {
+                const item = {controller: new AbortController()}; active.push(item);
+                const fail = () => {
+                    if (stopped || ticket !== generation) return;
+                    window.clearTimeout(item.deadline); window.clearTimeout(item.timer);
+                    state[kind] = 'unavailable';
+                    if (kind === 'monthly' && !points.length) render();
+                    update();
+                };
+                const request = async () => {
+                    try {
+                        const response = await fetch(host.dataset[kind === 'monthly' ? 'visibilityMonthlyUrl' : 'visibilityDailyUrl'], {credentials: 'same-origin', cache: 'no-store', signal: item.controller.signal});
+                        if (stopped || ticket !== generation) return;
+                        if (response.status === 202) { item.timer = window.setTimeout(request, 2000); return; }
+                        if (!response.ok) throw new Error('Unavailable');
+                        const data = await response.json();
+                        if (stopped || ticket !== generation) return;
+                        window.clearTimeout(item.deadline);
+                        if (data.status !== 'complete') {
+                            if (data.status === 'not_ocean') {
+                                state[kind] = 'complete';
+                                if (kind === 'monthly') { chart.replaceChildren(); const p = document.createElement('p'); p.className = 'muted'; p.textContent = 'Visibility is only available for ocean dive sites'; chart.appendChild(p); }
+                                update(); return;
+                            }
+                            fail(); return;
+                        }
+                        state[kind] = 'complete'; state.stale ||= !!data.stale;
+                        if (kind === 'monthly') { points = data.points || []; render(); }
+                        else {
+                            const latest = data.latest;
+                            value.textContent = latest?.label || '-';
+                            value.title = latest ? `${localDate(latest.time, 'UTC')} UTC · Kd490 ${latest.kd490.toFixed(4)} m⁻¹ · pixel ${latest.latitude.toFixed(5)}, ${latest.longitude.toFixed(5)}${data.stale ? ' · cached' : ''}` : 'No valid satellite reading at the nearest grid cell';
+                            if (date) date.textContent = latest ? `${localDate(latest.time, 'UTC')} UTC` : '';
+                        }
+                        update();
+                    } catch (_) { fail(); }
+                };
+                item.deadline = window.setTimeout(() => { item.controller.abort(); fail(); }, 115000);
+                request();
+            });
+        }
+        retry.addEventListener('click', load);
+        window.addEventListener('resize', () => { if (!stopped && points.length) render(); });
+        window.addEventListener('pagehide', () => { stopped = true; generation++; clear(); });
+        window.addEventListener('pageshow', event => { if (event.persisted && host.dataset.coordinates === 'true') load(); });
+        if (host.dataset.coordinates === 'true') load();
+    }
+
     function initMarine() {
         const host = document.querySelector('[data-marine-forecast]');
         if (!host) return;
+        initVisibility(host);
         const status = host.querySelector('[data-marine-status]');
         const retry = host.querySelector('[data-marine-retry]');
         const source = host.querySelector('[data-marine-source]');

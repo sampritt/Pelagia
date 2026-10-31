@@ -320,3 +320,17 @@ CREATE TABLE IF NOT EXISTS dive_site_reports (
     started_at REAL NOT NULL,
     model TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS visibility_cache (
+    site_id INTEGER NOT NULL REFERENCES dive_sites(id) ON DELETE CASCADE,
+    kind TEXT NOT NULL CHECK (kind IN ('monthly', 'daily')),
+    latitude REAL NOT NULL,
+    longitude REAL NOT NULL,
+    payload TEXT,
+    fetched_at REAL NOT NULL DEFAULT 0,
+    expires_at REAL NOT NULL DEFAULT 0,
+    lease_token TEXT,
+    lease_until REAL NOT NULL DEFAULT 0,
+    retry_after REAL NOT NULL DEFAULT 0,
+    PRIMARY KEY (site_id, kind)
+);

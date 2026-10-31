@@ -15,6 +15,8 @@
 
     <section class="marine-forecast" data-marine-forecast
              data-url="{{ url_for('api_site_conditions', site_id=site.id) }}"
+             data-visibility-monthly-url="{{ url_for('api_site_visibility', site_id=site.id, kind='monthly') }}"
+             data-visibility-daily-url="{{ url_for('api_site_visibility', site_id=site.id, kind='daily') }}"
              data-coordinates="{{ 'true' if marine_coordinates_valid else 'false' }}"
              data-temperature-unit="{{ units.temperature }}" data-length-unit="{{ units.length }}"
              aria-label="Dive site conditions and forecast">
@@ -22,7 +24,7 @@
             <div class="site-conditions-grid">
                 <div><small>Water temperature</small><span {% if conditions.water_temp_c is none %}data-marine-value="temperature"{% else %}data-site-water-temperature{% endif %}>{{ display_metric(conditions.water_temp_c, 'temperature') }}</span></div>
                 <div><small>Tide level</small><span data-marine-value="tide">-</span></div>
-                <div><small>Moon phase</small><span data-marine-value="moon">-</span></div>
+                <div><small>Visibility</small><span data-visibility-value>-</span><small data-visibility-date></small></div>
                 <div><small>Wind speed</small><span data-marine-value="wind">-</span></div>
             </div>
             <div class="site-equipment-advice" data-equipment-advice aria-label="Equipment recommendations" aria-live="polite" hidden>
@@ -61,6 +63,14 @@
         <div class="site-chart-block">
             <div class="site-chart-head"><h2>Tide</h2><span class="chart-unit">Next 24 hours</span></div>
             <div class="marine-chart" data-marine-chart="tide"><p class="muted">Forecast unavailable</p></div>
+        </div>
+        <div class="site-chart-block">
+            <div class="site-chart-head"><h2>Visibility</h2><span class="chart-unit">Latest 12 available months</span></div>
+            <div class="marine-chart" data-visibility-chart><p class="muted">History unavailable</p></div>
+            <p class="marine-chart-note">Satellite clarity estimate. Monthly means at the nearest grid cell; actual dive visibility varies.</p>
+            <p class="marine-chart-note" data-visibility-status role="status"></p>
+            <button type="button" class="ghost-button compact" data-visibility-retry hidden>Retry visibility</button>
+            <a class="marine-source" href="https://coastwatch.pfeg.noaa.gov/erddap/griddap/nesdisVHNSQkd490Monthly.html" target="_blank" rel="noopener noreferrer">NOAA CoastWatch</a>
         </div>
         <div class="site-chart-block">
             <div class="site-chart-head"><h2>Rain</h2><span class="chart-unit">Past 12 months</span></div>

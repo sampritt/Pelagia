@@ -8,18 +8,20 @@ function node(tag = 'div') {
         append(...children) { this.children.push(...children); },
         replaceChildren(...children) { this.children = children; },
         setAttribute(k, v) { this.attrs[k] = String(v); }, removeAttribute(k) { delete this.attrs[k]; },
-        addEventListener(k, v) { this.handlers[k] = v; },
+        addEventListener(k, v) { const prior=this.handlers[k]; this.handlers[k] = prior ? (...args) => { prior(...args); v(...args); } : v; },
         matches(s) { return this.dataset.chart && s.includes('marine-chart'); },
     };
 }
 const flush = async () => { for (let i = 0; i < 12; i++) await Promise.resolve(); };
-function setup(coordinates = 'true') {
+function setup(coordinates = 'true', visibility = false) {
     const equipment=node(), exposureAdvice=node(), exposureName=node(), weightAsterisk=node(), exposureAsterisk=node(), exposureHistory=node(), exposureHistoryLink=node(), weightAdvice=node(), weightCaveat=node(), source=node();
     const host = node(), status = node(), retry = node(), charts = [node(), node(), node(), node()], values = ['temperature', 'tide', 'moon', 'wind'].map(v => { const n = node(); n.dataset.marineValue = v; return n; });
+    const visibilityChart=node(), visibilityValue=node(), visibilityStatus=node(), visibilityRetry=node(), visibilityDate=node();
     charts.forEach(n => { n.dataset.chart = true; });
     const buttons = ['daily', 'hourly', 'daily', 'hourly'].map((v, i) => { const n = node(); n.dataset.marineRange = v; if (i > 1) n.dataset.marineTarget = 'wind'; return n; });
     host.dataset = {coordinates, url: '/api/dive-sites/1/conditions', temperatureUnit: 'f', lengthUnit: 'ft'};
-    host.querySelector = s => ({'[data-equipment-advice]':equipment,'[data-exposure-advice]':exposureAdvice,'[data-exposure-name]':exposureName,'[data-weight-asterisk]':weightAsterisk,'[data-exposure-asterisk]':exposureAsterisk,'[data-exposure-history]':exposureHistory,'[data-exposure-history-link]':exposureHistoryLink,'[data-weight-advice]':weightAdvice,'[data-weight-caveat]':weightCaveat,'[data-marine-status]':status,'[data-marine-retry]':retry,'[data-marine-source]':source,'[data-marine-chart="current"]':charts[0],'[data-marine-chart="tide"]':charts[1],'[data-marine-chart="wind"]':charts[2],'[data-marine-chart="rainfall"]':charts[3]})[s];
+    if (visibility) Object.assign(host.dataset,{visibilityMonthlyUrl:'/monthly',visibilityDailyUrl:'/daily'});
+    host.querySelector = s => ({'[data-visibility-chart]':visibility ? visibilityChart : null,'[data-visibility-value]':visibilityValue,'[data-visibility-status]':visibilityStatus,'[data-visibility-retry]':visibilityRetry,'[data-visibility-date]':visibilityDate,'[data-equipment-advice]':equipment,'[data-exposure-advice]':exposureAdvice,'[data-exposure-name]':exposureName,'[data-weight-asterisk]':weightAsterisk,'[data-exposure-asterisk]':exposureAsterisk,'[data-exposure-history]':exposureHistory,'[data-exposure-history-link]':exposureHistoryLink,'[data-weight-advice]':weightAdvice,'[data-weight-caveat]':weightCaveat,'[data-marine-status]':status,'[data-marine-retry]':retry,'[data-marine-source]':source,'[data-marine-chart="current"]':charts[0],'[data-marine-chart="tide"]':charts[1],'[data-marine-chart="wind"]':charts[2],'[data-marine-chart="rainfall"]':charts[3]})[s];
     host.querySelectorAll = s => s.includes('value') ? values : buttons;
     const window = node(); let id = 0; const timers = new Map(); const requests = []; let ended = 0;
     window.setTimeout = (fn, delay) => { timers.set(++id, {fn, delay}); return id; }; window.clearTimeout = n => timers.delete(n);
@@ -27,7 +29,7 @@ function setup(coordinates = 'true') {
     const document = {readyState: 'complete', querySelector: () => host, createElement: node, createElementNS: (_, tag) => node(tag)};
     const context = vm.createContext({window, document, Intl, Date, AbortController, module: {exports: {}}, fetch: (url, options) => new Promise((resolve, reject) => requests.push({url, options, resolve, reject}))});
     vm.runInContext(fs.readFileSync('pelagia/static/js/marine.js', 'utf8'), context);
-    return {equipment,exposureAdvice,exposureName,weightAsterisk,exposureAsterisk,exposureHistory,exposureHistoryLink,weightAdvice,weightCaveat,source,host, status, retry, charts, values, buttons, window, timers, requests, context, ended: () => ended};
+    return {visibilityChart,visibilityValue,visibilityStatus,visibilityRetry,visibilityDate,equipment,exposureAdvice,exposureName,weightAsterisk,exposureAsterisk,exposureHistory,exposureHistoryLink,weightAdvice,weightCaveat,source,host, status, retry, charts, values, buttons, window, timers, requests, context, ended: () => ended};
 }
 function data() {
     const points = Array.from({length: 48}, (_, i) => ({time:1792940400 + i * 3600, value: .5}));
@@ -242,4 +244,36 @@ test('missing marine temperature or failed fetch keeps equipment advice hidden',
     assert.equal(s.equipment.hidden,true);
     const failed=setup(); failed.requests[0].reject(new Error());await flush();
     assert.equal(failed.equipment.hidden,true);
+});
+
+test('visibility shares monthly chart layout with a fixed clarity scale and exact source tooltips', () => {
+    const s=setup('false'); const chart=node(); chart.clientWidth=320;
+    const points=Array.from({length:12},(_,i)=>({time:Date.UTC(2025,i,1,12)/1000,value:i%5+1,kd490:.07,latitude:-.39375,longitude:-90.28125}));
+    s.context.module.exports.renderChart(chart,points,{visibility:true,zone:'UTC'});
+    assert.deepEqual(chart.children[0].children.map(n=>n.textContent),['Very poor','Poor','Fair','Good','Excellent']);
+    const svg=chart.children[1].children[0];
+    assert.equal(svg.attrs.width,'320'); assert.equal(svg.children.filter(n=>n.tag==='rect').length,12);
+    assert.ok(svg.children.find(n=>n.tag==='rect').attrs['aria-label'].includes('Kd490 0.0700'));
+    chart.children[1].handlers.keydown({key:'ArrowRight',preventDefault(){}});
+    assert.ok(chart.children[2].children[0].textContent.includes('Monthly mean'));
+});
+test('visibility loads independently, shows observation date and survives a marine failure',async()=>{
+    const s=setup('true',true);
+    assert.equal(s.requests.length,3);
+    const point={time:Date.UTC(2026,7,1,12)/1000,value:4,label:'Good',kd490:.07,latitude:-.39375,longitude:-90.28125};
+    s.requests[0].resolve({status:200,ok:true,json:async()=>({status:'complete',points:[point]})});
+    s.requests[1].resolve({status:200,ok:true,json:async()=>({status:'complete',latest:point})});
+    s.requests[2].reject(new Error());await flush();
+    assert.equal(s.visibilityValue.textContent,'Good'); assert.ok(s.visibilityDate.textContent.includes('UTC'));
+    assert.equal(s.visibilityChart.children[0].children.length,5);assert.equal(s.visibilityRetry.hidden,true);
+    s.window.handlers.pagehide();assert.ok(s.requests[0].options.signal.aborted);
+});
+test('visibility retry, pending polling and stale cached results are explicit',async()=>{
+    const s=setup('true',true);
+    s.requests[0].resolve({status:202,ok:true});s.requests[1].reject(new Error());await flush();
+    assert.ok([...s.timers.values()].some(t=>t.delay===2000));
+    const poll=[...s.timers.values()].find(t=>t.delay===2000);poll.fn();
+    s.requests[3].resolve({status:200,ok:true,json:async()=>({status:'complete',points:[],stale:true})});await flush();
+    assert.equal(s.visibilityRetry.hidden,false);
+    s.visibilityRetry.handlers.click();assert.equal(s.requests.length,6);
 });

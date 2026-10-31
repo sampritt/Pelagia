@@ -6384,7 +6384,8 @@ img.is-media-loading {
 .marine-status { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; color: var(--muted); font-size: .76rem; }
 .marine-chart .skeleton-chart { display: block; height: 220px; }
 
-[data-marine-retry][hidden] { display: none; }
+[data-marine-retry][hidden], [data-visibility-retry][hidden] { display: none; }
+[data-visibility-status]:empty { display: none; }
 
 .marine-current-bar { opacity: .7; }
 .marine-current-bar[data-selected="true"] { opacity: 1; }
