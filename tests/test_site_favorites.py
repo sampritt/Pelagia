@@ -95,7 +95,11 @@ class DiveSiteFavoritesTest(unittest.TestCase):
 
         home = self.client.get("/home").get_data(as_text=True)
         reports = home.split('<section class="site-reports"', 1)[1].split("</section>", 1)[0]
-        self.assertIn("Featured", reports)
+        self.assertIn("FEATURED", reports)
+        self.assertIn('data-site-reports-featured', reports)
+        card_markup = reports.split('<a class="site-report-card"', 1)[1]
+        self.assertIn('data-featured-site-report', card_markup)
+        self.assertNotIn('FEATURED', card_markup)
         self.assertIn("Alert Rock", reports)
         self.assertNotIn("Kelp Garden", reports)
         self.assertNotIn("Blue Wall", reports)
@@ -104,7 +108,7 @@ class DiveSiteFavoritesTest(unittest.TestCase):
         followed = self.client.get("/home").get_data(as_text=True)
         reports = followed.split('<section class="site-reports"', 1)[1].split("</section>", 1)[0]
         self.assertEqual(reports.count('data-followed-site-report'), 1)
-        self.assertEqual(reports.count("Featured"), 1)
+        self.assertEqual(reports.count("FEATURED"), 1)
         with self.app.app_context():
             self.assertEqual(database.get_db().execute("SELECT count(*) FROM daily_featured_sites").fetchone()[0], 1)
 
@@ -117,8 +121,8 @@ class DiveSiteFavoritesTest(unittest.TestCase):
                            [(dive_id, f"Species {i}") for i in range(7)])
             db.commit()
         with patch("pelagia.water_type.classify_site", return_value={"feature": "OCEAN"}) as classify:
-            self.assertIn("Featured", self.client.get("/home").get_data(as_text=True))
-            self.assertIn("Featured", self.client.get("/home").get_data(as_text=True))
+            self.assertIn("FEATURED", self.client.get("/home").get_data(as_text=True))
+            self.assertIn("FEATURED", self.client.get("/home").get_data(as_text=True))
             self.assertEqual(classify.call_count, 1)
 
     def test_ten_site_limit_does_not_block_unfollow(self):

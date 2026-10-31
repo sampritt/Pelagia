@@ -6,6 +6,30 @@
         const cards = [...document.querySelectorAll('[data-followed-site-report]')];
         if (!cards.length) return;
         const track = document.querySelector('[data-site-reports-track]');
+        const featuredCard = cards.find(card => card.hasAttribute('data-featured-site-report'));
+        const featuredLabel = document.querySelector('[data-site-reports-featured]');
+        function updateFeaturedLabel() {
+            if (!track || !featuredCard || !featuredLabel) return;
+            const viewport = track.getBoundingClientRect();
+            const card = featuredCard.getBoundingClientRect();
+            const visibleWidth = Math.max(0, Math.min(card.right, viewport.right) - Math.max(card.left, viewport.left));
+            featuredLabel.hidden = card.width <= 0 || visibleWidth / card.width < 0.6;
+        }
+        let featureFramePending = false;
+        function scheduleFeaturedLabel() {
+            if (featureFramePending) return;
+            featureFramePending = true;
+            window.requestAnimationFrame(() => {
+                featureFramePending = false;
+                updateFeaturedLabel();
+            });
+        }
+        track?.addEventListener('scroll', scheduleFeaturedLabel, {passive: true});
+        window.addEventListener('resize', scheduleFeaturedLabel);
+        if (track && window.ResizeObserver) {
+            new window.ResizeObserver(scheduleFeaturedLabel).observe(track);
+        }
+        updateFeaturedLabel();
         let stopped = false;
         const controllers = new Set();
         const timers = new Map();
@@ -178,6 +202,7 @@
             timers.clear();
         });
         window.addEventListener('pageshow', (event) => {
+            updateFeaturedLabel();
             if (!event.persisted) return;
             stopped = false;
             cards.forEach((card) => {

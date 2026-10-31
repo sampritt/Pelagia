@@ -18,7 +18,12 @@
                 {% include "_dive_brief_card.html" %}
             {% endif %}
             <section class="site-reports" aria-labelledby="siteReportsTitle">
-                <h2 id="siteReportsTitle" class="site-reports-heading">Site reports</h2>
+                <div class="site-reports-header">
+                    <h2 id="siteReportsTitle" class="site-reports-heading">Site reports</h2>
+                    {% if favorite_sites|selectattr('featured')|list %}
+                    <span class="site-report-featured" data-site-reports-featured{% if not favorite_sites[0].featured %} hidden{% endif %}><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0 10.2 5.8 16 8 10.2 10.2 8 16 5.8 10.2 0 8 5.8 5.8Z"/></svg>FEATURED</span>
+                    {% endif %}
+                </div>
                 {% if favorite_sites %}
                 <div id="siteReportsTrack" class="site-reports-track" role="region" aria-label="Followed dive sites" tabindex="0" data-site-reports-track>
                     {% for item in favorite_sites %}
@@ -33,17 +38,24 @@
                 </div>
                 {% endif %}
             </section>
-            {% if dives %}
-                {% for dive in dives %}
-                    {% include "_dive_card.html" %}
-                {% endfor %}
-            {% else %}
-                <div class="empty-state">
-                    <h2>No dives yet</h2>
-                    <p>Log your first dive to start your underwater story.</p>
-                    <a class="primary-button" href="{{ url_for('log_dive') }}">Log dive</a>
+            <section class="dive-logs" aria-labelledby="diveLogsTitle">
+                <div class="site-reports-header">
+                    <h2 id="diveLogsTitle" class="site-reports-heading">Dive logs</h2>
                 </div>
-            {% endif %}
+                <div class="dive-logs-list">
+                    {% if dives %}
+                        {% for dive in dives %}
+                            {% include "_dive_card.html" %}
+                        {% endfor %}
+                    {% else %}
+                        <div class="empty-state">
+                            <h2>No dives yet</h2>
+                            <p>Log your first dive to start your underwater story.</p>
+                            <a class="primary-button" href="{{ url_for('log_dive') }}">Log dive</a>
+                        </div>
+                    {% endif %}
+                </div>
+            </section>
         </div>
     </div>
 

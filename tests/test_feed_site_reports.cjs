@@ -11,6 +11,7 @@ function node() {
         classList: {toggle(name, on) { on ? classes.add(name) : classes.delete(name); }, contains: name => classes.has(name)},
         setAttribute(name, value) { this.attrs[name] = value; },
         getAttribute(name) { return this.attrs[name] ?? null; },
+        hasAttribute(name) { return name in this.attrs; },
         removeAttribute(name) { delete this.attrs[name]; },
         addEventListener(name, callback) { this.handlers[name] = callback; },
     };
@@ -44,7 +45,7 @@ const flush = async () => {
     for (let i = 0; i < 3; i++) await new Promise(resolve => setImmediate(resolve));
 };
 
-function setup(cards, fetch) {
+function setup(cards, fetch, {viewportWidth = 300} = {}) {
     const window = node();
     let timer = 0;
     const timers = new Map();
@@ -54,20 +55,23 @@ function setup(cards, fetch) {
     let starts = 0, finishes = 0;
     window.PelagiaLoading = {begin() { starts++; return () => { finishes++; }; }};
     const track = node();
+    const featuredLabel = node();
+    featuredLabel.hidden = true;
+    track.getBoundingClientRect = () => ({left: 0, right: viewportWidth});
     track.scrollWidth = 1000;
     track.scrollLeft = 0;
     track.scrollTo = ({left}) => { track.scrollLeft = left; };
     track.scrollBy = ({left}) => { track.scrollLeft += left; };
-    cards.forEach(card => { card.item.getBoundingClientRect = () => ({width: 300}); });
+    cards.forEach((card, index) => { card.item.getBoundingClientRect = () => ({width: 300, left: index * 312 - track.scrollLeft, right: index * 312 + 300 - track.scrollLeft}); });
     const document = {
         readyState: 'complete',
         querySelectorAll: () => cards.map(item => item.item),
-        querySelector: selector => selector === '[data-site-reports-track]' ? track : null,
+        querySelector: selector => selector === '[data-site-reports-track]' ? track : selector === '[data-site-reports-featured]' ? featuredLabel : null,
     };
     vm.runInNewContext(fs.readFileSync('pelagia/static/js/feed-site-reports.js', 'utf8'), {
         window, document, fetch, AbortController, Date, Promise, Error,
     });
-    return {window, timers, track, starts: () => starts, finishes: () => finishes};
+    return {window, timers, track, featuredLabel, starts: () => starts, finishes: () => finishes};
 }
 
 test('every followed card loads its cached report preview', async () => {
@@ -239,4 +243,40 @@ test('the swipe track keeps keyboard navigation without visual controls', async 
     assert.equal(state.track.scrollLeft, 0);
     press('Tab');
     assert.equal(prevented, 4);
+});
+
+
+test('section flag follows swipe visibility and ignores a peek of the featured card', async () => {
+    const cards = [card(1), card(2)];
+    cards[1].item.setAttribute('data-featured-site-report', '');
+    const state = setup(cards, async () => response(200, {status: 'complete', report: 'Calm seas.'}));
+    assert.equal(state.featuredLabel.hidden, true);
+    state.track.scrollLeft = 140; // Only 128px of the 300px card is visible.
+    state.track.handlers.scroll();
+    assert.equal(state.featuredLabel.hidden, true);
+    state.track.scrollLeft = 200;
+    state.track.handlers.scroll();
+    assert.equal(state.featuredLabel.hidden, false);
+    state.track.scrollLeft = 0;
+    state.track.handlers.scroll();
+    assert.equal(state.featuredLabel.hidden, true);
+    await flush();
+});
+
+test('section flag handles desktop pairs, single cards, resizing and browser Back', async () => {
+    const cards = [card(1), card(2)];
+    cards[1].item.setAttribute('data-featured-site-report', '');
+    const state = setup(cards, async () => response(200, {status: 'complete', report: 'Calm seas.'}), {viewportWidth: 612});
+    assert.equal(state.featuredLabel.hidden, false);
+    state.track.getBoundingClientRect = () => ({left: 0, right: 300});
+    state.window.handlers.resize();
+    assert.equal(state.featuredLabel.hidden, true);
+    state.track.scrollLeft = 312;
+    state.window.handlers.pageshow({persisted: true});
+    assert.equal(state.featuredLabel.hidden, false);
+    const only = card(3);
+    only.item.setAttribute('data-featured-site-report', '');
+    const single = setup([only], async () => response(200, {status: 'complete', report: 'Calm seas.'}));
+    assert.equal(single.featuredLabel.hidden, false);
+    await flush();
 });
