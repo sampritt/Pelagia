@@ -2,6 +2,7 @@ import re
 import tempfile
 import unittest
 from pathlib import Path
+from datetime import date
 from unittest.mock import Mock, patch
 
 import requests
@@ -209,6 +210,49 @@ class ExploreTest(unittest.TestCase):
     def save_location(self, location, client=None):
         return (client or self.client).post("/api/explore/location", json={"location": location},
                                             headers={"X-Requested-With": "fetch"})
+
+    def feature_site(self, site_id=3):
+        self.db.execute(
+            "INSERT INTO daily_featured_sites (feature_date, dive_site_id) VALUES (?, ?)",
+            (date.today().isoformat(), site_id),
+        )
+        self.db.commit()
+
+    def test_no_prior_search_defaults_to_featured_region_without_saving_it(self):
+        self.add_dive(1, country="Canada")
+        self.feature_site()
+        html = self.client.get("/explore").get_data(as_text=True)
+        self.assertIn('data-location="Komodo National Park"', html)
+        self.assertIn("Manta Point", html)
+        self.assertNotIn("Maple Reef", html)
+        self.assertIsNone(self.db.execute(
+            "SELECT explore_location FROM users WHERE id = 1"
+        ).fetchone()[0])
+        # Accounts without a saved search continue to follow the daily feature.
+        self.db.execute("UPDATE daily_featured_sites SET dive_site_id = 1")
+        self.db.commit()
+        self.assertIn('data-location="Canada"', self.client.get("/explore").get_data(as_text=True))
+
+    def test_saved_region_cleared_search_and_explicit_url_override_featured_default(self):
+        self.feature_site()
+        self.save_location("Canada")
+        self.assertIn('data-location="Canada"', self.client.get("/explore").get_data(as_text=True))
+        self.assertIn('data-location="Komodo National Park"', self.client.get(
+            "/explore?location=Komodo+National+Park"
+        ).get_data(as_text=True))
+        self.save_location("")
+        self.assertIn('data-location=""', self.client.get("/explore").get_data(as_text=True))
+
+    def test_saved_nearby_search_overrides_featured_default(self):
+        self.feature_site()
+        with patch("pelagia.explore.geocode_place", return_value={
+            "display_name": "Victoria, Canada", "latitude": 48.4, "longitude": -123.3,
+        }):
+            self.assertEqual(self.nearby_search("Victoria", 10, "km").status_code, 200)
+        html = self.client.get("/explore").get_data(as_text=True)
+        self.assertIn("Victoria, Canada", html)
+        self.assertIn("Maple Reef", html)
+        self.assertNotIn("Manta Point", html)
 
     def test_initial_default_uses_most_recently_logged_dive_region(self):
         self.add_dive(1)

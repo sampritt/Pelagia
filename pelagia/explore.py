@@ -294,12 +294,15 @@ def init_app(app, login_required):
             )
         if "location" in request.args:
             requested = request.args.get("location")
+        elif saved["explore_location"] is not None:
+            requested = saved["explore_location"]
         else:
-            requested = (
-                latest_dive_location(session["user_id"])
-                if saved["explore_location"] is None
-                else saved["explore_location"]
-            )
+            # Share the feed's daily choice without saving it as a user search.
+            from . import fetch_daily_featured_site
+            featured = fetch_daily_featured_site()
+            requested = resolve_location(featured["country_or_area"]) if featured else ""
+            if not requested:
+                requested = latest_dive_location(session["user_id"])
         location = resolve_location(requested)
         return render_template(
             "explore.html", initial_nearby=None, **feed_data(location)
