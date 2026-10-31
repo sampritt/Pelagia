@@ -37,6 +37,37 @@
             throw new Error('Dependency timeout');
         }
 
+        async function loadConditions(card) {
+            const controller = new AbortController();
+            const loadGeneration = generation;
+            const deadline = Date.now() + DEADLINE_MS;
+            const timeout = window.setTimeout(() => controller.abort(), DEADLINE_MS);
+            controllers.add(controller);
+            loading.set(controller, {finish: () => {}, timeout});
+            card.dataset.conditionsState = 'loading';
+            const setValue = (selector, value) => { card.querySelector(selector).textContent = value; };
+            try {
+                const conditions = await warmDependency(card.dataset.conditionsUrl, 'GET', controller, deadline);
+                if (stopped || loadGeneration !== generation) return;
+                const current = conditions.status === 'complete' ? conditions.current || {} : {};
+                setValue('[data-followed-swell]', current.swell || '—');
+                setValue('[data-followed-wind]', typeof current.wind_speed_kn === 'number' && Number.isFinite(current.wind_speed_kn)
+                    ? `${Number(current.wind_speed_kn.toFixed(1))} kn` : '—');
+                if (conditions.status === 'complete') {
+                    const visibility = await warmDependency(card.dataset.visibilityUrl, 'GET', controller, deadline);
+                    if (stopped || loadGeneration !== generation) return;
+                    setValue('[data-followed-visibility]', visibility.status === 'complete' && visibility.clarity ? visibility.clarity : '—');
+                }
+            } catch (_error) {
+                // Keep unavailable values as dashes while preserving any conditions already loaded.
+            } finally {
+                window.clearTimeout(timeout);
+                loading.delete(controller);
+                controllers.delete(controller);
+                if (!stopped && loadGeneration === generation) card.dataset.conditionsState = 'ready';
+            }
+        }
+
         async function loadCard(card) {
             const loadGeneration = generation;
             const body = card.querySelector('[data-followed-report-body]');
@@ -90,6 +121,7 @@
 
         cards.forEach((card) => {
             loadCard(card);
+            loadConditions(card);
         });
 
         track?.addEventListener('keydown', (event) => {
@@ -116,6 +148,7 @@
             stopped = false;
             cards.forEach((card) => {
                 if (card.dataset.reportState === 'loading') loadCard(card);
+                if (card.dataset.conditionsState === 'loading') loadConditions(card);
             });
         });
     }

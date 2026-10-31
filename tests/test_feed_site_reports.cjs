@@ -16,19 +16,23 @@ function node() {
 }
 
 function card(id) {
-    const reportBody = node(), reportText = node();
+    const reportBody = node(), reportText = node(), swell = node(), wind = node(), visibility = node();
     const item = node();
     item.dataset = {
         reportState: 'loading',
         reportUrl: `/api/dive-sites/${id}/report`,
         descriptionUrl: `/api/dive-sites/${id}/description`,
         conditionsUrl: `/api/dive-sites/${id}/conditions`,
+        visibilityUrl: `/api/dive-sites/${id}/visibility`,
     };
     item.querySelector = selector => ({
         '[data-followed-report-body]': reportBody,
         '[data-followed-report-text]': reportText,
+        '[data-followed-swell]': swell,
+        '[data-followed-wind]': wind,
+        '[data-followed-visibility]': visibility,
     })[selector];
-    return {item, reportBody, reportText};
+    return {item, reportBody, reportText, swell, wind, visibility};
 }
 
 const response = (status, data) => ({status, ok: status >= 200 && status < 300, json: async () => data});
@@ -67,17 +71,36 @@ test('every followed card loads its cached report preview', async () => {
     const calls = [];
     const state = setup(cards, async (url, options) => {
         calls.push({url, options});
+        if (url.endsWith('/conditions')) return response(200, {status: 'complete', current: {swell: 'Choppy', wind_speed_kn: 12.3}});
+        if (url.endsWith('/visibility')) return response(200, {status: 'complete', clarity: 'excellent'});
         return response(200, {status: 'complete', report: `Daily report for ${url.includes('/1/') ? 'one' : 'two'} with enough words to fill the four-line preview.`});
     });
     await flush();
-    assert.equal(calls.length, 2);
+    assert.equal(calls.length, 6);
     assert.equal(state.starts(), 2);
     assert.equal(state.finishes(), 2);
     for (const [index, card] of cards.entries()) {
         assert.match(card.reportText.textContent, new RegExp(index ? 'two' : 'one'));
         assert.equal(card.item.dataset.reportState, 'ready');
+        assert.equal(card.swell.textContent, 'Choppy');
+        assert.equal(card.wind.textContent, '12.3 kn');
+        assert.equal(card.visibility.textContent, 'excellent');
     }
-    assert.equal(calls.length, 2);
+    assert.equal(calls.length, 6);
+});
+
+test('missing values and visibility failures leave available conditions intact', async () => {
+    const followed = card(1);
+    setup([followed], async url => {
+        if (url.endsWith('/conditions')) return response(200, {status: 'complete', current: {swell: null, wind_speed_kn: 0}});
+        if (url.endsWith('/visibility')) return response(503, {status: 'unavailable'});
+        return response(200, {status: 'complete', report: 'Calm seas.'});
+    });
+    await flush();
+    assert.equal(followed.swell.textContent, '—');
+    assert.equal(followed.wind.textContent, '0 kn');
+    assert.equal(followed.visibility.textContent, '');
+    assert.equal(followed.item.dataset.conditionsState, 'ready');
 });
 
 test('a cold feed warms description and conditions caches before requesting the report again', async () => {
@@ -96,13 +119,10 @@ test('a cold feed warms description and conditions caches before requesting the 
     });
     await flush();
     assert.equal(reportCalls, 2);
-    assert.deepEqual(calls.map(call => call.url), [
-        '/api/dive-sites/7/report', '/api/dive-sites/7/description',
-        '/api/dive-sites/7/conditions', '/api/dive-sites/7/visibility', '/api/dive-sites/7/report',
-    ]);
+    assert.equal(calls.filter(call => call.url.endsWith('/description')).length, 1);
+    assert.ok(calls.some(call => call.url.endsWith('/conditions')));
+    assert.ok(calls.some(call => call.url.endsWith('/visibility')));
     assert.equal(calls[0].options.method, 'POST');
-    assert.equal(calls[1].options.method, 'POST');
-    assert.equal(calls[2].options.method, 'GET');
     assert.equal(calls[0].options.headers['X-Requested-With'], 'fetch');
     assert.equal(followed.item.dataset.reportState, 'ready');
 });
@@ -127,7 +147,7 @@ test('leaving the feed aborts all in-flight site report requests', async () => {
     });
     await flush();
     state.window.handlers.pagehide();
-    assert.equal(signals.length, 2);
+    assert.equal(signals.length, 4);
     assert.ok(signals.every(signal => signal.aborted));
     assert.equal(state.timers.size, 0);
 });
@@ -161,7 +181,8 @@ test('returning through browser Back resumes interrupted reports and preserves c
     resumed = true;
     state.window.handlers.pageshow({persisted: true});
     await flush();
-    assert.deepEqual(calls, ['/api/dive-sites/1/report', '/api/dive-sites/2/report', '/api/dive-sites/2/report']);
+    assert.equal(calls.filter(url => url.endsWith('/1/report')).length, 1);
+    assert.equal(calls.filter(url => url.endsWith('/2/report')).length, 2);
     assert.ok(cards.every(card => card.item.dataset.reportState === 'ready'));
 });
 

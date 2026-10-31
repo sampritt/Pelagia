@@ -3,7 +3,8 @@
    aria-labelledby="followedSiteTitle{{ item.id }}" data-followed-site-report data-report-state="loading"
    data-report-url="{{ url_for('api_site_report', site_id=item.id) }}"
    data-description-url="{{ url_for('api_dive_site_description', site_id=item.id) }}"
-   data-conditions-url="{{ url_for('api_site_conditions', site_id=item.id) }}">
+   data-conditions-url="{{ url_for('api_site_conditions', site_id=item.id) }}"
+   data-visibility-url="{{ url_for('api_site_visibility', site_id=item.id) }}">
     <div class="site-report-card-main">
         <div class="mini-map site-report-map {{ 'map-pending' if not has_coords else '' }}" aria-hidden="true" {% if has_coords %}data-static-map data-map-lat="{{ item.latitude }}" data-map-lng="{{ item.longitude }}" data-map-zoom="10"{% endif %}>
             {% if has_coords %}<span class="map-pin"></span>{% else %}{{ action_icon("compass") }}{% endif %}
@@ -12,6 +13,11 @@
             <h3 id="followedSiteTitle{{ item.id }}" title="{{ item.name }}">{{ item.name }}</h3>
             <p title="{{ item.country_or_area or 'Location pending' }}">{{ item.country_or_area or 'Location pending' }}</p>
         </div>
+    </div>
+    <div class="followed-conditions" aria-label="Site conditions">
+        <span class="followed-condition"><span class="sr-only">Swell: </span><span aria-hidden="true">🌊</span> <span data-followed-swell>—</span></span>
+        <span class="followed-condition"><span class="sr-only">Wind: </span><span aria-hidden="true">💨</span> <span data-followed-wind>—</span></span>
+        <span class="followed-condition"><span class="sr-only">Visibility: </span><span aria-hidden="true">👁️</span> <span data-followed-visibility>—</span></span>
     </div>
     <div class="followed-report-label">Today’s report</div>
     <div class="followed-site-report" data-followed-report-body>

@@ -6069,8 +6069,23 @@ img.is-media-loading {
 .site-report-identity h3 { font-size: 1rem; letter-spacing: -.02em; line-height: 1.35; }
 .site-report-identity p { margin: 5px 0 0; color: var(--muted-strong); font-size: .75rem; line-height: 1.4; }
 
+.followed-conditions {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    margin-top: 14px;
+    color: var(--ink-soft);
+    font-size: .75rem;
+    font-weight: 600;
+    line-height: 1.4;
+}
+.followed-condition { display: flex; align-items: center; gap: 5px; min-width: 0; }
+.followed-condition:nth-child(2) { justify-content: center; }
+.followed-condition:last-child { justify-content: flex-end; }
+.followed-condition > span:last-child { overflow-wrap: anywhere; }
+
 .followed-report-label {
-    margin: 16px 0 8px;
+    margin: 14px 0 8px;
     padding-top: 16px;
     border-top: 1px solid var(--line);
     color: #007e88;
