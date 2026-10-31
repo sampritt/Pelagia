@@ -94,7 +94,7 @@
         if (min === max) { min -= .05; max += .05; }
         // Keep raw attenuation continuous; lower attenuation sits higher on the clarity axis.
         const y = value => visibility ? top + value / max * (bottom - top) : bottom - (value - min) / (max - min) * (bottom - top);
-        const clarity = value => value <= .05 ? 'Excellent' : value <= .10 ? 'Good' : value <= .20 ? 'Fair' : value <= .30 ? 'Poor' : 'Very poor';
+        const clarity = value => value <= .04 ? 'Excellent' : value <= .07 ? 'Very good' : value <= .095 ? 'Good' : value <= .19 ? 'Fair' : value <= .29 ? 'Poor' : 'Very poor';
         const x = i => left + (i + .5) * (width - left - right) / points.length;
         // Keep the Y axis visible while hourly data scrolls on narrow screens.
         const axis = el('svg', { viewBox: `0 0 ${left} ${height}`, class: 'marine-y-axis', 'aria-hidden': 'true' });
@@ -110,14 +110,22 @@
         const readoutValue = document.createElement('strong'); readout.append(readoutDate, readoutValue);
         const marks = [];
         const cursor = el('line', { y1: top, y2: bottom, class: 'marine-cursor' });
-        const ticks = visibility ? [{ value: .025, label: 'Excellent' }, { value: .075, label: 'Good' }, { value: .15, label: 'Fair' }, { value: .25, label: 'Poor' }, { value: (.30 + max) / 2, label: 'Very poor' }] : tide ? [{ value: min, label: 'Low' }, { value: max, label: 'High' }]
+        const ticks = visibility ? [{ value: .02, label: 'Excellent' }, { value: .055, label: 'Very good' }, { value: .0825, label: 'Good' }, { value: .1425, label: 'Fair' }, { value: .24, label: 'Poor' }, { value: (.29 + max) / 2, label: 'Very poor' }] : tide ? [{ value: min, label: 'Low' }, { value: max, label: 'High' }]
             : rainfall ? [0, 1, 2, 3, 4].map(i => ({ value: i * rainfallStep, label: `${Number((i * rainfallStep).toFixed(2))} mm` }))
             : wind ? [0, 1, 2, 3, 4].map(i => ({ value: i * windStep, label: `${i * windStep} kn` }))
             : [{ value: .25, label: 'Light' }, { value: .75, label: 'Moderate' }, { value: 1.5, label: 'Strong' }, { value: 2.25, label: 'Very Strong' }];
-        ticks.forEach(tick => {
-            axis.appendChild(el('text', { x: left - 10, y: y(tick.value) + 4, 'text-anchor': 'end' }, tick.label));
+        // Keep qualitative labels legible even when narrow bands or large values compress the scale.
+        let labelPositions = ticks.map(tick => y(tick.value));
+        if (visibility) {
+            for (let i = 1; i < labelPositions.length; i++) labelPositions[i] = Math.max(labelPositions[i], labelPositions[i - 1] + 14);
+            // Shift together if the last label would fall below the axis.
+            const overflow = Math.max(0, labelPositions.at(-1) - bottom);
+            labelPositions = labelPositions.map(pos => pos - overflow);
+        }
+        ticks.forEach((tick, i) => {
+            axis.appendChild(el('text', { x: left - 10, y: labelPositions[i] + 4, 'text-anchor': 'end' }, tick.label));
         });
-        (visibility ? [.05, .10, .20, .30] : tide ? [min, max] : rainfall ? [rainfallStep, rainfallStep * 2, rainfallStep * 3, max] : wind ? [windStep, windStep * 2, windStep * 3, max] : [.5, 1, 2]).forEach(value => {
+        (visibility ? [.04, .07, .095, .19, .29] : tide ? [min, max] : rainfall ? [rainfallStep, rainfallStep * 2, rainfallStep * 3, max] : wind ? [windStep, windStep * 2, windStep * 3, max] : [.5, 1, 2]).forEach(value => {
             svg.appendChild(el('line', { x1: left, x2: width - right, y1: y(value), y2: y(value), class: 'marine-guide' }));
         });
         svg.appendChild(el('line', { x1: left, x2: width - right, y1: bottom, y2: bottom, class: 'marine-baseline' }));

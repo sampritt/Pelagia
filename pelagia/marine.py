@@ -255,7 +255,7 @@ def normalize(payload, now, fetched):
                              wind_speed_kn=wind_speed,
                              moon_phase=moon_phase(moon[0]['value']),
                              tide=tide_phase(series[FIELDS[1]], now), timestamps=timestamps),
-                charts=dict(visibility_daily=(payload.get('visibility') or {}).get('points') or [],
+                charts=dict(visibility_daily=(visibility.relabel(payload.get('visibility')) or {}).get('points') or [],
                             rainfall_monthly=payload.get('rainfall_monthly') or [],
                             current_daily=daily, current_hourly=window(FIELDS[0], 24),
                             tide_hourly=window(FIELDS[1], 24),

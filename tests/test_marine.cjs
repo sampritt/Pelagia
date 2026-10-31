@@ -248,7 +248,11 @@ test('visibility renders smooth filled continuous curves without points and inte
     const s=setup('false'), host=node(); host.clientWidth=320;
     const points=[.04,.045,null,.12,.32].map((value,i)=>({value,time:Date.UTC(2026,9,i+1)/1000}));
     s.context.module.exports.renderChart(host,points,{visibility:true,zone:'UTC'});
-    assert.deepEqual(host.children[0].children.map(n=>n.textContent),['Excellent','Good','Fair','Poor','Very poor']);
+    assert.deepEqual(host.children[0].children.map(n=>n.textContent),['Excellent','Very good','Good','Fair','Poor','Very poor']);
+    const positions = host.children[0].children.map(n => Number(n.attrs.y));
+    assert.ok(positions.slice(1).every((value, i) => value - positions[i] >= 14));
+    assert.match(host.children[3].children[0].textContent, /Excellent/);
+    assert.match(host.children[3].children[1].textContent, /Very good/);
     const svg=host.children[1].children[0];
     assert.equal(svg.children.filter(n=>n.tag==='rect'||n.tag==='circle').length,0);
     const lines=svg.children.filter(n=>n.tag==='path' && n.attrs.class==='marine-tide-line');

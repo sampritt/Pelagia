@@ -14,9 +14,9 @@ NOW = datetime(2026, 10, 31, tzinfo=timezone.utc).timestamp()
 
 class VisibilityTest(unittest.TestCase):
     def test_inclusive_thresholds(self):
-        for value, label in ((.05, 'excellent'), (.050001, 'good'), (.1, 'good'),
-                             (.100001, 'fair'), (.2, 'fair'), (.200001, 'poor'),
-                             (.3, 'poor'), (.300001, 'very poor')):
+        for value, label in ((.04, 'excellent'), (.040001, 'very good'), (.07, 'very good'),
+                             (.070001, 'good'), (.095, 'good'), (.095001, 'fair'),
+                             (.19, 'fair'), (.190001, 'poor'), (.29, 'poor'), (.290001, 'very poor')):
             self.assertEqual(visibility.clarity(value), label)
         for value in (None, 0, -1, float('nan'), float('inf')):
             self.assertIsNone(visibility.clarity(value))
@@ -91,7 +91,7 @@ class VisibilityTest(unittest.TestCase):
         points=[{'time': FIXTURE_NOW-86400, 'value': .048765, 'clarity':'excellent', 'distance_km':1.5}]
         data['visibility']={'points':points, 'status':'complete'}
         normalized=marine.normalize(data,FIXTURE_NOW,FIXTURE_NOW)
-        self.assertEqual(normalized['charts']['visibility_daily'],points)
+        self.assertEqual(normalized['charts']['visibility_daily'][0]['clarity'], 'very good')
         with tempfile.TemporaryDirectory() as tmp:
             app,_,_=fixtures.ReferenceAutocompleteTest().make_app(Path(tmp))
             with app.app_context():
@@ -101,5 +101,5 @@ class VisibilityTest(unittest.TestCase):
                 db.commit()
                 site=db.execute('SELECT * FROM dive_sites WHERE id=1').fetchone()
                 inputs=site_reports.report_input(site,FIXTURE_NOW)
-                self.assertEqual(inputs['conditions']['charts']['visibility_daily'],points)
-                self.assertEqual(inputs['retrieved_data']['visibility']['points'],points)
+                self.assertEqual(inputs['conditions']['charts']['visibility_daily'][0]['clarity'], 'very good')
+                self.assertEqual(inputs['retrieved_data']['visibility']['points'][0]['clarity'], 'very good')

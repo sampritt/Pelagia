@@ -17,10 +17,20 @@ DATASETS = ('cmems_obs-oc_glo_bgc-transp_my_l3-multi-4km_P1D',
 def clarity(value):
     if value is None or not math.isfinite(value) or value <= 0:
         return None
-    for upper, label in ((.05, 'excellent'), (.10, 'good'), (.20, 'fair'), (.30, 'poor')):
+    for upper, label in ((.04, 'excellent'), (.07, 'very good'), (.095, 'good'), (.19, 'fair'), (.29, 'poor')):
         if value <= upper:
             return label
     return 'very poor'
+
+
+def relabel(history):
+    """Apply current thresholds to cached measurements as well as new data."""
+    if not isinstance(history, dict):
+        return history
+    result = dict(history)
+    result['points'] = [dict(point, clarity=clarity(point['value'])) if point.get('value') is not None else point
+                        for point in history.get('points', [])]
+    return result
 
 
 def distance(lat, lon, la, ln):
