@@ -37,6 +37,25 @@
             throw new Error('Dependency timeout');
         }
 
+        const swellGrades = {calm: 'green', light: 'green', choppy: 'yellow', rough: 'orange', 'very rough': 'red'};
+        const visibilityGrades = {excellent: 'green', good: 'green', fair: 'yellow', poor: 'orange', 'very poor': 'red'};
+        const finiteNonnegative = value => typeof value === 'number' && Number.isFinite(value) && value >= 0;
+        const windDescriptor = speed => speed < 10 ? ['green', 'Light'] : speed < 15 ? ['yellow', 'Moderate']
+            : speed < 20 ? ['orange', 'Fresh'] : ['red', 'Strong'];
+        function setCondition(card, selector, value, grade, descriptor) {
+            const node = card.querySelector(selector);
+            node.textContent = value;
+            if (grade) node.dataset.grade = grade;
+            else delete node.dataset.grade;
+            if (descriptor && value !== '—') {
+                node.title = descriptor;
+                node.setAttribute('aria-label', `${value}, ${descriptor}`);
+            } else {
+                node.removeAttribute('title');
+                node.removeAttribute('aria-label');
+            }
+        }
+
         async function loadConditions(card) {
             const controller = new AbortController();
             const loadGeneration = generation;
@@ -45,18 +64,26 @@
             controllers.add(controller);
             loading.set(controller, {finish: () => {}, timeout});
             card.dataset.conditionsState = 'loading';
-            const setValue = (selector, value) => { card.querySelector(selector).textContent = value; };
             try {
                 const conditions = await warmDependency(card.dataset.conditionsUrl, 'GET', controller, deadline);
                 if (stopped || loadGeneration !== generation) return;
                 const current = conditions.status === 'complete' ? conditions.current || {} : {};
-                setValue('[data-followed-swell]', current.swell || '—');
-                setValue('[data-followed-wind]', typeof current.wind_speed_kn === 'number' && Number.isFinite(current.wind_speed_kn)
-                    ? `${Number(current.wind_speed_kn.toFixed(1))} kn` : '—');
+                const validSwell = finiteNonnegative(current.swell_height_m) && finiteNonnegative(current.swell_period_s)
+                    && (current.swell_height_m === 0 || current.swell_period_s > 0);
+                const feet = card.dataset.lengthUnit === 'ft';
+                const height = validSwell ? (feet ? Math.round(current.swell_height_m * 3.28084) : Number(current.swell_height_m.toFixed(1))) : null;
+                const period = validSwell ? Number(current.swell_period_s.toFixed(1)) : null;
+                const swell = validSwell ? `${height}${feet ? 'ft' : 'm'} @ ${period}s` : '—';
+                const swellDescriptor = typeof current.swell === 'string' ? current.swell : '';
+                setCondition(card, '[data-followed-swell]', swell, validSwell ? swellGrades[swellDescriptor.toLowerCase()] : null, swellDescriptor);
+                const validWind = finiteNonnegative(current.wind_speed_kn);
+                const [windGrade, windLabel] = validWind ? windDescriptor(current.wind_speed_kn) : [];
+                setCondition(card, '[data-followed-wind]', validWind ? `${Number(current.wind_speed_kn.toFixed(1))} kn` : '—', windGrade, windLabel);
                 if (conditions.status === 'complete') {
                     const visibility = await warmDependency(card.dataset.visibilityUrl, 'GET', controller, deadline);
                     if (stopped || loadGeneration !== generation) return;
-                    setValue('[data-followed-visibility]', visibility.status === 'complete' && visibility.clarity ? visibility.clarity : '—');
+                    const clarity = visibility.status === 'complete' && typeof visibility.clarity === 'string' ? visibility.clarity : '';
+                    setCondition(card, '[data-followed-visibility]', clarity || '—', visibilityGrades[clarity.toLowerCase()]);
                 }
             } catch (_error) {
                 // Keep unavailable values as dashes while preserving any conditions already loaded.

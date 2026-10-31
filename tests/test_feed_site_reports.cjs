@@ -6,11 +6,12 @@ const vm = require('node:vm');
 function node() {
     const classes = new Set();
     return {
-        attrs: {}, handlers: {}, hidden: false, isConnected: true,
+        attrs: {}, dataset: {}, handlers: {}, hidden: false, isConnected: true,
         textContent: '', scrollHeight: 100, clientHeight: 62,
         classList: {toggle(name, on) { on ? classes.add(name) : classes.delete(name); }, contains: name => classes.has(name)},
         setAttribute(name, value) { this.attrs[name] = value; },
         getAttribute(name) { return this.attrs[name] ?? null; },
+        removeAttribute(name) { delete this.attrs[name]; },
         addEventListener(name, callback) { this.handlers[name] = callback; },
     };
 }
@@ -71,7 +72,7 @@ test('every followed card loads its cached report preview', async () => {
     const calls = [];
     const state = setup(cards, async (url, options) => {
         calls.push({url, options});
-        if (url.endsWith('/conditions')) return response(200, {status: 'complete', current: {swell: 'Choppy', wind_speed_kn: 12.3}});
+        if (url.endsWith('/conditions')) return response(200, {status: 'complete', current: {swell: 'Choppy', swell_height_m: 0.65, swell_period_s: 10, wind_speed_kn: 12.3}});
         if (url.endsWith('/visibility')) return response(200, {status: 'complete', clarity: 'excellent'});
         return response(200, {status: 'complete', report: `Daily report for ${url.includes('/1/') ? 'one' : 'two'} with enough words to fill the four-line preview.`});
     });
@@ -82,11 +83,37 @@ test('every followed card loads its cached report preview', async () => {
     for (const [index, card] of cards.entries()) {
         assert.match(card.reportText.textContent, new RegExp(index ? 'two' : 'one'));
         assert.equal(card.item.dataset.reportState, 'ready');
-        assert.equal(card.swell.textContent, 'Choppy');
+        assert.equal(card.swell.textContent, '0.7m @ 10s');
+        assert.equal(card.swell.dataset.grade, 'yellow');
+        assert.equal(card.wind.dataset.grade, 'yellow');
+        assert.equal(card.visibility.dataset.grade, 'green');
         assert.equal(card.wind.textContent, '12.3 kn');
         assert.equal(card.visibility.textContent, 'excellent');
     }
     assert.equal(calls.length, 6);
+});
+
+test('feet, descriptor colors, and wind boundaries are normalized', async () => {
+    const cards = [card(1), card(2), card(3), card(4)];
+    cards.forEach(card => { card.item.dataset.lengthUnit = 'ft'; });
+    const speeds = [9.9, 10, 15, 20];
+    const swell = ['Calm', 'Choppy', 'Rough', 'Very rough'];
+    const clarity = ['good', 'fair', 'poor', 'very poor'];
+    setup(cards, async url => {
+        const index = Number(url.match(/dive-sites\/(\d+)/)[1]) - 1;
+        if (url.endsWith('/conditions')) return response(200, {status: 'complete', current: {swell: swell[index], swell_height_m: .65, swell_period_s: 10, wind_speed_kn: speeds[index]}});
+        if (url.endsWith('/visibility')) return response(200, {status: 'complete', clarity: clarity[index]});
+        return response(200, {status: 'complete', report: 'Conditions.'});
+    });
+    await flush();
+    const grades = ['green', 'yellow', 'orange', 'red'];
+    cards.forEach((card, i) => {
+        assert.equal(card.swell.textContent, '2ft @ 10s');
+        assert.equal(card.swell.dataset.grade, grades[i]);
+        assert.equal(card.wind.dataset.grade, grades[i]);
+        assert.equal(card.visibility.dataset.grade, grades[i]);
+        assert.match(card.wind.attrs['aria-label'], /Light|Moderate|Fresh|Strong/);
+    });
 });
 
 test('missing values and visibility failures leave available conditions intact', async () => {

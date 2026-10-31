@@ -1,6 +1,6 @@
 {% set has_coords = item.latitude is not none and item.longitude is not none %}
 <a class="site-report-card" href="{{ url_for('dive_site_profile', site_id=item.id) }}#daily-report"
-   aria-labelledby="followedSiteTitle{{ item.id }}" data-followed-site-report data-report-state="loading"
+   data-followed-site-report data-report-state="loading" data-length-unit="{{ units.length }}"
    data-report-url="{{ url_for('api_site_report', site_id=item.id) }}"
    data-description-url="{{ url_for('api_dive_site_description', site_id=item.id) }}"
    data-conditions-url="{{ url_for('api_site_conditions', site_id=item.id) }}"

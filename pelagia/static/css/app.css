@@ -6083,6 +6083,10 @@ img.is-media-loading {
 .followed-condition:nth-child(2) { justify-content: center; }
 .followed-condition:last-child { justify-content: flex-end; }
 .followed-condition > span:last-child { overflow-wrap: anywhere; }
+.followed-condition [data-grade="green"] { color: #19704c; }
+.followed-condition [data-grade="yellow"] { color: #806000; }
+.followed-condition [data-grade="orange"] { color: #a54908; }
+.followed-condition [data-grade="red"] { color: #b02c35; }
 
 .followed-report-label {
     margin: 14px 0 8px;
