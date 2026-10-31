@@ -6025,7 +6025,7 @@ img.is-media-loading {
     display: flex;
     flex-direction: column;
     min-width: 0;
-    padding: 18px;
+    padding: 36px 18px 18px;
     border: 1px solid var(--line);
     border-radius: var(--radius);
     background: var(--panel);
@@ -6034,10 +6034,10 @@ img.is-media-loading {
     transition: border-color 160ms ease;
 }
 .site-report-card:only-child { flex-basis: 100%; }
-/* An editorial marker in the existing top inset, outside the card's flow. */
+/* Reserve the same editorial space on every card to keep report content aligned. */
 .site-report-featured {
     position: absolute;
-    top: 7px;
+    top: 16px;
     left: 18px;
     display: inline-flex;
     align-items: center;
@@ -6164,8 +6164,8 @@ img.is-media-loading {
 }
 @media (max-width: 560px) {
     .site-reports { gap: 12px; }
-    .site-report-card { padding: 16px; }
-    .site-report-featured { top: 5px; left: 16px; }
+    .site-report-card { padding: 34px 16px 16px; }
+    .site-report-featured { top: 14px; left: 16px; }
     .site-report-card-main { gap: 10px; }
     .site-report-card .site-report-map { flex-basis: 56px; width: 56px; height: 56px; min-height: 56px; max-height: 56px; }
     .site-report-identity h3 { font-size: .9375rem; }
