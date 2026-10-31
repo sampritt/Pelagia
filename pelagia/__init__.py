@@ -115,8 +115,6 @@ def create_app(test_config=None):
     dive_import.init_app(app, current_user)
     site_descriptions.init_app(app, login_required)
     marine.init_app(app, login_required)
-    from . import visibility
-    visibility.init_app(app, login_required)
     site_reports.init_app(app, login_required)
     water_type.init_app(app, login_required)
     dive_brief.init_app(app)
