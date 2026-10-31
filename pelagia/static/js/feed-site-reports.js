@@ -86,6 +86,9 @@
                 if (conditions.status === 'complete') {
                     const visibility = await warmDependency(card.dataset.visibilityUrl, 'GET', controller, deadline);
                     if (stopped || loadGeneration !== generation) return;
+                    const attenuation = visibility.status === 'complete' && finiteNonnegative(visibility.value) && visibility.value > 0
+                        ? `${Number(visibility.value.toFixed(3))} m⁻¹` : '—';
+                    card.querySelector('[data-followed-visibility-detail]').textContent = attenuation;
                     const clarity = visibility.status === 'complete' && typeof visibility.clarity === 'string' ? visibility.clarity : '';
                     setCondition(card, '[data-followed-visibility]', clarity ? clarity.charAt(0).toUpperCase() + clarity.slice(1) : '—', visibilityGrades[clarity.toLowerCase()]);
                 }
