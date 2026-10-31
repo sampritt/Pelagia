@@ -6,6 +6,7 @@ import json
 import math
 import subprocess
 import sys
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -55,8 +56,10 @@ def collect(lat, lon, now):
     lon_delta = 180 if abs(lat)+delta >= 90 else min(180, math.degrees(math.asin(min(1, math.sin(math.radians(delta))/math.cos(math.radians(lat)))))+.05)
     lo, hi = lon-lon_delta, lon+lon_delta
     ranges = [(-180, 180)] if lon_delta >= 180 else ([(lo+360, 180), (-180, hi)] if lo < -180 else [(lo, 180), (-180, hi-360)] if hi > 180 else [(lo, hi)])
-    selected, retrieved, failures = {}, set(), 0
-    for priority, dataset in enumerate(DATASETS):
+
+    def query_source(item):
+        selected, retrieved, failures = {}, set(), 0
+        priority, dataset = item
         for lo, hi in ranges:
             try:
                 frame = copernicusmarine.read_dataframe(
@@ -81,6 +84,18 @@ def collect(lat, lon, now):
                         selected[day] = (key, kd, dataset, la, ln, km)
             except Exception:
                 failures += 1
+        return selected, retrieved, failures
+
+    selected, retrieved, failures = {}, set(), 0
+    # Bound concurrency to the two sources, including when longitude wraps.
+    # Each task owns its results; merge in source order to preserve MY preference.
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        for source_pixels, source_dates, source_failures in pool.map(query_source, enumerate(DATASETS)):
+            retrieved.update(source_dates)
+            failures += source_failures
+            for day, pixel in source_pixels.items():
+                if day not in selected or pixel[0] < selected[day][0]:
+                    selected[day] = pixel
     points = []
     for i in range(30):
         day = start + timedelta(days=i)

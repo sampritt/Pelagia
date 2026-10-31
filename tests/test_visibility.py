@@ -2,6 +2,7 @@ import base64
 import json
 import os
 import subprocess
+import threading
 import unittest
 from datetime import datetime, timezone
 from unittest.mock import patch
@@ -34,7 +35,7 @@ class VisibilityTest(unittest.TestCase):
         my = frame([('2026-10-02', 0, .01, .07), ('2026-10-02', 0, .02, .06),
                     ('2026-10-03', 0, .01, float('nan')), ('2026-10-04', 0, 1, .08)])
         nrt = frame([('2026-10-02', 0, .01, .05), ('2026-10-29', 0, .01, .045)])
-        with patch('copernicusmarine.read_dataframe', side_effect=[my,nrt]) as read, patch.dict(os.environ, COPERNICUS_MARINE_CREDS=''):
+        with patch('copernicusmarine.read_dataframe', side_effect=lambda **kw: my if kw['dataset_id'] == visibility.DATASETS[0] else nrt) as read, patch.dict(os.environ, COPERNICUS_MARINE_CREDS=''):
             result = visibility.collect(0, 0, NOW)
         self.assertEqual(len(result['points']), 30)
         self.assertEqual(result['points'][0]['value'], .07)
@@ -45,6 +46,27 @@ class VisibilityTest(unittest.TestCase):
         self.assertEqual(result['points'][-3]['value'], .045)
         self.assertEqual(read.call_count, 2)
         self.assertEqual(datetime.fromtimestamp(result['points'][0]['time'], timezone.utc).day, 2)
+
+    def test_sources_overlap_and_one_failure_preserves_the_other_source(self):
+        barrier = threading.Barrier(2, timeout=3)
+        entered = set()
+        lock = threading.Lock()
+        frame = pd.DataFrame([('2026-10-29', 0, .01, .045)],
+                             columns=['time', 'latitude', 'longitude', 'KD490'])
+        def read(**kwargs):
+            source = kwargs['dataset_id']
+            with lock:
+                entered.add(source)
+            barrier.wait()  # A sequential implementation cannot reach both sides.
+            if source == visibility.DATASETS[0]:
+                raise RuntimeError('Simulated source outage')
+            return frame
+        with patch('copernicusmarine.read_dataframe', side_effect=read), patch.dict(os.environ, COPERNICUS_MARINE_CREDS=''):
+            result = visibility.collect(0, 0, NOW)
+        self.assertEqual(entered, set(visibility.DATASETS))
+        self.assertEqual(result['status'], 'partial')
+        self.assertEqual(result['points'][-3]['value'], .045)
+        self.assertEqual(result['points'][-3]['dataset_id'], visibility.DATASETS[1])
 
     def test_timeout_does_not_take_down_marine_weather(self):
         with patch('pelagia.visibility.subprocess.run', side_effect=subprocess.TimeoutExpired('worker',24)):
