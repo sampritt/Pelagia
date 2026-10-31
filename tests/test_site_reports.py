@@ -78,6 +78,8 @@ class SiteReportTest(unittest.TestCase):
             self.assertEqual(data['conditions']['charts']['swell_hourly'][0]['descriptor'], 'Choppy')
             self.assertEqual(data['conditions']['charts']['swell_seven_days'][0]['period_s'], 8)
             self.assertIn('comment on today\'s surface conditions', reports.INSTRUCTIONS)
+            self.assertIn('unless it exceeds 0.8 meters', reports.INSTRUCTIONS)
+            self.assertIn('9 seconds', reports.INSTRUCTIONS)
             self.assertIn('season', data)
             self.assertNotIn('user_id', data)
             self.assertNotIn('weight', data)

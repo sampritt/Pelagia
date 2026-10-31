@@ -32,7 +32,9 @@ supports it; do not simply label conditions 'moderate and manageable'. Select th
 strongest story rather than squeezing every available variable into the report.
 When swell data is available, comment on today's surface conditions using the
 supplied swell height, period, and descriptors, including any meaningful change
-through the day. These describe regional swell, not the complete local sea state;
+through the day. Describe swell qualitatively; do not mention a numerical swell
+height unless it exceeds 0.8 meters, or a numerical swell period unless it exceeds
+9 seconds. These describe regional swell, not the complete local sea state;
 wind waves, shelter, and coastline can change conditions. Do not infer safety,
 surf, surge, or entry hazards from swell alone. If swell data is missing, omit it.
 
