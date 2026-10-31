@@ -41,6 +41,9 @@ class SiteReportTest(unittest.TestCase):
             db.execute('''INSERT OR REPLACE INTO marine_forecast_cache
                 (site_id, latitude, longitude, payload, fetched_at, expires_at)
                 VALUES (1, 54.1, -132.9, ?, ?, ?)''', (json.dumps(data or payload()), NOW, NOW + 900))
+            db.execute('''INSERT OR REPLACE INTO visibility_cache
+                (site_id, latitude, longitude, payload, fetched_at, expires_at)
+                VALUES (1, 54.1, -132.9, ?, ?, ?)''', (json.dumps({'status':'complete','points':[]}), NOW, NOW+900))
             if description:
                 db.execute("INSERT OR REPLACE INTO dive_site_descriptions (dive_site_id, description, model) VALUES (1, 'A rocky boat dive with exposed currents.', 'test')")
             db.commit()
@@ -71,11 +74,24 @@ class SiteReportTest(unittest.TestCase):
             self.assertNotIn('exposure_recommendation', data)
             self.assertNotIn('recommendations', data['conditions'])
             self.assertEqual(data['date'], '2026-10-25')
-            self.assertEqual(data['retrieved_data'], payload())
+            self.assertEqual(data['retrieved_data'], dict(payload(), visibility={'status':'complete','points':[]}))
             self.assertEqual(data['conditions']['current']['moon_phase'], 'Full')
             self.assertIn('season', data)
             self.assertNotIn('user_id', data)
             self.assertNotIn('weight', data)
+
+    def test_report_waits_for_visibility_to_settle_including_no_data(self):
+        self.populate()
+        with self.app.app_context():
+            db=database.get_db();db.execute('DELETE FROM visibility_cache');db.commit()
+        with patch.object(reports, 'generate', return_value=PROSE) as generate:
+            self.assertEqual(self.post().status_code,202)
+            generate.assert_not_called()
+            with self.app.app_context():
+                db=database.get_db()
+                db.execute("INSERT INTO visibility_cache (site_id,latitude,longitude,payload,fetched_at,expires_at) VALUES (1,54.1,-132.9,?,?,?)",(json.dumps({'status':'unavailable','points':[]}),NOW,NOW+900));db.commit()
+            self.assertEqual(self.post().status_code,200)
+            generate.assert_called_once()
 
     def test_warm_cache_shared_across_users_and_survives_dependency_expiry(self):
         self.populate()
@@ -104,6 +120,7 @@ class SiteReportTest(unittest.TestCase):
                     for source in (data['hourly'], data['weather']['hourly'], data['weather']['daily']):
                         source['time'] = [t + 86400 for t in source['time']]
                     db.execute('UPDATE marine_forecast_cache SET payload=?, expires_at=?', (json.dumps(data), midnight + 900))
+                    db.execute('UPDATE visibility_cache SET expires_at=?', (midnight + 900,))
                     db.commit()
                 self.assertEqual(self.post().get_json()['date'], '2026-10-26')
             self.assertEqual(generate.call_count, 2)

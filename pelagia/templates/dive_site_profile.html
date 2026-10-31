@@ -64,7 +64,7 @@
         </div>
         <div class="site-chart-block">
             <div class="site-chart-head"><h2>Visibility</h2></div>
-            <div class="marine-chart" data-marine-chart="visibility"><p class="muted">History unavailable</p></div>
+            <div class="marine-chart" data-marine-chart="visibility" data-url="{{ url_for('api_site_visibility', site_id=site.id) }}"><p class="muted">History unavailable</p></div>
         </div>
         <div class="site-chart-block">
             <div class="site-chart-head"><h2>Rain</h2><span class="chart-unit">Past 12 months</span></div>

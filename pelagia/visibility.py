@@ -108,6 +108,51 @@ def fetch(lat, lon, now):
         return dict(points=[], status='unavailable')
 
 
+def read_cache(site, now):
+    from .db import get_db
+    row = get_db().execute('SELECT * FROM visibility_cache WHERE site_id=?', (site['id'],)).fetchone()
+    if (row is None or not row['payload'] or row['expires_at'] <= now
+            or (row['latitude'], row['longitude']) != (float(site['latitude']), float(site['longitude']))):
+        return None
+    return json.loads(row['payload'])
+
+
+def load(site, now):
+    import time
+    import uuid
+    from .db import get_db
+    db = get_db()
+    lat, lon = float(site['latitude']), float(site['longitude'])
+    token = uuid.uuid4().hex
+    db.execute('BEGIN IMMEDIATE')
+    try:
+        cached = read_cache(site, now)
+        if cached is not None:
+            db.commit()
+            return cached, 200
+        row = db.execute('SELECT * FROM visibility_cache WHERE site_id=?', (site['id'],)).fetchone()
+        if row and (row['latitude'], row['longitude']) == (lat, lon) and row['lease_until'] > now:
+            db.commit()
+            return dict(status='pending'), 202
+        db.execute("""INSERT INTO visibility_cache (site_id, latitude, longitude, lease_token, lease_until)
+            VALUES (?, ?, ?, ?, ?) ON CONFLICT(site_id) DO UPDATE SET
+            latitude=excluded.latitude, longitude=excluded.longitude, lease_token=excluded.lease_token,
+            lease_until=excluded.lease_until, expires_at=0, payload=NULL""", (site['id'],lat,lon,token,now+35))
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+    payload = fetch(lat, lon, now)
+    fetched = time.time()
+    midnight = datetime.fromtimestamp(fetched, timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0).timestamp()+86400
+    payload = dict(payload, fetched_at=fetched, expires_at=min(fetched+900,midnight))
+    with db:
+        db.execute("""UPDATE visibility_cache SET payload=?, fetched_at=?, expires_at=?,
+            lease_until=0, lease_token=NULL WHERE site_id=? AND lease_token=?""",
+            (json.dumps(payload,allow_nan=False),fetched,min(fetched+900,midnight),site['id'],token))
+    return payload, 200
+
+
 if __name__ == '__main__':
     import contextlib
     with contextlib.redirect_stdout(sys.stderr):

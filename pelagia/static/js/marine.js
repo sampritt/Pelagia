@@ -53,6 +53,20 @@
     }
     const decimal = value => Number(value.toFixed(2));
 
+    // Monotone cubic interpolation preserves each measurement without overshooting extrema.
+    function smoothPath(samples) {
+        if (!samples.length) return '';
+        const slopes = samples.slice(1).map((p, i) => (p[1] - samples[i][1]) / (p[0] - samples[i][0]));
+        const tangent = i => i === 0 ? slopes[0] : i === samples.length - 1 ? slopes[i - 1]
+            : slopes[i - 1] * slopes[i] <= 0 ? 0 : 2 * slopes[i - 1] * slopes[i] / (slopes[i - 1] + slopes[i]);
+        let path = `M${samples[0][0]},${samples[0][1]}`;
+        for (let i = 1; i < samples.length; i++) {
+            const [a, b] = [samples[i - 1], samples[i]], dx = (b[0] - a[0]) / 3;
+            path += ` C${a[0] + dx},${a[1] + tangent(i - 1) * dx} ${b[0] - dx},${b[1] - tangent(i) * dx} ${b[0]},${b[1]}`;
+        }
+        return path;
+    }
+
     function renderChart(host, points, { tide = false, wind = false, rainfall = false, visibility = false, daily = false, zone, lengthUnit = 'm', moons = [] }) {
         points = points || [];
         host.replaceChildren();
@@ -127,6 +141,14 @@
         });
         let segment = [];
         const flush = () => {
+            if (visibility && segment.length) {
+                const samples = segment.length === 1 ? [[segment[0][0] - 2, segment[0][1]], [segment[0][0] + 2, segment[0][1]]] : segment;
+                const path = smoothPath(samples);
+                svg.appendChild(el('path', { d: `${path} L${samples.at(-1)[0]},${bottom} L${samples[0][0]},${bottom} Z`, class: 'marine-tide-fill' }));
+                svg.appendChild(el('path', { d: path, class: 'marine-tide-line' }));
+                segment = [];
+                return;
+            }
             if (segment.length > 1) {
                 const firstX = segment[0].split(',')[0];
                 const lastX = segment[segment.length - 1].split(',')[0];
@@ -136,9 +158,13 @@
             segment = [];
         };
         points.forEach((point, i) => {
-            if (!finite(point.value)) { flush(); return; }
+            if (!finite(point.value)) { if (!visibility) flush(); return; }
             const title = `${rainfall ? localMonth(point.time, zone) : localDate(point.time, zone)}${rainfall || visibility ? '' : daily ? ', daily maximum' : ', ' + localHour(point.time, zone)}: ${valueLabel(point.value)}${contextLabel(point)}`;
             let mark;
+            if (visibility) {
+                segment.push([x(i), y(point.value)]);
+                return;
+            }
             if (tide) {
                 segment.push(`${x(i)},${y(point.value)}`);
                 return;
@@ -170,7 +196,7 @@
                 if ((daily && width < 550 && (i === 0 || new Intl.DateTimeFormat('en-US', { timeZone: zone, day: 'numeric' }).format(new Date(point.time * 1000)) === '1')) || (!daily && (hour === 0 || i === 0))) svg.appendChild(el('text', { x: x(i), y: bottom + 45, 'text-anchor': 'middle' }, daily ? new Intl.DateTimeFormat('en-US', { timeZone: zone, month: 'short' }).format(new Date(point.time * 1000)) : localDate(point.time, zone)));
             }
         });
-        if (!tide) svg.appendChild(cursor);
+        if (!tide && !visibility) svg.appendChild(cursor);
         let selected = Math.min(Number(host.dataset.selectedIndex) || 0, points.length - 1);
         function select(index, reveal = false) {
             selected = Math.max(0, Math.min(points.length - 1, index));
@@ -219,6 +245,39 @@
         edge();
     }
 
+    function initVisibility(host) {
+        if (!host) return;
+        let controller, timer, deadline, end = () => {}, result, loadedAt = 0, stopped = false, active = false, ticket = 0;
+        const finish = () => { end(); window.clearTimeout(timer); window.clearTimeout(deadline); active = false; };
+        const unavailable = () => { host.replaceChildren(); const p = document.createElement('p'); p.className = 'muted'; p.textContent = 'History unavailable'; host.appendChild(p); };
+        const draw = () => renderChart(host, result.points, { visibility: true, zone: 'UTC' });
+        function load() {
+            if (active || stopped) return;
+            const generation = ++ticket;
+            active = true; controller = new AbortController();
+            end = window.PelagiaLoading?.begin(host, 'Loading visibility', '<span class="skeleton skeleton-chart"></span>') || (() => {});
+            deadline = window.setTimeout(() => { ticket++; controller.abort(); finish(); unavailable(); }, 35000);
+            async function request() {
+                try {
+                    const response = await fetch(host.dataset.url, { credentials: 'same-origin', cache: 'no-store', headers: { 'X-Requested-With': 'fetch' }, signal: controller.signal });
+                    if (stopped || generation !== ticket) return;
+                    if (response.status === 202) { timer = window.setTimeout(request, 2000); return; }
+                    if (!response.ok) throw new Error('Unavailable');
+                    const data = await response.json();
+                    if (stopped || generation !== ticket) return;
+                    result = data; loadedAt = finite(data.fetched_at) ? data.fetched_at * 1000 : Date.now(); finish(); draw();
+                } catch (_error) { if (!stopped && generation === ticket) { finish(); unavailable(); } }
+            }
+            request();
+        }
+        window.addEventListener('pelagia:report-refresh', () => { if (!active && Date.now() >= Math.min(loadedAt + 840000, finite(result?.expires_at) ? result.expires_at * 1000 : Infinity)) load(); });
+        let width = host.clientWidth;
+        window.addEventListener('resize', () => { if (host.clientWidth !== width) { width = host.clientWidth; if (result && !active && !stopped) draw(); } });
+        window.addEventListener('pagehide', () => { stopped = true; ticket++; controller?.abort(); finish(); });
+        window.addEventListener('pageshow', event => { if (event.persisted) { stopped = false; load(); } });
+        load();
+    }
+
     function initMarine() {
         const host = document.querySelector('[data-marine-forecast]');
         if (!host) return;
@@ -240,14 +299,14 @@
         const windChart = host.querySelector('[data-marine-chart="wind"]');
         const rainfallChart = host.querySelector('[data-marine-chart="rainfall"]');
         const visibilityChart = host.querySelector('[data-marine-chart="visibility"]');
-        const chartNodes = [currentChart, tideChart, windChart, rainfallChart, visibilityChart].filter(Boolean);
+        initVisibility(visibilityChart);
+        const chartNodes = [currentChart, tideChart, windChart, rainfallChart].filter(Boolean);
         const buttons = [...host.querySelectorAll('[data-marine-range]')];
         const ranges = { current: 'daily', wind: 'daily' };
         let result, controller, deadline, poll, ends = [], stopped = false, generation = 0;
         const finish = () => { ends.forEach(end => end()); ends = []; };
         const clear = () => { window.clearTimeout(poll); window.clearTimeout(deadline); finish(); };
         const charts = (target) => {
-            if (!target && visibilityChart) renderChart(visibilityChart, result.charts.visibility_daily, { visibility: true, zone: 'UTC' });
             if (!target && rainfallChart) renderChart(rainfallChart, result.charts.rainfall_monthly, { rainfall: true, zone: result.timezone });
             if (!target || target === 'current') {
                 const points = result.charts[ranges.current === 'daily' ? 'current_daily' : 'current_hourly'];
@@ -277,7 +336,6 @@
                 'Tide level is only available for ocean dive sites',
                 'Wind forecast is only available for ocean dive sites',
                 'Rainfall history is only available for ocean dive sites',
-                'Visibility history is only available for ocean dive sites',
             ];
             chartNodes.forEach((node, index) => {
                 node.replaceChildren();
@@ -382,5 +440,5 @@
     }
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initMarine);
     else initMarine();
-    if (typeof module !== 'undefined') module.exports = { renderChart, localDate, localMonth, localHour, hourNumber, compassHeading, windHeading };
+    if (typeof module !== 'undefined') module.exports = { initVisibility, smoothPath, renderChart, localDate, localMonth, localHour, hourNumber, compassHeading, windHeading };
 })();

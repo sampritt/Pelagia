@@ -244,16 +244,30 @@ test('missing marine temperature or failed fetch keeps equipment advice hidden',
     assert.equal(failed.equipment.hidden,true);
 });
 
-test('visibility uses continuous inverse attenuation with qualitative labels and missing-day gaps', () => {
+test('visibility renders smooth filled continuous curves without points and interpolates across missing days', () => {
     const s=setup('false'), host=node(); host.clientWidth=320;
     const points=[.04,.045,null,.12,.32].map((value,i)=>({value,time:Date.UTC(2026,9,i+1)/1000}));
     s.context.module.exports.renderChart(host,points,{visibility:true,zone:'UTC'});
-    const labels=host.children[0].children.map(n=>n.textContent);
-    assert.deepEqual(labels,['Excellent','Good','Fair','Poor','Very poor']);
-    const bars=host.children[1].children[0].children.filter(n=>n.tag==='rect');
-    assert.equal(bars.length,4);
-    assert.ok(Number(bars[0].attrs.height)>Number(bars[1].attrs.height));
-    assert.ok(Number(bars[1].attrs.height)>Number(bars[2].attrs.height));
-    assert.match(bars[0].attrs['aria-label'],/0.0400/);
-    assert.notEqual(bars[0].attrs.height,bars[1].attrs.height);
+    assert.deepEqual(host.children[0].children.map(n=>n.textContent),['Excellent','Good','Fair','Poor','Very poor']);
+    const svg=host.children[1].children[0];
+    assert.equal(svg.children.filter(n=>n.tag==='rect'||n.tag==='circle').length,0);
+    const lines=svg.children.filter(n=>n.tag==='path' && n.attrs.class==='marine-tide-line');
+    const fills=svg.children.filter(n=>n.tag==='path' && n.attrs.class==='marine-tide-fill');
+    assert.equal(lines.length,1); assert.equal(fills.length,1);
+    assert.equal((lines[0].attrs.d.match(/ C/g)||[]).length,3);
+    assert.match(lines[0].attrs.d,/ C/);
+    const firstY=Number(lines[0].attrs.d.match(/^M[\d.]+,([\d.]+)/)[1]);
+    assert.ok(Math.abs(firstY-(32+.04/.35*136))<.0001);
+    assert.ok(fills.every(n=>n.attrs.d.endsWith(' Z')));
+});
+test('marine conditions finish while the independent visibility request is still pending',async()=>{
+    const s=setup(), host=node();host.dataset.url='/api/dive-sites/1/visibility';
+    s.context.module.exports.initVisibility(host);
+    assert.equal(s.requests.length,2);
+    s.requests[0].resolve({status:200,ok:true,json:async()=>data()});await flush();
+    assert.equal(s.values[0].textContent,'83°F');
+    assert.equal(s.ended(),8);
+    s.requests[1].resolve({status:200,ok:true,json:async()=>({status:'complete',points:[{time:1792940400,value:.04},{time:1793026800,value:.05}]})});await flush();
+    assert.equal(s.ended(),9);
+    assert.ok(host.children[1].children[0].children.some(n=>n.tag==='path'));
 });
