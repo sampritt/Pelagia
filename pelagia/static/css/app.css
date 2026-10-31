@@ -6531,3 +6531,7 @@ img.is-media-loading {
 @media (prefers-reduced-motion: reduce) {
     .dive-detail-title .site-destination-link { transition: none; }
 }
+
+.visibility-pending p { animation: visibility-pulse 1.5s ease-in-out infinite; }
+@keyframes visibility-pulse { 50% { opacity: .48; } }
+@media (prefers-reduced-motion: reduce) { .visibility-pending p { animation: none; } }

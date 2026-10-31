@@ -98,8 +98,10 @@ def report_input(site, now):
             or marine.coordinates(site) != (row['latitude'], row['longitude'])):
         return None
     raw = json.loads(row['payload'])
-    if raw.get('visibility') is not None:
-        raw['visibility'] = marine.visibility.relabel(raw['visibility'])
+    history = marine.visibility.read_cache(site, now, raw['timezone'])
+    if history is None:
+        return None
+    raw['visibility'] = history
     conditions = marine.normalize(raw, now, row['fetched_at'])
     # Successful upstream retrieval can still contain all-null fields (e.g. no
     # coastal coverage). Do not spend a daily report on missing required data.

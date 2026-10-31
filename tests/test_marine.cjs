@@ -13,21 +13,25 @@ function node(tag = 'div') {
     };
 }
 const flush = async () => { for (let i = 0; i < 12; i++) await Promise.resolve(); };
-function setup(coordinates = 'true') {
+function setup(coordinates = 'true', withVisibility = false) {
+    const visibility = node(), visibilityText = node('p');
+    visibility.dataset.url = '/api/dive-sites/1/visibility';
+    visibility.querySelector = () => visibilityText;
+    visibility.classList = {add() {}, remove() {}};
     const equipment=node(), exposureAdvice=node(), exposureName=node(), weightAsterisk=node(), exposureAsterisk=node(), exposureHistory=node(), exposureHistoryLink=node(), weightAdvice=node(), weightCaveat=node(), source=node();
     const host = node(), status = node(), retry = node(), charts = [node(), node(), node(), node()], values = ['temperature', 'tide', 'moon', 'wind'].map(v => { const n = node(); n.dataset.marineValue = v; return n; });
     charts.forEach(n => { n.dataset.chart = true; });
     const buttons = ['daily', 'hourly', 'daily', 'hourly'].map((v, i) => { const n = node(); n.dataset.marineRange = v; if (i > 1) n.dataset.marineTarget = 'wind'; return n; });
     host.dataset = {coordinates, url: '/api/dive-sites/1/conditions', temperatureUnit: 'f', lengthUnit: 'ft'};
-    host.querySelector = s => ({'[data-equipment-advice]':equipment,'[data-exposure-advice]':exposureAdvice,'[data-exposure-name]':exposureName,'[data-weight-asterisk]':weightAsterisk,'[data-exposure-asterisk]':exposureAsterisk,'[data-exposure-history]':exposureHistory,'[data-exposure-history-link]':exposureHistoryLink,'[data-weight-advice]':weightAdvice,'[data-weight-caveat]':weightCaveat,'[data-marine-status]':status,'[data-marine-retry]':retry,'[data-marine-source]':source,'[data-marine-chart="current"]':charts[0],'[data-marine-chart="tide"]':charts[1],'[data-marine-chart="wind"]':charts[2],'[data-marine-chart="rainfall"]':charts[3]})[s];
+    host.querySelector = s => s === '[data-visibility-summary]' && withVisibility ? visibility : ({'[data-equipment-advice]':equipment,'[data-exposure-advice]':exposureAdvice,'[data-exposure-name]':exposureName,'[data-weight-asterisk]':weightAsterisk,'[data-exposure-asterisk]':exposureAsterisk,'[data-exposure-history]':exposureHistory,'[data-exposure-history-link]':exposureHistoryLink,'[data-weight-advice]':weightAdvice,'[data-weight-caveat]':weightCaveat,'[data-marine-status]':status,'[data-marine-retry]':retry,'[data-marine-source]':source,'[data-marine-chart="current"]':charts[0],'[data-marine-chart="tide"]':charts[1],'[data-marine-chart="wind"]':charts[2],'[data-marine-chart="rainfall"]':charts[3]})[s];
     host.querySelectorAll = s => s.includes('value') ? values : buttons;
     const window = node(); let id = 0; const timers = new Map(); const requests = []; let ended = 0;
     window.setTimeout = (fn, delay) => { timers.set(++id, {fn, delay}); return id; }; window.clearTimeout = n => timers.delete(n);
     window.PelagiaLoading = {begin: () => () => { ended++; }};
-    const document = {readyState: 'complete', querySelector: () => host, createElement: node, createElementNS: (_, tag) => node(tag)};
+    const document = {readyState: 'complete', querySelector: () => host, createElement: node, createElementNS: (_, tag) => node(tag), createTextNode: text => ({textContent:text})};
     const context = vm.createContext({window, document, Intl, Date, AbortController, module: {exports: {}}, fetch: (url, options) => new Promise((resolve, reject) => requests.push({url, options, resolve, reject}))});
     vm.runInContext(fs.readFileSync('pelagia/static/js/marine.js', 'utf8'), context);
-    return {equipment,exposureAdvice,exposureName,weightAsterisk,exposureAsterisk,exposureHistory,exposureHistoryLink,weightAdvice,weightCaveat,source,host, status, retry, charts, values, buttons, window, timers, requests, context, ended: () => ended};
+    return {visibility,visibilityText,equipment,exposureAdvice,exposureName,weightAsterisk,exposureAsterisk,exposureHistory,exposureHistoryLink,weightAdvice,weightCaveat,source,host, status, retry, charts, values, buttons, window, timers, requests, context, ended: () => ended};
 }
 function data() {
     const points = Array.from({length: 48}, (_, i) => ({time:1792940400 + i * 3600, value: .5}));
@@ -244,23 +248,17 @@ test('missing marine temperature or failed fetch keeps equipment advice hidden',
     assert.equal(failed.equipment.hidden,true);
 });
 
-test('visibility renders smooth filled continuous curves without points and interpolates across missing days', () => {
-    const s=setup('false'), host=node(); host.clientWidth=320;
-    const points=[.04,.045,null,.12,.32].map((value,i)=>({value,time:Date.UTC(2026,9,i+1)/1000}));
-    s.context.module.exports.renderChart(host,points,{visibility:true,zone:'UTC'});
-    assert.deepEqual(host.children[0].children.map(n=>n.textContent),['Excellent','Very good','Good','Fair','Poor','Very poor']);
-    const positions = host.children[0].children.map(n => Number(n.attrs.y));
-    assert.ok(positions.slice(1).every((value, i) => value - positions[i] >= 14));
-    assert.match(host.children[3].children[0].textContent, /Excellent/);
-    assert.match(host.children[3].children[1].textContent, /Very good/);
-    const svg=host.children[1].children[0];
-    assert.equal(svg.children.filter(n=>n.tag==='rect'||n.tag==='circle').length,0);
-    const lines=svg.children.filter(n=>n.tag==='path' && n.attrs.class==='marine-tide-line');
-    const fills=svg.children.filter(n=>n.tag==='path' && n.attrs.class==='marine-tide-fill');
-    assert.equal(lines.length,1); assert.equal(fills.length,1);
-    assert.equal((lines[0].attrs.d.match(/ C/g)||[]).length,3);
-    assert.match(lines[0].attrs.d,/ C/);
-    const firstY=Number(lines[0].attrs.d.match(/^M[\d.]+,([\d.]+)/)[1]);
-    assert.ok(Math.abs(firstY-(32+.04/.35*136))<.0001);
-    assert.ok(fills.every(n=>n.attrs.d.endsWith(' Z')));
+test('visibility starts only after ocean conditions finish and displays a bold rating', async () => {
+    const s=setup('true',true);
+    assert.equal(s.requests.length,1);
+    s.requests[0].resolve({status:200,ok:true,json:async()=>data()});await flush();
+    assert.equal(s.values[0].textContent,'83°F');
+    assert.equal(s.requests.length,2);
+    assert.equal(s.requests[1].url,'/api/dive-sites/1/visibility');
+    assert.equal(s.visibilityText.textContent,'Checking visibility…');
+    s.requests[1].resolve({status:200,ok:true,json:async()=>({status:'complete',clarity:'very good'})});await flush();
+    assert.equal(s.visibilityText.children[0].textContent,'Visibility has been ');
+    assert.equal(s.visibilityText.children[1].tag,'strong');
+    assert.equal(s.visibilityText.children[1].textContent,'very good');
+    assert.equal(s.visibilityText.children[2].textContent,' this week');
 });

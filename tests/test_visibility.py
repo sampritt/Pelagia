@@ -29,77 +29,56 @@ class VisibilityTest(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, '^Invalid COPERNICUS_MARINE_CREDS format$'):
                 visibility.credentials()
 
-    def test_nearest_valid_daily_pixel_source_preference_gaps_and_utc_dates(self):
-        def frame(rows):
-            return pd.DataFrame(rows, columns=['time','latitude','longitude','KD490'])
-        my = frame([('2026-10-02', 0, .01, .07), ('2026-10-02', 0, .02, .06),
-                    ('2026-10-03', 0, .01, float('nan')), ('2026-10-04', 0, 1, .08)])
-        nrt = frame([('2026-10-02', 0, .01, .05), ('2026-10-29', 0, .01, .045)])
-        with patch('copernicusmarine.read_dataframe', side_effect=lambda **kw: my if kw['dataset_id'] == visibility.DATASETS[0] else nrt) as read, patch.dict(os.environ, COPERNICUS_MARINE_CREDS=''):
-            result = visibility.collect(0, 0, NOW)
-        self.assertEqual(len(result['points']), 30)
-        self.assertEqual(result['points'][0]['value'], .07)
-        self.assertEqual(result['points'][0]['dataset_id'], visibility.DATASETS[0])
-        self.assertEqual(result['points'][1]['status'], 'no_valid_pixel')
-        self.assertEqual(result['points'][2]['status'], 'no_valid_pixel')
-        self.assertIsNone(result['points'][-1]['value'])
-        self.assertEqual(result['points'][-3]['value'], .045)
-        self.assertEqual(read.call_count, 2)
-        self.assertEqual(datetime.fromtimestamp(result['points'][0]['time'], timezone.utc).day, 2)
+    def test_latest_valid_pixel_within_week_and_source_priority(self):
+        frame = pd.DataFrame([('2026-10-24',0,.01,.03), ('2026-10-29',0,.01,.05),
+                              ('2026-10-29',0,.02,.06)], columns=['time','latitude','longitude','KD490'])
+        with patch('copernicusmarine.read_dataframe', return_value=frame), patch.dict(os.environ,COPERNICUS_MARINE_CREDS=''):
+            result=visibility.collect(0,0,NOW)
+        self.assertEqual(result['date'],'2026-10-29')
+        self.assertEqual(result['value'],.05)
+        self.assertEqual(result['clarity'],'very good')
+        self.assertEqual(result['dataset_id'],visibility.DATASETS[0])
 
-    def test_sources_overlap_and_one_failure_preserves_the_other_source(self):
-        barrier = threading.Barrier(2, timeout=3)
-        entered = set()
-        lock = threading.Lock()
-        frame = pd.DataFrame([('2026-10-29', 0, .01, .045)],
-                             columns=['time', 'latitude', 'longitude', 'KD490'])
-        def read(**kwargs):
-            source = kwargs['dataset_id']
-            with lock:
-                entered.add(source)
-            barrier.wait()  # A sequential implementation cannot reach both sides.
-            if source == visibility.DATASETS[0]:
-                raise RuntimeError('Simulated source outage')
-            return frame
-        with patch('copernicusmarine.read_dataframe', side_effect=read), patch.dict(os.environ, COPERNICUS_MARINE_CREDS=''):
-            result = visibility.collect(0, 0, NOW)
-        self.assertEqual(entered, set(visibility.DATASETS))
-        self.assertEqual(result['status'], 'partial')
-        self.assertEqual(result['points'][-3]['value'], .045)
-        self.assertEqual(result['points'][-3]['dataset_id'], visibility.DATASETS[1])
+    def test_no_data_when_measurements_are_too_old(self):
+        frame=pd.DataFrame([('2026-10-24',0,0,.04)], columns=['time','latitude','longitude','KD490'])
+        with patch('copernicusmarine.read_dataframe',return_value=frame), patch.dict(os.environ,COPERNICUS_MARINE_CREDS=''):
+            self.assertEqual(visibility.collect(0,0,NOW)['status'],'no_data')
 
-    def test_timeout_does_not_take_down_marine_weather(self):
-        with patch('pelagia.visibility.subprocess.run', side_effect=subprocess.TimeoutExpired('worker',24)):
-            self.assertEqual(visibility.fetch(0,0,NOW)['status'], 'unavailable')
-        with patch('pelagia.marine.fetch_weather', return_value={'timezone':'UTC'}), patch('pelagia.marine.visibility.fetch', return_value={'points': [], 'status': 'unavailable'}):
-            self.assertEqual(marine.fetch(0,0,NOW)['timezone'], 'UTC')
-
-    def test_antimeridian_reads_both_sides(self):
-        frame = pd.DataFrame([('2026-10-29', 0, -179.99, .04)], columns=['time','latitude','longitude','KD490'])
-        with patch('copernicusmarine.read_dataframe', return_value=frame) as read, patch.dict(os.environ, COPERNICUS_MARINE_CREDS=''):
-            result=visibility.collect(0,179.99,NOW)
-        self.assertEqual(read.call_count,4)
-        self.assertEqual(result['points'][-3]['value'],.04)
-
-    def test_normalized_chart_and_report_receive_original_values(self):
+    def test_daily_cache_and_report_wait_for_visibility(self):
         import tempfile
         from pathlib import Path
         import test_reference_autocomplete as fixtures
-        from test_marine import payload, NOW as FIXTURE_NOW
+        from test_marine import payload, NOW as T
         from pelagia import db as database, site_reports
-        data=payload()
-        points=[{'time': FIXTURE_NOW-86400, 'value': .048765, 'clarity':'excellent', 'distance_km':1.5}]
-        data['visibility']={'points':points, 'status':'complete'}
-        normalized=marine.normalize(data,FIXTURE_NOW,FIXTURE_NOW)
-        self.assertEqual(normalized['charts']['visibility_daily'][0]['clarity'], 'very good')
+        helper=fixtures.ReferenceAutocompleteTest()
+        with tempfile.TemporaryDirectory() as tmp:
+            app,_,_=helper.make_app(Path(tmp))
+            with app.app_context():
+                db=database.get_db()
+                db.execute('INSERT INTO marine_forecast_cache (site_id,latitude,longitude,payload,fetched_at,expires_at) VALUES (1,54.1,-132.9,?,?,?)',(json.dumps(payload()),T,T+900))
+                db.execute("INSERT INTO dive_site_descriptions (dive_site_id,description,model) VALUES (1,'Rocky reef','test')")
+                db.commit();site=db.execute('SELECT * FROM dive_sites WHERE id=1').fetchone()
+                self.assertIsNone(site_reports.report_input(site,T))
+                with patch('pelagia.visibility.fetch',return_value={'status':'complete','date':'2026-10-24','value':.05,'clarity':'very good'}) as fetch:
+                    with patch('time.time',return_value=T):
+                        result,status=visibility.load(site,T,'Pacific/Galapagos')
+                        self.assertEqual(status,200)
+                        self.assertEqual(visibility.load(site,T+60,'Pacific/Galapagos')[0],result)
+                        self.assertEqual(fetch.call_count,1)
+                        self.assertEqual(site_reports.report_input(site,T)['retrieved_data']['visibility'],result)
+                        visibility.load(site,T+86400,'Pacific/Galapagos')
+                        self.assertEqual(fetch.call_count,2)
+
+    def test_cached_measurement_ages_out_even_before_local_midnight(self):
+        import tempfile
+        from pathlib import Path
+        import test_reference_autocomplete as fixtures
+        from pelagia import db as database
         with tempfile.TemporaryDirectory() as tmp:
             app,_,_=fixtures.ReferenceAutocompleteTest().make_app(Path(tmp))
             with app.app_context():
-                db=database.get_db()
-                db.execute('INSERT INTO marine_forecast_cache (site_id, latitude, longitude, payload, fetched_at, expires_at) VALUES (1,54.1,-132.9,?,?,?)',(json.dumps(data),FIXTURE_NOW,FIXTURE_NOW+900))
-                db.execute("INSERT INTO dive_site_descriptions (dive_site_id, description, model) VALUES (1, 'Rocky reef', 'test')")
-                db.commit()
-                site=db.execute('SELECT * FROM dive_sites WHERE id=1').fetchone()
-                inputs=site_reports.report_input(site,FIXTURE_NOW)
-                self.assertEqual(inputs['conditions']['charts']['visibility_daily'][0]['clarity'], 'very good')
-                self.assertEqual(inputs['retrieved_data']['visibility']['points'][0]['clarity'], 'very good')
+                db=database.get_db();site=db.execute('SELECT * FROM dive_sites WHERE id=1').fetchone()
+                data={'status':'complete','date':'2026-10-24','value':.05,'clarity':'very good'}
+                db.execute('INSERT INTO site_visibility_cache (site_id,cache_date,latitude,longitude,payload) VALUES (1,?,?,?,?)',('2026-10-30',54.1,-132.9,json.dumps(data)));db.commit()
+                now=datetime(2026,10,31,2,tzinfo=timezone.utc).timestamp()
+                self.assertEqual(visibility.read_cache(site,now,'Pacific/Galapagos'),{'status':'no_data'})

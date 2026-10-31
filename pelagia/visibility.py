@@ -6,7 +6,6 @@ import json
 import math
 import subprocess
 import sys
-from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -21,16 +20,6 @@ def clarity(value):
         if value <= upper:
             return label
     return 'very poor'
-
-
-def relabel(history):
-    """Apply current thresholds to cached measurements as well as new data."""
-    if not isinstance(history, dict):
-        return history
-    result = dict(history)
-    result['points'] = [dict(point, clarity=clarity(point['value'])) if point.get('value') is not None else point
-                        for point in history.get('points', [])]
-    return result
 
 
 def distance(lat, lon, la, ln):
@@ -60,7 +49,7 @@ def collect(lat, lon, now):
     import pandas as pd
     auth = credentials()
     end = datetime.fromtimestamp(now, timezone.utc).date()
-    start = end - timedelta(days=29)
+    start = end - timedelta(days=6)
     delta = math.degrees(15 / 6371.0088)
     lat_lo, lat_hi = max(-90, lat-delta-.05), min(90, lat+delta+.05)
     lon_delta = 180 if abs(lat)+delta >= 90 else min(180, math.degrees(math.asin(min(1, math.sin(math.radians(delta))/math.cos(math.radians(lat)))))+.05)
@@ -96,29 +85,20 @@ def collect(lat, lon, now):
                 failures += 1
         return selected, retrieved, failures
 
-    selected, retrieved, failures = {}, set(), 0
-    # Bound concurrency to the two sources, including when longitude wraps.
-    # Each task owns its results; merge in source order to preserve MY preference.
-    with ThreadPoolExecutor(max_workers=2) as pool:
-        for source_pixels, source_dates, source_failures in pool.map(query_source, enumerate(DATASETS)):
-            retrieved.update(source_dates)
-            failures += source_failures
-            for day, pixel in source_pixels.items():
-                if day not in selected or pixel[0] < selected[day][0]:
-                    selected[day] = pixel
-    points = []
-    for i in range(30):
-        day = start + timedelta(days=i)
-        point = dict(time=datetime.combine(day, datetime.min.time(), timezone.utc).timestamp(), value=None)
-        if day in selected:
-            _, value, dataset, la, ln, km = selected[day]
-            point.update(value=value, clarity=clarity(value), dataset_id=dataset,
-                         latitude=la, longitude=ln, distance_km=round(km, 3))
-        else:
-            point['status'] = 'no_valid_pixel' if day in retrieved else 'date_not_retrieved'
-        points.append(point)
-    return dict(points=points, status='partial' if failures else 'complete',
-                radius_km=15, units='m^-1', timezone='UTC', proxy='satellite surface clarity; uncalibrated for diver visibility')
+    selected = {}
+    failures = 0
+    for item in enumerate(DATASETS):
+        pixels, _, errors = query_source(item)
+        failures += errors
+        for day, pixel in pixels.items():
+            if day not in selected or pixel[0] < selected[day][0]:
+                selected[day] = pixel
+    if not selected:
+        return dict(status='unavailable' if failures else 'no_data')
+    day = max(selected)
+    _, value, dataset, la, ln, km = selected[day]
+    return dict(status='complete', date=day.isoformat(), value=value, clarity=clarity(value),
+                dataset_id=dataset, latitude=la, longitude=ln, distance_km=round(km, 3))
 
 
 def fetch(lat, lon, now):
@@ -130,7 +110,53 @@ def fetch(lat, lon, now):
                                 capture_output=True, text=True, timeout=24, check=True)
         return json.loads(result.stdout)
     except (subprocess.SubprocessError, ValueError, OSError):
-        return dict(points=[], status='unavailable')
+        return dict(status='unavailable')
+
+
+def read_cache(site, now, zone):
+    from .db import get_db
+    from zoneinfo import ZoneInfo
+    today = datetime.fromtimestamp(now, ZoneInfo(zone)).date().isoformat()
+    row = get_db().execute('SELECT * FROM site_visibility_cache WHERE site_id=?', (site['id'],)).fetchone()
+    if row is None or row['cache_date'] != today or not row['payload'] or (row['latitude'],row['longitude']) != (float(site['latitude']),float(site['longitude'])):
+        return None
+    payload = json.loads(row['payload'])
+    if payload.get('status') == 'complete':
+        try:
+            observed = datetime.strptime(payload['date'], '%Y-%m-%d').date()
+            today_utc = datetime.fromtimestamp(now, timezone.utc).date()
+            if not today_utc - timedelta(days=6) <= observed <= today_utc:
+                return dict(status='no_data')
+        except (KeyError, TypeError, ValueError):
+            return dict(status='no_data')
+    return payload
+
+
+def load(site, now, zone):
+    import time
+    import uuid
+    from zoneinfo import ZoneInfo
+    from .db import get_db
+    db=get_db(); lat=float(site['latitude']); lon=float(site['longitude'])
+    today=datetime.fromtimestamp(now, ZoneInfo(zone)).date().isoformat(); token=uuid.uuid4().hex
+    db.execute('BEGIN IMMEDIATE')
+    try:
+        cached=read_cache(site,now,zone)
+        if cached is not None:
+            db.commit(); return cached, 200
+        row=db.execute('SELECT * FROM site_visibility_cache WHERE site_id=?',(site['id'],)).fetchone()
+        if row and row['cache_date']==today and (row['latitude'],row['longitude'])==(lat,lon) and row['lease_until']>now:
+            db.commit(); return dict(status='pending'), 202
+        db.execute("""INSERT INTO site_visibility_cache (site_id,cache_date,latitude,longitude,lease_token,lease_until)
+            VALUES (?,?,?,?,?,?) ON CONFLICT(site_id) DO UPDATE SET cache_date=excluded.cache_date,
+            latitude=excluded.latitude,longitude=excluded.longitude,payload=NULL,lease_token=excluded.lease_token,lease_until=excluded.lease_until""",(site['id'],today,lat,lon,token,now+35))
+        db.commit()
+    except Exception:
+        db.rollback(); raise
+    payload=fetch(lat,lon,now)
+    with db:
+        db.execute('UPDATE site_visibility_cache SET payload=?,lease_token=NULL,lease_until=0 WHERE site_id=? AND lease_token=?',(json.dumps(payload,allow_nan=False),site['id'],token))
+    return payload,200
 
 
 if __name__ == '__main__':

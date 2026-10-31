@@ -238,7 +238,7 @@ class MarineEndpointTest(unittest.TestCase):
         self.assertNotIn(b'<small>VISIBILITY</small>', page.data)
         self.assertNotIn(b'data-marine-value="strength"', page.data)
         self.assertNotIn(b'<details class="marine-attribution">', page.data)
-        chart_titles = [b'<h2>Current</h2>', b'<h2>Tide</h2>', b'<h2>Visibility</h2>', b'<h2>Rain</h2>', b'<h2>Wind</h2>']
+        chart_titles = [b'<h2>Current</h2>', b'<h2>Tide</h2>', b'<h2>Rain</h2>', b'<h2>Wind</h2>']
         self.assertTrue(all(title in page.data for title in chart_titles))
         self.assertEqual([page.data.index(title) for title in chart_titles], sorted(page.data.index(title) for title in chart_titles))
         self.assertEqual(page.data.count(b'>7 days</button>'), 2)

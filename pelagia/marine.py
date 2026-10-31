@@ -255,8 +255,7 @@ def normalize(payload, now, fetched):
                              wind_speed_kn=wind_speed,
                              moon_phase=moon_phase(moon[0]['value']),
                              tide=tide_phase(series[FIELDS[1]], now), timestamps=timestamps),
-                charts=dict(visibility_daily=(visibility.relabel(payload.get('visibility')) or {}).get('points') or [],
-                            rainfall_monthly=payload.get('rainfall_monthly') or [],
+                charts=dict(rainfall_monthly=payload.get('rainfall_monthly') or [],
                             current_daily=daily, current_hourly=window(FIELDS[0], 24),
                             tide_hourly=window(FIELDS[1], 24),
                             wind_hourly=wind, wind_daily=wind_daily, moon_phase_daily=moon))
@@ -302,12 +301,7 @@ def fetch_weather(lat, lon, now=None):
 
 
 def fetch(lat, lon, now=None):
-    now = time.time() if now is None else now
-    with ThreadPoolExecutor(max_workers=1) as pool:
-        history = pool.submit(visibility.fetch, lat, lon, now)
-        payload = fetch_weather(lat, lon, now)
-        payload['visibility'] = history.result()
-    return payload
+    return fetch_weather(lat, lon, now)
 
 
 def load(site, now):
@@ -401,4 +395,19 @@ def init_app(app, login_required):
         response.headers['Cache-Control'] = 'private, no-store'
         if status in (202, 503):
             response.headers['Retry-After'] = '2' if status == 202 else '60'
+        return response
+
+    @app.get('/api/dive-sites/<int:site_id>/visibility')
+    @login_required
+    def api_site_visibility(site_id):
+        site = get_db().execute('SELECT * FROM dive_sites WHERE id=?', (site_id,)).fetchone()
+        if site is None or coordinates(site) is None:
+            return jsonify(status='unavailable'), 404
+        row = get_db().execute('SELECT * FROM marine_forecast_cache WHERE site_id=?', (site_id,)).fetchone()
+        if row is None or not row['payload'] or row['expires_at'] <= time.time() or coordinates(site) != (row['latitude'],row['longitude']):
+            return jsonify(status='pending'), 202
+        zone = json.loads(row['payload'])['timezone']
+        result, status = visibility.load(site, time.time(), zone)
+        response = jsonify(result); response.status_code = status
+        response.headers['Cache-Control'] = 'private, no-store'
         return response

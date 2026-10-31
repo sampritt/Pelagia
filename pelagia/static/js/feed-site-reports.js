@@ -68,6 +68,7 @@
                                 warmDependency(card.dataset.descriptionUrl, 'POST', controller, deadline),
                                 warmDependency(card.dataset.conditionsUrl, 'GET', controller, deadline),
                             ]);
+                            await warmDependency(card.dataset.conditionsUrl.replace(/\/conditions$/, '/visibility'), 'GET', controller, deadline);
                         } else await delay(POLL_MS);
                         continue;
                     }

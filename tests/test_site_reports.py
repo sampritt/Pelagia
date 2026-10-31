@@ -41,6 +41,7 @@ class SiteReportTest(unittest.TestCase):
             db.execute('''INSERT OR REPLACE INTO marine_forecast_cache
                 (site_id, latitude, longitude, payload, fetched_at, expires_at)
                 VALUES (1, 54.1, -132.9, ?, ?, ?)''', (json.dumps(data or payload()), NOW, NOW + 900))
+            db.execute('INSERT OR REPLACE INTO site_visibility_cache (site_id,cache_date,latitude,longitude,payload) VALUES (1,?,?,?,?)', ('2026-10-25',54.1,-132.9,json.dumps({'status':'no_data'})))
             if description:
                 db.execute("INSERT OR REPLACE INTO dive_site_descriptions (dive_site_id, description, model) VALUES (1, 'A rocky boat dive with exposed currents.', 'test')")
             db.commit()
@@ -71,7 +72,7 @@ class SiteReportTest(unittest.TestCase):
             self.assertNotIn('exposure_recommendation', data)
             self.assertNotIn('recommendations', data['conditions'])
             self.assertEqual(data['date'], '2026-10-25')
-            self.assertEqual(data['retrieved_data'], payload())
+            self.assertEqual(data['retrieved_data'], dict(payload(), visibility={'status':'no_data'}))
             self.assertEqual(data['conditions']['current']['moon_phase'], 'Full')
             self.assertIn('season', data)
             self.assertNotIn('user_id', data)
@@ -104,6 +105,7 @@ class SiteReportTest(unittest.TestCase):
                     for source in (data['hourly'], data['weather']['hourly'], data['weather']['daily']):
                         source['time'] = [t + 86400 for t in source['time']]
                     db.execute('UPDATE marine_forecast_cache SET payload=?, expires_at=?', (json.dumps(data), midnight + 900))
+                    db.execute("UPDATE site_visibility_cache SET cache_date='2026-10-26'")
                     db.commit()
                 self.assertEqual(self.post().get_json()['date'], '2026-10-26')
             self.assertEqual(generate.call_count, 2)

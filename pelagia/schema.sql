@@ -310,6 +310,12 @@ CREATE TABLE IF NOT EXISTS marine_forecast_cache (
     retry_after REAL NOT NULL DEFAULT 0
 );
 
+CREATE TABLE IF NOT EXISTS site_visibility_cache (
+    site_id INTEGER PRIMARY KEY REFERENCES dive_sites(id) ON DELETE CASCADE,
+    cache_date TEXT NOT NULL, latitude REAL NOT NULL, longitude REAL NOT NULL,
+    payload TEXT, lease_token TEXT, lease_until REAL NOT NULL DEFAULT 0
+);
+
 CREATE TABLE IF NOT EXISTS dive_site_reports (
     site_id INTEGER PRIMARY KEY REFERENCES dive_sites(id) ON DELETE CASCADE,
     report_date TEXT NOT NULL,
