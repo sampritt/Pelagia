@@ -6034,6 +6034,7 @@ img.is-media-loading {
     transition: border-color 160ms ease;
 }
 .site-report-card:only-child { flex-basis: 100%; }
+.site-report-featured { color: var(--muted-strong); font-size: .625rem; font-weight: 600; letter-spacing: .06em; margin-bottom: 4px; }
 
 .site-report-card-main {
     display: flex;

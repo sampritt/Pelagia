@@ -1,10 +1,12 @@
 {% set has_coords = item.latitude is not none and item.longitude is not none %}
 <a class="site-report-card" href="{{ url_for('dive_site_profile', site_id=item.id) }}#daily-report"
+   aria-labelledby="followedSiteTitle{{ item.id }}"
    data-followed-site-report data-report-state="loading" data-length-unit="{{ units.length }}"
    data-report-url="{{ url_for('api_site_report', site_id=item.id) }}"
    data-description-url="{{ url_for('api_dive_site_description', site_id=item.id) }}"
    data-conditions-url="{{ url_for('api_site_conditions', site_id=item.id) }}"
    data-visibility-url="{{ url_for('api_site_visibility', site_id=item.id) }}">
+    {% if item.featured %}<span class="site-report-featured">FEATURED</span>{% endif %}
     <div class="site-report-card-main">
         <div class="mini-map site-report-map {{ 'map-pending' if not has_coords else '' }}" aria-hidden="true" {% if has_coords %}data-static-map data-map-lat="{{ item.latitude }}" data-map-lng="{{ item.longitude }}" data-map-zoom="10"{% endif %}>
             {% if has_coords %}<span class="map-pin"></span>{% else %}{{ action_icon("compass") }}{% endif %}

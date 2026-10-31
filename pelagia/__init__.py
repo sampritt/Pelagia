@@ -263,10 +263,20 @@ def register_routes(app):
         dives = fetch_dives(scope="all", user_id=session["user_id"])
         latest_my_dives = fetch_dives(scope="mine", user_id=session["user_id"], limit=1)
         stats = get_profile_stats(session["user_id"])
+        favorite_sites = fetch_favorite_dive_sites(session["user_id"])
+        featured_site = fetch_daily_featured_site()
+        if featured_site:
+            for item in favorite_sites:
+                if item["id"] == featured_site["id"]:
+                    item["featured"] = True
+                    break
+            else:
+                featured_site["featured"] = True
+                favorite_sites.append(featured_site)
         return render_template(
             "home.html",
             dives=dives,
-            favorite_sites=fetch_favorite_dive_sites(session["user_id"]),
+            favorite_sites=favorite_sites,
             latest_my_dive=latest_my_dives[0] if latest_my_dives else None,
             stats=stats,
             user=current_user(),
@@ -1795,6 +1805,68 @@ def fetch_favorite_dive_sites(user_id):
             (user_id,),
         ).fetchall()
     ]
+
+
+def fetch_daily_featured_site():
+    """Choose one shared site per day from sites with seven visible species tags."""
+    db = database.get_db()
+    today = date.today().isoformat()
+    columns = "ds.id, ds.name, ds.country_or_area, ds.latitude, ds.longitude"
+    saved = db.execute(
+        f"""SELECT {columns} FROM daily_featured_sites featured
+            JOIN dive_sites ds ON ds.id = featured.dive_site_id
+            WHERE featured.feature_date = ?""", (today,)
+    ).fetchone()
+    if saved:
+        return dict(saved)
+
+    # These are the same distinct names used by the site's sightings panel.
+    candidates = db.execute(
+        f"""WITH sightings AS (
+            SELECT d.dive_site_id AS site_id, lower(trim(tags.common_name)) AS name
+            FROM dives d JOIN dive_species tags ON tags.dive_id = d.id
+            WHERE coalesce(d.is_deleted, 0) = 0 AND trim(tags.common_name) <> ''
+            UNION
+            SELECT occurrence.dive_site_id, lower(trim(species.common_name))
+            FROM dive_site_obis_occurrences occurrence
+            JOIN species ON species.id = occurrence.species_id
+            WHERE trim(species.common_name) <> ''
+        ), eligible AS (
+            SELECT site_id FROM sightings GROUP BY site_id HAVING count(*) >= 7
+        )
+        SELECT {columns}, water.feature FROM eligible
+        JOIN dive_sites ds ON ds.id = eligible.site_id
+        LEFT JOIN dive_site_water_classifications water
+          ON water.dive_site_id = ds.id AND water.latitude = ds.latitude
+          AND water.longitude = ds.longitude
+        WHERE ds.latitude IS NOT NULL AND ds.longitude IS NOT NULL
+          AND (water.feature IS NULL OR water.feature = 'OCEAN')
+        ORDER BY random()"""
+    ).fetchall()
+    # Limit uncached upstream lookups per page load; unsuccessful lookups can be
+    # retried later without locking in an unverified site for the day.
+    lookups = 0
+    for row in candidates:
+        if row["feature"] != "OCEAN":
+            if lookups >= 3:
+                continue
+            lookups += 1
+            try:
+                if water_type.classify_site(row)["feature"] != "OCEAN":
+                    continue
+            except (water_type.ClassificationPending, water_type.ClassificationRetryable,
+                    water_type.requests.RequestException, ValueError, TypeError, KeyError):
+                continue
+        db.execute("INSERT OR IGNORE INTO daily_featured_sites (feature_date, dive_site_id) VALUES (?, ?)",
+                   (today, row["id"]))
+        db.commit()
+        saved = db.execute(
+            f"""SELECT {columns} FROM daily_featured_sites featured
+                JOIN dive_sites ds ON ds.id = featured.dive_site_id
+                WHERE featured.feature_date = ?""", (today,)
+        ).fetchone()
+        return dict(saved) if saved else None
+    return None
 
 
 def dive_site_recent_conditions(site_id):

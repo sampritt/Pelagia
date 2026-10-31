@@ -298,6 +298,11 @@ CREATE TABLE IF NOT EXISTS dive_site_water_classifications (
     retry_after REAL NOT NULL DEFAULT 0
 );
 
+CREATE TABLE IF NOT EXISTS daily_featured_sites (
+    feature_date TEXT PRIMARY KEY,
+    dive_site_id INTEGER NOT NULL REFERENCES dive_sites(id) ON DELETE CASCADE
+);
+
 CREATE TABLE IF NOT EXISTS marine_forecast_cache (
     site_id INTEGER PRIMARY KEY REFERENCES dive_sites(id) ON DELETE CASCADE,
     latitude REAL NOT NULL,

@@ -1,6 +1,7 @@
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 import test_reference_autocomplete as fixtures
 from pelagia import db as database
@@ -79,6 +80,47 @@ class DiveSiteFavoritesTest(unittest.TestCase):
         empty_home = self.client.get("/home").get_data(as_text=True)
         self.assertIn("Check the forecast", empty_home)
         self.assertIn("Follow dive sites to get daily reports in your feed.", empty_home)
+
+    def test_daily_feature_requires_seven_sightings_and_ocean_and_is_not_duplicated(self):
+        with self.app.app_context():
+            db = database.get_db()
+            for site_id, count, feature in ((1, 7, "OCEAN"), (2, 7, "LAKE"), (3, 6, "OCEAN")):
+                db.execute("INSERT INTO dives (user_id, dive_site_id, date, site_name) VALUES (1, ?, '2026-01-01', 'Test')", (site_id,))
+                dive_id = db.execute("SELECT last_insert_rowid()").fetchone()[0]
+                db.executemany("INSERT INTO dive_species (dive_id, common_name) VALUES (?, ?)",
+                               [(dive_id, f"Species {i}") for i in range(count)])
+                db.execute("""INSERT INTO dive_site_water_classifications
+                    (dive_site_id, latitude, longitude, feature)
+                    SELECT id, latitude, longitude, ? FROM dive_sites WHERE id = ?""", (feature, site_id))
+            db.commit()
+
+        home = self.client.get("/home").get_data(as_text=True)
+        reports = home.split('<section class="site-reports"', 1)[1].split("</section>", 1)[0]
+        self.assertIn("FEATURED", reports)
+        self.assertIn("Alert Rock", reports)
+        self.assertNotIn("Kelp Garden", reports)
+        self.assertNotIn("Blue Wall", reports)
+        self.assertEqual(reports.count('data-followed-site-report'), 1)
+        self.client.post("/api/dive-sites/1/favorite")
+        followed = self.client.get("/home").get_data(as_text=True)
+        reports = followed.split('<section class="site-reports"', 1)[1].split("</section>", 1)[0]
+        self.assertEqual(reports.count('data-followed-site-report'), 1)
+        self.assertEqual(reports.count("FEATURED"), 1)
+        with self.app.app_context():
+            self.assertEqual(database.get_db().execute("SELECT count(*) FROM daily_featured_sites").fetchone()[0], 1)
+
+    def test_feature_classifies_an_uncached_candidate(self):
+        with self.app.app_context():
+            db = database.get_db()
+            db.execute("INSERT INTO dives (user_id, dive_site_id, date, site_name) VALUES (1, 1, '2026-01-01', 'Test')")
+            dive_id = db.execute("SELECT last_insert_rowid()").fetchone()[0]
+            db.executemany("INSERT INTO dive_species (dive_id, common_name) VALUES (?, ?)",
+                           [(dive_id, f"Species {i}") for i in range(7)])
+            db.commit()
+        with patch("pelagia.water_type.classify_site", return_value={"feature": "OCEAN"}) as classify:
+            self.assertIn("FEATURED", self.client.get("/home").get_data(as_text=True))
+            self.assertIn("FEATURED", self.client.get("/home").get_data(as_text=True))
+            self.assertEqual(classify.call_count, 1)
 
     def test_ten_site_limit_does_not_block_unfollow(self):
         with self.app.app_context():
