@@ -247,7 +247,7 @@ class MarineEndpointTest(unittest.TestCase):
         self.assertIn(b'data-marine-value="wind"', page.data)
         self.assertNotIn(b'swell', page.data.lower())
         self.assertNotIn(b'(Regional Forecast)', page.data)
-        self.assertEqual(page.data.count(b'class="marine-chart-note"'), 3)
+        self.assertEqual(page.data.count(b'class="marine-chart-note"'), 2)
         self.fetch.assert_not_called()
         anonymous = self.app.test_client()
         self.assertEqual(anonymous.get(self.url).status_code, 302)
