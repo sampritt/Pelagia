@@ -6114,8 +6114,7 @@ img.is-media-loading {
 }
 .followed-condition { display: grid; grid-template-rows: auto 1fr auto; gap: 4px; min-width: 0; }
 .followed-condition + .followed-condition { padding-left: 16px; border-left: 1px solid var(--line); }
-.followed-condition-label { display: flex; align-items: center; gap: 6px; color: var(--muted-strong); font-size: .75rem; line-height: 1.5; }
-.followed-condition-label .action-icon { width: 16px; height: 16px; flex: none; color: var(--sea); }
+.followed-condition-label { color: var(--muted-strong); font-size: .75rem; line-height: 1.5; }
 .followed-condition-value { font-size: 1rem; font-weight: 600; line-height: 1.4; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
 .followed-condition-detail { color: var(--muted-strong); font-size: .75rem; line-height: 1.5; text-wrap: balance; }
 .followed-condition [data-grade="green"] { color: #19704c; }
