@@ -42,8 +42,9 @@ QUALITATIVE FIRST: prefer light/moderate/strong, easing/building, steady/changea
 and rising/falling over numerical narration, with strength descriptions grounded
 in the supplied values and current categories. Use numbers only when they add real
 decision value, normally no more than two numerical details across the report.
-A water temperature or one useful tide/turning-point time may earn its place;
-an unusually significant wind or current speed may too. Omit tide heights, strings
+A useful tide/turning-point time may earn its place; an unusually significant wind
+or current speed may too. Describe water temperature qualitatively if relevant;
+never state it numerically. Omit tide heights, strings
 of speeds, and full-day tide timetables. Ordinary changes should read like 'light
 winds building later', not a sequence of knot readings.
 
