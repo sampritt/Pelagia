@@ -1885,7 +1885,6 @@ def dive_site_recent_conditions(site_id):
     ).fetchone()
     empty = {
         "date": None,
-        "visibility_m": None,
         "current": None,
         "current_strength": None,
         "water_temp_c": None,
@@ -1902,7 +1901,7 @@ def dive_site_recent_conditions(site_id):
         return empty
     rows = database.get_db().execute(
         """
-        SELECT visibility_m, current, current_types_json, current_strength, water_temp_c, air_temp_c
+        SELECT current, current_types_json, current_strength, water_temp_c, air_temp_c
         FROM dives
         WHERE dive_site_id = ?
             AND COALESCE(is_deleted, 0) = 0
@@ -1916,69 +1915,11 @@ def dive_site_recent_conditions(site_id):
         current_type = "none"
     return {
         "date": latest["date"],
-        "visibility_m": optional_median(row["visibility_m"] for row in rows),
         "current": current_type,
         "current_strength": current_strength,
         "water_temp_c": optional_median(row["water_temp_c"] for row in rows),
         "air_temp_c": optional_median(row["air_temp_c"] for row in rows),
     }
-
-
-def dive_site_condition_series(site_id):
-    db = database.get_db()
-    latest_observation = db.execute(
-        """
-        SELECT MAX(date) AS date
-        FROM dives
-        WHERE dive_site_id = ?
-            AND COALESCE(is_deleted, 0) = 0
-            AND (visibility_m IS NOT NULL OR current_strength != 'none')
-        """,
-        (site_id,),
-    ).fetchone()["date"]
-    try:
-        end = date.fromisoformat(latest_observation) if latest_observation else date.today()
-    except ValueError:
-        end = date.today()
-    start = end - timedelta(days=13)
-    rows = db.execute(
-        """
-        SELECT date, visibility_m, current_strength
-        FROM dives
-        WHERE dive_site_id = ?
-            AND COALESCE(is_deleted, 0) = 0
-            AND date BETWEEN ? AND ?
-        """,
-        (site_id, start.isoformat(), end.isoformat()),
-    ).fetchall()
-    by_date = {}
-    for row in rows:
-        try:
-            day = date.fromisoformat(row["date"])
-        except ValueError:
-            continue
-        bucket = by_date.setdefault(day.isoformat(), {"visibility": [], "current": []})
-        if row["visibility_m"] is not None:
-            bucket["visibility"].append(row["visibility_m"])
-        if row["current_strength"] in CURRENT_STRENGTH_INDEXES:
-            bucket["current"].append(CURRENT_STRENGTH_INDEXES[row["current_strength"]])
-
-    visibility_series = []
-    current_series = []
-    for offset in range(14):
-        day = start + timedelta(days=offset)
-        key = day.isoformat()
-        bucket = by_date.get(key, {"visibility": [], "current": []})
-        visibility_value = None
-        current_value = None
-        if bucket["visibility"]:
-            visibility_value = statistics.median(bucket["visibility"])
-        if bucket["current"]:
-            current_value = round_half_up(statistics.median(bucket["current"]))
-        label = day.strftime("%b %-d") if os.name != "nt" else day.strftime("%b %#d")
-        visibility_series.append({"date": key, "label": label, "value": visibility_value})
-        current_series.append({"date": key, "label": label, "value": current_value})
-    return visibility_series, current_series
 
 
 def dive_site_species_sightings(site_id):

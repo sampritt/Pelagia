@@ -18,26 +18,23 @@ function node() {
 }
 
 function card(id) {
-    const reportBody = node(), reportText = node(), swell = node(), wind = node(), visibility = node(), swellDetail = node(), windDetail = node(), visibilityDetail = node();
+    const reportBody = node(), reportText = node(), swell = node(), wind = node(), swellDetail = node(), windDetail = node();
     const item = node();
     item.dataset = {
         reportState: 'loading',
         reportUrl: `/api/dive-sites/${id}/report`,
         descriptionUrl: `/api/dive-sites/${id}/description`,
         conditionsUrl: `/api/dive-sites/${id}/conditions`,
-        visibilityUrl: `/api/dive-sites/${id}/visibility`,
     };
     item.querySelector = selector => ({
         '[data-followed-report-body]': reportBody,
         '[data-followed-report-text]': reportText,
         '[data-followed-swell]': swell,
         '[data-followed-wind]': wind,
-        '[data-followed-visibility]': visibility,
         '[data-followed-swell-detail]': swellDetail,
         '[data-followed-wind-detail]': windDetail,
-        '[data-followed-visibility-detail]': visibilityDetail,
     })[selector];
-    return {item, reportBody, reportText, swell, wind, visibility, swellDetail, windDetail, visibilityDetail};
+    return {item, reportBody, reportText, swell, wind, swellDetail, windDetail};
 }
 
 const response = (status, data) => ({status, ok: status >= 200 && status < 300, json: async () => data});
@@ -81,11 +78,10 @@ test('every followed card loads its cached report preview', async () => {
     const state = setup(cards, async (url, options) => {
         calls.push({url, options});
         if (url.endsWith('/conditions')) return response(200, {status: 'complete', current: {swell: 'Choppy', swell_height_m: 0.65, swell_period_s: 10, wind_speed_kn: 12.3}});
-        if (url.endsWith('/visibility')) return response(200, {status: 'complete', clarity: 'excellent', value: .0346});
         return response(200, {status: 'complete', report: `Daily report for ${url.includes('/1/') ? 'one' : 'two'} with enough words to fill the four-line preview.`});
     });
     await flush();
-    assert.equal(calls.length, 6);
+    assert.equal(calls.length, 4);
     assert.equal(state.starts(), 2);
     assert.equal(state.finishes(), 2);
     for (const [index, card] of cards.entries()) {
@@ -96,12 +92,9 @@ test('every followed card loads its cached report preview', async () => {
         assert.equal(card.windDetail.textContent, '12.3 kn');
         assert.equal(card.swell.dataset.grade, 'yellow');
         assert.equal(card.wind.dataset.grade, 'yellow');
-        assert.equal(card.visibility.dataset.grade, 'green');
         assert.equal(card.wind.textContent, 'Moderate');
-        assert.equal(card.visibility.textContent, 'Excellent');
-        assert.equal(card.visibilityDetail.textContent, '0.035 m⁻¹');
     }
-    assert.equal(calls.length, 6);
+    assert.equal(calls.length, 4);
 });
 
 test('feet, descriptor colors, and wind boundaries are normalized', async () => {
@@ -109,11 +102,9 @@ test('feet, descriptor colors, and wind boundaries are normalized', async () => 
     cards.forEach(card => { card.item.dataset.lengthUnit = 'ft'; });
     const speeds = [9.9, 10, 15, 20];
     const swell = ['Calm', 'Choppy', 'Rough', 'Very rough'];
-    const clarity = ['good', 'fair', 'poor', 'very poor'];
     setup(cards, async url => {
         const index = Number(url.match(/dive-sites\/(\d+)/)[1]) - 1;
         if (url.endsWith('/conditions')) return response(200, {status: 'complete', current: {swell: swell[index], swell_height_m: .65, swell_period_s: 10, wind_speed_kn: speeds[index]}});
-        if (url.endsWith('/visibility')) return response(200, {status: 'complete', clarity: clarity[index], value: [.065, null, 0, -.1][index]});
         return response(200, {status: 'complete', report: 'Conditions.'});
     });
     await flush();
@@ -123,26 +114,22 @@ test('feet, descriptor colors, and wind boundaries are normalized', async () => 
         assert.equal(card.swellDetail.textContent, '2 ft · 10 s');
         assert.equal(card.swell.dataset.grade, grades[i]);
         assert.equal(card.wind.dataset.grade, grades[i]);
-        assert.equal(card.visibility.dataset.grade, grades[i]);
-        assert.equal(card.visibilityDetail.textContent, i === 0 ? '0.065 m⁻¹' : '—');
         const label = ['Light', 'Moderate', 'Strong', 'Very strong'][i];
         assert.equal(card.wind.textContent, label);
         assert.ok(card.wind.attrs['aria-label'].startsWith(`${label}, `));
     });
 });
 
-test('missing values and visibility failures leave available conditions intact', async () => {
+test('missing swell leaves available wind conditions intact', async () => {
     const followed = card(1);
     setup([followed], async url => {
         if (url.endsWith('/conditions')) return response(200, {status: 'complete', current: {swell: null, wind_speed_kn: 0}});
-        if (url.endsWith('/visibility')) return response(503, {status: 'unavailable'});
         return response(200, {status: 'complete', report: 'Calm seas.'});
     });
     await flush();
     assert.equal(followed.swell.textContent, '—');
     assert.equal(followed.wind.textContent, 'Light');
     assert.equal(followed.windDetail.textContent, '0 kn');
-    assert.equal(followed.visibility.textContent, '');
     assert.equal(followed.item.dataset.conditionsState, 'ready');
 });
 
@@ -163,11 +150,27 @@ test('a cold feed warms description and conditions caches before requesting the 
     await flush();
     assert.equal(reportCalls, 2);
     assert.equal(calls.filter(call => call.url.endsWith('/description')).length, 1);
-    assert.ok(calls.some(call => call.url.endsWith('/conditions')));
-    assert.ok(calls.some(call => call.url.endsWith('/visibility')));
-    assert.equal(calls[0].options.method, 'POST');
-    assert.equal(calls[0].options.headers['X-Requested-With'], 'fetch');
+    assert.equal(calls.filter(call => call.url.endsWith('/conditions')).length, 1);
+    const reportCall = calls.find(call => call.url.endsWith('/report'));
+    assert.equal(reportCall.options.method, 'POST');
+    assert.equal(reportCall.options.headers['X-Requested-With'], 'fetch');
     assert.equal(followed.item.dataset.reportState, 'ready');
+});
+
+test('failed conditions end a cold report without duplicate requests or polling', async () => {
+    const followed = card(1);
+    const calls = [];
+    const state = setup([followed], async url => {
+        calls.push(url);
+        if (url.endsWith('/report')) return response(202, {status: 'pending', reason: 'dependencies'});
+        if (url.endsWith('/conditions')) return response(503, {status: 'unavailable'});
+        return response(200, {status: 'complete'});
+    });
+    await flush();
+    assert.equal(calls.filter(url => url.endsWith('/conditions')).length, 1);
+    assert.equal(calls.filter(url => url.endsWith('/report')).length, 1);
+    assert.equal(followed.item.dataset.reportState, 'unavailable');
+    assert.equal(state.timers.size, 0);
 });
 
 test('short reports stay compact and failures remain actionable', async () => {
@@ -201,7 +204,7 @@ test('a stalled request times out with an actionable unavailable state', async (
     const state = setup([followed], (_url, {signal}) => new Promise((_resolve, reject) => {
         signal.addEventListener('abort', () => reject(new Error('Aborted')));
     }));
-    [...state.timers.values()].find(timer => timer.delay === 120000).callback();
+    [...state.timers.values()].filter(timer => timer.delay === 120000).forEach(timer => timer.callback());
     await flush();
     assert.equal(followed.item.dataset.reportState, 'unavailable');
     assert.match(followed.reportText.textContent, /Open the site/);

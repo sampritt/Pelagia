@@ -72,8 +72,7 @@ class DiveSiteSharingTest(unittest.TestCase):
     def test_public_preview_never_fetches_conditions_dive_logs_or_private_site_fields(self):
         with patch("pelagia.fetch_dives", side_effect=AssertionError("Private dive log loaded")), \
              patch("pelagia.fetch_dive_site", side_effect=AssertionError("Private site loaded")), \
-             patch("pelagia.dive_site_recent_conditions", side_effect=AssertionError("Conditions loaded")), \
-             patch("pelagia.dive_site_condition_series", side_effect=AssertionError("Conditions loaded")):
+             patch("pelagia.dive_site_recent_conditions", side_effect=AssertionError("Conditions loaded")):
             self.assertEqual(self.app.test_client().get("/share/dive-site/1").status_code, 200)
         with self.app.app_context():
             self.assertEqual(set(fetch_public_dive_site(1)), {"id", "name", "country_or_area", "latitude", "longitude"})

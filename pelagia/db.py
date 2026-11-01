@@ -29,6 +29,7 @@ def init_db():
     db = get_db()
     schema = Path(current_app.root_path, "schema.sql").read_text()
     db.executescript(schema)
+    _retire_visibility_cache(db)
     _migrate_dive_site_favorites(db)
     # Retire the former page-load OBIS/Luna cache after the offline catalogue
     # has become the only source of imported site sightings.
@@ -94,6 +95,20 @@ def init_db():
     db.execute("CREATE INDEX IF NOT EXISTS idx_dives_user_date ON dives(user_id, date)")
     db.execute("CREATE INDEX IF NOT EXISTS idx_dive_sites_logged_dive_count ON dive_sites(logged_dive_count DESC)")
     db.commit()
+
+
+def _retire_visibility_cache(db):
+    """Remove satellite history and reports written using the retired input once."""
+    with db:
+        # Serialize the existence check and cleanup across starting web workers.
+        db.execute('BEGIN IMMEDIATE')
+        if not db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='site_visibility_cache'").fetchone():
+            return
+        db.execute("UPDATE marine_forecast_cache SET payload=json_remove(payload, '$.visibility') "
+                   "WHERE json_valid(payload) AND json_type(payload, '$.visibility') IS NOT NULL")
+        # Preserve uncertain/failed daily claims to avoid duplicate paid calls.
+        db.execute("DELETE FROM dive_site_reports WHERE status='complete'")
+        db.execute("DROP TABLE site_visibility_cache")
 
 
 def _migrate_dive_site_favorites(db):

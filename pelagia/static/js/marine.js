@@ -229,32 +229,6 @@
         const tideChart = host.querySelector('[data-marine-chart="tide"]');
         const windChart = host.querySelector('[data-marine-chart="wind"]');
         const rainfallChart = host.querySelector('[data-marine-chart="rainfall"]');
-        const visibility = host.querySelector('[data-visibility-summary]');
-        let visibilityController, visibilityTimer;
-        async function loadVisibility() {
-            if (!visibility || !visibility.dataset.url) return;
-            visibilityController?.abort(); visibilityController = new AbortController();
-            const controller = visibilityController;
-            visibility.querySelector('p').textContent = 'Checking visibility…';
-            visibility.classList.add('visibility-pending');
-            try {
-                const response = await fetch(visibility.dataset.url, {credentials:'same-origin', cache:'no-store', signal:controller.signal});
-                if (controller.signal.aborted) return;
-                if (response.status === 202) { visibilityTimer = window.setTimeout(loadVisibility, 2000); return; }
-                if (!response.ok) throw new Error('Unavailable');
-                const data = await response.json();
-                if (controller.signal.aborted) return;
-                const p = visibility.querySelector('p');
-                visibility.classList.remove('visibility-pending');
-                if (data.status !== 'complete' || !data.clarity) { p.textContent = 'Visibility unavailable'; return; }
-                p.replaceChildren(document.createTextNode('Visibility has been '));
-                const rating = document.createElement('strong'); rating.textContent = data.clarity;
-                p.append(rating, document.createTextNode(' this week'));
-            } catch (_error) {
-                if (!controller.signal.aborted) { visibility.classList.remove('visibility-pending'); visibility.querySelector('p').textContent = 'Visibility unavailable'; }
-            }
-        }
-
         const chartNodes = [currentChart, tideChart, windChart, rainfallChart].filter(Boolean);
         const buttons = [...host.querySelectorAll('[data-marine-range]')];
         const ranges = { current: 'daily', wind: 'daily' };
@@ -278,7 +252,6 @@
             if (equipment) equipment.hidden = true;
             values.forEach(node => { node.textContent = '-'; node.removeAttribute('title'); });
             chartNodes.forEach(node => { node.replaceChildren(); node.removeAttribute('data-can-scroll'); const p = document.createElement('p'); p.className = 'muted'; p.textContent = 'Forecast unavailable'; node.appendChild(p); });
-            if (visibility) { visibility.classList.remove('visibility-pending'); visibility.querySelector('p').textContent = 'Visibility unavailable'; }
             status.textContent = 'Forecast unavailable';
             retry.hidden = noCoordinates;
             buttons.forEach(button => { button.disabled = true; });
@@ -301,7 +274,6 @@
                 message.textContent = messages[index];
                 node.appendChild(message);
             });
-            if (visibility) { visibility.classList.remove('visibility-pending'); visibility.querySelector('p').textContent = 'Visibility unavailable'; }
             status.textContent = 'Marine forecast unavailable for non-ocean dive sites';
             retry.hidden = true;
             if (source) source.hidden = true;
@@ -356,11 +328,11 @@
                 const timestamp = timestamps.length ? Math.min(...timestamps) : data.fetched_at;
                 status.textContent = `Forecast · ${localDate(timestamp, data.timezone)}, ${new Intl.DateTimeFormat('en-US', { timeZone: data.timezone, hour: 'numeric', minute: '2-digit' }).format(new Date(timestamp * 1000)).replace(/\s/g, '').toLowerCase()} local`;
                 status.title = `Site timezone: ${data.timezone}. Modeled surface conditions.`;
-                retry.hidden = true; charts(); loadVisibility();
+                retry.hidden = true; charts();
             } catch (_error) { if (!stopped && ticket === generation) unavailable(); }
         }
         function load() {
-            generation++; clear(); controller?.abort(); visibilityController?.abort(); window.clearTimeout(visibilityTimer); controller = new AbortController(); stopped = false;
+            generation++; clear(); controller?.abort(); controller = new AbortController(); stopped = false;
             status.textContent = 'Updating forecast…';
             if (source) source.hidden = false;
             if (equipment) equipment.hidden = true; retry.hidden = true;
@@ -391,7 +363,7 @@
             chartWidth = host.clientWidth;
             if (result && !stopped) charts();
         });
-        window.addEventListener('pagehide', () => { generation++; stopped = true; controller?.abort(); visibilityController?.abort(); window.clearTimeout(visibilityTimer); clear(); });
+        window.addEventListener('pagehide', () => { generation++; stopped = true; controller?.abort(); clear(); });
         window.addEventListener('pageshow', event => { if (event.persisted && host.dataset.coordinates === 'true') load(); });
         if (host.dataset.coordinates === 'true') load(); else unavailable(true);
     }

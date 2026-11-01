@@ -61,15 +61,7 @@ unsupported warning about boat operations or exposure. Rainfall, seasonality,
 moon phase, and week-ahead trends belong only if they add a meaningful diving
 insight; omit routine background and insignificant changes.
 
-When recent visibility measurements are supplied, you may describe the recent
-pattern qualitatively using their clarity categories, such as 'recent visibility
-has been excellent'. Use the word 'visibility', never 'satellite clarity' or other
-measurement jargon in the report. Describe recent history,
-never predict today's visibility or infer visibility distances. The supplied rating
-is based on one recent reading within the past week, so do not infer a trend or
-claim conditions were consistent throughout the week. Omit visibility when unavailable.
-
-Do not invent visibility, surge, entry hazards, or safe/diveable windows, imply
+Do not invent surge, entry hazards, or safe/diveable windows, imply
 that moon phase proves current strength, or guarantee safety from regional models.
 Omit unknowns and do not invent rain forecasts from historical rainfall.
 Do not include wetsuit or exposure recommendations; these depend on the individual diver.
@@ -106,12 +98,6 @@ def report_input(site, now):
             or marine.coordinates(site) != (row['latitude'], row['longitude'])):
         return None
     raw = json.loads(row['payload'])
-    history = marine.visibility.read_cache(site, now, raw['timezone'])
-    if history is None:
-        return None
-    # Older marine cache payloads may contain the retired visibility history.
-    raw.pop('visibility', None)
-    visibility_rating = history.get('clarity') if history.get('status') == 'complete' else None
     conditions = marine.normalize(raw, now, row['fetched_at'])
     # Successful upstream retrieval can still contain all-null fields (e.g. no
     # coastal coverage). Do not spend a daily report on missing required data.
@@ -138,7 +124,7 @@ def report_input(site, now):
                 season=seasons.for_site(site['master_site_id'], today=local_now.date()),
                 units=dict(temperature='C', velocity='kn', sea_level='m relative to mean sea level',
                            rain='mm', time='Unix seconds; use timezone'),
-                visibility=visibility_rating, conditions=conditions, retrieved_data=raw)
+                conditions=conditions, retrieved_data=raw)
 
 
 def generate(data):

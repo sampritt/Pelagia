@@ -6107,23 +6107,26 @@ img.is-media-loading {
 
 .followed-conditions {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 12px;
-    margin-block: 16px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+    margin-block: 18px;
     color: var(--ink-soft);
 }
 .followed-condition { display: grid; grid-template-rows: auto 1fr auto; gap: 4px; min-width: 0; }
-.followed-condition-label { color: var(--muted-strong); font-size: .6875rem; line-height: 1.5; }
-.followed-condition-value { font-size: .875rem; font-weight: 600; line-height: 1.4; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
-.followed-condition-detail { color: var(--muted-strong); font-size: .6875rem; line-height: 1.5; text-wrap: balance; }
+.followed-condition + .followed-condition { padding-left: 16px; border-left: 1px solid var(--line); }
+.followed-condition-label { display: flex; align-items: center; gap: 6px; color: var(--muted-strong); font-size: .75rem; line-height: 1.5; }
+.followed-condition-label .action-icon { width: 16px; height: 16px; flex: none; color: var(--sea); }
+.followed-condition-value { font-size: 1rem; font-weight: 600; line-height: 1.4; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.followed-condition-detail { color: var(--muted-strong); font-size: .75rem; line-height: 1.5; text-wrap: balance; }
 .followed-condition [data-grade="green"] { color: #19704c; }
 .followed-condition [data-grade="yellow"] { color: #806000; }
 .followed-condition [data-grade="orange"] { color: #a54908; }
 .followed-condition [data-grade="red"] { color: #b02c35; }
 
 @media (max-width: 380px) {
-    .followed-conditions { gap: 8px; }
-    .followed-condition-value { font-size: .8125rem; }
+    .followed-conditions { gap: 12px; }
+    .followed-condition + .followed-condition { padding-left: 12px; }
+    .followed-condition-value { font-size: .9375rem; }
 }
 
 .followed-report-label {
@@ -6590,7 +6593,3 @@ img.is-media-loading {
 @media (prefers-reduced-motion: reduce) {
     .dive-detail-title .site-destination-link { transition: none; }
 }
-
-.visibility-pending p { animation: visibility-pulse 1.5s ease-in-out infinite; }
-@keyframes visibility-pulse { 50% { opacity: .48; } }
-@media (prefers-reduced-motion: reduce) { .visibility-pending p { animation: none; } }

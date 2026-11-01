@@ -241,7 +241,6 @@ class MarineEndpointTest(unittest.TestCase):
         self.signup(self.client)
         self.classifier = patch('pelagia.marine.water_type.classify_site', return_value={'feature': 'OCEAN', 'water_type': 'salt'})
         self.classify = self.classifier.start(); self.addCleanup(self.classifier.stop)
-        self.visibility = patch('pelagia.marine.visibility.fetch', return_value={'points': [], 'status': 'unavailable'}); self.visibility.start(); self.addCleanup(self.visibility.stop)
         self.upstream = patch('pelagia.marine.fetch', return_value=payload()); self.fetch = self.upstream.start(); self.addCleanup(self.upstream.stop)
 
     def test_page_no_upstream_auth_public_gate_and_no_store(self):

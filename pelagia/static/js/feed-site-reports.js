@@ -71,7 +71,6 @@
         }
 
         const swellGrades = {calm: 'green', light: 'green', choppy: 'yellow', rough: 'orange', 'very rough': 'red'};
-        const visibilityGrades = {excellent: 'green', good: 'green', fair: 'yellow', poor: 'orange', 'very poor': 'red'};
         const finiteNonnegative = value => typeof value === 'number' && Number.isFinite(value) && value >= 0;
         const windDescriptor = speed => speed < 10 ? ['green', 'Light'] : speed < 15 ? ['yellow', 'Moderate']
             : speed < 20 ? ['orange', 'Strong'] : ['red', 'Very strong'];
@@ -116,15 +115,7 @@
                 const windDetail = validWind ? `${Number(current.wind_speed_kn.toFixed(1))} kn` : 'Speed in knots';
                 card.querySelector('[data-followed-wind-detail]').textContent = windDetail;
                 setCondition(card, '[data-followed-wind]', windLabel || '—', windGrade, validWind ? windDetail : '');
-                if (conditions.status === 'complete') {
-                    const visibility = await warmDependency(card.dataset.visibilityUrl, 'GET', controller, deadline);
-                    if (stopped || loadGeneration !== generation) return;
-                    const attenuation = visibility.status === 'complete' && finiteNonnegative(visibility.value) && visibility.value > 0
-                        ? `${Number(visibility.value.toFixed(3))} m⁻¹` : '—';
-                    card.querySelector('[data-followed-visibility-detail]').textContent = attenuation;
-                    const clarity = visibility.status === 'complete' && typeof visibility.clarity === 'string' ? visibility.clarity : '';
-                    setCondition(card, '[data-followed-visibility]', clarity ? clarity.charAt(0).toUpperCase() + clarity.slice(1) : '—', visibilityGrades[clarity.toLowerCase()]);
-                }
+                return conditions;
             } catch (_error) {
                 // Keep unavailable values as dashes while preserving any conditions already loaded.
             } finally {
@@ -135,7 +126,7 @@
             }
         }
 
-        async function loadCard(card) {
+        async function loadCard(card, conditionsReady) {
             const loadGeneration = generation;
             const body = card.querySelector('[data-followed-report-body]');
             const text = card.querySelector('[data-followed-report-text]');
@@ -162,11 +153,11 @@
                     if (response.status === 202 || data?.status === 'pending') {
                         if (data?.reason === 'dependencies' && !dependenciesStarted) {
                             dependenciesStarted = true;
-                            await Promise.all([
+                            const [, conditions] = await Promise.all([
                                 warmDependency(card.dataset.descriptionUrl, 'POST', controller, deadline),
-                                warmDependency(card.dataset.conditionsUrl, 'GET', controller, deadline),
+                                conditionsReady,
                             ]);
-                            await warmDependency(card.dataset.conditionsUrl.replace(/\/conditions$/, '/visibility'), 'GET', controller, deadline);
+                            if (conditions?.status !== 'complete') throw new Error('Conditions unavailable');
                         } else await delay(POLL_MS);
                         continue;
                     }
@@ -187,8 +178,7 @@
         }
 
         cards.forEach((card) => {
-            loadCard(card);
-            loadConditions(card);
+            loadCard(card, loadConditions(card));
         });
 
         track?.addEventListener('keydown', (event) => {
@@ -215,8 +205,9 @@
             if (!event.persisted) return;
             stopped = false;
             cards.forEach((card) => {
-                if (card.dataset.reportState === 'loading') loadCard(card);
-                if (card.dataset.conditionsState === 'loading') loadConditions(card);
+                const needsReport = card.dataset.reportState === 'loading';
+                const conditionsReady = card.dataset.conditionsState === 'loading' || needsReport ? loadConditions(card) : Promise.resolve();
+                if (needsReport) loadCard(card, conditionsReady);
             });
         });
     }

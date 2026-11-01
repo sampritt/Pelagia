@@ -12,7 +12,7 @@ import requests
 from flask import current_app, jsonify, session, url_for
 from .db import get_db
 from .exposure_recommendations import recommend
-from . import water_type, visibility
+from . import water_type
 
 FIELDS = ('ocean_current_velocity', 'sea_level_height_msl', 'sea_surface_temperature',
           'swell_wave_height', 'swell_wave_period')
@@ -417,19 +417,4 @@ def init_app(app, login_required):
         response.headers['Cache-Control'] = 'private, no-store'
         if status in (202, 503):
             response.headers['Retry-After'] = '2' if status == 202 else '60'
-        return response
-
-    @app.get('/api/dive-sites/<int:site_id>/visibility')
-    @login_required
-    def api_site_visibility(site_id):
-        site = get_db().execute('SELECT * FROM dive_sites WHERE id=?', (site_id,)).fetchone()
-        if site is None or coordinates(site) is None:
-            return jsonify(status='unavailable'), 404
-        row = get_db().execute('SELECT * FROM marine_forecast_cache WHERE site_id=?', (site_id,)).fetchone()
-        if row is None or not row['payload'] or row['expires_at'] <= time.time() or coordinates(site) != (row['latitude'],row['longitude']):
-            return jsonify(status='pending'), 202
-        zone = json.loads(row['payload'])['timezone']
-        result, status = visibility.load(site, time.time(), zone)
-        response = jsonify(result); response.status_code = status
-        response.headers['Cache-Control'] = 'private, no-store'
         return response

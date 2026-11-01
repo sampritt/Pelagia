@@ -41,7 +41,6 @@ class SiteReportTest(unittest.TestCase):
             db.execute('''INSERT OR REPLACE INTO marine_forecast_cache
                 (site_id, latitude, longitude, payload, fetched_at, expires_at)
                 VALUES (1, 54.1, -132.9, ?, ?, ?)''', (json.dumps(data or payload()), NOW, NOW + 900))
-            db.execute('INSERT OR REPLACE INTO site_visibility_cache (site_id,cache_date,latitude,longitude,payload) VALUES (1,?,?,?,?)', ('2026-10-25',54.1,-132.9,json.dumps({'status':'no_data'})))
             if description:
                 db.execute("INSERT OR REPLACE INTO dive_site_descriptions (dive_site_id, description, model) VALUES (1, 'A rocky boat dive with exposed currents.', 'test')")
             db.commit()
@@ -73,7 +72,8 @@ class SiteReportTest(unittest.TestCase):
             self.assertNotIn('recommendations', data['conditions'])
             self.assertEqual(data['date'], '2026-10-25')
             self.assertEqual(data['retrieved_data'], payload())
-            self.assertIsNone(data['visibility'])
+            self.assertNotIn('visibility', json.dumps(data).lower())
+            self.assertNotIn('visibility', reports.INSTRUCTIONS.lower())
             self.assertEqual(data['conditions']['current']['moon_phase'], 'Full')
             self.assertEqual(data['conditions']['charts']['swell_hourly'][0]['descriptor'], 'Choppy')
             self.assertEqual(data['conditions']['charts']['swell_seven_days'][0]['period_s'], 8)
@@ -94,6 +94,42 @@ class SiteReportTest(unittest.TestCase):
                 self.assertEqual(self.post(other).get_json()['report'], PROSE)
             generate.assert_called_once()
 
+    def test_retired_visibility_endpoint_and_page_hooks_are_absent(self):
+        self.assertEqual(self.client.get('/api/dive-sites/1/visibility').status_code, 404)
+        for path in ('/', '/dive-sites/1'):
+            html = self.client.get(path).get_data(as_text=True)
+            for retired in ('data-visibility', 'data-followed-visibility', 'Checking visibility', '/visibility'):
+                self.assertNotIn(retired, html)
+
+    def test_upgrade_removes_satellite_cache_and_old_reports_only_once(self):
+        self.populate()
+        with self.app.app_context():
+            db = database.get_db()
+            db.execute('CREATE TABLE site_visibility_cache (site_id INTEGER PRIMARY KEY, payload TEXT)')
+            db.execute("INSERT INTO site_visibility_cache VALUES (1, 'retired satellite data')")
+            legacy = payload()
+            legacy['visibility'] = {'clarity': 'good', 'value': .06}
+            db.execute('UPDATE marine_forecast_cache SET payload=?', (json.dumps(legacy),))
+            for site_id, status in ((1, 'complete'), (2, 'pending'), (3, 'unavailable')):
+                db.execute('''INSERT INTO dive_site_reports
+                    (site_id, report_date, timezone, status, report, token, started_at, model)
+                    VALUES (?, '2026-10-25', 'Pacific/Galapagos', ?, ?, 'old', ?, 'test')''',
+                    (site_id, status, 'Visibility has been good this week.' if status == 'complete' else None, NOW))
+            db.commit()
+            database.init_db()
+            self.assertIsNone(db.execute("SELECT 1 FROM sqlite_master WHERE name='site_visibility_cache'").fetchone())
+            self.assertNotIn('visibility', db.execute('SELECT payload FROM marine_forecast_cache').fetchone()[0])
+            self.assertEqual([row[0] for row in db.execute('SELECT status FROM dive_site_reports ORDER BY site_id')],
+                             ['pending', 'unavailable'])
+            site = db.execute('SELECT * FROM dive_sites WHERE id=1').fetchone()
+            self.assertNotIn('visibility', json.dumps(reports.report_input(site, NOW)))
+        with patch.object(reports, 'generate', return_value=PROSE) as generate:
+            self.assertEqual(self.post().get_json()['report'], PROSE)
+            with self.app.app_context():
+                database.init_db()
+            self.assertEqual(self.post().get_json()['report'], PROSE)
+            generate.assert_called_once()
+
     def test_local_date_rollover_replaces_only_row_after_new_dependencies(self):
         self.populate()
         midnight = datetime(2026, 10, 26, tzinfo=ZoneInfo('Pacific/Galapagos')).timestamp()
@@ -111,7 +147,6 @@ class SiteReportTest(unittest.TestCase):
                     for source in (data['hourly'], data['weather']['hourly'], data['weather']['daily']):
                         source['time'] = [t + 86400 for t in source['time']]
                     db.execute('UPDATE marine_forecast_cache SET payload=?, expires_at=?', (json.dumps(data), midnight + 900))
-                    db.execute("UPDATE site_visibility_cache SET cache_date='2026-10-26'")
                     db.commit()
                 self.assertEqual(self.post().get_json()['date'], '2026-10-26')
             self.assertEqual(generate.call_count, 2)
