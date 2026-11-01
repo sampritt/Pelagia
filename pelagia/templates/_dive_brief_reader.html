@@ -1,15 +1,20 @@
 {% from "_action_icons.html" import action_icon %}
 <div class="brief-reader" data-brief-reader data-brief-edition="{{ brief.effective_date.isoformat() }}"{% if public_brief %} data-brief-public="true"{% endif %}>
-    {% if not public_brief %}
     <nav class="brief-toolbar" aria-label="Dive Brief navigation">
+        {% if public_brief %}
+        <a class="brief-back" href="{{ url_for('landing') }}" aria-label="Back to Pelagia">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14 6-6 6 6 6"></path></svg>
+            <span>Back</span>
+        </a>
+        {% else %}
         <a class="brief-back" href="{{ url_for('home') }}" data-brief-close>
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14 6-6 6 6 6"></path></svg>
             <span>Feed</span>
         </a>
+        {% endif %}
         <span class="brief-toolbar-title" aria-hidden="true">{{ brief.title }}</span>
         <span class="brief-toolbar-duration">{{ brief.read_minutes }} min read</span>
     </nav>
-    {% endif %}
     <div class="brief-scroll" data-brief-scroll tabindex="0" role="region" aria-label="The Dive Brief newsletter">
         <article class="brief-edition">
             <header class="brief-edition-head">

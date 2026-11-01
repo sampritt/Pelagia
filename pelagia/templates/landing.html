@@ -42,7 +42,7 @@
             <nav class="marketing-navigation" aria-label="Main navigation" id="landingNavigation">
                 <a href="#home" aria-current="page">Home</a>
                 <a href="#product">Product</a>
-                <a href="{{ url_for('shared_dive_brief', edition=brief_date.isoformat()) }}">The Dive Brief</a>
+                <a href="{{ url_for('today_dive_brief') }}">The Dive Brief</a>
                 <a href="#support">Support</a>
             </nav>
             <div class="marketing-account">
@@ -63,7 +63,6 @@
                 <a class="marketing-hero-link" href="#product">Explore the app {{ arrow('down') }}</a>
             </div>
         </div>
-        <div class="marketing-hero-bottom" aria-hidden="true"><span>A little closer to the ocean.</span><span>Discover Pelagia {{ arrow('down') }}</span></div>
     </section>
 
     <div class="marketing-product" id="product">
@@ -82,7 +81,6 @@
             <div class="product-visual plan-visual">
                 <div class="visual-orbit" aria-hidden="true"></div>
                 {{ phone('plan.png', 'Pelagia dive site overview for Melissa’s Garden in Indonesia, with its map and description.') }}
-                <span class="visual-caption">A world of diving. All in one place.</span>
             </div>
         </section>
 
@@ -100,7 +98,6 @@
             <div class="product-visual log-visual">
                 {{ phone('log-details.png', 'Pelagia dive logging with site, location, and depth metrics.', 'phone-secondary') }}
                 {{ phone('log-air.png', 'Pelagia dive logging with wetsuit selection, gas mix, air consumption, and SAC rate.', 'phone-primary') }}
-                <span class="visual-caption">Your dive. Your level of detail.</span>
             </div>
         </section>
 
@@ -117,7 +114,6 @@
             <div class="product-visual track-visual">
                 <div class="visual-orbit" aria-hidden="true"></div>
                 {{ phone('track.png', 'Pelagia personalized 3 mm wetsuit and 5 kg weight recommendations, visibility, and current conditions.') }}
-                <span class="visual-caption">More insight with every dive.</span>
             </div>
         </section>
 
@@ -135,7 +131,6 @@
             <div class="product-visual connect-visual">
                 <div class="visual-orbit" aria-hidden="true"></div>
                 {{ phone('connect.png', 'A logged Pelagia dive with its map, depth profile, 94 ft maximum depth, 38 minute duration, and marine life sightings.') }}
-                <span class="visual-caption">Every dive has a story. Share yours.</span>
             </div>
         </section>
     </div>

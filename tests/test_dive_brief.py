@@ -119,7 +119,7 @@ class DiveBriefTest(unittest.TestCase):
         self.app.config["PUBLIC_BASE_URL"] = "https://pelagia.example"
         guest = self.app.test_client()
         landing = guest.get("/?next=/dive/42").get_data(as_text=True)
-        self.assertIn('href="/share/brief/2026-10-22"', landing)
+        self.assertIn('href="/thedivebrief"', landing)
         self.assertIn('href="/login?next=/dive/42"', landing)
         self.assertIn('href="/signup?next=/dive/42"', landing)
         response = guest.get("/share/brief/2026-10-22")
@@ -129,7 +129,8 @@ class DiveBriefTest(unittest.TestCase):
         self.assertIn('href="https://example.com/story"', html)
         self.assertIn('data-brief-public="true"', html)
         self.assertNotIn("data-brief-close", html)
-        self.assertNotIn('class="brief-toolbar"', html)
+        self.assertIn('class="brief-toolbar"', html)
+        self.assertIn('href="/" aria-label="Back to Pelagia"', html)
         self.assertNotIn("Back to feed", html)
         self.assertNotIn("Explore Pelagia", html)
         self.assertIn('property="og:url" content="https://pelagia.example/share/brief/2026-10-22"', html)
@@ -144,8 +145,28 @@ class DiveBriefTest(unittest.TestCase):
             self.assertNotIn(b'class="mobile-nav"', page.data)
             self.assertNotIn(b'class="topbar ', page.data)
         self.edition_clock.return_value = date(2026, 10, 23)
-        self.assertIn(b'href="/share/brief/2026-10-23"', guest.get("/").data)
+        self.assertIn(b'href="/thedivebrief"', guest.get("/").data)
         self.assertIn(b"The complete public story.", guest.get("/share/brief/2026-10-22").data)
+
+    def test_public_today_url_follows_editorial_date_and_keeps_dated_share_links(self):
+        self.write_edition(date(2026, 10, 22), "Today's public edition.")
+        self.write_edition(date(2026, 10, 23), "The next public edition.")
+        guest = self.app.test_client()
+        response = guest.get("/thedivebrief")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"Today's public edition.", response.data)
+        self.assertNotIn(b"The next public edition.", response.data)
+        self.assertIn(b'/share/brief/2026-10-22', response.data)
+        self.assertIn(b'aria-label="Back to Pelagia"', response.data)
+        self.assertEqual(response.headers["Cache-Control"], "private, no-store")
+        self.assertNotIn(b'href="/home"', self.client.get("/thedivebrief").data)
+
+        self.edition_clock.return_value = date(2026, 10, 23)
+        response = guest.get("/thedivebrief")
+        self.assertIn(b"The next public edition.", response.data)
+        self.assertIn(b'/share/brief/2026-10-23', response.data)
+        self.edition_clock.return_value = date(2026, 10, 24)
+        self.assertEqual(guest.get("/thedivebrief").status_code, 404)
 
     def test_reader_share_uses_its_own_edition_and_public_origin(self):
         self.write_edition(date(2026, 10, 21))

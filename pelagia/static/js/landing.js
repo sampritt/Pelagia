@@ -12,6 +12,13 @@
     page.setAttribute('data-navigation-ready', '');
     toggle.hidden = false;
     toggle.addEventListener('click', () => setMenu(toggle.getAttribute('aria-expanded') !== 'true'));
+    toggle.addEventListener('keydown', event => {
+        if (event.key === 'ArrowDown') {
+            event.preventDefault();
+            setMenu(true);
+            navigation.querySelector('a')?.focus();
+        }
+    });
     navigation.addEventListener('click', event => {
         if (event.target.closest('a')) setMenu(false);
     });
@@ -22,6 +29,9 @@
         }
     });
     document.addEventListener('click', event => {
+        if (!event.target.closest('.marketing-header')) setMenu(false);
+    });
+    document.addEventListener('focusin', event => {
         if (!event.target.closest('.marketing-header')) setMenu(false);
     });
     window.matchMedia('(max-width: 900px)').addEventListener('change', () => setMenu(false));

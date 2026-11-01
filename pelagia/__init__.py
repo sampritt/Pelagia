@@ -296,6 +296,10 @@ def register_routes(app):
         response.headers["X-Robots-Tag"] = "noindex, nofollow"
         return response
 
+    @app.get("/thedivebrief")
+    def today_dive_brief():
+        return shared_dive_brief(dive_brief.effective_date().isoformat())
+
     def render_dive_brief(edition, public_brief=False):
         try:
             day = date.fromisoformat(edition)

@@ -1,12 +1,22 @@
 {% extends "base.html" %}
 {% block title %}{{ 'Sign up' if auth_mode == 'signup' else 'Log in' }} — Pelagia{% endblock %}
 {% block body_class %}welcome-body auth-body{% endblock %}
-{% block head %}<meta name="robots" content="noindex, follow">{% endblock %}
+{% block head %}
+<meta name="robots" content="noindex, follow">
+<link rel="preload" as="image" href="{{ url_for('static', filename='img/landing/coral-hero.jpg') }}" fetchpriority="high">
+{% endblock %}
 {% block content %}
 <div class="auth-page">
-    <a class="welcome-wordmark auth-brand" href="{{ url_for('landing') }}"><img src="{{ url_for('static', filename='img/pelagia-mark.png') }}" width="32" height="32" alt="">Pelagia</a>
+    <header class="auth-header">
+        <a class="welcome-wordmark auth-brand" href="{{ url_for('landing') }}" aria-label="Pelagia home"><img src="{{ url_for('static', filename='img/pelagia-mark.png') }}" width="40" height="40" alt="">Pelagia</a>
+        <a class="auth-back" href="{{ url_for('landing') }}"><span aria-hidden="true">←</span> Back to home</a>
+    </header>
     <div class="auth-layout">
-        <div class="auth-intro"><p>Log your dive.<br>Find your buddy.</p></div>
+        <div class="auth-intro">
+            <p class="auth-intro-eyebrow">Free to join. Built for divers.</p>
+            <h2>Plan. Log.<br>Track. Connect.</h2>
+            <p class="auth-intro-description">Research dive sites, check the conditions, log your dives and connect with the community.</p>
+        </div>
         <section class="signin-card" aria-labelledby="signinTitle" data-nosnippet>
             {% block auth_content %}
             <h1 id="signinTitle">{{ 'Sign up for Pelagia' if auth_mode == 'signup' else 'Log in to Pelagia' }}</h1>
