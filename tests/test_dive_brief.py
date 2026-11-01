@@ -118,6 +118,10 @@ class DiveBriefTest(unittest.TestCase):
         self.write_edition(date(2026, 10, 22), "## SCIENCE\n\n### A healthy ocean\n\nThe complete public story.\n\n[Read more](https://example.com/story)")
         self.app.config["PUBLIC_BASE_URL"] = "https://pelagia.example"
         guest = self.app.test_client()
+        landing = guest.get("/?next=/dive/42").get_data(as_text=True)
+        self.assertIn('href="/share/brief/2026-10-22"', landing)
+        self.assertIn('href="/login?next=/dive/42"', landing)
+        self.assertIn('href="/signup?next=/dive/42"', landing)
         response = guest.get("/share/brief/2026-10-22")
         self.assertEqual(response.status_code, 200)
         html = response.get_data(as_text=True)
@@ -140,6 +144,7 @@ class DiveBriefTest(unittest.TestCase):
             self.assertNotIn(b'class="mobile-nav"', page.data)
             self.assertNotIn(b'class="topbar ', page.data)
         self.edition_clock.return_value = date(2026, 10, 23)
+        self.assertIn(b'href="/share/brief/2026-10-23"', guest.get("/").data)
         self.assertIn(b"The complete public story.", guest.get("/share/brief/2026-10-22").data)
 
     def test_reader_share_uses_its_own_edition_and_public_origin(self):

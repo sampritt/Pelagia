@@ -230,7 +230,7 @@ def register_routes(app):
             return redirect(auth_next)
         if request.args.get("mode") in ("login", "signup"):
             return redirect(url_for("login", next=auth_next) if request.args["mode"] == "login" else "/signup?" + urlencode({"next": auth_next}))
-        return render_template("landing.html", auth_next=auth_next)
+        return render_template("landing.html", auth_next=auth_next, brief_date=dive_brief.effective_date())
 
     @app.get("/login", endpoint="login")
     @app.get("/signup", endpoint="signup")

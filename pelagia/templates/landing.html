@@ -1,46 +1,151 @@
 {% extends "base.html" %}
 {% block title %}Pelagia Dive Log — Scuba Logbook & Dive Buddies{% endblock %}
-{% block body_class %}welcome-body{% endblock %}
+{% block body_class %}marketing-body{% endblock %}
+{% set description = "Pelagia is a free web-based app for scuba divers. Research dive sites, check the conditions, log your dives and connect with the community." %}
 {% block head %}
-<meta name="description" content="Record your scuba dives, track depth and bottom time, add photos, explore dive sites, and share your underwater adventures with dive buddies.">
+<meta name="description" content="{{ description }}">
 <link rel="canonical" href="{{ public_url('landing') }}">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Pelagia">
 <meta property="og:title" content="Pelagia Dive Log — Scuba Logbook & Dive Buddies">
-<meta property="og:description" content="Record your scuba dives, track depth and bottom time, add photos, explore dive sites, and share your underwater adventures with dive buddies.">
+<meta property="og:description" content="{{ description }}">
 <meta property="og:url" content="{{ public_url('landing') }}">
-<meta property="og:image" content="{{ public_url('static', filename='img/ocean-hero-v2.jpg') }}">
+<meta property="og:image" content="{{ public_url('static', filename='img/landing/coral-hero.jpg') }}">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Pelagia Dive Log — Scuba Logbook & Dive Buddies">
-<meta name="twitter:description" content="Record your scuba dives, track depth and bottom time, add photos, explore dive sites, and share your underwater adventures with dive buddies.">
-<meta name="twitter:image" content="{{ public_url('static', filename='img/ocean-hero-v2.jpg') }}">
-<link rel="preload" as="image" href="{{ url_for('static', filename='img/ocean-hero-v2.jpg') }}">
-<script type="application/ld+json">{{ {"@context": "https://schema.org", "@type": "WebApplication", "name": "Pelagia", "url": public_url('landing'), "applicationCategory": "LifestyleApplication", "operatingSystem": "Web, iOS, Android", "description": "Record your scuba dives, track depth and bottom time, add photos, explore dive sites, and share your underwater adventures with dive buddies."}|tojson }}</script>
+<meta name="twitter:description" content="{{ description }}">
+<meta name="twitter:image" content="{{ public_url('static', filename='img/landing/coral-hero.jpg') }}">
+<link rel="preload" as="image" href="{{ url_for('static', filename='img/landing/coral-hero.jpg') }}" fetchpriority="high">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/landing.css', v=pwa_asset_version) }}">
+<script defer src="{{ url_for('static', filename='js/landing.js', v=pwa_asset_version) }}"></script>
+<script type="application/ld+json">{{ {"@context": "https://schema.org", "@type": "WebApplication", "name": "Pelagia", "url": public_url('landing'), "applicationCategory": "LifestyleApplication", "operatingSystem": "Web", "description": description, "offers": {"@type": "Offer", "price": "0", "priceCurrency": "USD"}}|tojson }}</script>
 {% endblock %}
+{% macro arrow(direction='right') -%}
+<svg class="marketing-arrow" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="{{ 'M12 5v14m-6-6 6 6 6-6' if direction == 'down' else 'M5 12h14m-6-6 6 6-6 6' }}"/></svg>
+{%- endmacro %}
+{% macro phone(filename, alt, extra='') -%}
+<div class="product-phone {{ extra }}">
+    <div class="phone-screen">
+        <img src="{{ url_for('static', filename='img/landing/' ~ filename) }}" alt="{{ alt }}" width="1170" height="2532" loading="lazy" decoding="async">
+        <span class="phone-island" aria-hidden="true"></span>
+        <span class="phone-battery" aria-hidden="true"></span>
+        <span class="phone-avatar" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="3.5"/><path d="M5 21v-2a7 7 0 0 1 14 0v2"/></svg></span>
+        <span class="phone-home" aria-hidden="true"></span>
+    </div>
+</div>
+{%- endmacro %}
 {% block content %}
-<div class="welcome-page">
-    <header class="welcome-nav">
-        <a class="welcome-wordmark" href="{{ url_for('landing') }}" aria-label="Pelagia home"><img src="{{ url_for('static', filename='img/pelagia-mark.png') }}" width="32" height="32" alt="">Pelagia</a>
-        <nav aria-label="Welcome navigation">
-            <a class="welcome-login" href="{{ url_for('login', next=auth_next) }}"><span data-nosnippet>Log in</span></a>
-            <a class="welcome-button welcome-button-small" href="{{ url_for('signup', next=auth_next) }}"><span data-nosnippet>Sign up</span></a>
-        </nav>
+<div class="marketing-page">
+    <header class="marketing-header">
+        <div class="marketing-nav-inner">
+            <a class="marketing-brand" href="#home" aria-label="Pelagia home"><img src="{{ url_for('static', filename='img/pelagia-mark.png') }}" width="40" height="40" alt="">Pelagia</a>
+            <nav class="marketing-navigation" aria-label="Main navigation" id="landingNavigation">
+                <a href="#home" aria-current="page">Home</a>
+                <a href="#product">Product</a>
+                <a href="{{ url_for('shared_dive_brief', edition=brief_date.isoformat()) }}">The Dive Brief</a>
+                <a href="#support">Support</a>
+            </nav>
+            <div class="marketing-account">
+                <a class="marketing-login" href="{{ url_for('login', next=auth_next) }}"><span data-nosnippet>Log in</span></a>
+                <a class="marketing-button marketing-signup" href="{{ url_for('signup', next=auth_next) }}"><span data-nosnippet>Sign Up</span>{{ arrow() }}</a>
+            </div>
+            <button class="marketing-menu-toggle" type="button" aria-expanded="false" aria-controls="landingNavigation" aria-label="Open navigation" hidden><span></span><span></span></button>
+        </div>
     </header>
-    <section class="welcome-hero" aria-labelledby="welcomeTitle">
-        <div class="welcome-hero-content">
+
+    <section class="marketing-hero" id="home" aria-labelledby="welcomeTitle">
+        <div class="marketing-hero-inner">
+            <p class="marketing-eyebrow">Plan. Log. Track. Connect.</p>
             <h1 id="welcomeTitle">Pelagia</h1>
-            <p class="welcome-tagline">Log your dive.<br>Find your buddy.</p>
+            <p class="marketing-intro"><span>Pelagia is a free web-based app for scuba divers.</span> Research dive sites, check the conditions, log your dives and connect with the community.</p>
             <div class="welcome-actions" data-nosnippet>
-                <a class="welcome-button" href="{{ url_for('signup', next=auth_next) }}">Sign up <span aria-hidden="true">↗</span></a>
-                <a class="welcome-secondary" href="{{ url_for('login', next=auth_next) }}">Log in <span aria-hidden="true">→</span></a>
+                <a class="marketing-button marketing-hero-cta" href="{{ url_for('signup', next=auth_next) }}">Sign up for free {{ arrow() }}</a>
+                <a class="marketing-hero-link" href="#product">Explore the app {{ arrow('down') }}</a>
             </div>
         </div>
+        <div class="marketing-hero-bottom" aria-hidden="true"><span>A little closer to the ocean.</span><span>Discover Pelagia {{ arrow('down') }}</span></div>
     </section>
-    <section class="welcome-features" id="discover" aria-label="Your scuba diving companion">
-        <article><h2>Plan and log your dives</h2><p>Record dive sites, photos, conditions, stats, and wildlife.</p></article>
-        <article><h2>Connect with your dive buddies</h2><p>Tag your dive team and follow your diving community.</p></article>
-        <article><h2>Explore dive sites</h2><p>Explore dive sites and local marine life.</p></article>
+
+    <div class="marketing-product" id="product">
+        <section class="product-section product-plan" aria-labelledby="planTitle">
+            <div class="product-copy">
+                <p class="product-eyebrow"><span>01</span> Before you get in</p>
+                <h2 id="planTitle">Plan<span>.</span></h2>
+                <ul class="product-list plan-list">
+                    <li><span><strong class="product-stat">12,000+</strong> dive sites, global coverage</span></li>
+                    <li><span><strong class="product-stat">500+</strong> marine species</span></li>
+                    <li><span><strong class="product-stat">3,500+</strong> dive centers</span></li>
+                    <li><span>Forecast surface conditions, visibility, tides, currents and more</span></li>
+                    <li><span>Get daily reports on dive site conditions straight to your feed</span></li>
+                </ul>
+            </div>
+            <div class="product-visual plan-visual">
+                <div class="visual-orbit" aria-hidden="true"></div>
+                {{ phone('plan.png', 'Pelagia dive site overview for Melissa’s Garden in Indonesia, with its map and description.') }}
+                <span class="visual-caption">A world of diving. All in one place.</span>
+            </div>
+        </section>
+
+        <section class="product-section product-log product-reversed" aria-labelledby="logTitle">
+            <div class="product-copy">
+                <p class="product-eyebrow"><span>02</span> Make every dive count</p>
+                <h2 id="logTitle">Log<span>.</span></h2>
+                <ul class="product-list">
+                    <li><span>Intuitive dive logging</span></li>
+                    <li><span>Add as much (or as little) detail as you want: dive stats, equipment, gas mix, photos, notes, and more</span></li>
+                    <li><span>Be a citizen scientist: log marine life and site conditions</span></li>
+                    <li><span>Import dives from your Garmin device</span></li>
+                </ul>
+            </div>
+            <div class="product-visual log-visual">
+                {{ phone('log-details.png', 'Pelagia dive logging with site, location, and depth metrics.', 'phone-secondary') }}
+                {{ phone('log-air.png', 'Pelagia dive logging with wetsuit selection, gas mix, air consumption, and SAC rate.', 'phone-primary') }}
+                <span class="visual-caption">Your dive. Your level of detail.</span>
+            </div>
+        </section>
+
+        <section class="product-section product-track" aria-labelledby="trackTitle">
+            <div class="product-copy">
+                <p class="product-eyebrow"><span>03</span> Get to know your diving</p>
+                <h2 id="trackTitle">Track<span>.</span></h2>
+                <ul class="product-list">
+                    <li><span>Analyze your SAC rate</span></li>
+                    <li><span>Get personalized wetsuit and weight recommendations</span></li>
+                    <li><span>Detailed metrics including depth profile charts</span></li>
+                </ul>
+            </div>
+            <div class="product-visual track-visual">
+                <div class="visual-orbit" aria-hidden="true"></div>
+                {{ phone('track.png', 'Pelagia personalized 3 mm wetsuit and 5 kg weight recommendations, visibility, and current conditions.') }}
+                <span class="visual-caption">More insight with every dive.</span>
+            </div>
+        </section>
+
+        <section class="product-section product-connect product-reversed" aria-labelledby="connectTitle">
+            <div class="product-copy">
+                <p class="product-eyebrow"><span>04</span> Better with a buddy</p>
+                <h2 id="connectTitle">Connect<span>.</span></h2>
+                <ul class="product-list">
+                    <li><span>Follow other divers</span></li>
+                    <li><span>Tag your buddy team</span></li>
+                    <li><span>Like and comment on logged dives</span></li>
+                    <li><span>Save dive sites for future planning</span></li>
+                </ul>
+            </div>
+            <div class="product-visual connect-visual">
+                <div class="visual-orbit" aria-hidden="true"></div>
+                {{ phone('connect.png', 'A logged Pelagia dive with its map, depth profile, 94 ft maximum depth, 38 minute duration, and marine life sightings.') }}
+                <span class="visual-caption">Every dive has a story. Share yours.</span>
+            </div>
+        </section>
+    </div>
+
+    <section class="marketing-support" id="support" aria-labelledby="supportTitle">
+        <div class="marketing-support-inner">
+            <div><p class="product-eyebrow">Here to help</p><h2 id="supportTitle">Questions?<br>Get in touch<span>.</span></h2></div>
+            <div class="support-contact"><p>For questions or support, contact us at</p><a href="mailto:{{ config.PELAGIA_CONTACT_EMAIL }}">{{ config.PELAGIA_CONTACT_EMAIL }} {{ arrow() }}</a></div>
+        </div>
+        <footer class="marketing-footer"><a class="marketing-brand" href="#home" aria-label="Pelagia home"><img src="{{ url_for('static', filename='img/pelagia-mark.png') }}" width="28" height="28" alt="">Pelagia</a><div><a href="{{ url_for('terms') }}">Terms &amp; Conditions</a><a href="{{ url_for('privacy') }}">Privacy Policy</a><span>© {{ brief_date.year }} Pelagia</span></div></footer>
     </section>
-    <footer class="welcome-footer"><span>Pelagia</span><div><a href="{{ url_for('terms') }}">Terms of Use</a><a href="{{ url_for('privacy') }}">Privacy Policy</a></div></footer>
 </div>
 {% endblock %}

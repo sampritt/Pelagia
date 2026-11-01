@@ -62,7 +62,7 @@ class GoogleAuthTest(unittest.TestCase):
         self.assertIn('<h1 id="welcomeTitle">Pelagia</h1>', landing)
         self.assertIn('rel="canonical" href="https://pelagia.example/"', landing)
         self.assertIn('<title>Pelagia Dive Log — Scuba Logbook & Dive Buddies</title>', landing)
-        self.assertIn('Record your scuba dives, track depth and bottom time', landing)
+        self.assertIn('Pelagia is a free web-based app for scuba divers.', landing)
         self.assertIn('<span data-nosnippet>Log in</span>', landing)
         self.assertIn('<div class="welcome-actions" data-nosnippet>', landing)
         self.assertIn('application/ld+json', landing)
