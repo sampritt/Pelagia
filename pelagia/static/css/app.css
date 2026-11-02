@@ -2199,7 +2199,7 @@ input[type="range"] {
         right: 12px;
         bottom: 12px;
         display: grid;
-        grid-template-columns: repeat(4, minmax(0, 1fr));
+        grid-template-columns: repeat(5, minmax(0, 1fr));
         align-items: center;
         gap: 6px;
         padding: 6px;
@@ -2673,6 +2673,7 @@ h2 {
 }
 
 .desktop-nav {
+    flex-shrink: 0;
     gap: 2px;
     padding: 0;
     border: 0;
@@ -4352,7 +4353,7 @@ input[type="range"] {
         min-width: 0;
     }
 
-    .topbar .user-corner > .mini-avatar {
+    .topbar .user-corner {
         display: none;
     }
 }
@@ -4423,7 +4424,7 @@ input[type="range"] {
         bottom: max(12px, env(safe-area-inset-bottom));
         max-width: 560px;
         margin-inline: auto;
-        grid-template-columns: repeat(4, minmax(0, 1fr));
+        grid-template-columns: repeat(5, minmax(0, 1fr));
         align-items: stretch;
         gap: 4px;
         padding: 6px;

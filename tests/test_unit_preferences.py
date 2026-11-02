@@ -72,7 +72,7 @@ class UnitPreferencesTest(unittest.TestCase):
     def test_display_conversions_cover_feeds_details_profiles_sites_and_charts(self):
         original = self.seed_dive()
         self.client.post("/you/settings", data=IMPERIAL)
-        for path in ("/home", "/you", "/users/1", "/dive-sites/1", "/dive-centers/1"):
+        for path in ("/feed", "/you", "/users/1", "/dive-sites/1", "/dive-centers/1"):
             with self.subTest(path=path):
                 html = self.client.get(path).get_data(as_text=True)
                 self.assertIn('50 <em>ft</em>', html)

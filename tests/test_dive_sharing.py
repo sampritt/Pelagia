@@ -93,7 +93,7 @@ class DiveSharingTest(unittest.TestCase):
 
     def test_owner_has_share_on_detail_feed_and_profile(self):
         self.login_session()
-        for url in ("/dive/1", "/home", "/you"):
+        for url in ("/dive/1", "/feed", "/you"):
             self.assertIn(b"data-share-dive", self.client.get(url).data)
         self.login_session(2)
         self.assertNotIn(b"data-share-dive", self.client.get("/dive/1").data)
@@ -157,7 +157,7 @@ class DiveSharingTest(unittest.TestCase):
             database.get_db().execute("UPDATE dives SET average_depth_m = 15.0 WHERE id = 1")
             database.get_db().commit()
         self.login_session()
-        for url in ("/home", "/you"):
+        for url in ("/feed", "/you"):
             self.assertNotIn(b"Average depth", self.client.get(url).data)
         detail = self.client.get("/dive/1").data
         headline, metrics = detail.split(b"detail-lower-grid", 1)
@@ -398,7 +398,7 @@ class DiveSharingTest(unittest.TestCase):
             self.add_depth_profile(points)
             self.assertEqual(self.client.get(url).status_code, 404)
         self.add_depth_profile()
-        for path in ("/dive/1", "/home", "/you"):
+        for path in ("/dive/1", "/feed", "/you"):
             self.assertIn(b'data-share-depth-profile="true"', self.client.get(path).data)
         with self.app.app_context():
             database.get_db().execute("UPDATE dive_computer_data SET data_json = 'invalid'")

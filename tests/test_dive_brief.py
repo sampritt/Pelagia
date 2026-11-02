@@ -50,7 +50,7 @@ class DiveBriefTest(unittest.TestCase):
         path = self.write_edition(date(2026, 9, 4))
         path.write_bytes(SAMPLE.read_bytes())
         html = self.client.get("/home").get_data(as_text=True)
-        self.assertLess(html.index('class="brief-card"'), html.index('class="empty-state"'))
+        self.assertLess(html.index('class="brief-card"'), html.index('id="siteReportsTitle"'))
         self.assertIn("Friday, September 4, 2026", html)
         card = html.split('<article class="brief-card"', 1)[1].split("</article>", 1)[0]
         self.assertIn('class="brief-card-disclosure" data-brief-disclosure>', card)
@@ -61,6 +61,8 @@ class DiveBriefTest(unittest.TestCase):
         page = self.client.get("/brief/2026-09-04")
         self.assertEqual(page.status_code, 200)
         reader = page.get_data(as_text=True)
+        self.assertIn('<span>Home</span>', reader)
+        self.assertIn('>Back to home</span>', reader)
         self.assertEqual(reader.count('<section class="brief-story">'), 6)
         self.assertIn("<em>Po</em>", reader)
         self.assertIn('target="_blank" rel="noopener noreferrer"', reader)
@@ -83,7 +85,8 @@ class DiveBriefTest(unittest.TestCase):
         self.app.config["DIVE_BRIEF_SAMPLE_PATH"] = str(SAMPLE)
         html = self.client.get("/home").data
         self.assertNotIn(b'class="brief-card"', html)
-        self.assertIn(b"No dives yet", html)
+        self.assertIn(b"Site reports", html)
+        self.assertNotIn(b"No dives yet", html)
         for edition in ("2026-09-04", "bad-date", "2026-02-30", "20261021", ".."):
             self.assertEqual(self.client.get(f"/brief/{edition}").status_code, 404)
         self.assertEqual(self.app.test_client().get("/brief/2026-09-04").status_code, 302)

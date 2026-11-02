@@ -104,6 +104,17 @@ test('navigation keeps chrome usable, resets on history restore, and recovers fr
     assert.match(status.textContent, /try again/);
 });
 
+test('Home and Feed use distinct loading layouts', () => {
+    const { loading, tick, shell } = setup();
+    for (const path of ['/home', '/welcome', '/feed']) {
+        loading.startNavigation(path); tick(160);
+        assert.equal(shell.dataset.layout, path === '/feed' ? 'feed' : 'home');
+        assert.equal(shell.innerHTML.includes('skeleton-identity'), true);
+        assert.equal(shell.innerHTML.includes('skeleton-metrics'), true);
+        loading.resetNavigation();
+    }
+});
+
 test('modified links, same-page anchors, downloads, external links and prevented events do not mask content', () => {
     const { window, tick, shell } = setup();
     const link = { href: 'http://localhost/you', target: '', hasAttribute: () => false };

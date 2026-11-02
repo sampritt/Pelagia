@@ -260,7 +260,6 @@ def register_routes(app):
     @app.route("/home")
     @login_required
     def home():
-        dives = fetch_dives(scope="all", user_id=session["user_id"])
         latest_my_dives = fetch_dives(scope="mine", user_id=session["user_id"], limit=1)
         stats = get_profile_stats(session["user_id"])
         favorite_sites = fetch_favorite_dive_sites(session["user_id"])
@@ -275,13 +274,25 @@ def register_routes(app):
                 favorite_sites.append(featured_site)
         return render_template(
             "home.html",
-            dives=dives,
             favorite_sites=favorite_sites,
             latest_my_dive=latest_my_dives[0] if latest_my_dives else None,
             stats=stats,
             user=current_user(),
             brief=dive_brief.load_brief(),
             show_welcome=request.endpoint == "welcome",
+        )
+
+    @app.get("/feed")
+    @login_required
+    def feed():
+        user_id = session["user_id"]
+        latest_my_dives = fetch_dives(scope="mine", user_id=user_id, limit=1)
+        return render_template(
+            "feed.html",
+            dives=fetch_dives(scope="all", user_id=user_id),
+            latest_my_dive=latest_my_dives[0] if latest_my_dives else None,
+            stats=get_profile_stats(user_id),
+            user=current_user(),
         )
 
     @app.get("/brief/<edition>")

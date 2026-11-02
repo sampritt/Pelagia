@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Feed - Pelagia{% endblock %}
+
+{% block content %}
+<section class="activity-layout">
+    <div class="feed-main">
+        <section class="dive-logs" aria-labelledby="feedTitle">
+            <header class="feed-heading">
+                <h1 id="feedTitle">Feed</h1>
+            </header>
+            <div class="dive-logs-list">
+                {% if dives %}
+                    {% for dive in dives %}
+                        {% include "_dive_card.html" %}
+                    {% endfor %}
+                {% else %}
+                    <div class="empty-state">
+                        <h2>No dives yet</h2>
+                        <p>Log your first dive to start your underwater story.</p>
+                        <a class="primary-button" href="{{ url_for('log_dive') }}">Log dive</a>
+                    </div>
+                {% endif %}
+            </div>
+        </section>
+    </div>
+    {% include "_dive_summary.html" %}
+</section>
+{% endblock %}

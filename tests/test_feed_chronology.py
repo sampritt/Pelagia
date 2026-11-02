@@ -51,12 +51,46 @@ class FeedChronologyTest(unittest.TestCase):
         client = self.app.test_client()
         with client.session_transaction() as session:
             session["user_id"] = 1
-        response = client.get("/home")
+        response = client.get("/feed")
         self.assertEqual(response.status_code, 200)
         self.assertEqual(
             [int(value) for value in re.findall(rb'data-dive-card data-dive-id="(\d+)"', response.data)],
             [newest_upload, recent_upload, older_upload],
         )
+
+    def test_home_keeps_reports_without_querying_the_community_feed(self):
+        self.add_dive("2025-01-01", "-1 day", user_id=2)
+        client = self.app.test_client()
+        with client.session_transaction() as session:
+            session["user_id"] = 1
+        with patch("pelagia.fetch_dives", wraps=fetch_dives) as query:
+            for path in ("/home", "/welcome"):
+                response = client.get(path)
+                self.assertEqual(response.status_code, 200)
+                self.assertIn(b'id="siteReportsTitle"', response.data)
+                self.assertNotIn(b'data-dive-card', response.data)
+                self.assertNotIn(b'No dives yet', response.data)
+            self.assertTrue(all(call.kwargs["scope"] == "mine" for call in query.call_args_list))
+
+    def test_feed_is_separate_from_home_reports_and_handles_empty_logs(self):
+        client = self.app.test_client()
+        with client.session_transaction() as session:
+            session["user_id"] = 1
+        with patch("pelagia.fetch_favorite_dive_sites") as reports, patch("pelagia.dive_brief.load_brief") as brief:
+            response = client.get("/feed")
+            self.assertEqual(response.status_code, 200)
+            self.assertIn(b'<title>Feed - Pelagia</title>', response.data)
+            self.assertIn(b'No dives yet', response.data)
+            self.assertIn(b'href="/dive/new">Log dive</a>', response.data)
+            self.assertNotIn(b'id="siteReportsTitle"', response.data)
+            self.assertNotIn(b'js/feed-site-reports.js', response.data)
+            reports.assert_not_called()
+            brief.assert_not_called()
+
+    def test_feed_requires_login_and_preserves_destination(self):
+        response = self.app.test_client().get("/feed")
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(response.location.endswith("/?next=/feed"))
 
     def test_seven_day_window_uses_upload_time_and_expires(self):
         newer_dive = self.add_dive(self.older_dive_day, "-14 days")

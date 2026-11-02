@@ -9,7 +9,7 @@
         {% else %}
         <a class="brief-back" href="{{ url_for('home') }}" data-brief-close>
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14 6-6 6 6 6"></path></svg>
-            <span>Feed</span>
+            <span>Home</span>
         </a>
         {% endif %}
         <span class="brief-toolbar-title" aria-hidden="true">{{ brief.title }}</span>
@@ -40,7 +40,7 @@
                 <p>You’re all caught up.<br><strong>See you below the surface.</strong></p>
                 {% if not public_brief %}
                 <a class="brief-read-more" href="{{ url_for('home') }}" data-brief-close>
-                    <span class="brief-link-label">Back to feed</span>
+                    <span class="brief-link-label">Back to home</span>
                     <span class="brief-arrow" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12h14m-6-6 6 6-6 6"></path></svg></span>
                 </a>
                 {% endif %}

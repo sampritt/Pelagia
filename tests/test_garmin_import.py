@@ -140,7 +140,7 @@ class GarminImportTest(unittest.TestCase):
         self.assertIn('data-gallery-dot', html)
         self.assertIn('>54 min</text>', html)
         self.assertNotIn('54.2 min</text>', html)
-        feed = self.client.get('/home').get_data(as_text=True)
+        feed = self.client.get('/feed').get_data(as_text=True)
         self.assertIn('depth-profile-chart', feed)
         self.assertIn('depthProfileFill-1', feed)
         self.assertLess(feed.index('class="mini-map'), feed.index('depth-profile-slide'))
@@ -191,7 +191,7 @@ class GarminImportTest(unittest.TestCase):
 
     def test_private_profiles_are_not_exposed_and_delete_cascades(self):
         self.save(self.import_dive())
-        for path in ("/api/dives/mine", "/api/dives/1", "/share/dive/1", "/home"):
+        for path in ("/api/dives/mine", "/api/dives/1", "/share/dive/1", "/feed"):
             self.assertNotIn("depth_profile", self.client.get(path).get_data(as_text=True))
         with self.client.session_transaction() as session:
             session["user_id"] = 2
@@ -253,9 +253,9 @@ class GarminImportTest(unittest.TestCase):
 
     def test_primary_navigation_has_equal_labels_and_tracks_nested_pages(self):
         self.save(self.import_dive())
-        for path, destination, current in [("/home", "/home", "page"), ("/explore", "/explore", "page"),
+        for path, destination, current in [("/home", "/home", "page"), ("/welcome", "/home", "page"), ("/feed", "/feed", "page"), ("/explore", "/explore", "page"),
                                            ("/dive/new", "/dive/new", "page"), ("/dive/1/edit", "/dive/new", "location"),
-                                           ("/dive/1", "/home", "location"), ("/dive-sites/2544", "/explore", "location"),
+                                           ("/dive/1", "/feed", "location"), ("/dive-sites/2544", "/explore", "location"),
                                            ("/you", "/you", "page"), ("/you/settings", "/you", "location")]:
             with self.subTest(path=path):
                 response = self.client.get(path)
@@ -263,5 +263,5 @@ class GarminImportTest(unittest.TestCase):
                 navigations = re.findall(r'<nav class="(?:desktop-nav|mobile-nav)".*?</nav>', response.get_data(as_text=True), re.S)
                 self.assertEqual(len(navigations), 2)
                 for navigation in navigations:
-                    self.assertEqual(re.findall(r"<span>(.*?)</span>", navigation), ["Feed", "Explore", "Log dive", "Profile"])
+                    self.assertEqual(re.findall(r"<span>(.*?)</span>", navigation), ["Home", "Explore", "Log dive", "Feed", "Profile"])
                     self.assertEqual(re.findall(r'<a class="active" href="([^"]+)" aria-current="([^"]+)"', navigation), [(destination, current)])

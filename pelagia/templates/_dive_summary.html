@@ -1,0 +1,28 @@
+<aside class="feed-rail" aria-label="Your dive summary">
+    <div class="feed-rail-card profile-rail-card">
+        <a class="profile-rail-head" href="{{ url_for('profile') }}">
+            <span class="profile-rail-avatar">
+                {% if user.profile_photo %}
+                    <img src="{{ uploaded_file_url(user.profile_photo) }}" alt="">
+                {% else %}
+                    <span>{{ user.username[:1]|upper }}</span>
+                {% endif %}
+            </span>
+            <span>
+                <strong>{{ user.username }}</strong>
+                <small>Your dive log</small>
+            </span>
+        </a>
+        <div class="rail-metric">
+            <div><span>{{ stats.summary.dive_count }}</span><small>{{ 'dive' if stats.summary.dive_count == 1 else 'dives' }}</small></div>
+            <div><span>{% if latest_my_dive %}{{ latest_my_dive.date }}{% else %}-{% endif %}</span><small>latest</small></div>
+        </div>
+    </div>
+    {% if latest_my_dive %}
+    <div class="feed-rail-card rail-latest">
+        <div class="rail-label">Latest dive</div>
+        <strong>{{ latest_my_dive.site_name }}</strong>
+        <span>{{ latest_my_dive.country_or_area or "Coordinates pending" }}</span>
+    </div>
+    {% endif %}
+</aside>

@@ -193,7 +193,7 @@ class ReferenceAutocompleteTest(unittest.TestCase):
             self.assertEqual(dive["dive_type"], "open water")
             self.assertEqual(dive["current"], "tidal")
             self.assertEqual(dive["current_strength"], "moderate")
-            for url in ("/home", "/you", f"/dive/{dive_id}", "/dive-sites/1"):
+            for url in ("/feed", "/you", f"/dive/{dive_id}", "/dive-sites/1"):
                 self.assertIn(b"Open Water, Reef, Wall", client.get(url).data)
             self.assertIn(b"Tidal, Drift", client.get(f"/dive/{dive_id}").data)
             self.assertIn(b"Open Water, Reef, Wall", app.test_client().get(f"/share/dive/{dive_id}").data)
@@ -315,7 +315,7 @@ class ReferenceAutocompleteTest(unittest.TestCase):
             self.assertEqual(dive["sac_rate_l_min"], 15)
             dive_id = dive["id"]
             edit_url = f"/dive/{dive_id}/edit"
-            self.assertNotIn(b"<small>Average depth</small>", client.get("/home").data)
+            self.assertNotIn(b"<small>Average depth</small>", client.get("/feed").data)
             for value, display in (("10.3", "10"), ("15.0", "15"), ("0", "0")):
                 with self.subTest(average_depth=value):
                     self.assertEqual(client.post(edit_url, data={**payload, "average_depth_m": value}).status_code, 302)
@@ -328,7 +328,7 @@ class ReferenceAutocompleteTest(unittest.TestCase):
                     edit = client.get(edit_url).data
                     self.assertIn(f'value="{display}" data-number="averageDepth"'.encode(), edit)
                     self.assertIn(b'value="15" data-tank-size checked', edit)
-                    for url in ("/home", "/you", f"/dive/{dive_id}", "/dive-sites/1"):
+                    for url in ("/feed", "/you", f"/dive/{dive_id}", "/dive-sites/1"):
                         page = client.get(url)
                         self.assertEqual(page.status_code, 200)
                         self.assertNotIn(b"<small>Average depth</small>", page.data)
@@ -351,7 +351,7 @@ class ReferenceAutocompleteTest(unittest.TestCase):
             self.assertIsNone(dive["average_depth_m"])
             self.assertEqual(dive["sac_rate_l_min"], 15)
             self.assertIn(b'<output id="averageDepthOutput">-</output>', client.get(edit_url).data)
-            self.assertNotIn(b"<small>Average depth</small>", client.get("/home").data)
+            self.assertNotIn(b"<small>Average depth</small>", client.get("/feed").data)
             self.assertNotIn(b"<dt>Average depth</dt>", client.get(f"/dive/{dive_id}").data)
             # Creating a new dive with average depth uses the same calculation.
             client.post("/dive/new", data={**payload, "average_depth_m": "10.3"})
@@ -464,7 +464,7 @@ class ReferenceAutocompleteTest(unittest.TestCase):
                     edit = client.get(f"/dive/{dive_id}/edit").data
                     self.assertIn(f'<output id="depthOutput">{display} m</output>'.encode(), edit)
                     self.assertIn(f'value="{display}" data-number="depth"'.encode(), edit)
-                    for url in (f"/dive/{dive_id}", "/home", "/you"):
+                    for url in (f"/dive/{dive_id}", "/feed", "/you"):
                         page = client.get(url).data
                         self.assertIn(display.encode(), page)
                         self.assertNotIn(b"15.0", page)
@@ -851,7 +851,7 @@ Kelp House,2 Harbor Way,Alaska,https://kelp.example.test
             self.assertEqual(logged["buddy_user_id"], 2)
             self.assertEqual(logged["buddy_username"], "buddy")
 
-            home_response = client.get("/home")
+            home_response = client.get("/feed")
             self.assertIn(b'data-global-search', home_response.data)
             self.assertIn(b'href="/users/1"', home_response.data)
             self.assertIn(b'href="/users/2"', home_response.data)
@@ -1273,7 +1273,7 @@ Kelp House,2 Harbor Way,Alaska,https://kelp.example.test
                     },
                 )
 
-            home_response = client.get("/home")
+            home_response = client.get("/feed")
             self.assertIn(b'href="/dive-sites/1"', home_response.data)
 
             profile_response = client.get("/dive-sites/1")
@@ -1426,7 +1426,7 @@ Kelp House,2 Harbor Way,Alaska,https://kelp.example.test
             self.assertNotIn(b"- with", detail_response.data)
             self.assertIn(b"<h2>Conditions</h2>", detail_response.data)
 
-            home_response = client.get("/home")
+            home_response = client.get("/feed")
             self.assertIn(b"Shore Dive", home_response.data)
             self.assertIn(b"Nitrox", home_response.data)
 
@@ -1492,7 +1492,7 @@ Kelp House,2 Harbor Way,Alaska,https://kelp.example.test
             self.assertIn(b"19<em>m</em>", updated_detail.data)
             self.assertIn(b"55<em>min</em>", updated_detail.data)
             self.assertIn(b"Very Strong", updated_detail.data)
-            updated_home = client.get("/home")
+            updated_home = client.get("/feed")
             self.assertIn(b"Wreck", updated_home.data)
             self.assertNotIn(b"Nitrox", updated_home.data)
 
@@ -1501,7 +1501,7 @@ Kelp House,2 Harbor Way,Alaska,https://kelp.example.test
             self.assertTrue(delete_response.headers["Location"].endswith("/home"))
             self.assertEqual(client.get(f"/api/dives/{dive_id}").status_code, 404)
             self.assertEqual(client.get("/api/dives/mine").get_json(), [])
-            self.assertNotIn(b"Blue Wall", client.get("/home").data)
+            self.assertNotIn(b"Blue Wall", client.get("/feed").data)
 
             with sqlite3.connect(db_path) as conn:
                 is_deleted = conn.execute("SELECT is_deleted FROM dives WHERE id = ?", (dive_id,)).fetchone()[0]
@@ -1552,7 +1552,7 @@ Kelp House,2 Harbor Way,Alaska,https://kelp.example.test
             self.assertEqual(detail_response.data.count(b"class=\"detail-photo-slide\""), 3)
             self.assertNotIn(b"detail-photo-grid", detail_response.data)
 
-            home_response = client.get("/home")
+            home_response = client.get("/feed")
             self.assertEqual(home_response.status_code, 200)
             self.assertIn(b'data-dive-slides', home_response.data)
             self.assertEqual(home_response.data.count(b'data-gallery-dot'), 3)
