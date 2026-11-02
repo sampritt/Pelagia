@@ -30,7 +30,7 @@
             </div>
         </div>
     </div>
-    <p class="explore-count" role="status" aria-live="polite" data-explore-count>{% if initial_nearby %}{{ total }} {{ 'result' if total == 1 else 'results' }} within {{ initial_nearby.radius }} {{ 'mile' if initial_nearby.unit == 'mi' and initial_nearby.radius == 1 else ('miles' if initial_nearby.unit == 'mi' else 'km') }} of {{ initial_nearby.displayName }}{% elif location %}{{ total }} {{ 'result' if total == 1 else 'results' }} in {{ location }}{% endif %}</p>
+    <p class="explore-count" role="status" aria-live="polite" data-explore-count></p>
     <div id="exploreResults" class="explore-results" aria-label="Dive sites" data-explore-results>
         {% include '_explore_results.html' %}
     </div>

@@ -6309,6 +6309,7 @@ img.is-media-loading {
 /* Explore pairs live distance controls with a compact, map-led site feed. */
 .explore-layout { width: min(100%, 760px); margin-inline: auto; }
 .explore-count { min-height: 18px; margin: 0 3px 14px; color: var(--muted-strong); font-size: .72rem; line-height: 1.6; }
+.explore-count:empty { display: none; }
 .explore-results { display: grid; gap: 16px; min-height: 170px; }
 .explore-card { display: grid; grid-template-columns: minmax(0, 1fr) 230px; gap: 22px; padding: 16px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); box-shadow: var(--shadow-xs); transition: border-color 160ms ease, box-shadow 160ms ease; }
 .explore-card:hover { border-color: var(--accent-line); box-shadow: var(--shadow-sm); }

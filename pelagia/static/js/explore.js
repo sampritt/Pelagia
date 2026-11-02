@@ -77,17 +77,10 @@ function initExplore() {
         setRadius(nearby.radius, nearby.unit);
     }
 
-    function summary(total, selected) {
-        const label = `${total} ${total === 1 ? "result" : "results"}`;
-        if (!selected) return root.dataset.location ? `${label} in ${root.dataset.location}` : "";
-        const unit = selected.unit === "mi" ? (selected.radius === 1 ? "mile" : "miles") : "km";
-        return `${label} within ${selected.radius} ${unit} of ${selected.displayName}`;
-    }
-
-    function paintFeed(data, page, selected) {
+    function paintFeed(data, page) {
         if (page > 1) results.insertAdjacentHTML("beforeend", data.html);
         else results.innerHTML = data.html;
-        count.textContent = summary(data.total, selected);
+        count.textContent = "";
         more.textContent = "Show more";
         more.dataset.nextPage = data.next_page || "";
         more.hidden = !data.next_page;
@@ -121,7 +114,7 @@ function initExplore() {
             const data = await fetchJson(`${endpoint}?${params}`, { signal: controller.signal });
             if (feedRequest !== controller) return;
             end();
-            paintFeed(data, page, selected);
+            paintFeed(data, page);
             if (remember && selected) rememberNearby(selected);
         } catch (error) {
             if (feedRequest !== controller || (error.name === "AbortError" && !timedOut)) return;
@@ -160,7 +153,7 @@ function initExplore() {
             root.dataset.location = "";
             paintControls();
             end();
-            paintFeed(data, 1, nearby);
+            paintFeed(data, 1);
             writeHistory();
         } catch (_error) {
             offerRetry("Location search is temporarily unavailable. Please try again.", 1);
@@ -177,7 +170,7 @@ function initExplore() {
         feedRequest?.abort();
         feedRequest = null;
         more.hidden = true;
-        count.textContent = "Updating results…";
+        count.textContent = "";
         writeHistory();
         updateFeed();
     }

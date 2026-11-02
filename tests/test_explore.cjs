@@ -75,7 +75,7 @@ test("free-text search geocodes once, then pagination and slider reuse coordinat
     assert.deepEqual(JSON.parse(requests[0].options.body), { query: "Victoria", radius: 15, unit: "mi" });
     requests[0].resolve(geoResult); await flush();
     assert.equal(parts.distance.hidden, false);
-    assert.match(parts.count.textContent, /3 results within 15 miles of Victoria/);
+    assert.equal(parts.count.textContent, "");
     assert.match(window.location.href, /latitude=48.4/);
     parts.more.emit("click");
     assert.match(requests[1].url, /page=2/);
@@ -95,7 +95,7 @@ test("metric searches default to 50 km and zero sites still show an adjustable r
     assert.deepEqual(JSON.parse(requests[0].options.body), { query: "Victoria", radius: 50, unit: "km" });
     requests[0].resolve({ ...geoResult, total: 0, unit: "km", radius: 50, html: "No dive sites here yet" }); await flush();
     assert.equal(parts.distance.hidden, false);
-    assert.match(parts.count.textContent, /0 results within 50 km/);
+    assert.equal(parts.count.textContent, "");
     assert.match(parts.results.innerHTML, /No dive sites/);
 });
 
@@ -107,7 +107,7 @@ test("stale radius and pagination responses cannot replace newer results", async
     requests[1].resolve({ html: "Current", total: 12, next_page: null }); await flush();
     requests[0].resolve({ html: "Stale", total: 1, next_page: 2 }); await flush();
     assert.equal(parts.results.innerHTML, "Current");
-    assert.match(parts.count.textContent, /12 results within 40 miles/);
+    assert.equal(parts.count.textContent, "");
     assert.equal(parts.more.hidden, true);
 });
 
@@ -156,5 +156,5 @@ test("regional results paginate without showing radius controls", async () => {
     parts.more.dataset.nextPage = 2; parts.more.emit("click");
     assert.match(requests[0].url, /location=Canada&page=2/);
     requests[0].resolve({ html: "More", total: 33, next_page: null }); await flush();
-    assert.equal(parts.count.textContent, "33 results in Canada");
+    assert.equal(parts.count.textContent, "");
 });

@@ -121,7 +121,7 @@ class ExploreTest(unittest.TestCase):
                 "longitude": -123.3, "radius": 15, "unit": "mi",
             })
             self.assertEqual(response.status_code, 200)
-            self.assertIn("1 result within 15 miles of Victoria, Canada", response.get_data(as_text=True))
+            self.assertNotIn("result within", response.get_data(as_text=True))
             geocode.assert_not_called()
         self.assertEqual(self.client.get("/explore?nearby=Victoria&latitude=nan").status_code, 400)
         self.assertEqual(self.client.get("/explore?nearby=").status_code, 400)
@@ -146,7 +146,7 @@ class ExploreTest(unittest.TestCase):
             response = self.client.post(endpoint, json=nearby, headers=headers)
             self.assertEqual(response.status_code, 200)
             self.assertEqual(response.headers["Cache-Control"], "no-store")
-            self.assertIn("1 result within 45 km", self.client.get("/explore").get_data(as_text=True))
+            self.assertNotIn("result within", self.client.get("/explore").get_data(as_text=True))
             geocode.assert_not_called()
         for invalid in ({**nearby, "radius": 0}, {**nearby, "latitude": 91},
                         {**nearby, "unit": []}, {**nearby, "query": ""}, []):
@@ -215,7 +215,7 @@ class ExploreTest(unittest.TestCase):
         self.client.get("/home")
         restored = self.client.get("/explore").get_data(as_text=True)
         self.assertIn("Victoria, Capital Regional District, British Columbia, Canada", restored)
-        self.assertIn("2 results within 10 miles", restored)
+        self.assertNotIn("results within", restored)
         self.assertIn("Maple Reef", restored)
         self.assertIn('"radius": 10', restored)
         fresh_client = self.app.test_client()
