@@ -74,11 +74,74 @@ class ExploreTest(unittest.TestCase):
         self.assertIn("Where will you dive next?", html)
         self.assertNotIn('role="tablist"', html)
         self.assertNotIn("Coming soon", html)
-        self.assertIn("Advanced search", html)
-        self.assertIn("Search within", html)
-        self.assertIn("City, island, or landmark", html)
-        self.assertNotIn("Place search by", html)
-        self.assertIn('type="range" min="1" max="100"', html)
+        self.assertNotIn("Advanced search", html)
+        self.assertNotIn('class="explore-header"', html)
+        self.assertNotIn('data-explore-input', html)
+        self.assertIn('data-global-search-input', html)
+        self.assertIn('type="range" min="1" max="160"', html)
+
+    def test_universal_search_in_each_signed_in_header(self):
+        self.db.execute("INSERT INTO dive_centers (name) VALUES ('Center')")
+        self.db.commit()
+        for path in ("/home", "/explore", "/you", "/users/2", "/dive-sites/1",
+                     "/dive-centers/1", "/dive/new", "/you/settings"):
+            with self.subTest(path=path):
+                response = self.client.get(path)
+                self.assertEqual(response.status_code, 200)
+                html = response.get_data(as_text=True)
+                self.assertEqual(html.count('data-global-search-input'), 1)
+                self.assertIn('aria-controls="globalSearchResults"', html)
+                self.assertIn('<header class="topbar feed-topbar">', html)
+
+    def test_universal_search_includes_regions_and_entity_destinations(self):
+        results = self.client.get("/api/search?q=can").get_json()
+        self.assertEqual(results[0], {
+            "type": "region", "label": "Canada", "detail": "Country or region",
+            "url": "/explore?location=Canada",
+        })
+        self.assertTrue(any(item["type"] == "site" for item in results))
+        self.assertEqual(self.client.get("/api/search?q=Victoria+Harbour").get_json(), [])
+        self.assertEqual(self.client.get("/api/search?q=komodo").get_json()[0]["type"], "region")
+
+    def test_free_text_destination_and_coordinate_urls_restore_without_geocoding(self):
+        with patch("pelagia.explore.geocode_place") as geocode:
+            pending = self.client.get("/explore?nearby=Victoria").get_data(as_text=True)
+            self.assertIn('data-query="Victoria"', pending)
+            self.assertIn('value="50" data-explore-radius-slider', pending)
+            self.db.execute("UPDATE users SET length_unit = 'ft' WHERE id = 1")
+            self.db.commit()
+            # Each request gets fresh unit preferences in a normal app context.
+            from flask import g
+            g.pop("unit_preferences", None)
+            g.pop("current_user", None)
+            imperial = self.client.get("/explore?nearby=Victoria").get_data(as_text=True)
+            self.assertIn('value="15" data-explore-radius-slider', imperial)
+            response = self.client.get("/explore", query_string={
+                "nearby": "Victoria", "display": "Victoria, Canada", "latitude": 48.4,
+                "longitude": -123.3, "radius": 15, "unit": "mi",
+            })
+            self.assertEqual(response.status_code, 200)
+            self.assertIn("1 result within 15 miles of Victoria, Canada", response.get_data(as_text=True))
+            geocode.assert_not_called()
+        self.assertEqual(self.client.get("/explore?nearby=Victoria&latitude=nan").status_code, 400)
+        self.assertEqual(self.client.get("/explore?nearby=").status_code, 400)
+
+    def test_radius_preference_is_validated_and_restored_without_geocoding(self):
+        nearby = {"query": "Victoria", "displayName": "Victoria, Canada", "latitude": 48.4,
+                  "longitude": -123.3, "radius": 45, "unit": "km"}
+        endpoint = "/api/explore/nearby/preference"
+        self.assertEqual(self.client.post(endpoint, json=nearby).status_code, 403)
+        headers = {"X-Requested-With": "fetch"}
+        with patch("pelagia.explore.geocode_place") as geocode:
+            response = self.client.post(endpoint, json=nearby, headers=headers)
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.headers["Cache-Control"], "no-store")
+            self.assertIn("1 result within 45 km", self.client.get("/explore").get_data(as_text=True))
+            geocode.assert_not_called()
+        for invalid in ({**nearby, "radius": 0}, {**nearby, "latitude": 91},
+                        {**nearby, "unit": []}, {**nearby, "query": ""}, []):
+            self.assertEqual(self.client.post(endpoint, json=invalid, headers=headers).status_code, 400)
+        self.assertEqual(self.app.test_client().post(endpoint, json=nearby, headers=headers).status_code, 302)
 
     def nearby_search(self, query="Victoria", radius=50, unit="mi"):
         return self.client.post(
@@ -142,7 +205,7 @@ class ExploreTest(unittest.TestCase):
         self.client.get("/home")
         restored = self.client.get("/explore").get_data(as_text=True)
         self.assertIn("Victoria, Capital Regional District, British Columbia, Canada", restored)
-        self.assertIn("2 dive sites within 10 miles", restored)
+        self.assertIn("2 results within 10 miles", restored)
         self.assertIn("Maple Reef", restored)
         self.assertIn('"radius": 10', restored)
         fresh_client = self.app.test_client()
@@ -286,7 +349,7 @@ class ExploreTest(unittest.TestCase):
         html = self.client.get("/explore").get_data(as_text=True)
         self.assertIn('data-location="Komodo National Park"', html)
         self.assertIn("Manta Point", html)
-        self.assertIn('data-explore-input hidden disabled', html)
+        self.assertNotIn('data-explore-input', html)
         fresh_client = self.app.test_client()
         with fresh_client.session_transaction() as session:
             session["user_id"] = 1

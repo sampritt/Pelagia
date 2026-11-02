@@ -6306,29 +6306,9 @@ img.is-media-loading {
     .mobile-nav a svg { width: 19px; height: 19px; }
 }
 
-/* Explore keeps location selection close to a compact, map-led site feed. */
+/* Explore pairs live distance controls with a compact, map-led site feed. */
 .explore-layout { width: min(100%, 760px); margin-inline: auto; }
-.explore-header { margin: 0 0 26px; }
-.explore-header h1 { margin: 0; color: var(--ink); font-size: clamp(1.9rem, 4vw, 2.4rem); letter-spacing: -.045em; }
-.explore-header p { margin: 8px 0 0; color: var(--muted-strong); line-height: 1.6; }
-.explore-search { z-index: 5; }
-.explore-search-bar { display: flex; align-items: center; gap: 12px; min-height: 64px; padding: 7px 18px; border: 1px solid var(--line-strong); border-radius: 16px; background: var(--panel); box-shadow: var(--shadow-xs); }
-.explore-search-bar:focus-within { border-color: var(--accent-line); box-shadow: 0 0 0 3px var(--accent-soft); }
-.explore-search-bar > svg { flex: 0 0 20px; width: 20px; height: 20px; fill: none; stroke: var(--muted-strong); stroke-width: 1.8; stroke-linecap: round; }
-.explore-search-bar input { flex: 1; width: 100%; min-width: 0; padding: 8px 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; font-size: 1rem; }
-.explore-search-bar input:focus { outline: none; box-shadow: none; background: transparent; }
-.explore-location-tag { min-width: 0; }
-.explore-location-tag .tag { gap: 10px; max-width: 100%; padding: 2px 4px 2px 14px; font-size: .88rem; }
-.explore-location-tag .tag > span { overflow-wrap: anywhere; }
-.explore-location-tag .tag button { flex-shrink: 0; width: 40px; height: 40px; color: var(--accent-deep); background: transparent; font-size: 1.35rem; }
-.explore-location-menu { top: calc(100% + 8px); max-height: min(340px, 48dvh); }
-.explore-location-menu button[aria-selected="true"] { background: var(--accent-soft); }
-.explore-advanced-link { display: inline-flex; align-items: center; gap: 5px; margin: 9px 0 0 4px; padding: 3px 0; border: 0; color: var(--accent-deep); background: transparent; font: inherit; font-size: .72rem; font-weight: 650; cursor: pointer; }
-.explore-advanced-link span { font-size: 1rem; line-height: .8; transition: transform 160ms ease; }
-.explore-advanced-link:hover { color: var(--accent); }
-.explore-advanced-link:hover span { transform: translateX(2px); }
-.explore-advanced-link:focus-visible, .explore-frame-back:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 4px; }
-.explore-count { min-height: 20px; margin: 26px 3px 14px; color: var(--muted-strong); font-size: .8rem; line-height: 1.6; }
+.explore-count { min-height: 18px; margin: 0 3px 14px; color: var(--muted-strong); font-size: .72rem; line-height: 1.6; }
 .explore-results { display: grid; gap: 16px; min-height: 170px; }
 .explore-card { display: grid; grid-template-columns: minmax(0, 1fr) 230px; gap: 22px; padding: 16px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); box-shadow: var(--shadow-xs); transition: border-color 160ms ease, box-shadow 160ms ease; }
 .explore-card:hover { border-color: var(--accent-line); box-shadow: var(--shadow-sm); }
@@ -6345,44 +6325,28 @@ img.is-media-loading {
 .explore-empty h2 { margin: 0; color: var(--ink); font-size: 1.15rem; letter-spacing: -.025em; }
 .explore-empty p { max-width: 320px; margin: 10px 0 0; color: var(--muted-strong); font-size: .9rem; line-height: 1.7; }
 .explore-more { display: flex; justify-content: center; min-height: 46px; margin: 24px auto 0; padding-inline: 26px; }
-.explore-advanced-frame { animation: explore-frame-in 180ms ease-out; }
-.explore-frame-header { display: flex; align-items: center; gap: 14px; margin: 0 0 24px; }
-.explore-frame-header h1 { margin: 0; color: var(--ink); font-size: clamp(1.65rem, 4vw, 2rem); letter-spacing: -.04em; }
-.explore-frame-back { display: grid; flex: 0 0 44px; width: 44px; height: 44px; place-items: center; padding: 0; border: 1px solid var(--line); border-radius: 50%; color: var(--accent-deep); background: var(--panel); box-shadow: var(--shadow-xs); cursor: pointer; }
-.explore-frame-back:hover { border-color: var(--accent-line); background: var(--accent-soft); }
-.explore-frame-back span { margin-top: -2px; font-size: 1.65rem; line-height: 1; }
-.explore-advanced-card { padding: clamp(24px, 4vw, 34px); border: 1px solid var(--line); border-radius: 18px; background: var(--panel); box-shadow: var(--shadow-xs); }
 .explore-distance-sentence { display: flex; flex-wrap: wrap; align-items: center; gap: 14px 12px; color: var(--ink); font-size: 1rem; font-weight: 600; line-height: 1.5; }
 .explore-radius-control { display: grid; grid-template-columns: minmax(150px, 1fr) 72px; align-items: center; gap: 12px; flex: 1 1 290px; min-width: 240px; }
 .explore-radius-control input[type="range"] { width: 100%; min-height: 44px; margin: 0; padding: 0; accent-color: var(--accent); cursor: pointer; }
 .explore-radius-number { width: 72px; min-height: 46px; padding: 8px 9px; border: 1px solid var(--line-strong); border-radius: 10px; background: var(--panel); color: var(--ink); font: inherit; font-size: .9rem; font-weight: 700; text-align: center; }
-.explore-radius-number:focus, .explore-place-field input:focus { outline: none; border-color: var(--accent-line); box-shadow: 0 0 0 3px var(--accent-soft); }
+.explore-radius-number:focus { outline: none; border-color: var(--accent-line); box-shadow: 0 0 0 3px var(--accent-soft); }
 .explore-distance-unit { align-self: center; }
 .explore-distance-unit label > span { min-width: 52px; }
-.explore-place-field { display: flex; flex: 1 1 100%; align-items: center; gap: 12px; margin: 2px 0 0; }
-.explore-place-field > span { flex: 0 0 auto; }
-.explore-place-field input { flex: 1; min-width: 0; min-height: 52px; padding: 11px 14px; border: 1px solid var(--line-strong); border-radius: 12px; background: var(--panel); color: var(--ink); font: inherit; font-size: .95rem; }
-.explore-nearby-error { margin: 14px 0 0; color: var(--danger); font-size: .8rem; line-height: 1.55; }
-.explore-nearby-submit { width: 100%; min-height: 50px; margin-top: 24px; }
-.explore-nearby-submit:disabled { cursor: wait; opacity: .65; }
-@keyframes explore-frame-in { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: none; } }
+.explore-distance-bar { margin-bottom: 12px; padding: 16px 20px; border: 1px solid var(--line); border-radius: 16px; background: var(--panel); box-shadow: var(--shadow-xs); font-size: .85rem; }
+.topbar-search-menu button[aria-selected="true"] { background: var(--accent-soft); }
 .explore-layout [hidden] { display: none; }
 @media (min-width: 821px) and (max-width: 1160px) {
     .feed-topbar .brand { min-width: 36px; flex-shrink: 0; }
     .feed-topbar .brand > span:last-child { display: none; }
 }
 @media (max-width: 560px) {
-    .explore-header { margin-bottom: 22px; }
-    .explore-search-bar { min-height: 60px; gap: 10px; padding-inline: 14px; }
-    .explore-count { margin-top: 20px; }
-    .explore-frame-header { margin-bottom: 18px; }
-    .explore-frame-header h1 { font-size: 1.65rem; }
-    .explore-advanced-card { padding: 24px 18px 20px; border-radius: 16px; }
+    .explore-distance-bar { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 8px 12px; padding: 14px; }
+    .explore-distance-bar > span { grid-column: 1; grid-row: 1; }
+    .explore-distance-bar .explore-radius-control { grid-column: 1 / -1; grid-row: 2; }
+    .explore-distance-bar .explore-distance-unit { grid-column: 2; grid-row: 1; }
     .explore-distance-sentence { align-items: flex-start; gap: 12px; }
     .explore-radius-control { flex-basis: 100%; grid-template-columns: minmax(0, 1fr) 68px; min-width: 0; }
     .explore-radius-number { width: 68px; }
-    .explore-place-field { align-items: stretch; flex-direction: column; gap: 7px; }
-    .explore-place-field input { width: 100%; }
     .explore-card { grid-template-columns: minmax(0, 1fr); gap: 14px; padding: 14px; }
     .explore-card-copy { padding: 4px 3px 0; }
     .explore-card-copy p { margin-bottom: 12px; }
@@ -6391,8 +6355,6 @@ img.is-media-loading {
 }
 @media (prefers-reduced-motion: reduce) {
     .explore-card { transition: none; }
-    .explore-advanced-frame { animation: none; }
-    .explore-advanced-link span { transition: none; }
 }
 
 /* The depth profile and photos share one swipeable frame below the map. */

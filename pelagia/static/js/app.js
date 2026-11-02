@@ -630,65 +630,124 @@ function renderComments(container, comments) {
 
 function initGlobalSearch() {
     const search = document.querySelector("[data-global-search]");
-    if (!search) {
-        return;
-    }
+    if (!search) return;
     const input = search.querySelector("[data-global-search-input]");
     const results = search.querySelector("[data-global-search-results]");
-    if (!input || !results) {
-        return;
+    if (!input || !results) return;
+    let request;
+    let options = [];
+    let active = -1;
+    let renderedQuery = "";
+
+    function close() {
+        request?.abort();
+        request = null;
+        results.hidden = true;
+        options = [];
+        active = -1;
+        renderedQuery = "";
+        input.setAttribute("aria-expanded", "false");
+        input.removeAttribute("aria-activedescendant");
     }
 
-    const searchSuggestions = createSuggestionLoader(input, results);
-    const selectResult = (item) => {
-        if (item?.url) {
-            if (window.PelagiaLoading) window.PelagiaLoading.navigate(item.url);
-            else window.location.assign(item.url);
-        }
-    };
+    function navigate(url) {
+        close();
+        load.cancel();
+        if (window.PelagiaLoading) window.PelagiaLoading.navigate(url);
+        else window.location.assign(url);
+    }
 
-    const renderResults = (items) => {
-        results.innerHTML = "";
-        items.forEach((item) => {
+    async function selectResult(item) {
+        if (!item?.url) return;
+        if (item.type === "region") {
+            close();
+            load.cancel();
+            try {
+                await fetchJson("/api/explore/location", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json", "X-Requested-With": "fetch" },
+                    body: JSON.stringify({ location: item.label }),
+                });
+            } catch (_error) { /* The destination still works without a saved preference. */ }
+        }
+        navigate(item.url);
+    }
+
+    function searchPlace() {
+        const query = input.value.trim();
+        if (query) navigate(`/explore?${new URLSearchParams({ nearby: query })}`);
+    }
+
+    function render(items, query) {
+        results.replaceChildren();
+        renderedQuery = query;
+        options = items.length ? items : [{ placeSearch: true }];
+        active = -1;
+        options.forEach((item, index) => {
             const button = document.createElement("button");
             button.type = "button";
-            button.innerHTML = `<strong>${escapeHtml(item.label)}</strong><small>${escapeHtml(item.detail || item.type || "")}</small>`;
-            button.addEventListener("click", () => selectResult(item));
+            button.id = `globalSearchResult-${index}`;
+            button.tabIndex = -1;
+            button.setAttribute("role", "option");
+            button.setAttribute("aria-selected", "false");
+            button.innerHTML = item.placeSearch
+                ? `<span>Show results for <strong>${escapeHtml(query)}</strong></span>`
+                : `<strong>${escapeHtml(item.label)}</strong><small>${escapeHtml(item.detail || item.type || "")}</small>`;
+            button.addEventListener("click", () => item.placeSearch ? searchPlace() : selectResult(item));
             results.appendChild(button);
         });
-        results.hidden = !items.length;
-    };
+        results.hidden = false;
+        input.setAttribute("aria-expanded", "true");
+    }
+
+    const load = debounce(async () => {
+        const query = input.value.trim();
+        if (!query || document.activeElement !== input) return;
+        const controller = new AbortController();
+        request = controller;
+        const timeout = window.setTimeout(() => controller.abort(), 15000);
+        const end = window.PelagiaLoading?.begin(results, "Loading suggestions", undefined, { reveal: true }) || (() => {});
+        try {
+            const items = await fetchJson(`/api/search?q=${encodeURIComponent(query)}`, { signal: controller.signal });
+            if (request !== controller || input.value.trim() !== query) return;
+            end();
+            render(items, query);
+        } catch (_error) {
+            if (request !== controller) return;
+            end();
+            render([], query);
+        } finally {
+            window.clearTimeout(timeout);
+            end();
+            if (request === controller) request = null;
+        }
+    }, 160);
 
     search.addEventListener("submit", (event) => {
         event.preventDefault();
-        const firstResult = results.hidden ? null : results.querySelector("button");
-        if (firstResult) {
-            firstResult.click();
+        if (!results.hidden && renderedQuery === input.value.trim() && options.length) {
+            const item = options[active < 0 ? 0 : active];
+            if (!item.placeSearch) { selectResult(item); return; }
         }
+        searchPlace();
     });
-
-    input.addEventListener(
-        "input",
-        debounce(async () => {
-            const query = input.value.trim();
-            if (query.length < 1) {
-                hideMenu(results);
-                return;
-            }
-            await searchSuggestions(`/api/search?q=${encodeURIComponent(query)}`, renderResults);
-        }, 160),
-    );
-
+    input.addEventListener("input", () => { close(); load.cancel(); load(); });
+    input.addEventListener("focus", () => { if (input.value.trim()) load(); });
     input.addEventListener("keydown", (event) => {
-        if (event.key === "Escape") {
-            hideMenu(results);
-        }
+        if (event.key === "Escape") { close(); load.cancel(); return; }
+        if (!["ArrowDown", "ArrowUp"].includes(event.key) || results.hidden || !options.length) return;
+        event.preventDefault();
+        active = active < 0 ? (event.key === "ArrowDown" ? 0 : options.length - 1)
+            : (active + (event.key === "ArrowDown" ? 1 : -1) + options.length) % options.length;
+        Array.from(results.children).forEach((button, index) => button.setAttribute("aria-selected", String(index === active)));
+        input.setAttribute("aria-activedescendant", `globalSearchResult-${active}`);
+        results.children[active]?.scrollIntoView({ block: "nearest" });
     });
-
+    input.addEventListener("blur", () => {
+        window.setTimeout(() => { if (!search.contains(document.activeElement)) { close(); load.cancel(); } }, 0);
+    });
     document.addEventListener("click", (event) => {
-        if (!search.contains(event.target)) {
-            hideMenu(results);
-        }
+        if (!search.contains(event.target)) { close(); load.cancel(); }
     });
 }
 

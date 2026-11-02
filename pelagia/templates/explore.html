@@ -2,62 +2,27 @@
 {% block title %}Explore - Pelagia{% endblock %}
 {% block head %}<script defer src="{{ url_for('static', filename='js/explore.js', v=pwa_asset_version) }}"></script>{% endblock %}
 {% block content %}
-{% set selected_location = initial_nearby.displayName if initial_nearby else location %}
-<section class="explore-layout" data-explore data-location="{{ '' if initial_nearby else location }}">
+{% set distance_unit = initial_nearby.unit if initial_nearby else ('mi' if units.length == 'ft' else 'km') %}
+{% set radius = initial_nearby.radius if initial_nearby else (15 if distance_unit == 'mi' else 50) %}
+<section class="explore-layout" aria-label="Explore dive sites" data-explore data-location="{{ '' if initial_nearby else location }}" data-query="{{ request.args.get('nearby', '') if not initial_nearby else '' }}">
     <script type="application/json" data-explore-initial-nearby>{{ initial_nearby|tojson }}</script>
-    <div data-explore-feed-frame>
-        <header class="explore-header">
-            <h1 id="exploreTitle">Explore</h1>
-            <p>Find your next underwater story.</p>
-        </header>
-        <div class="explore-search autocomplete-field" role="search" aria-label="Explore by location">
-            <div class="explore-search-bar">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"></circle><path d="m16 16 4.5 4.5"></path></svg>
-                <div class="explore-location-tag" data-explore-tag {% if not selected_location %}hidden{% endif %}>
-                    <span class="tag"><span data-explore-location>{{ selected_location }}</span><button type="button" data-explore-clear aria-label="Remove location {{ selected_location }}">&times;</button></span>
-                </div>
-                <label class="sr-only" for="exploreLocation">Search for a country or region</label>
-                <input id="exploreLocation" type="search" autocomplete="off" placeholder="Search a country or region" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="exploreLocations" data-explore-input {% if selected_location %}hidden disabled{% endif %}>
-            </div>
-            <div id="exploreLocations" class="autocomplete-menu explore-location-menu" role="listbox" aria-label="Locations" data-explore-suggestions hidden></div>
+    <div class="explore-distance-sentence explore-distance-bar" data-explore-distance {% if not initial_nearby %}hidden{% endif %}>
+        <span>Search within</span>
+        <div class="explore-radius-control">
+            <label class="sr-only" for="exploreRadiusSlider">Search radius</label>
+            <input id="exploreRadiusSlider" type="range" min="1" max="{{ 100 if distance_unit == 'mi' else 160 }}" step="1" value="{{ radius }}" data-explore-radius-slider>
+            <label class="sr-only" for="exploreRadiusNumber">Search radius as a whole number</label>
+            <input id="exploreRadiusNumber" class="explore-radius-number" type="number" min="1" max="{{ 100 if distance_unit == 'mi' else 160 }}" step="1" value="{{ radius }}" inputmode="numeric" data-explore-radius-number>
         </div>
-        <button class="explore-advanced-link" type="button" data-explore-advanced-open>Advanced search <span aria-hidden="true">›</span></button>
-        <p class="explore-count" role="status" aria-live="polite" data-explore-count>{% if initial_nearby %}{{ total }} {{ 'dive site' if total == 1 else 'dive sites' }} within {{ initial_nearby.radius }} {{ 'mile' if initial_nearby.unit == 'mi' and initial_nearby.radius == 1 else ('miles' if initial_nearby.unit == 'mi' else 'km') }} of {{ initial_nearby.displayName }}{% elif location %}{{ total }} {{ 'dive site' if total == 1 else 'dive sites' }} in {{ location }}{% endif %}</p>
-        <div id="exploreResults" class="explore-results" aria-label="Dive sites" data-explore-results>
-            {% include '_explore_results.html' %}
+        <div class="unit-toggle explore-distance-unit" role="group" aria-label="Distance units">
+            <label><input class="sr-only" type="radio" name="explore_distance_unit" value="mi" {% if distance_unit == 'mi' %}checked{% endif %} data-explore-unit><span>miles</span></label>
+            <label><input class="sr-only" type="radio" name="explore_distance_unit" value="km" {% if distance_unit == 'km' %}checked{% endif %} data-explore-unit><span>km</span></label>
         </div>
-        <button class="ghost-button explore-more" type="button" data-explore-more data-next-page="{{ next_page or '' }}" {% if not next_page %}hidden{% endif %}>Show more</button>
     </div>
-    <section class="explore-advanced-frame" data-explore-advanced-frame aria-labelledby="advancedSearchTitle" hidden>
-        <header class="explore-frame-header">
-            <button class="explore-frame-back" type="button" aria-label="Back to Explore" data-explore-advanced-back>
-                <span aria-hidden="true">‹</span>
-            </button>
-            <h1 id="advancedSearchTitle">Advanced search</h1>
-        </header>
-        <div class="explore-advanced-card">
-            <form data-explore-nearby-form novalidate>
-                <div class="explore-distance-sentence">
-                    <span>Search within</span>
-                    <div class="explore-radius-control">
-                        <label class="sr-only" for="exploreRadiusSlider">Search radius</label>
-                        <input id="exploreRadiusSlider" type="range" min="1" max="100" step="1" value="50" data-explore-radius-slider>
-                        <label class="sr-only" for="exploreRadiusNumber">Search radius as a whole number</label>
-                        <input id="exploreRadiusNumber" class="explore-radius-number" type="number" min="1" max="100" step="1" value="50" inputmode="numeric" data-explore-radius-number>
-                    </div>
-                    <div class="unit-toggle explore-distance-unit" role="group" aria-label="Distance units">
-                        <label><input class="sr-only" type="radio" name="explore_distance_unit" value="mi" checked data-explore-unit><span>miles</span></label>
-                        <label><input class="sr-only" type="radio" name="explore_distance_unit" value="km" data-explore-unit><span>km</span></label>
-                    </div>
-                    <label class="explore-place-field" for="exploreNearbyPlace">
-                        <span>of</span>
-                        <input id="exploreNearbyPlace" type="search" maxlength="160" autocomplete="off" placeholder="City, island, or landmark" required data-explore-place>
-                    </label>
-                </div>
-                <p class="explore-nearby-error" role="alert" data-explore-nearby-error hidden></p>
-                <button class="primary-button explore-nearby-submit" type="submit" data-explore-nearby-submit>Search</button>
-            </form>
-        </div>
-    </section>
+    <p class="explore-count" role="status" aria-live="polite" data-explore-count>{% if initial_nearby %}{{ total }} {{ 'result' if total == 1 else 'results' }} within {{ initial_nearby.radius }} {{ 'mile' if initial_nearby.unit == 'mi' and initial_nearby.radius == 1 else ('miles' if initial_nearby.unit == 'mi' else 'km') }} of {{ initial_nearby.displayName }}{% elif location %}{{ total }} {{ 'result' if total == 1 else 'results' }} in {{ location }}{% endif %}</p>
+    <div id="exploreResults" class="explore-results" aria-label="Dive sites" data-explore-results>
+        {% include '_explore_results.html' %}
+    </div>
+    <button class="ghost-button explore-more" type="button" data-explore-more data-next-page="{{ next_page or '' }}" {% if not next_page %}hidden{% endif %}>Show more</button>
 </section>
 {% endblock %}

@@ -166,6 +166,7 @@ def decode_saved_nearby(raw):
         or not isinstance(saved.get("displayName"), str)
         or isinstance(radius, bool)
         or not isinstance(radius, int)
+        or not isinstance(unit, str)
         or unit not in RADIUS_LIMITS
         or not 1 <= len(query) <= 160
         or not 1 <= len(display_name) <= 300
@@ -277,7 +278,25 @@ def init_app(app, login_required):
             (session["user_id"],),
         ).fetchone()
         initial_nearby = None
-        if "location" not in request.args and "nearby" not in request.args:
+        if "nearby" in request.args:
+            query = request.args["nearby"].strip()
+            if not 1 <= len(query) <= 160:
+                abort(400)
+            if any(key in request.args for key in ("latitude", "longitude", "display", "radius", "unit")):
+                initial_nearby = decode_saved_nearby(json.dumps({
+                    "query": query, "displayName": request.args.get("display"),
+                    "latitude": request.args.get("latitude"),
+                    "longitude": request.args.get("longitude"),
+                    "radius": request.args.get("radius", type=int),
+                    "unit": request.args.get("unit"),
+                }))
+                if not initial_nearby:
+                    abort(400)
+            else:
+                return render_template(
+                    "explore.html", initial_nearby=None, **feed_data("")
+                )
+        elif "location" not in request.args:
             initial_nearby = decode_saved_nearby(saved["explore_nearby_json"])
         if initial_nearby:
             radius_km = (
@@ -399,6 +418,25 @@ def init_app(app, login_required):
             html=render_template("_explore_results.html", **data),
             next_page=data["next_page"], total=data["total"],
         )
+
+    @blueprint.post("/api/explore/nearby/preference")
+    @login_required
+    def save_nearby_preference():
+        if request.headers.get("X-Requested-With") != "fetch":
+            abort(403)
+        payload = request.get_json(silent=True)
+        if not isinstance(payload, dict):
+            abort(400)
+        nearby = decode_saved_nearby(json.dumps(payload))
+        if not nearby:
+            abort(400)
+        db = get_db()
+        db.execute(
+            "UPDATE users SET explore_location = NULL, explore_nearby_json = ? WHERE id = ?",
+            (json.dumps(nearby, separators=(",", ":")), session["user_id"]),
+        )
+        db.commit()
+        return jsonify(saved=True)
 
     @blueprint.post("/api/explore/location")
     @login_required

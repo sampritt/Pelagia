@@ -703,8 +703,12 @@ def register_routes(app):
             """,
             (like, like, like, prefix),
         ).fetchall()
+        regions = [name for name in explore.locations() if query.casefold() in name.casefold()]
+        regions.sort(key=lambda name: (not name.casefold().startswith(query.casefold()), name.casefold()))
         return jsonify(
-            [search_user_payload(row) for row in users]
+            [{"type": "region", "label": name, "detail": "Country or region",
+              "url": url_for("explore.index", location=name)} for name in regions[:5]]
+            + [search_user_payload(row) for row in users]
             + [search_site_payload(row) for row in sites]
             + [search_center_payload(row) for row in centers]
         )

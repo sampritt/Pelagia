@@ -23,20 +23,18 @@
     <a class="skip-link" href="#mainContent">Skip to content</a>
     {% set me = none if public_brief else current_user() %}
     {% if me %}
-    <header class="topbar {{ 'feed-topbar' if request.endpoint in ('home', 'welcome') else '' }}">
+    <header class="topbar feed-topbar">
         <a class="brand" href="{{ url_for('home') }}" aria-label="Pelagia Home">
             <span class="brand-mark" aria-hidden="true">
                 <img src="{{ url_for('static', filename='img/pelagia-mark.png') }}" width="36" height="36" alt="">
             </span>
             <span>Pelagia</span>
         </a>
-        {% if request.endpoint in ('home', 'welcome') %}
-            <form class="topbar-search autocomplete-field" data-global-search role="search">
-                <label class="sr-only" for="globalSearch">Search Pelagia</label>
-                <input id="globalSearch" type="text" autocomplete="off" placeholder="Search Pelagia" data-global-search-input>
-                <div class="autocomplete-menu topbar-search-menu" data-global-search-results hidden></div>
-            </form>
-        {% endif %}
+        <form class="topbar-search autocomplete-field" action="{{ url_for('explore.index') }}" method="get" data-global-search role="search">
+            <label class="sr-only" for="globalSearch">Search Pelagia</label>
+            <input id="globalSearch" name="nearby" type="search" maxlength="160" autocomplete="off" placeholder="Search Pelagia" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="globalSearchResults" value="{{ (initial_nearby.query if initial_nearby else request.args.get('nearby', request.args.get('location', location|default('')))) if request.endpoint == 'explore.index' else '' }}" data-global-search-input>
+            <div id="globalSearchResults" class="autocomplete-menu topbar-search-menu" role="listbox" aria-label="Search suggestions" data-global-search-results hidden></div>
+        </form>
         {{ primary_navigation() }}
         <div class="user-corner">
             <a class="mini-avatar" href="{{ url_for('profile') }}" aria-label="Profile">
