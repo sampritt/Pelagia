@@ -20,7 +20,7 @@
 
     function pageMarkup(kind) {
         if (kind === "home") return `<div class="skeleton-feed"><div>${block("title")}<div class="skeleton-card">${block("title")}${block()}</div><div class="skeleton-card">${block("title")}${block("media")}${block()}${block()}</div></div><aside>${identity()}${metrics()}</aside></div>`;
-        if (kind === "feed") return `<div class="skeleton-feed"><div>${block("title")}${card()}${card()}</div><aside>${identity()}${metrics()}</aside></div>`;
+        if (kind === "feed") return `<div class="skeleton-feed"><div>${card()}${card()}</div><aside>${identity()}${metrics()}</aside></div>`;
         if (kind === "explore") return `${block("field")}${card()}${card()}`;
         if (kind === "profile") return `${identity()}${metrics()}${block("chart")}${card()}`;
         if (kind === "form") return `${block("title")}<div class="skeleton-card skeleton-fields">${Array.from({ length: 8 }, () => `<div>${block()}${block("field")}</div>`).join("")}</div>`;
