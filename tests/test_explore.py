@@ -107,7 +107,7 @@ class ExploreTest(unittest.TestCase):
         with patch("pelagia.explore.geocode_place") as geocode:
             pending = self.client.get("/explore?nearby=Victoria").get_data(as_text=True)
             self.assertIn('data-query="Victoria"', pending)
-            self.assertIn('value="50" data-explore-radius-slider', pending)
+            self.assertRegex(pending, r'value="50"[^>]*data-explore-radius-slider')
             self.db.execute("UPDATE users SET length_unit = 'ft' WHERE id = 1")
             self.db.commit()
             # Each request gets fresh unit preferences in a normal app context.
@@ -115,7 +115,7 @@ class ExploreTest(unittest.TestCase):
             g.pop("unit_preferences", None)
             g.pop("current_user", None)
             imperial = self.client.get("/explore?nearby=Victoria").get_data(as_text=True)
-            self.assertIn('value="15" data-explore-radius-slider', imperial)
+            self.assertRegex(imperial, r'value="15"[^>]*data-explore-radius-slider')
             response = self.client.get("/explore", query_string={
                 "nearby": "Victoria", "display": "Victoria, Canada", "latitude": 48.4,
                 "longitude": -123.3, "radius": 15, "unit": "mi",
@@ -125,6 +125,16 @@ class ExploreTest(unittest.TestCase):
             geocode.assert_not_called()
         self.assertEqual(self.client.get("/explore?nearby=Victoria&latitude=nan").status_code, 400)
         self.assertEqual(self.client.get("/explore?nearby=").status_code, 400)
+
+    def test_explore_header_is_empty_for_regions_pending_places_and_saved_coordinates(self):
+        for path in ("/explore?location=Canada", "/explore?nearby=Dauin",
+                     "/explore?nearby=Dauin&display=Dauin,+Philippines&latitude=9.2&longitude=123.2&radius=15&unit=mi"):
+            html = self.client.get(path).get_data(as_text=True)
+            field = re.search(r'<input id="globalSearch"[^>]+>', html).group(0)
+            self.assertNotIn('value=', field)
+            self.assertIn('placeholder="Search Pelagia"', field)
+        restored = self.client.get(path).get_data(as_text=True)
+        self.assertIn('data-explore-place-label title="Dauin, Philippines">Dauin</strong>', restored)
 
     def test_radius_preference_is_validated_and_restored_without_geocoding(self):
         nearby = {"query": "Victoria", "displayName": "Victoria, Canada", "latitude": 48.4,

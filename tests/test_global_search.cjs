@@ -59,8 +59,9 @@ test("keyboard choice saves a region before navigating to Explore", async () => 
     const { type, requests, input, results, submit, navigations } = setup();
     type("Kom"); requests[0].resolve([{ label: "Komodo National Park", type: "region", url: "/explore?location=Komodo+National+Park" }]); await flush();
     input.emit("keydown", { key: "ArrowDown", preventDefault() {} });
-    assert.equal(input.attrs["aria-activedescendant"], "globalSearchResult-0");
-    assert.equal(results.children[0].attrs["aria-selected"], "true");
+    input.emit("keydown", { key: "ArrowDown", preventDefault() {} });
+    assert.equal(input.attrs["aria-activedescendant"], "globalSearchResult-1");
+    assert.equal(results.children[1].attrs["aria-selected"], "true");
     submit();
     assert.equal(requests[1].url, "/api/explore/location");
     assert.deepEqual(JSON.parse(requests[1].options.body), { location: "Komodo National Park" });
@@ -72,7 +73,7 @@ test("keyboard choice saves a region before navigating to Explore", async () => 
 test("entity suggestions retain their own destinations and failed suggestions permit place search", async () => {
     const { type, requests, results, navigations } = setup();
     type("Maple"); requests[0].resolve([{ label: "Maple Reef", type: "site", url: "/dive-sites/1" }]); await flush();
-    results.children[0].emit("click");
+    results.children[1].emit("click");
     assert.equal(navigations[0], "/dive-sites/1");
     type("Victoria"); requests[1].reject(new Error("offline")); await flush();
     results.children[0].emit("click");
@@ -85,7 +86,7 @@ test("stale responses and Escape cannot reopen dismissed results", async () => {
     assert.equal(requests[0].options.signal.aborted, true);
     requests[1].resolve([{ label: "Komodo", url: "/explore?location=Komodo" }]); await flush();
     requests[0].resolve([{ label: "Canada", url: "/explore?location=Canada" }]); await flush();
-    assert.match(results.children[0].innerHTML, /Komodo/);
+    assert.match(results.children[1].innerHTML, /Komodo/);
     type("Victoria"); input.emit("keydown", { key: "Escape" });
     requests[2].resolve([]); await flush();
     assert.equal(results.hidden, true);
@@ -100,5 +101,27 @@ test("ArrowUp starts at the last available suggestion", async () => {
         { label: "Last Reef", url: "/dive-sites/2" },
     ]); await flush();
     input.emit("keydown", { key: "ArrowUp", preventDefault() {} });
-    assert.equal(input.attrs["aria-activedescendant"], "globalSearchResult-1");
+    assert.equal(input.attrs["aria-activedescendant"], "globalSearchResult-2");
+});
+
+
+test("Dauin always offers place search alongside site and center matches, and Enter searches the place", async () => {
+    const { type, requests, results, submit, navigations } = setup();
+    type("Dauin"); requests[0].resolve([
+        { label: "Dauin Reef", type: "site", url: "/dive-sites/1" },
+        { label: "Dauin Dive Center", type: "center", url: "/dive-centers/1" },
+    ]); await flush();
+    assert.equal(results.children.length, 3);
+    assert.match(results.children[0].innerHTML, /Show results for <strong>Dauin<\/strong>/);
+    assert.match(results.children[0].innerHTML, /Dive sites near this place/);
+    submit();
+    assert.equal(navigations[0], "/explore?nearby=Dauin");
+});
+
+test("a matching catalog region remains explicit while unselected Enter searches the typed place", async () => {
+    const { type, requests, submit, navigations } = setup();
+    type("Canada"); requests[0].resolve([{ label: "Canada", type: "region", url: "/explore?location=Canada" }]); await flush();
+    submit();
+    assert.equal(navigations[0], "/explore?nearby=Canada");
+    assert.equal(requests.length, 1);
 });

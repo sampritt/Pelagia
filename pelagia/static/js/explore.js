@@ -7,6 +7,10 @@ function initExplore() {
     const distance = root.querySelector("[data-explore-distance]");
     const slider = root.querySelector("[data-explore-radius-slider]");
     const number = root.querySelector("[data-explore-radius-number]");
+    const radiusUnit = root.querySelector("[data-explore-radius-unit]");
+    const radiusMin = root.querySelector("[data-explore-radius-min]");
+    const radiusMax = root.querySelector("[data-explore-radius-limit]");
+    const placeLabel = root.querySelector("[data-explore-place-label]");
     const units = Array.from(root.querySelectorAll("[data-explore-unit]"));
     let nearby = JSON.parse(root.querySelector("[data-explore-initial-nearby]").textContent);
     let feedRequest;
@@ -54,6 +58,12 @@ function initExplore() {
         const radius = Math.min(radiusLimit(unit), Math.max(1, Math.round(Number(value) || 1)));
         slider.max = number.max = radiusLimit(unit);
         slider.value = number.value = String(radius);
+        slider.style.setProperty("--radius-fill", `${(radius - 1) / (radiusLimit(unit) - 1) * 100}%`);
+        const unitLabel = unit === "mi" ? (radius === 1 ? "mile" : "miles") : "km";
+        radiusUnit.textContent = unitLabel;
+        radiusMin.textContent = unit === "mi" ? "1 mile" : "1 km";
+        radiusMax.textContent = `${radiusLimit(unit)} ${unit === "mi" ? "miles" : "km"}`;
+        slider.setAttribute("aria-valuetext", `${radius} ${unit === "km" ? "kilometers" : unitLabel}`);
         return radius;
     }
 
@@ -62,6 +72,8 @@ function initExplore() {
         if (!nearby) return;
         units.forEach(option => { option.checked = option.value === nearby.unit; });
         previousUnit = nearby.unit;
+        placeLabel.textContent = nearby.query;
+        placeLabel.title = nearby.displayName;
         setRadius(nearby.radius, nearby.unit);
     }
 

@@ -6,17 +6,28 @@
 {% set radius = initial_nearby.radius if initial_nearby else (15 if distance_unit == 'mi' else 50) %}
 <section class="explore-layout" aria-label="Explore dive sites" data-explore data-location="{{ '' if initial_nearby else location }}" data-query="{{ request.args.get('nearby', '') if not initial_nearby else '' }}">
     <script type="application/json" data-explore-initial-nearby>{{ initial_nearby|tojson }}</script>
-    <div class="explore-distance-sentence explore-distance-bar" data-explore-distance {% if not initial_nearby %}hidden{% endif %}>
-        <span>Search within</span>
-        <div class="explore-radius-control">
-            <label class="sr-only" for="exploreRadiusSlider">Search radius</label>
-            <input id="exploreRadiusSlider" type="range" min="1" max="{{ 100 if distance_unit == 'mi' else 160 }}" step="1" value="{{ radius }}" data-explore-radius-slider>
-            <label class="sr-only" for="exploreRadiusNumber">Search radius as a whole number</label>
-            <input id="exploreRadiusNumber" class="explore-radius-number" type="number" min="1" max="{{ 100 if distance_unit == 'mi' else 160 }}" step="1" value="{{ radius }}" inputmode="numeric" data-explore-radius-number>
+    <div class="explore-distance-bar" data-explore-distance {% if not initial_nearby %}hidden{% endif %}>
+        <div class="explore-radius-header">
+            <div class="explore-radius-place">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 10c0 5-7 11-7 11S5 15 5 10a7 7 0 1 1 14 0Z"></path><circle cx="12" cy="10" r="2.5"></circle></svg>
+                <span>Near <strong data-explore-place-label title="{{ initial_nearby.displayName if initial_nearby else '' }}">{{ initial_nearby.query if initial_nearby else '' }}</strong></span>
+            </div>
+            <div class="unit-toggle explore-distance-unit" role="group" aria-label="Distance units">
+                <label><input class="sr-only" type="radio" name="explore_distance_unit" value="mi" {% if distance_unit == 'mi' %}checked{% endif %} data-explore-unit><span>miles</span></label>
+                <label><input class="sr-only" type="radio" name="explore_distance_unit" value="km" {% if distance_unit == 'km' %}checked{% endif %} data-explore-unit><span>km</span></label>
+            </div>
         </div>
-        <div class="unit-toggle explore-distance-unit" role="group" aria-label="Distance units">
-            <label><input class="sr-only" type="radio" name="explore_distance_unit" value="mi" {% if distance_unit == 'mi' %}checked{% endif %} data-explore-unit><span>miles</span></label>
-            <label><input class="sr-only" type="radio" name="explore_distance_unit" value="km" {% if distance_unit == 'km' %}checked{% endif %} data-explore-unit><span>km</span></label>
+        <div class="explore-radius-control">
+            <div class="explore-radius-track">
+                <label class="sr-only" for="exploreRadiusSlider">Search radius</label>
+                <input id="exploreRadiusSlider" type="range" min="1" max="{{ 100 if distance_unit == 'mi' else 160 }}" step="1" value="{{ radius }}" style="--radius-fill: {{ (radius - 1) / (99 if distance_unit == 'mi' else 159) * 100 }}%" aria-valuetext="{{ radius }} {{ 'miles' if distance_unit == 'mi' else 'kilometers' }}" data-explore-radius-slider>
+                <div class="explore-radius-limits" aria-hidden="true"><span data-explore-radius-min>1 {{ 'mile' if distance_unit == 'mi' else 'km' }}</span><span data-explore-radius-limit>{{ '100 miles' if distance_unit == 'mi' else '160 km' }}</span></div>
+            </div>
+            <div class="explore-radius-value">
+                <label class="sr-only" for="exploreRadiusNumber">Search radius as a whole number</label>
+                <input id="exploreRadiusNumber" class="explore-radius-number" type="number" min="1" max="{{ 100 if distance_unit == 'mi' else 160 }}" step="1" value="{{ radius }}" inputmode="numeric" data-explore-radius-number>
+                <span data-explore-radius-unit>{{ 'miles' if distance_unit == 'mi' else 'km' }}</span>
+            </div>
         </div>
     </div>
     <p class="explore-count" role="status" aria-live="polite" data-explore-count>{% if initial_nearby %}{{ total }} {{ 'result' if total == 1 else 'results' }} within {{ initial_nearby.radius }} {{ 'mile' if initial_nearby.unit == 'mi' and initial_nearby.radius == 1 else ('miles' if initial_nearby.unit == 'mi' else 'km') }} of {{ initial_nearby.displayName }}{% elif location %}{{ total }} {{ 'result' if total == 1 else 'results' }} in {{ location }}{% endif %}</p>

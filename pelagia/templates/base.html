@@ -32,7 +32,7 @@
         </a>
         <form class="topbar-search autocomplete-field" action="{{ url_for('explore.index') }}" method="get" data-global-search role="search">
             <label class="sr-only" for="globalSearch">Search Pelagia</label>
-            <input id="globalSearch" name="nearby" type="search" maxlength="160" autocomplete="off" placeholder="Search Pelagia" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="globalSearchResults" value="{{ (initial_nearby.query if initial_nearby else request.args.get('nearby', request.args.get('location', location|default('')))) if request.endpoint == 'explore.index' else '' }}" data-global-search-input>
+            <input id="globalSearch" name="nearby" type="search" enterkeyhint="search" maxlength="160" autocomplete="off" placeholder="Search Pelagia" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="globalSearchResults" data-global-search-input>
             <div id="globalSearchResults" class="autocomplete-menu topbar-search-menu" role="listbox" aria-label="Search suggestions" data-global-search-results hidden></div>
         </form>
         {{ primary_navigation() }}

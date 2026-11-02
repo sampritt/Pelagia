@@ -5,7 +5,9 @@ const vm = require("node:vm");
 
 function element() {
     return {
-        value: "", hidden: false, dataset: {}, handlers: {}, children: [], textContent: "",
+        value: "", hidden: false, dataset: {}, handlers: {}, children: [], textContent: "", attrs: {},
+        style: { setProperty(key, value) { this[key] = value; } },
+        setAttribute(key, value) { this.attrs[key] = value; },
         set innerHTML(value) { this.html = value; this.children = []; },
         get innerHTML() { return this.html || ""; },
         replaceChildren() { this.children = []; this.html = ""; },
@@ -19,7 +21,7 @@ const initialNearby = {
     latitude: 48.4, longitude: -123.3, radius: 15, unit: "mi",
 };
 function setup({ nearby = initialNearby, query = "", location = "", unit = "mi", deferSaves = false } = {}) {
-    const names = ["results", "count", "more", "distance", "radius-slider", "radius-number", "initial-nearby"];
+    const names = ["results", "count", "more", "distance", "radius-slider", "radius-number", "radius-unit", "radius-min", "radius-limit", "place-label", "initial-nearby"];
     const parts = Object.fromEntries(names.map(name => [name, element()]));
     parts["initial-nearby"].textContent = JSON.stringify(nearby);
     parts["radius-number"].value = unit === "mi" ? "15" : "50";
@@ -62,6 +64,9 @@ test("a saved place restores controls without fetching or geocoding again", () =
     assert.equal(requests.length, 0);
     assert.equal(parts.distance.hidden, false);
     assert.equal(parts["radius-number"].value, "15");
+    assert.equal(parts["place-label"].textContent, "Victoria");
+    assert.equal(parts["radius-unit"].textContent, "miles");
+    assert.equal(parts["radius-slider"].attrs["aria-valuetext"], "15 miles");
 });
 
 test("free-text search geocodes once, then pagination and slider reuse coordinates", async () => {
@@ -111,6 +116,10 @@ test("unit changes convert the selected distance and numeric input clamps at lim
     units[0].checked = false; units[1].checked = true; units[1].emit("change");
     assert.equal(parts["radius-number"].value, "24");
     assert.equal(parts["radius-slider"].max, 160);
+    assert.equal(parts["radius-unit"].textContent, "km");
+    assert.equal(parts["radius-limit"].textContent, "160 km");
+    assert.equal(parts["radius-min"].textContent, "1 km");
+    assert.equal(parts["radius-slider"].attrs["aria-valuetext"], "24 kilometers");
     assert.match(requests[0].url, /unit=km/);
     parts["radius-number"].value = "300"; parts["radius-number"].emit("input");
     assert.equal(parts["radius-number"].value, "160");

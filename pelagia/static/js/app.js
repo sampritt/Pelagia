@@ -681,7 +681,7 @@ function initGlobalSearch() {
     function render(items, query) {
         results.replaceChildren();
         renderedQuery = query;
-        options = items.length ? items : [{ placeSearch: true }];
+        options = [{ placeSearch: true }, ...items];
         active = -1;
         options.forEach((item, index) => {
             const button = document.createElement("button");
@@ -690,8 +690,9 @@ function initGlobalSearch() {
             button.tabIndex = -1;
             button.setAttribute("role", "option");
             button.setAttribute("aria-selected", "false");
+            if (item.placeSearch) button.className = "global-search-place";
             button.innerHTML = item.placeSearch
-                ? `<span>Show results for <strong>${escapeHtml(query)}</strong></span>`
+                ? `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 10c0 5-7 11-7 11S5 15 5 10a7 7 0 1 1 14 0Z"></path><circle cx="12" cy="10" r="2.5"></circle></svg><span>Show results for <strong>${escapeHtml(query)}</strong><small>Dive sites near this place</small></span>`
                 : `<strong>${escapeHtml(item.label)}</strong><small>${escapeHtml(item.detail || item.type || "")}</small>`;
             button.addEventListener("click", () => item.placeSearch ? searchPlace() : selectResult(item));
             results.appendChild(button);
@@ -725,8 +726,8 @@ function initGlobalSearch() {
 
     search.addEventListener("submit", (event) => {
         event.preventDefault();
-        if (!results.hidden && renderedQuery === input.value.trim() && options.length) {
-            const item = options[active < 0 ? 0 : active];
+        if (!results.hidden && renderedQuery === input.value.trim() && active >= 0) {
+            const item = options[active];
             if (!item.placeSearch) { selectResult(item); return; }
         }
         searchPlace();
