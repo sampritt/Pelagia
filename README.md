@@ -234,7 +234,7 @@ Unit toggles on the form switch depth/visibility between m and ft, weight betwee
 
 Conditions includes a Water type control immediately after water temperature. Like Exposure, its heading starts at `-` (unset) with neither option selected, and the only two buttons are Fresh and Salt. The selection is saved with the dive, restored on edit, and shown in the detailed conditions. Existing dives default to unset.
 
-On a new dive, selecting a catalog site, importing coordinates from Garmin, opening the form from a dive-site page, or entering valid latitude/longitude coordinates asks the Is On Water API to prefill Water type. `OCEAN` selects Salt; every other valid feature selects Fresh. The request goes through Pelagia's authenticated `/api/water-type` endpoint so browser CORS does not affect the form. Lookup failures leave the existing selection unchanged, and edit forms preserve the saved value until coordinates change. Set `PELAGIA_IS_ON_WATER_API_URL` to override the upstream base URL.
+On a new dive, selecting a catalog site, importing coordinates from Garmin, opening the form from a dive-site page, or entering valid latitude/longitude coordinates asks the Is On Water API to prefill Water type. The coordinate is checked first; if it is not `OCEAN`, eight points 0.5 miles away are checked concurrently. Any `OCEAN` result selects Salt; otherwise the selection is Fresh after all eight succeed. The request goes through Pelagia's authenticated `/api/water-type` endpoint so browser CORS does not affect the form. Lookup failures leave the existing selection unchanged, and edit forms preserve the saved value until coordinates change. Set `PELAGIA_IS_ON_WATER_API_URL` to override the upstream base URL.
 
 Dive type and current type dropdowns accept multiple choices using checkboxes. Existing single selections are retained when editing. Selecting None for current clears other current types and disables current strength; any actual current type enables strength. The API includes `dive_types` and `current_types` arrays while retaining the original single `dive_type` and `current` fields for older clients. Site current summaries count each selected current type once per dive.
 
@@ -333,8 +333,10 @@ swell, and wind speed. Water temperature uses the median from the latest
 logged dive day within seven days, falling back to Open-Meteo sea surface temperature
 when that day has no logged temperature. Logged temperature renders immediately and
 stays visible without a forecast. Pelagia first classifies the site's coordinates with Is On Water and
-persists that feature per dive site. Later views reuse the classification without another upstream request;
-changing a site's coordinates invalidates it. Only `OCEAN` proceeds to Open-Meteo. Every other feature
+checks eight points 0.5 miles away when the original point is not `OCEAN`. Any ocean point classifies
+the site as ocean; a non-ocean classification requires all eight lookups to succeed. The classification is
+persisted per site indefinitely, even when coordinates change. A one-time migration clears classifications
+created before this rule. Only `OCEAN` proceeds to Open-Meteo. Every other feature
 skips Open-Meteo and replaces the current, tide, and wind charts with availability messages. Tide phase and the
 three regional forecast charts for ocean sites come from Open-Meteo using the site's stored coordinates. Logged
 dive measurements remain unchanged. Public previews show only the gated labels.

@@ -1841,8 +1841,7 @@ def fetch_daily_featured_site():
         SELECT {columns}, water.feature FROM eligible
         JOIN dive_sites ds ON ds.id = eligible.site_id
         LEFT JOIN dive_site_water_classifications water
-          ON water.dive_site_id = ds.id AND water.latitude = ds.latitude
-          AND water.longitude = ds.longitude
+          ON water.dive_site_id = ds.id
         WHERE ds.latitude IS NOT NULL AND ds.longitude IS NOT NULL
           AND (water.feature IS NULL OR water.feature = 'OCEAN')
         ORDER BY random()"""

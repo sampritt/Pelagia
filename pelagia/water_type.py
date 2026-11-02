@@ -3,6 +3,7 @@ import math
 import os
 import time
 import uuid
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import requests
 from flask import current_app, jsonify, request
@@ -33,11 +34,7 @@ def coordinates(latitude, longitude):
     return lat, lon
 
 
-def classify(latitude, longitude):
-    lat, lon = coordinates(latitude, longitude) or (None, None)
-    if lat is None:
-        raise ValueError("Invalid coordinates")
-    base_url = current_app.config["IS_ON_WATER_API_URL"].rstrip("/")
+def _lookup(base_url, lat, lon):
     response = requests.get(f"{base_url}/{lat}/{lon}", timeout=(2, 5))
     response.raise_for_status()
     payload = response.json()
@@ -48,8 +45,45 @@ def classify(latitude, longitude):
     return {"water_type": "salt" if feature == "OCEAN" else "fresh", "feature": feature}
 
 
+def nearby_coordinates(latitude, longitude):
+    """Eight points, each half a mile away, at 45-degree bearings."""
+    angular = 804.672 / 6371000
+    lat, lon = math.radians(latitude), math.radians(longitude)
+    for index in range(8):
+        bearing = index * math.pi / 4
+        target_lat = math.asin(math.sin(lat) * math.cos(angular) +
+                               math.cos(lat) * math.sin(angular) * math.cos(bearing))
+        target_lon = lon + math.atan2(math.sin(bearing) * math.sin(angular) * math.cos(lat),
+                                      math.cos(angular) - math.sin(lat) * math.sin(target_lat))
+        yield math.degrees(target_lat), (math.degrees(target_lon) + 180) % 360 - 180
+
+
+def classify(latitude, longitude):
+    values = coordinates(latitude, longitude)
+    if values is None:
+        raise ValueError("Invalid coordinates")
+    base_url = current_app.config["IS_ON_WATER_API_URL"].rstrip("/")
+    result = _lookup(base_url, *values)
+    if result["feature"] == "OCEAN":
+        return result
+    errors = []
+    ocean = False
+    with ThreadPoolExecutor(max_workers=8) as executor:
+        futures = [executor.submit(_lookup, base_url, lat, lon) for lat, lon in nearby_coordinates(*values)]
+        for future in as_completed(futures):
+            try:
+                ocean |= future.result()["feature"] == "OCEAN"
+            except (requests.RequestException, ValueError, TypeError, KeyError) as error:
+                errors.append(error)
+    if ocean:
+        return {"water_type": "salt", "feature": "OCEAN"}
+    if errors:
+        raise errors[0]
+    return result
+
+
 def classify_site(site):
-    """Return a persistent classification, with one upstream request per coordinate pair."""
+    """Return the site's permanent classification, looking it up when absent."""
     values = coordinates(site["latitude"], site["longitude"])
     if values is None:
         raise ValueError("Invalid coordinates")
@@ -63,12 +97,11 @@ def classify_site(site):
             "SELECT * FROM dive_site_water_classifications WHERE dive_site_id = ?",
             (site["id"],),
         ).fetchone()
-        same = row is not None and row["latitude"] == latitude and row["longitude"] == longitude
-        if same and row["feature"] in FEATURES:
+        if row is not None and row["feature"] in FEATURES:
             result = {"feature": row["feature"], "water_type": "salt" if row["feature"] == "OCEAN" else "fresh"}
-        elif same and row["lease_until"] > now:
+        elif row is not None and row["lease_until"] > now:
             raise ClassificationPending()
-        elif same and row["retry_after"] > now:
+        elif row is not None and row["retry_after"] > now:
             raise ClassificationRetryable()
         else:
             token = uuid.uuid4().hex

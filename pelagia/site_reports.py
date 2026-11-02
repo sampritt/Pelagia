@@ -168,8 +168,7 @@ def load(site, now):
         classification = db.execute('SELECT * FROM dive_site_water_classifications WHERE dive_site_id=?',
                                     (site['id'],)).fetchone()
         if (classification is not None and classification['feature']
-                and classification['feature'] != 'OCEAN'
-                and marine.coordinates(site) == (classification['latitude'], classification['longitude'])):
+                and classification['feature'] != 'OCEAN'):
             db.commit()
             return dict(status='unavailable', reason='not_ocean')
         data = report_input(site, now)

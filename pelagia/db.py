@@ -29,6 +29,7 @@ def init_db():
     db = get_db()
     schema = Path(current_app.root_path, "schema.sql").read_text()
     db.executescript(schema)
+    _reset_water_classifications_once(db)
     _retire_visibility_cache(db)
     _migrate_dive_site_favorites(db)
     # Retire the former page-load OBIS/Luna cache after the offline catalogue
@@ -95,6 +96,19 @@ def init_db():
     db.execute("CREATE INDEX IF NOT EXISTS idx_dives_user_date ON dives(user_id, date)")
     db.execute("CREATE INDEX IF NOT EXISTS idx_dive_sites_logged_dive_count ON dive_sites(logged_dive_count DESC)")
     db.commit()
+
+
+def _reset_water_classifications_once(db):
+    """Replace classifications created before the nearby-ocean rule exactly once."""
+    with db:
+        db.execute('BEGIN IMMEDIATE')
+        db.execute('CREATE TABLE IF NOT EXISTS pelagia_migrations (name TEXT PRIMARY KEY)')
+        applied = db.execute("SELECT 1 FROM pelagia_migrations WHERE name=?",
+                             ('nearby_ocean_classification_v1',)).fetchone()
+        if not applied:
+            db.execute('DELETE FROM dive_site_water_classifications')
+            db.execute('INSERT INTO pelagia_migrations (name) VALUES (?)',
+                       ('nearby_ocean_classification_v1',))
 
 
 def _retire_visibility_cache(db):
