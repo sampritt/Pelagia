@@ -38,11 +38,11 @@ class UserFollowsTest(unittest.TestCase):
             self.assertEqual([r[0] for r in db.execute('SELECT followed_id FROM user_follows WHERE follower_id=1')], [2])
             self.assertEqual([r[0] for r in db.execute('SELECT follower_id FROM user_follows WHERE followed_id=2')], [1])
         profile = self.client.get('/users/2').get_data(as_text=True)
-        self.assertIn('aria-pressed="true">Following</button>', profile)
+        self.assertIn('data-user-follow-label>Following</span>', profile)
         self.assertNotIn('data-user-follow', self.client.get('/you').get_data(as_text=True))
         self.assertEqual(self.follow(following='false').get_json(), {'following': False})
         self.assertEqual(self.follow(following='false').status_code, 200)
-        self.assertIn('aria-pressed="false">Follow</button>', self.client.get('/users/2').get_data(as_text=True))
+        self.assertIn('data-user-follow-label>Follow</span>', self.client.get('/users/2').get_data(as_text=True))
 
     def test_home_filters_before_limit_and_unfollow_removes_dives(self):
         for path in ('/home', '/feed'):

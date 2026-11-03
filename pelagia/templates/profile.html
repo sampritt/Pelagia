@@ -49,10 +49,11 @@
             <form class="user-follow-form" method="post" action="{{ url_for('follow_user', user_id=user.id) }}" data-user-follow>
                 <input type="hidden" name="csrf_token" value="{{ google_csrf_token() }}">
                 <input type="hidden" name="following" value="{{ 'false' if following else 'true' }}">
-                <button class="primary-button compact user-follow-button {{ 'is-following' if following else '' }}" type="submit" aria-pressed="{{ 'true' if following else 'false' }}">{{ 'Following' if following else 'Follow' }}</button>
+                <button class="chip-button social-action user-follow-button {{ 'following' if following else '' }}" type="submit" aria-pressed="{{ 'true' if following else 'false' }}">{{ action_icon("favorite") }}<span data-user-follow-label>{{ 'Following' if following else 'Follow' }}</span></button>
                 <span class="user-follow-status" role="status" aria-live="polite"></span>
             </form>
             {% endif %}
+            {% if user.bio or is_owner %}
             <div class="profile-bio-row">
                 {% if user.bio %}<p class="profile-bio">{{ user.bio }}</p>
                 {% elif is_owner %}<p class="profile-bio bio-placeholder">A little about you and your diving.</p>{% endif %}
@@ -62,6 +63,7 @@
                 </button>
                 {% endif %}
             </div>
+            {% endif %}
             {% if is_owner %}
             <form class="profile-bio-form" method="post" action="{{ url_for('profile') }}" data-bio-form hidden>
                 <label class="sr-only" for="profileBio">Bio</label>

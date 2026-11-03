@@ -16,11 +16,10 @@
                 });
                 if (!response.ok) throw new Error('Follow failed');
                 const data = await response.json();
-                button.textContent = data.following ? 'Following' : 'Follow';
+                button.querySelector('[data-user-follow-label]').textContent = data.following ? 'Following' : 'Follow';
                 button.setAttribute('aria-pressed', String(data.following));
-                button.classList.toggle('is-following', data.following);
+                button.classList.toggle('following', data.following);
                 desired.value = data.following ? 'false' : 'true';
-                status.textContent = data.following ? 'Added to your feed.' : 'Removed from your feed.';
             } catch (_) {
                 status.textContent = 'Couldn’t update follow. Please try again.';
             } finally {
