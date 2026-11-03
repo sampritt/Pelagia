@@ -97,6 +97,59 @@ test('every followed card loads its cached report preview', async () => {
     assert.equal(calls.length, 4);
 });
 
+function compactCard(id) {
+    const result = card(id);
+    const query = result.item.querySelector;
+    result.item.querySelector = selector => selector === '[data-followed-swell]' ? null : query(selector);
+    return result;
+}
+
+test('compact feed previews load report text without requesting headline conditions', async () => {
+    const followed = compactCard(1);
+    const calls = [];
+    setup([followed], async url => {
+        calls.push(url);
+        return response(200, {status: 'complete', report: 'Gentle swells settle over the reef. Light winds hold through the morning.'});
+    });
+    await flush();
+    assert.deepEqual(calls, ['/api/dive-sites/1/report']);
+    assert.equal(followed.item.dataset.reportState, 'ready');
+    assert.match(followed.reportText.textContent, /^Gentle swells/);
+});
+
+test('cold compact previews warm dependencies only when the report requires them', async () => {
+    const followed = compactCard(1);
+    const calls = [];
+    let reportCalls = 0;
+    setup([followed], async url => {
+        calls.push(url);
+        if (url.endsWith('/report')) return ++reportCalls === 1
+            ? response(202, {status: 'pending', reason: 'dependencies'})
+            : response(200, {status: 'complete', report: 'A quiet morning on the reef.'});
+        return response(200, {status: 'complete'});
+    });
+    await flush();
+    assert.equal(reportCalls, 2);
+    assert.equal(calls.filter(url => url.endsWith('/conditions')).length, 1);
+    assert.equal(calls.filter(url => url.endsWith('/description')).length, 1);
+    assert.equal(followed.reportText.textContent, 'A quiet morning on the reef.');
+});
+
+test('compact feed previews resume interrupted loading when returning with browser Back', async () => {
+    const followed = compactCard(1);
+    let resumed = false;
+    const state = setup([followed], (_url, {signal}) => resumed
+        ? Promise.resolve(response(200, {status: 'complete', report: 'Settled conditions.'}))
+        : new Promise((_resolve, reject) => signal.addEventListener('abort', () => reject(new Error('Aborted')))));
+    state.window.handlers.pagehide();
+    await flush();
+    resumed = true;
+    state.window.handlers.pageshow({persisted: true});
+    await flush();
+    assert.equal(followed.item.dataset.reportState, 'ready');
+    assert.equal(followed.reportText.textContent, 'Settled conditions.');
+});
+
 test('feet, descriptor colors, and wind boundaries are normalized', async () => {
     const cards = [card(1), card(2), card(3), card(4)];
     cards.forEach(card => { card.item.dataset.lengthUnit = 'ft'; });

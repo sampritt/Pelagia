@@ -276,6 +276,7 @@ def register_routes(app):
             stats=stats,
             user=current_user(),
             brief=dive_brief.load_brief(),
+            favorite_sites=fetch_report_sites(session["user_id"]),
             show_welcome=request.endpoint == "welcome",
             founder=founder,
         )
@@ -290,19 +291,9 @@ def register_routes(app):
     def reports():
         user_id = session["user_id"]
         latest_my_dives = fetch_dives(scope="mine", user_id=user_id, limit=1)
-        favorite_sites = fetch_favorite_dive_sites(session["user_id"])
-        featured_site = fetch_daily_featured_site()
-        if featured_site:
-            for item in favorite_sites:
-                if item["id"] == featured_site["id"]:
-                    item["featured"] = True
-                    break
-            else:
-                featured_site["featured"] = True
-                favorite_sites.append(featured_site)
         return render_template(
             "reports.html",
-            favorite_sites=favorite_sites,
+            favorite_sites=fetch_report_sites(user_id),
             latest_my_dive=latest_my_dives[0] if latest_my_dives else None,
             stats=get_profile_stats(user_id),
             user=current_user(),
@@ -1879,6 +1870,21 @@ def fetch_favorite_dive_sites(user_id):
             (user_id,),
         ).fetchall()
     ]
+
+
+def fetch_report_sites(user_id):
+    """Use the same followed and deduplicated featured sites on Home and Reports."""
+    sites = fetch_favorite_dive_sites(user_id)
+    featured = fetch_daily_featured_site()
+    if featured:
+        for site in sites:
+            if site["id"] == featured["id"]:
+                site["featured"] = True
+                break
+        else:
+            featured["featured"] = True
+            sites.append(featured)
+    return sites
 
 
 def fetch_daily_featured_site():

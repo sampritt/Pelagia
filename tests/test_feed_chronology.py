@@ -23,6 +23,7 @@ class FeedChronologyTest(unittest.TestCase):
         self.db = database.get_db()
         self.db.execute("INSERT INTO users (username) VALUES ('diver')")
         self.db.execute("INSERT INTO users (username) VALUES ('buddy')")
+        self.db.execute("INSERT INTO user_follows (follower_id, followed_id) VALUES (1, 2)")
         self.db.execute("INSERT INTO dive_centers (name) VALUES ('Dive center')")
         self.db.execute("INSERT INTO dive_sites (name) VALUES ('Dive site')")
         self.older_dive_day = self.db.execute("SELECT date('now', '-14 days')").fetchone()[0]
@@ -58,7 +59,7 @@ class FeedChronologyTest(unittest.TestCase):
             [newest_upload, recent_upload, older_upload],
         )
 
-    def test_home_keeps_reports_without_querying_the_community_feed(self):
+    def test_home_and_welcome_use_the_shared_logged_dive_feed(self):
         self.add_dive("2025-01-01", "-1 day", user_id=2)
         client = self.app.test_client()
         with client.session_transaction() as session:
@@ -67,25 +68,25 @@ class FeedChronologyTest(unittest.TestCase):
             for path in ("/home", "/welcome"):
                 response = client.get(path)
                 self.assertEqual(response.status_code, 200)
-                self.assertIn(b'id="siteReportsTitle"', response.data)
-                self.assertNotIn(b'data-dive-card', response.data)
+                self.assertIn(b'data-dive-card', response.data)
                 self.assertNotIn(b'No dives yet', response.data)
-            self.assertTrue(all(call.kwargs["scope"] == "mine" for call in query.call_args_list))
+            self.assertEqual([call.kwargs["scope"] for call in query.call_args_list],
+                             ['mine', 'following', 'mine', 'following'])
 
-    def test_feed_is_separate_from_home_reports_and_handles_empty_logs(self):
+    def test_feed_alias_includes_home_reports_and_handles_empty_logs(self):
         client = self.app.test_client()
         with client.session_transaction() as session:
             session["user_id"] = 1
-        with patch("pelagia.fetch_favorite_dive_sites") as reports, patch("pelagia.dive_brief.load_brief") as brief:
+        with patch("pelagia.fetch_report_sites", return_value=[]) as reports, patch("pelagia.dive_brief.load_brief", return_value=None) as brief:
             response = client.get("/feed")
             self.assertEqual(response.status_code, 200)
-            self.assertIn(b'<title>Feed - Pelagia</title>', response.data)
+            self.assertIn(b'<title>Home - Pelagia</title>', response.data)
             self.assertIn(b'No dives yet', response.data)
             self.assertIn(b'href="/dive/new">Log dive</a>', response.data)
             self.assertNotIn(b'id="siteReportsTitle"', response.data)
             self.assertNotIn(b'js/feed-site-reports.js', response.data)
-            reports.assert_not_called()
-            brief.assert_not_called()
+            reports.assert_called_once_with(1)
+            brief.assert_called_once_with()
 
     def test_feed_requires_login_and_preserves_destination(self):
         response = self.app.test_client().get("/feed")

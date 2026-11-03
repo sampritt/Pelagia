@@ -121,7 +121,7 @@
                             dependenciesStarted = true;
                             const [, conditions] = await Promise.all([
                                 warmDependency(card.dataset.descriptionUrl, 'POST', controller, deadline),
-                                conditionsReady,
+                                conditionsReady || warmDependency(card.dataset.conditionsUrl, 'GET', controller, deadline),
                             ]);
                             if (conditions?.status !== 'complete') throw new Error('Conditions unavailable');
                         } else await delay(POLL_MS);
@@ -144,7 +144,7 @@
         }
 
         cards.forEach((card) => {
-            loadCard(card, loadConditions(card));
+            loadCard(card, card.querySelector('[data-followed-swell]') ? loadConditions(card) : undefined);
         });
 
         window.addEventListener('pagehide', () => {
@@ -160,7 +160,8 @@
             stopped = false;
             cards.forEach((card) => {
                 const needsReport = card.dataset.reportState === 'loading';
-                const conditionsReady = card.dataset.conditionsState === 'loading' || needsReport ? loadConditions(card) : Promise.resolve();
+                const conditionsReady = card.querySelector('[data-followed-swell]') && (card.dataset.conditionsState === 'loading' || needsReport)
+                    ? loadConditions(card) : undefined;
                 if (needsReport) loadCard(card, conditionsReady);
             });
         });

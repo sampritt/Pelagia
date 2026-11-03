@@ -213,7 +213,12 @@ class DiveSiteFavoritesTest(unittest.TestCase):
         for path in ('/home', '/feed'):
             home = self.client.get(path).get_data(as_text=True)
             self.assertIn('data-dive-card', home)
-            self.assertNotIn('data-followed-site-report', home)
+            self.assertIn('data-followed-site-report', home)
+            self.assertIn('class="site-report-card feed-site-report"', home)
+            self.assertIn('data-followed-report-text', home)
+            self.assertNotIn('data-followed-swell', home)
+            self.assertNotIn('data-followed-wind', home)
+            self.assertNotIn('SITE REPORT', home)
             self.assertNotIn('data-daily-greeting', home)
             self.assertIn('class="active" href="/home"', home)
         reports = self.client.get('/reports').get_data(as_text=True)

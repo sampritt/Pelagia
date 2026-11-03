@@ -6610,6 +6610,34 @@ img.is-media-loading {
 .site-reports-list .followed-site-report-text { display: block; -webkit-line-clamp: unset; }
 .site-reports-list .site-report-card:not([data-report-state="loading"]) .followed-site-report { min-height: 0; }
 
+/* Compact report previews sit between the Brief and logged dives on Home. */
+.feed-site-reports { gap: 20px; }
+.feed-site-report {
+    grid-template-columns: 56px minmax(0, 1fr);
+    grid-template-rows: auto;
+    grid-row: auto;
+    align-items: start;
+    gap: 14px;
+    padding: 18px;
+}
+.feed-site-report .site-report-map { width: 56px; height: 56px; min-height: 56px; max-height: 56px; border-radius: 10px; }
+.feed-site-report .site-report-name { flex-wrap: wrap; gap: 4px 8px; }
+.feed-site-report .site-report-name h3 { flex: 0 1 auto; max-width: 100%; }
+.feed-site-report .followed-site-report { min-height: 3em; margin-top: 8px; font-size: .8125rem; }
+.feed-site-report .followed-site-report-text {
+    margin: 0;
+    color: var(--ink-soft);
+    font-size: inherit;
+    line-height: 1.5;
+    -webkit-line-clamp: 2;
+}
+.feed-site-report .component-skeleton { grid-template-rows: repeat(2, 1.5em); }
+.feed-site-report .skeleton-line:nth-child(n + 3) { display: none; }
+@media (max-width: 560px) {
+    .feed-site-report { grid-template-columns: 48px minmax(0, 1fr); gap: 12px; padding: 16px; }
+    .feed-site-report .site-report-map { width: 48px; height: 48px; min-height: 48px; max-height: 48px; }
+}
+
 /* Profile follows share the owner header’s primary action treatment. */
 .user-follow-form { display: grid; gap: 8px; margin-top: 12px; }
 .user-follow-form .user-follow-button { width: 100%; min-height: 40px; }
