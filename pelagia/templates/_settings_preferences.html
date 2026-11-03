@@ -1,0 +1,35 @@
+{% from "_unit_toggle.html" import unit_toggle %}
+<section class="settings-card" aria-labelledby="profileUnitsTitle">
+    <h2 id="profileUnitsTitle">Units</h2>
+    <p class="settings-description">Choose how your dive measurements appear.</p>
+    <div class="settings-unit-list">
+        <div class="profile-unit-row"><span>Pressure</span>{{ unit_toggle('pressure', 'Pressure', 'bar', 'bar', 'psi', 'psi', units.pressure) }}</div>
+        <div class="profile-unit-row"><span>Distance</span>{{ unit_toggle('length', 'Distance', 'm', 'm', 'ft', 'ft', units.length) }}</div>
+        <div class="profile-unit-row"><span>Temperature</span>{{ unit_toggle('temperature', 'Temperature', 'c', '°C', 'f', '°F', units.temperature) }}</div>
+        <div class="profile-unit-row"><span>Weight</span>{{ unit_toggle('weight', 'Weight', 'kg', 'kg', 'lb', 'lb', units.weight) }}</div>
+    </div>
+</section>
+<section class="settings-card" aria-labelledby="settingsProfileTitle">
+    <h2 id="settingsProfileTitle">Profile</h2>
+    <div class="settings-profile-fields">
+        <div class="settings-profile-field">
+            <label for="profileName">Name</label>
+            <p class="settings-description" id="profileNameHelp">Your public name to be displayed on your profile.</p>
+            <input class="settings-text-input" id="profileName" name="display_name" type="text" autocomplete="name" maxlength="120" value="{{ user.display_name or '' }}" aria-describedby="profileNameHelp">
+        </div>
+        <div class="settings-profile-field">
+            <label for="profileLocation">Location</label>
+            <p class="settings-description" id="profileLocationHelp">The country or region where you spend the most time diving.</p>
+            <div class="autocomplete-field settings-location" data-profile-location>
+                <input id="profileLocation" name="home_location" type="text" value="{{ user.home_location or '' }}" aria-describedby="profileLocationHelp" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="profileLocationOptions" data-profile-location-input>
+                <div id="profileLocationOptions" class="autocomplete-menu" role="listbox" data-profile-location-results hidden></div>
+                <script type="application/json" data-profile-location-options>{{ locations|tojson }}</script>
+            </div>
+        </div>
+        <div class="settings-profile-field">
+            <label for="startingDiveCount">Starting dive count</label>
+            <p class="settings-description" id="startingDiveCountHelp">Dives you haven’t logged in Pelagia. Your profile total is this number plus your dives logged in Pelagia.</p>
+            <input class="settings-dive-count" id="startingDiveCount" name="starting_dive_count" type="number" min="0" max="9223372036854775807" step="1" inputmode="numeric" value="{{ user.starting_dive_count }}" aria-describedby="startingDiveCountHelp"{{ '' if onboarding else ' required' }}>
+        </div>
+    </div>
+</section>

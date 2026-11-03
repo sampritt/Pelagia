@@ -27,6 +27,7 @@ from flask import (
     url_for,
 )
 from PIL import Image, ImageOps, UnidentifiedImageError
+from werkzeug.exceptions import BadRequest
 
 from . import db as database
 from .importer import import_reference_data
@@ -528,6 +529,46 @@ def register_routes(app):
 
         user = current_user()
         return render_user_profile(user, is_owner=True)
+
+    @app.route("/auth/setup", methods=("GET", "POST"))
+    @login_required
+    def onboarding_settings():
+        if "onboarding_next" not in session:
+            return redirect(url_for("home"))
+        user = current_user()
+        error = None
+        if request.method == "POST":
+            google_auth.check_csrf()
+            intent = request.form.get("intent", "save")
+            if intent not in ("save", "skip"):
+                abort(400)
+            if intent == "save":
+                db = database.get_db()
+                preferences = request.form.copy()
+                if preferences.get("starting_dive_count") == "":
+                    preferences["starting_dive_count"] = "0"
+                try:
+                    update_profile_settings(db, user["id"], preferences)
+                    db.commit()
+                except BadRequest as exc:
+                    db.rollback()
+                    error = exc.description
+                    user = dict(user)
+                    for field in ("display_name", "home_location", "starting_dive_count"):
+                        user[field] = request.form.get(field, user[field])
+                    g.unit_preferences = {
+                        group: request.form.get(f"{group}_unit")
+                        if request.form.get(f"{group}_unit") in options else unit_preferences()[group]
+                        for group, options in UNIT_OPTIONS.items()
+                    }
+            if error is None:
+                destination = _safe_next_url(session.pop("onboarding_next"))
+                session.pop("google_csrf", None)
+                return redirect(url_for("welcome") if destination == url_for("home") else destination)
+        return render_template(
+            "onboarding_settings.html", onboarding=True, user=user,
+            locations=explore.locations(), setup_error=error,
+        ), 400 if error else 200
 
     @app.route("/you/settings", methods=("GET", "POST"))
     @login_required

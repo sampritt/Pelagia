@@ -5897,6 +5897,37 @@ img.is-media-loading {
     .settings-delete-account, .account-deletion-actions > * { width: 100%; }
 }
 
+/* Optional setup uses the same preference controls as Settings. */
+.onboarding-body::before { display: none; }
+.onboarding-body .page-shell { width: 100%; max-width: none; padding: 0; }
+.onboarding-page { width: min(100% - 64px, 1040px); margin-inline: auto; padding-top: max(28px, env(safe-area-inset-top)); padding-bottom: max(40px, env(safe-area-inset-bottom)); }
+.onboarding-header { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding-bottom: 24px; border-bottom: 1px solid var(--line-strong); }
+.onboarding-header .brand { color: var(--navy); }
+.onboarding-header .ghost-button { min-width: 72px; }
+.onboarding-heading { max-width: 620px; margin-block: 36px 28px; }
+.onboarding-heading .eyebrow { margin: 0 0 10px; }
+.onboarding-heading h1 { font-size: clamp(1.9rem, 4vw, 2.65rem); line-height: 1.15; }
+.onboarding-heading > p:last-child { margin: 14px 0 0; color: var(--muted-strong); line-height: 1.7; }
+.onboarding-preferences { display: grid; grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr); align-items: start; gap: 24px; }
+.onboarding-preferences > .settings-card { margin-top: 0; }
+.onboarding-actions { display: flex; align-items: center; justify-content: space-between; gap: 20px; margin-top: 28px; }
+.onboarding-actions > p { margin: 0; color: var(--muted-strong); font-size: 0.85rem; }
+.onboarding-actions > div { display: flex; align-items: center; gap: 12px; }
+.onboarding-page :is(.primary-button, .ghost-button) { min-height: 44px; }
+.onboarding-error { padding: 16px 20px; border: 1px solid #e8b7bf; border-radius: 12px; background: #fff1f3; color: #951b2b; line-height: 1.5; }
+@media (max-width: 760px) {
+    .onboarding-page { width: min(100% - 40px, 560px); padding-top: max(20px, env(safe-area-inset-top)); }
+    .onboarding-header { padding-bottom: 20px; }
+    .onboarding-heading { margin-block: 28px 24px; }
+    .onboarding-preferences { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+    .onboarding-actions { flex-direction: column-reverse; align-items: stretch; margin-top: 24px; gap: 16px; }
+    .onboarding-actions > div { display: grid; grid-template-columns: auto minmax(0, 1fr); }
+    .onboarding-actions > p { text-align: center; }
+}
+@media (max-width: 380px) {
+    .onboarding-page { width: calc(100% - 24px); }
+}
+
 /* Shared actions: consistent icon weight, touch targets and quiet surfaces. */
 .action-icon {
     display: block;

@@ -141,12 +141,15 @@ def callback():
     return redirect(url_for("google_auth.signup"))
 
 
-def finish_login(user_id, next_url=None):
+def finish_login(user_id, next_url=None, *, new_user=False):
     from . import _safe_next_url
     destination = _safe_next_url(next_url or (session.get("google_pending") or {}).get("next"))
     session.clear()
     session["user_id"] = user_id
     session.permanent = True
+    if new_user:
+        session["onboarding_next"] = destination
+        return redirect(url_for("onboarding_settings"))
     return redirect(url_for("welcome") if destination == url_for("home") else destination)
 
 
@@ -182,5 +185,5 @@ def signup():
                     return finish_login(user["id"])
                 flash("That username is already taken. Please choose another.")
             else:
-                return finish_login(cur.lastrowid)
+                return finish_login(cur.lastrowid, new_user=True)
     return render_template("google_signup.html", username=username, auth_next=_safe_next_url(pending.get("next")))

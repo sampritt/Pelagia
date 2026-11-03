@@ -28,6 +28,12 @@ class EmailAuthTest(unittest.TestCase):
         with self.client.session_transaction() as s:
             return s['google_csrf']
 
+    def finish_setup(self):
+        self.client.get('/auth/setup')
+        with self.client.session_transaction() as session:
+            csrf = session['google_csrf']
+        return self.client.post('/auth/setup', data={'csrf_token': csrf, 'intent': 'skip'})
+
     def start(self, email='diver@example.com', destination='/dive/42'):
         response = self.client.post('/auth/email/start', data={'email': email, 'next': destination, 'csrf_token': self.csrf()})
         self.assertEqual(response.status_code, 302)
@@ -43,7 +49,8 @@ class EmailAuthTest(unittest.TestCase):
         code = self.start('Diver@Example.com')
         self.assertEqual(self.verify(code).location, '/auth/email/signup')
         response = self.client.post('/auth/email/signup', data={'username': 'diver', 'csrf_token': self.csrf()})
-        self.assertEqual(response.location, '/dive/42')
+        self.assertEqual(response.location, '/auth/setup')
+        self.assertEqual(self.finish_setup().location, '/dive/42')
         with self.client.session_transaction() as s:
             uid = s['user_id']
             self.assertTrue(s.permanent)
@@ -129,8 +136,8 @@ class EmailAuthTest(unittest.TestCase):
     def test_default_signup_and_returning_login_show_welcome(self):
         self.verify(self.start(destination='/home'))
         response = self.client.post('/auth/email/signup', data={'username': 'welcome-diver', 'csrf_token': self.csrf()})
-        self.assertEqual(response.location, '/welcome')
-        page = self.client.get(response.location)
+        self.assertEqual(response.location, '/auth/setup')
+        page = self.client.get(self.finish_setup().location)
         self.assertIn(b'data-welcome-splash', page.data)
         self.assertIn(b'Site reports', page.data)
         self.assertNotIn(b'No dives yet', page.data)

@@ -97,7 +97,8 @@ class GoogleAuthTest(unittest.TestCase):
         params = parse_qs(urlsplit(response.location).query)
         self.assertEqual(self.callback(params).location, "/auth/google/signup")
         response = self.complete_signup("shared-diver")
-        self.assertEqual(response.location, "/dive/42")
+        self.assertEqual(response.location, "/auth/setup")
+        self.assertEqual(self.finish_setup().location, "/dive/42")
 
     def test_welcome_requires_an_account_and_keeps_feed_navigation(self):
         self.assertEqual(self.client.get('/welcome').status_code, 302)
@@ -123,13 +124,15 @@ class GoogleAuthTest(unittest.TestCase):
         response = self.client.get("/auth/google/login?next=/dive-sites/42")
         params = parse_qs(urlsplit(response.location).query)
         self.assertEqual(self.callback(params).location, "/auth/google/signup")
-        self.assertEqual(self.complete_signup("site-diver").location, "/dive-sites/42")
+        self.assertEqual(self.complete_signup("site-diver").location, "/auth/setup")
+        self.assertEqual(self.finish_setup().location, "/dive-sites/42")
 
     def test_shared_center_destination_survives_google_signup(self):
         response = self.client.get("/auth/google/login?next=/dive-centers/42")
         params = parse_qs(urlsplit(response.location).query)
         self.assertEqual(self.callback(params).location, "/auth/google/signup")
-        self.assertEqual(self.complete_signup("center-diver").location, "/dive-centers/42")
+        self.assertEqual(self.complete_signup("center-diver").location, "/auth/setup")
+        self.assertEqual(self.finish_setup().location, "/dive-centers/42")
 
     def test_shared_center_destination_survives_existing_google_login(self):
         with self.app.app_context():
@@ -170,6 +173,12 @@ class GoogleAuthTest(unittest.TestCase):
         with self.client.session_transaction() as session:
             csrf = session["google_csrf"]
         return self.client.post("/auth/google/signup", data={"username": username, "csrf_token": csrf})
+
+    def finish_setup(self):
+        self.client.get('/auth/setup')
+        with self.client.session_transaction() as session:
+            csrf = session['google_csrf']
+        return self.client.post('/auth/setup', data={'csrf_token': csrf, 'intent': 'skip'})
 
     def seed_account(self, username="existing"):
         with self.app.app_context():
@@ -231,7 +240,8 @@ class GoogleAuthTest(unittest.TestCase):
         page = self.client.get(response.location)
         self.assertIn(b"Choose your username", page.data)
         self.assertNotIn(b"diver@example.com", page.data)
-        self.assertEqual(self.complete_signup("new-diver").location, "/welcome")
+        self.assertEqual(self.complete_signup("new-diver").location, "/auth/setup")
+        self.assertEqual(self.finish_setup().location, "/welcome")
         self.assertIsNotNone(self.client.get_cookie("session").expires)
         with self.client.session_transaction() as session:
             user_id = session["user_id"]
@@ -262,7 +272,7 @@ class GoogleAuthTest(unittest.TestCase):
             self.assertEqual(self.complete_signup(username).status_code, 200)
             with self.client.session_transaction() as session:
                 self.assertNotIn("user_id", session)
-        self.assertEqual(self.complete_signup("available").location, "/welcome")
+        self.assertEqual(self.complete_signup("available").location, "/auth/setup")
 
     def test_bad_state_expired_flow_and_logout_reject_callback(self):
         for kind in ("bad-state", "expired", "logout", "missing-provider-state"):

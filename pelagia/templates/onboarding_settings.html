@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Make Pelagia yours — Pelagia{% endblock %}
+{% block body_class %}onboarding-body{% endblock %}
+{% block head %}<meta name="robots" content="noindex, nofollow">{% endblock %}
+{% block content %}
+<div class="onboarding-page">
+    <header class="onboarding-header">
+        <a class="brand" href="{{ url_for('onboarding_settings') }}" aria-label="Pelagia setup">
+            <span class="brand-mark" aria-hidden="true"><img src="{{ url_for('static', filename='img/pelagia-mark.png') }}" width="36" height="36" alt=""></span>
+            <span>Pelagia</span>
+        </a>
+        <button class="ghost-button" type="submit" form="onboardingSettingsForm" name="intent" value="skip" formnovalidate>Skip</button>
+    </header>
+    <section aria-labelledby="onboardingTitle">
+        <div class="onboarding-heading">
+            <p class="eyebrow">Your preferences</p>
+            <h1 id="onboardingTitle">Make Pelagia yours.</h1>
+            <p>Set up your dive log before you jump in. Everything here is optional, and you can change it anytime in Settings.</p>
+        </div>
+        {% if setup_error %}<p class="onboarding-error" role="alert">{{ setup_error }}</p>{% endif %}
+        <form id="onboardingSettingsForm" method="post" action="{{ url_for('onboarding_settings') }}">
+            <input type="hidden" name="csrf_token" value="{{ google_csrf_token() }}">
+            <div class="onboarding-preferences">
+                {% include "_settings_preferences.html" %}
+            </div>
+            <footer class="onboarding-actions">
+                <p>Ready when you are.</p>
+                <div>
+                    <button class="ghost-button" type="submit" name="intent" value="skip" formnovalidate>Skip</button>
+                    <button class="primary-button" type="submit" name="intent" value="save">Save &amp; continue <span aria-hidden="true">↗</span></button>
+                </div>
+            </footer>
+        </form>
+    </section>
+</div>
+{% endblock %}

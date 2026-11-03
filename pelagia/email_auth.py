@@ -170,5 +170,5 @@ def signup():
                     return finish_login(user['id'], pending.get('next'))
                 flash('That username is already taken. Please choose another.')
             else:
-                return finish_login(cur.lastrowid, pending.get('next'))
+                return finish_login(cur.lastrowid, pending.get('next'), new_user=True)
     return render_template('email_signup.html', username=username)

@@ -21,7 +21,7 @@
 <body class="{% block body_class %}{% endblock %}">
     {% if show_welcome %}{% include '_welcome_splash.html' %}{% endif %}
     <a class="skip-link" href="#mainContent">Skip to content</a>
-    {% set me = none if public_brief else current_user() %}
+    {% set me = none if public_brief or onboarding else current_user() %}
     {% if me %}
     <header class="topbar feed-topbar">
         <a class="brand" href="{{ url_for('home') }}" aria-label="Pelagia Home">
