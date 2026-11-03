@@ -91,14 +91,14 @@ class DiveBriefTest(unittest.TestCase):
                 html = self.client.get(path).get_data(as_text=True)
                 self.assertLess(html.index('class="brief-card"'), html.index('class="site-reports feed-site-reports"'))
                 self.assertLess(html.index('class="site-reports feed-site-reports"'), html.index('<section class="dive-logs"'))
-                self.assertEqual(html.count('class="site-report-card feed-site-report"'), 2)
-                self.assertEqual(html.count('data-followed-report-text'), 2)
-                self.assertEqual(html.count('class="mini-map site-report-map'), 2)
+                self.assertEqual(html.count('class="site-report-card feed-site-report"'), 1)
+                self.assertEqual(html.count('data-followed-report-text'), 1)
+                self.assertEqual(html.count('class="mini-map site-report-map'), 1)
                 self.assertNotIn('data-followed-swell', html)
                 self.assertNotIn('data-followed-wind', html)
                 self.assertNotIn('SITE REPORT', html)
                 self.assertNotIn('site-reports-track', html)
-                self.assertIn('href="/dive-sites/1#daily-report"', html)
+                self.assertIn('class="site-report-card feed-site-report" href="/reports"', html)
 
     def test_no_edition_keeps_feed_working_and_deep_links_are_validated(self):
         self.write_edition(date(2026, 10, 21), "Yesterday's stale story.")

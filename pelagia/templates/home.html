@@ -23,13 +23,14 @@
                 {% include "_dive_brief_card.html" %}
             </section>
             {% endif %}
-            {% if favorite_sites %}
-            <section class="site-reports feed-site-reports" aria-label="Site reports">
-                {% for item in favorite_sites %}
-                    {% include "_feed_site_report.html" %}
-                {% endfor %}
+            <section class="site-reports feed-site-reports" aria-label="Daily site report"
+                     data-feed-report data-selection-url="{{ url_for('api_feed_site_report') }}"
+                     data-selection-key="{{ report_selection.key }}" data-next-refresh="{{ report_selection.next_refresh }}"
+                     {% if not report_selection.site %}hidden{% endif %}>
+                {% if report_selection.site %}
+                    {% with item=report_selection.site %}{% include "_feed_site_report.html" %}{% endwith %}
+                {% endif %}
             </section>
-            {% endif %}
             {% include "_logged_dive_feed.html" %}
         </div>
     </div>
@@ -44,9 +45,7 @@
 {% endblock %}
 
 {% block scripts %}
-{% if favorite_sites %}
 <script defer src="{{ url_for('static', filename='js/feed-site-reports.js', v=pwa_asset_version) }}"></script>
-{% endif %}
 {% if founder %}
 <script defer src="{{ url_for('static', filename='js/user-follow.js', v=pwa_asset_version) }}"></script>
 {% endif %}

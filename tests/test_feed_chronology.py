@@ -77,14 +77,14 @@ class FeedChronologyTest(unittest.TestCase):
         client = self.app.test_client()
         with client.session_transaction() as session:
             session["user_id"] = 1
-        with patch("pelagia.fetch_report_sites", return_value=[]) as reports, patch("pelagia.dive_brief.load_brief", return_value=None) as brief:
+        with patch("pelagia.fetch_home_report", return_value={"site": None, "key": "", "next_refresh": 1}) as reports, patch("pelagia.dive_brief.load_brief", return_value=None) as brief:
             response = client.get("/feed")
             self.assertEqual(response.status_code, 200)
             self.assertIn(b'<title>Home - Pelagia</title>', response.data)
             self.assertIn(b'No dives yet', response.data)
             self.assertIn(b'href="/dive/new">Log dive</a>', response.data)
             self.assertNotIn(b'id="siteReportsTitle"', response.data)
-            self.assertNotIn(b'js/feed-site-reports.js', response.data)
+            self.assertIn(b'js/feed-site-reports.js', response.data)
             reports.assert_called_once_with(1)
             brief.assert_called_once_with()
 

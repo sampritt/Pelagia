@@ -6612,6 +6612,7 @@ img.is-media-loading {
 
 /* Compact report previews sit between the Brief and logged dives on Home. */
 .feed-site-reports { gap: 20px; }
+.feed-site-reports[hidden] { display: none; }
 .feed-site-report {
     grid-template-columns: 56px minmax(0, 1fr);
     grid-template-rows: auto;

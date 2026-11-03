@@ -42,7 +42,7 @@ const flush = async () => {
     for (let i = 0; i < 3; i++) await new Promise(resolve => setImmediate(resolve));
 };
 
-function setup(cards, fetch, {viewportWidth = 300, localHour = 9} = {}) {
+function setup(cards, fetch, {viewportWidth = 300, localHour = 9, feed = null} = {}) {
     const window = node();
     let timer = 0;
     const timers = new Map();
@@ -63,13 +63,15 @@ function setup(cards, fetch, {viewportWidth = 300, localHour = 9} = {}) {
     cards.forEach((card, index) => { card.item.getBoundingClientRect = () => ({width: 300, left: index * 312 - track.scrollLeft, right: index * 312 + 300 - track.scrollLeft}); });
     const document = {
         readyState: 'complete',
+        handlers: {},
+        addEventListener(name, callback) { this.handlers[name] = callback; },
         querySelectorAll: () => cards.map(item => item.item),
-        querySelector: selector => selector === '[data-site-reports-track]' ? track : selector === '[data-site-reports-featured]' ? featuredLabel : selector === '[data-daily-greeting]' ? greeting : null,
+        querySelector: selector => selector === '[data-feed-report]' ? feed : selector === '[data-site-reports-track]' ? track : selector === '[data-site-reports-featured]' ? featuredLabel : selector === '[data-daily-greeting]' ? greeting : null,
     };
     vm.runInNewContext(fs.readFileSync('pelagia/static/js/feed-site-reports.js', 'utf8'), {
         window, document, fetch, AbortController, Date: class extends Date { getHours() { return localHour; } }, Promise, Error,
     });
-    return {window, timers, track, featuredLabel, greeting, starts: () => starts, finishes: () => finishes};
+    return {window, document, timers, track, featuredLabel, greeting, starts: () => starts, finishes: () => finishes};
 }
 
 test('every followed card loads its cached report preview', async () => {
@@ -103,6 +105,103 @@ function compactCard(id) {
     result.item.querySelector = selector => selector === '[data-followed-swell]' ? null : query(selector);
     return result;
 }
+
+function feedHost(replacement) {
+    const feed = node();
+    feed.dataset = {selectionUrl: '/api/feed/site-report', selectionKey: '1:today', nextRefresh: (Date.now() + 3000) / 1000};
+    feed.contains = () => false;
+    feed.querySelectorAll = () => [replacement.item];
+    return feed;
+}
+
+test('midnight replaces the single preview, initializes its map, and preserves keyboard focus', async () => {
+    const current = compactCard(1), replacement = compactCard(2), feed = feedHost(replacement);
+    let focused = false, maps = 0;
+    feed.contains = () => true;
+    replacement.item.focus = options => { focused = options.preventScroll; };
+    const calls = [];
+    const state = setup([current], async url => {
+        calls.push(url);
+        return response(200, url === feed.dataset.selectionUrl
+            ? {html: '<a>Next site</a>', key: '2:today', next_refresh: Date.now() / 1000 + 3600}
+            : {status: 'complete', report: `Daily report for ${url}.`});
+    }, {feed});
+    state.window.initStaticMaps = () => maps++;
+    await flush();
+    [...state.timers.values()].find(timer => timer.delay < 10000).callback();
+    await flush();
+    assert.equal(feed.dataset.selectionKey, '2:today');
+    assert.equal(feed.hidden, false);
+    assert.equal(replacement.item.dataset.reportState, 'ready');
+    assert.equal(focused, true);
+    assert.equal(maps, 1);
+    assert.equal(calls.filter(url => url === '/api/dive-sites/2/report').length, 1);
+});
+
+test('browser Back rechecks selection without flashing or reloading a still-current report', async () => {
+    const current = compactCard(1), feed = feedHost(current), calls = [];
+    const state = setup([current], async url => {
+        calls.push(url);
+        return response(200, url === feed.dataset.selectionUrl
+            ? {html: '<a>Same site</a>', key: '1:today', next_refresh: Date.now() / 1000 + 3600}
+            : {status: 'complete', report: 'Quiet conditions.'});
+    }, {feed});
+    await flush();
+    state.window.handlers.pagehide();
+    state.window.handlers.pageshow({persisted: true});
+    await flush();
+    assert.equal(current.reportText.textContent, 'Quiet conditions.');
+    assert.equal(calls.filter(url => url.endsWith('/1/report')).length, 1);
+    assert.equal(calls.filter(url => url === feed.dataset.selectionUrl).length, 1);
+    assert.equal(feed.innerHTML, undefined);
+});
+
+test('offline selection preserves the current card and retries; leaving cancels the retry', async () => {
+    const current = compactCard(1), feed = feedHost(current);
+    const state = setup([current], async url => url === feed.dataset.selectionUrl
+        ? response(503, {}) : response(200, {status: 'complete', report: 'Quiet conditions.'}), {feed});
+    await flush();
+    state.window.handlers.online();
+    await flush();
+    assert.equal(feed.dataset.selectionKey, '1:today');
+    assert.equal(current.reportText.textContent, 'Quiet conditions.');
+    assert.ok([...state.timers.values()].some(timer => timer.delay === 60000));
+    state.window.handlers.pagehide();
+    assert.equal(state.timers.size, 0);
+});
+
+test('a hidden feed can gain its featured fallback after returning online', async () => {
+    const replacement = compactCard(2), feed = feedHost(replacement);
+    feed.hidden = true;
+    feed.dataset.selectionKey = '';
+    const state = setup([], async url => response(200, url === feed.dataset.selectionUrl
+        ? {html: '<a>Featured</a>', key: '2:today:featured', next_refresh: Date.now() / 1000 + 3600}
+        : {status: 'complete', report: 'A calm start.'}), {feed});
+    state.window.handlers.online();
+    await flush();
+    assert.equal(feed.hidden, false);
+    assert.equal(replacement.item.dataset.reportState, 'ready');
+});
+
+test('background tabs defer midnight selection until they become visible', async () => {
+    const current = compactCard(1), feed = feedHost(current), calls = [];
+    const state = setup([current], async url => {
+        calls.push(url);
+        return response(200, url === feed.dataset.selectionUrl
+            ? {html: '<a>Same site</a>', key: '1:today', next_refresh: Date.now() / 1000 + 3600}
+            : {status: 'complete', report: 'Quiet conditions.'});
+    }, {feed});
+    await flush();
+    state.document.hidden = true;
+    [...state.timers.values()].find(timer => timer.delay < 10000).callback();
+    await flush();
+    assert.equal(calls.filter(url => url === feed.dataset.selectionUrl).length, 0);
+    state.document.hidden = false;
+    feed.dataset.nextRefresh = 0;
+    state.document.handlers.visibilitychange();
+    await flush();
+    assert.equal(calls.filter(url => url === feed.dataset.selectionUrl).length, 1);
+});
 
 test('compact feed previews load report text without requesting headline conditions', async () => {
     const followed = compactCard(1);

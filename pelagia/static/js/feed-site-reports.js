@@ -3,13 +3,15 @@
     const DEADLINE_MS = 120000;
 
     function initFollowedSiteReports() {
-        const cards = [...document.querySelectorAll('[data-followed-site-report]')];
-        if (!cards.length) return;
+        const feed = document.querySelector('[data-feed-report]');
+        let cards = [...document.querySelectorAll('[data-followed-site-report]')];
+        if (!cards.length && !feed) return;
         let stopped = false;
         const controllers = new Set();
         const timers = new Map();
         const loading = new Map();
         let generation = 0;
+        let selectionTimer, selectionController;
 
         const delay = (milliseconds) => new Promise((resolve) => {
             const timer = window.setTimeout(() => { timers.delete(timer); resolve(); }, milliseconds);
@@ -133,7 +135,7 @@
             } catch (_error) {
                 if (stopped || loadGeneration !== generation) return;
                 finishLoading();
-                text.textContent = 'Today’s report is unavailable. Open the site for conditions and forecasts.';
+                text.textContent = card.dataset.reportUnavailable || 'Today’s report is unavailable. Open the site for conditions and forecasts.';
                 card.dataset.reportState = 'unavailable';
             } finally {
                 controller.abort();
@@ -143,17 +145,73 @@
             }
         }
 
-        cards.forEach((card) => {
-            loadCard(card, card.querySelector('[data-followed-swell]') ? loadConditions(card) : undefined);
-        });
+        function startCards() {
+            cards.forEach((card) => {
+                loadCard(card, card.querySelector('[data-followed-swell]') ? loadConditions(card) : undefined);
+            });
+        }
 
-        window.addEventListener('pagehide', () => {
-            stopped = true;
+        function cancelLoads() {
             generation++;
             controllers.forEach((controller) => controller.abort());
             loading.forEach(({finish, timeout}) => { finish(); window.clearTimeout(timeout); });
             timers.forEach((resolve, timer) => { window.clearTimeout(timer); resolve(); });
             timers.clear();
+        }
+
+        function scheduleSelection(retry = false) {
+            window.clearTimeout(selectionTimer);
+            if (!feed || stopped) return;
+            const milliseconds = retry ? 60000 : Math.max(1000, Number(feed.dataset.nextRefresh) * 1000 - Date.now() + 100);
+            selectionTimer = window.setTimeout(() => {
+                if (!document.hidden) refreshSelection();
+            }, milliseconds);
+        }
+
+        async function refreshSelection() {
+            if (!feed || stopped || selectionController) return;
+            const controller = new AbortController();
+            selectionController = controller;
+            const timeout = window.setTimeout(() => controller.abort(), 15000);
+            let retry = false;
+            try {
+                const {response, data} = await requestJson(feed.dataset.selectionUrl, 'GET', controller);
+                if (stopped || controller.signal.aborted) return;
+                if (!response.ok || typeof data.key !== 'string' || typeof data.html !== 'string'
+                    || !Number.isFinite(data.next_refresh)) throw new Error('Selection unavailable');
+                if (data.key !== feed.dataset.selectionKey) {
+                    const restoreFocus = feed.contains(document.activeElement);
+                    cancelLoads();
+                    feed.innerHTML = data.html;
+                    feed.hidden = !data.html.trim();
+                    feed.dataset.selectionKey = data.key;
+                    cards = [...feed.querySelectorAll('[data-followed-site-report]')];
+                    window.initStaticMaps?.(feed);
+                    startCards();
+                    if (restoreFocus) (cards[0] || document.querySelector('.brief-card summary'))?.focus({preventScroll: true});
+                }
+                feed.dataset.nextRefresh = data.next_refresh;
+            } catch (_error) {
+                // Preserve the visible preview and its native Reports link while offline.
+                retry = true;
+            } finally {
+                window.clearTimeout(timeout);
+                if (selectionController === controller) {
+                    selectionController = null;
+                    scheduleSelection(retry);
+                }
+            }
+        }
+
+        startCards();
+        scheduleSelection();
+
+        window.addEventListener('pagehide', () => {
+            stopped = true;
+            cancelLoads();
+            window.clearTimeout(selectionTimer);
+            selectionController?.abort();
+            selectionController = null;
         });
         window.addEventListener('pageshow', (event) => {
             if (!event.persisted) return;
@@ -164,7 +222,15 @@
                     ? loadConditions(card) : undefined;
                 if (needsReport) loadCard(card, conditionsReady);
             });
+            refreshSelection();
         });
+        document.addEventListener?.('visibilitychange', () => {
+            if (!document.hidden && feed) {
+                if (Date.now() >= Number(feed.dataset.nextRefresh) * 1000) refreshSelection();
+                else scheduleSelection();
+            }
+        });
+        window.addEventListener('online', () => { if (feed) refreshSelection(); });
     }
 
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initFollowedSiteReports);

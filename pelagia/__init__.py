@@ -40,6 +40,7 @@ from . import site_descriptions
 from . import seasons
 from . import marine
 from . import site_reports
+from . import feed_report
 from . import water_type
 from . import dive_import
 from .depth_profile import depth_profile_chart
@@ -269,6 +270,7 @@ def register_routes(app):
                AND NOT EXISTS (SELECT 1 FROM user_follows WHERE follower_id = ?)""",
             (session["user_id"],) * 3,
         ).fetchone()
+        report_selection = fetch_home_report(session["user_id"])
         return render_template(
             "home.html",
             dives=fetch_dives(scope="following", user_id=session["user_id"]),
@@ -276,7 +278,7 @@ def register_routes(app):
             stats=stats,
             user=current_user(),
             brief=dive_brief.load_brief(),
-            favorite_sites=fetch_report_sites(session["user_id"]),
+            report_selection=report_selection,
             show_welcome=request.endpoint == "welcome",
             founder=founder,
         )
@@ -285,6 +287,17 @@ def register_routes(app):
     @login_required
     def feed():
         return home()
+
+    @app.get("/api/feed/site-report")
+    @login_required
+    def api_feed_site_report():
+        selection = fetch_home_report(session["user_id"])
+        response = jsonify(
+            html=render_template("_feed_site_report.html", item=selection["site"]) if selection["site"] else "",
+            key=selection["key"], next_refresh=selection["next_refresh"],
+        )
+        response.headers["Cache-Control"] = "private, no-store"
+        return response
 
     @app.get("/reports")
     @login_required
@@ -1873,7 +1886,7 @@ def fetch_favorite_dive_sites(user_id):
 
 
 def fetch_report_sites(user_id):
-    """Use the same followed and deduplicated featured sites on Home and Reports."""
+    """List followed and deduplicated featured sites for the Reports page."""
     sites = fetch_favorite_dive_sites(user_id)
     featured = fetch_daily_featured_site()
     if featured:
@@ -1885,6 +1898,25 @@ def fetch_report_sites(user_id):
             featured["featured"] = True
             sites.append(featured)
     return sites
+
+
+def fetch_home_report(user_id):
+    sites = fetch_favorite_dive_sites(user_id)
+    site, local_date, next_midnight = feed_report.select_followed_site(sites)
+    if not sites:
+        site = fetch_daily_featured_site()
+        if site:
+            site["featured"] = True
+            site, local_date, next_midnight = feed_report.select_followed_site([site])
+    # Featured selection follows the existing application calendar. Unknown
+    # coordinates also get a daily recheck without substituting a featured site.
+    if not sites or next_midnight is None:
+        from datetime import datetime, time
+        calendar_midnight = datetime.combine(date.today() + timedelta(days=1), time.min).timestamp()
+        next_midnight = min(next_midnight, calendar_midnight) if next_midnight else calendar_midnight
+    key = f"{site['id']}:{local_date}" + (":featured" if site.get("featured") else "") if site else ""
+    return {"site": site, "key": key,
+            "next_refresh": next_midnight}
 
 
 def fetch_daily_featured_site():
