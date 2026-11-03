@@ -2,27 +2,28 @@
 {% from "_action_icons.html" import action_icon %}
 {% block title %}Reports - Pelagia{% endblock %}
 {% block content %}
+{% set has_followed_sites = favorite_sites|selectattr('followed_at')|list|length > 0 %}
 <section class="activity-layout">
     <div class="feed-main">
         <h1 class="reports-page-title">Daily reports</h1>
-            <section class="site-reports" aria-label="Site reports">
-                {% if favorite_sites %}
-                <div class="site-reports-list">
-                    {% for item in favorite_sites %}
-                        {% include "_favorite_site_card.html" %}
-                    {% endfor %}
-                </div>
-                {% else %}
-                <div class="site-reports-empty">
-                    <span class="site-reports-empty-icon" aria-hidden="true">{{ action_icon("compass") }}</span>
-                    <div><h3>Check the forecast</h3></div>
-                </div>
-                {% endif %}
-            </section>
-        <footer class="reports-page-footer">
+        {% if favorite_sites %}
+        <section class="site-reports" aria-label="Site reports">
+            <div class="site-reports-list">
+                {% for item in favorite_sites %}
+                    {% include "_favorite_site_card.html" %}
+                {% endfor %}
+            </div>
+        </section>
+        {% endif %}
+        {% if not has_followed_sites %}
+        <footer class="reports-page-footer{{ ' reports-page-empty' if not favorite_sites else '' }}">
+            {% if not favorite_sites %}
+            <span class="site-reports-empty-icon" aria-hidden="true">{{ action_icon("compass") }}</span>
+            {% endif %}
             <p>Follow dive sites to get daily reports in your feed.</p>
             <a class="primary-button compact" href="{{ url_for('explore.index') }}">Explore dive sites</a>
         </footer>
+        {% endif %}
     </div>
     {% include "_dive_summary.html" %}
 </section>

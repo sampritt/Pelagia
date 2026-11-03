@@ -6605,9 +6605,10 @@ img.is-media-loading {
 
 /* Site reports are a normal vertical feed with content-sized cards. */
 .reports-page-title { margin: 0; padding-inline: 2px; font-size: .9375rem; font-weight: 600; line-height: 1.5; color: var(--ink-soft); }
-.reports-page-footer { display: grid; justify-items: start; gap: 12px; padding: 6px 2px 0; }
-.reports-page-footer p { margin: 0; color: var(--muted-strong); font-size: .8125rem; line-height: 1.6; }
-.reports-page-footer .primary-button { min-height: 44px; }
+.reports-page-footer { display: grid; justify-items: center; gap: 14px; padding: 20px 16px 8px; text-align: center; }
+.reports-page-footer p { max-width: 42ch; margin: 0; color: var(--muted-strong); font-size: .8125rem; line-height: 1.6; }
+.reports-page-footer .primary-button { min-height: 44px; padding-inline: 18px; border-radius: 12px; box-shadow: var(--shadow-xs); }
+.reports-page-empty { gap: 18px; padding: 32px 20px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); box-shadow: var(--shadow-xs); }
 .site-reports-list { display: grid; gap: 16px; min-width: 0; }
 .site-reports-list > .site-report-card { grid-template-rows: auto; grid-row: auto; gap: 0; }
 

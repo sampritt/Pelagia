@@ -44,10 +44,9 @@ class DiveSiteFavoritesTest(unittest.TestCase):
 
     def test_empty_state_follow_toggle_and_reports(self):
         empty_home = self.client.get("/reports").get_data(as_text=True)
-        self.assertIn('<section class="site-reports" aria-label="Site reports">', empty_home)
+        self.assertIn('class="reports-page-footer reports-page-empty"', empty_home)
         self.assertNotIn('id="siteReportsTitle"', empty_home)
         self.assertNotIn('site-reports-meta', empty_home)
-        self.assertIn("Check the forecast", empty_home)
         self.assertIn("Follow dive sites to get daily reports in your feed.", empty_home)
         self.assertIn('href="/explore">Explore dive sites</a>', empty_home)
         self.assertNotIn("data-site-reports-track", empty_home)
@@ -102,8 +101,23 @@ class DiveSiteFavoritesTest(unittest.TestCase):
             {"favorited": False},
         )
         empty_home = self.client.get("/reports").get_data(as_text=True)
-        self.assertIn("Check the forecast", empty_home)
         self.assertIn("Follow dive sites to get daily reports in your feed.", empty_home)
+
+    def test_follow_prompt_depends_on_follows_including_when_the_only_report_is_featured(self):
+        featured = dict(id=1, name='Alert Rock', country_or_area='Alaska', latitude=54.1, longitude=-132.9)
+        with patch('pelagia.fetch_daily_featured_site', return_value=featured):
+            unfollowed = self.client.get('/reports').get_data(as_text=True)
+            self.assertIn('class="reports-page-footer"', unfollowed)
+            self.assertIn('Follow dive sites to get daily reports in your feed.', unfollowed)
+            self.assertEqual(unfollowed.count('>Explore dive sites</a>'), 1)
+            self.client.post('/api/dive-sites/1/favorite')
+            followed = self.client.get('/reports').get_data(as_text=True)
+            self.assertIn('FEATURED', followed)
+            self.assertNotIn('reports-page-footer', followed)
+            self.assertNotIn('Follow dive sites to get daily reports in your feed.', followed)
+            self.assertNotIn('>Explore dive sites</a>', followed)
+            self.client.post('/api/dive-sites/1/favorite')
+            self.assertIn('reports-page-footer', self.client.get('/reports').get_data(as_text=True))
 
     def test_daily_feature_requires_seven_sightings_and_ocean_and_is_not_duplicated(self):
         with self.app.app_context():

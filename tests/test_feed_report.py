@@ -67,13 +67,13 @@ class FeedReportPageTest(unittest.TestCase):
         self.client = self.app.test_client()
         self.signup(self.client)
 
-    def test_featured_fallback_has_both_matching_badges_and_links_to_reports(self):
+    def test_featured_fallback_keeps_only_the_featured_badge_and_links_to_reports(self):
         with patch('pelagia.fetch_daily_featured_site', return_value=site(1, 36.612, -121.902)):
             for path in ('/home', '/feed', '/welcome'):
                 html = self.client.get(path).get_data(as_text=True)
                 self.assertEqual(html.count('class="site-report-card feed-site-report"'), 1)
                 self.assertIn('class="site-report-card feed-site-report" href="/reports"', html)
-                self.assertIn('<span class="site-report-featured">DAILY REPORT</span>', html)
+                self.assertNotIn('DAILY REPORT', html)
                 self.assertIn('<span class="site-report-featured">FEATURED</span>', html)
 
     def test_follows_suppress_featured_and_api_returns_only_the_selected_preview(self):

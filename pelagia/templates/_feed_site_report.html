@@ -12,7 +12,7 @@
         {% if has_coords %}<span class="map-pin"></span>{% else %}{{ action_icon("compass") }}{% endif %}
     </div>
     <div class="site-report-identity">
-        <div class="site-report-name"><h3 id="followedSiteTitle{{ item.id }}" title="{{ item.name }}">{{ item.name }}</h3><span class="site-report-featured">DAILY REPORT</span>{% if item.featured %}<span class="site-report-featured">FEATURED</span>{% endif %}</div>
+        <div class="site-report-name"><h3 id="followedSiteTitle{{ item.id }}" title="{{ item.name }}">{{ item.name }}</h3>{% if item.featured %}<span class="site-report-featured">FEATURED</span>{% endif %}</div>
         <p title="{{ item.country_or_area or 'Location pending' }}">{{ item.country_or_area or 'Location pending' }}</p>
         <div class="followed-site-report" data-followed-report-body>
             <p class="followed-site-report-text" data-followed-report-text role="status" aria-live="polite" aria-atomic="true">Preparing today’s report…</p>
