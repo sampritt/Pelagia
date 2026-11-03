@@ -530,7 +530,7 @@ def register_routes(app):
             "SELECT login_email, google_email FROM users WHERE id = ?", (user["id"],)
         ).fetchone()
         return render_template(
-            "settings.html", user=user,
+            "settings.html", user=user, locations=explore.locations(),
             login_email=account["login_email"] or account["google_email"],
         )
 
@@ -1021,7 +1021,7 @@ def delete_account_data(user_id):
 def fetch_user(user_id):
     return (
         database.get_db()
-        .execute("""SELECT u.id, u.username, u.profile_photo, u.bio, u.starting_dive_count, u.certification_id, u.created_at,
+        .execute("""SELECT u.id, u.username, u.profile_photo, u.bio, u.display_name, u.home_location, u.starting_dive_count, u.certification_id, u.created_at,
                            u.pressure_unit, u.length_unit, u.temperature_unit, u.weight_unit,
                            c.name AS certification_name
                     FROM users u LEFT JOIN certifications c ON c.id = u.certification_id
@@ -1046,6 +1046,17 @@ def update_profile_settings(db, user_id, form):
         if not 0 <= count <= 9223372036854775807:
             abort(400, "Starting dive count must be a non-negative whole number within the supported range.")
         updates["starting_dive_count"] = count
+    if "display_name" in form:
+        name = form["display_name"].strip()
+        if len(name) > 120:
+            abort(400, "Name must be 120 characters or fewer.")
+        updates["display_name"] = name or None
+    if "home_location" in form:
+        location = form["home_location"].strip()
+        resolved = explore.resolve_location(location) if location else ""
+        if location and not resolved:
+            abort(400, "Choose a location from the suggestions.")
+        updates["home_location"] = resolved or None
     for field, value in updates.items():
         db.execute(f"UPDATE users SET {field} = ? WHERE id = ?", (value, user_id))
 
@@ -1863,14 +1874,22 @@ def fetch_favorite_dive_sites(user_id):
 
 
 def fetch_daily_featured_site():
-    """Choose one shared site per day from sites with seven visible species tags."""
+    """Choose a daily eligible site globally or within the user's region."""
     db = database.get_db()
     today = date.today().isoformat()
     columns = "ds.id, ds.name, ds.country_or_area, ds.latitude, ds.longitude"
+    user = current_user()
+    location = user["home_location"] if user else None
+    table = "daily_featured_sites_by_location" if location else "daily_featured_sites"
+    cache_filter = "featured.feature_date = ?" + (
+        " AND featured.location = ? COLLATE NOCASE AND trim(ds.country_or_area) = featured.location COLLATE NOCASE"
+        if location else ""
+    )
+    cache_params = (today, location) if location else (today,)
     saved = db.execute(
-        f"""SELECT {columns} FROM daily_featured_sites featured
+        f"""SELECT {columns} FROM {table} featured
             JOIN dive_sites ds ON ds.id = featured.dive_site_id
-            WHERE featured.feature_date = ?""", (today,)
+            WHERE {cache_filter}""", cache_params
     ).fetchone()
     if saved:
         return dict(saved)
@@ -1895,7 +1914,8 @@ def fetch_daily_featured_site():
           ON water.dive_site_id = ds.id
         WHERE ds.latitude IS NOT NULL AND ds.longitude IS NOT NULL
           AND (water.feature IS NULL OR water.feature = 'OCEAN')
-        ORDER BY random()"""
+          AND (? IS NULL OR trim(ds.country_or_area) = ? COLLATE NOCASE)
+        ORDER BY random()""", (location, location)
     ).fetchall()
     # Limit uncached upstream lookups per page load; unsuccessful lookups can be
     # retried later without locking in an unverified site for the day.
@@ -1911,13 +1931,23 @@ def fetch_daily_featured_site():
             except (water_type.ClassificationPending, water_type.ClassificationRetryable,
                     water_type.requests.RequestException, ValueError, TypeError, KeyError):
                 continue
-        db.execute("INSERT OR IGNORE INTO daily_featured_sites (feature_date, dive_site_id) VALUES (?, ?)",
-                   (today, row["id"]))
+        if location:
+            # Discard a cached site if its catalogue region has changed.
+            db.execute("""DELETE FROM daily_featured_sites_by_location
+                          WHERE feature_date = ? AND location = ? COLLATE NOCASE
+                            AND NOT EXISTS (SELECT 1 FROM dive_sites ds WHERE ds.id = dive_site_id
+                                            AND trim(ds.country_or_area) = location COLLATE NOCASE)""",
+                       (today, location))
+            db.execute("INSERT OR IGNORE INTO daily_featured_sites_by_location (feature_date, location, dive_site_id) VALUES (?, ?, ?)",
+                       (today, location, row["id"]))
+        else:
+            db.execute("INSERT OR IGNORE INTO daily_featured_sites (feature_date, dive_site_id) VALUES (?, ?)",
+                       (today, row["id"]))
         db.commit()
         saved = db.execute(
-            f"""SELECT {columns} FROM daily_featured_sites featured
+            f"""SELECT {columns} FROM {table} featured
                 JOIN dive_sites ds ON ds.id = featured.dive_site_id
-                WHERE featured.feature_date = ?""", (today,)
+                WHERE {cache_filter}""", cache_params
         ).fetchone()
         return dict(saved) if saved else None
     return None

@@ -13,6 +13,8 @@ CREATE TABLE IF NOT EXISTS users (
     google_email TEXT,
     profile_photo TEXT,
     bio TEXT,
+    display_name TEXT,
+    home_location TEXT,
     explore_location TEXT,
     explore_nearby_json TEXT,
     pressure_unit TEXT NOT NULL DEFAULT 'bar' CHECK (pressure_unit IN ('bar', 'psi')),
@@ -311,6 +313,13 @@ CREATE TABLE IF NOT EXISTS dive_site_water_classifications (
 CREATE TABLE IF NOT EXISTS daily_featured_sites (
     feature_date TEXT PRIMARY KEY,
     dive_site_id INTEGER NOT NULL REFERENCES dive_sites(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS daily_featured_sites_by_location (
+    feature_date TEXT NOT NULL,
+    location TEXT NOT NULL COLLATE NOCASE,
+    dive_site_id INTEGER NOT NULL REFERENCES dive_sites(id) ON DELETE CASCADE,
+    PRIMARY KEY (feature_date, location)
 );
 
 CREATE TABLE IF NOT EXISTS marine_forecast_cache (

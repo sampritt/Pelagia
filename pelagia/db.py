@@ -45,6 +45,8 @@ def init_db():
     if "password_hash" in {row["name"] for row in db.execute("PRAGMA table_info(users)")}:
         db.execute("ALTER TABLE users DROP COLUMN password_hash")
     _ensure_column(db, "users", "bio", "TEXT")
+    _ensure_column(db, "users", "display_name", "TEXT")
+    _ensure_column(db, "users", "home_location", "TEXT")
     _ensure_column(db, "users", "explore_location", "TEXT")
     _ensure_column(db, "users", "explore_nearby_json", "TEXT")
     for group, (metric, alternate) in UNIT_OPTIONS.items():

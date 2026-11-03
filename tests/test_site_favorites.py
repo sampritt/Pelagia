@@ -18,6 +18,30 @@ class DiveSiteFavoritesTest(unittest.TestCase):
         self.client = self.app.test_client()
         self.signup(self.client)
 
+    def test_featured_site_is_selected_and_cached_per_region(self):
+        with self.app.app_context():
+            db = database.get_db()
+            for site_id, region in ((1, 'Region A'), (2, 'Region B'), (3, 'Region C')):
+                db.execute('UPDATE dive_sites SET country_or_area = ? WHERE id = ?', (region, site_id))
+                if site_id == 3:
+                    continue
+                db.execute("INSERT INTO dives (user_id, dive_site_id, date, site_name) VALUES (1, ?, '2026-01-01', 'Test')", (site_id,))
+                dive_id = db.execute('SELECT last_insert_rowid()').fetchone()[0]
+                db.executemany('INSERT INTO dive_species (dive_id, common_name) VALUES (?, ?)', [(dive_id, f'Species {i}') for i in range(7)])
+                db.execute("INSERT INTO dive_site_water_classifications (dive_site_id, latitude, longitude, feature) SELECT id, latitude, longitude, 'OCEAN' FROM dive_sites WHERE id = ?", (site_id,))
+            db.commit()
+        for region, expected, excluded in (('Region A', 'Alert Rock', 'Kelp Garden'), ('Region B', 'Kelp Garden', 'Alert Rock')):
+            self.client.post('/you/settings', data={'home_location': region})
+            reports = self.client.get('/reports').get_data(as_text=True)
+            self.assertIn(expected, reports)
+            self.assertNotIn(excluded, reports)
+            self.assertIn('FEATURED', reports)
+        self.client.post('/you/settings', data={'home_location': 'Region C'})
+        self.assertNotIn('FEATURED', self.client.get('/reports').get_data(as_text=True))
+        with self.app.app_context():
+            rows = database.get_db().execute('SELECT location, dive_site_id FROM daily_featured_sites_by_location ORDER BY location').fetchall()
+            self.assertEqual([tuple(row) for row in rows], [('Region A', 1), ('Region B', 2)])
+
     def test_empty_state_follow_toggle_and_reports(self):
         empty_home = self.client.get("/reports").get_data(as_text=True)
         self.assertIn('<section class="site-reports" aria-label="Site reports">', empty_home)

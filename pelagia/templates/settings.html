@@ -12,6 +12,17 @@
             </div>
             <button class="primary-button compact" type="submit">Save</button>
         </header>
+        <section class="settings-card" aria-labelledby="profileNameTitle">
+            <h2 id="profileNameTitle"><label for="profileName">Name</label></h2>
+            <p class="settings-description" id="profileNameHelp">Your public name to be displayed on your profile.</p>
+            <input class="settings-text-input" id="profileName" name="display_name" type="text" autocomplete="name" maxlength="120" value="{{ user.display_name or '' }}" aria-describedby="profileNameHelp">
+        </section>
+        <section class="settings-card" aria-labelledby="profileLocationTitle">
+            <h2 id="profileLocationTitle"><label for="profileLocation">Location</label></h2>
+            <p class="settings-description" id="profileLocationHelp">The country or region where you spend the most time diving.</p>
+            <input class="settings-text-input" id="profileLocation" name="home_location" type="text" list="profileLocationOptions" value="{{ user.home_location or '' }}" aria-describedby="profileLocationHelp" autocomplete="off">
+            <datalist id="profileLocationOptions">{% for location in locations %}<option value="{{ location }}">{% endfor %}</datalist>
+        </section>
         <section class="settings-card" aria-labelledby="profileUnitsTitle">
             <h2 id="profileUnitsTitle">Units</h2>
             <p class="settings-description">Choose how your dive measurements appear.</p>

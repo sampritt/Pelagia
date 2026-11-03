@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% from "_action_icons.html" import action_icon %}
-{% block title %}{{ user.username }} - Pelagia{% endblock %}
+{% block title %}{{ user.display_name or user.username }} - Pelagia{% endblock %}
 
 {% block content %}
 <section class="profile-layout diver-profile">
@@ -22,7 +22,7 @@
         {% endif %}
         <div class="diver-identity-content">
             <p class="diver-eyebrow">Diver profile</p>
-            <h1>{{ user.username }}</h1>
+            <h1>{{ user.display_name or user.username }}</h1>
             <div class="diver-headline">
                 <span class="diver-dive-count"><strong>{{ total_dive_count }}</strong> {{ 'dive' if total_dive_count == 1 else 'dives' }}</span>
                 {% if user.certification_name %}

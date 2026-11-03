@@ -21,6 +21,29 @@ class ProfileTest(unittest.TestCase):
     make_app = fixtures.ReferenceAutocompleteTest.make_app
     signup = fixtures.ReferenceAutocompleteTest.signup
 
+    def test_optional_name_and_location_settings(self):
+        with tempfile.TemporaryDirectory() as directory:
+            app, _, _ = self.make_app(Path(directory))
+            owner, viewer = app.test_client(), app.test_client()
+            self.signup(owner, "owner")
+            self.signup(viewer, "viewer")
+            with app.app_context():
+                location = database.get_db().execute("SELECT country_or_area FROM dive_sites WHERE country_or_area IS NOT NULL LIMIT 1").fetchone()[0]
+            settings = owner.get("/you/settings").get_data(as_text=True)
+            self.assertLess(settings.index('id="profileNameTitle"'), settings.index('id="profileLocationTitle"'))
+            self.assertLess(settings.index('id="profileLocationTitle"'), settings.index('id="profileUnitsTitle"'))
+            self.assertIn(f'<option value="{location}">', settings)
+            self.assertEqual(owner.post('/you/settings', data={'display_name': '  Alex Diver  ', 'home_location': location.lower()}).status_code, 302)
+            for client, path in ((owner, '/you'), (viewer, '/users/1')):
+                self.assertIn('<h1>Alex Diver</h1>', client.get(path).get_data(as_text=True))
+            with app.app_context():
+                user = database.get_db().execute('SELECT display_name, home_location FROM users WHERE id = 1').fetchone()
+                self.assertEqual(tuple(user), ('Alex Diver', location))
+            self.assertEqual(owner.post('/you/settings', data={'display_name': 'Changed', 'home_location': 'Invalid region'}).status_code, 400)
+            self.assertIn('<h1>Alex Diver</h1>', owner.get('/you').get_data(as_text=True))
+            owner.post('/you/settings', data={'display_name': '', 'home_location': ''})
+            self.assertIn('<h1>owner</h1>', owner.get('/you').get_data(as_text=True))
+
     def test_starting_dive_count_updates_headline_and_metrics_and_is_owner_editable(self):
         with tempfile.TemporaryDirectory() as directory:
             app, _, _ = self.make_app(Path(directory))
