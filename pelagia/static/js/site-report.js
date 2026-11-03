@@ -86,7 +86,7 @@
             if (window.location.hash !== '#daily-report') return;
             host.open = true;
             load();
-            window.requestAnimationFrame(() => host.scrollIntoView({block: 'start'}));
+            window.requestAnimationFrame(() => host.scrollIntoView({block: 'start', behavior: 'instant'}));
         }
         window.addEventListener('hashchange', openLinkedReport);
         openLinkedReport();

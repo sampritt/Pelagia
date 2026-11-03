@@ -71,6 +71,7 @@ test('the feed deep link opens, loads and scrolls directly to the daily report',
     assert.equal(state.calls.length, 1);
     assert.equal(state.host.scrollCalls.length, 1);
     assert.equal(state.host.scrollCalls[0].block, 'start');
+    assert.equal(state.host.scrollCalls[0].behavior, 'instant');
     await flush();
     assert.equal(state.text.textContent, complete().report);
 });

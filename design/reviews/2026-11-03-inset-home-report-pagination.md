@@ -1,0 +1,11 @@
+# Inset Home report pagination — signed off
+
+This refinement supersedes the external pagination and Read more treatment in the earlier full Home report review. The card now ends with compact pagination inside its lower edge: 6 px circles, 24 px center spacing, Pelagia teal for the selected report, and subtle muted inactive dots. Each button retains a 24 × 24 px target and visible keyboard focus. A single report has no footer controls or reserved pagination space.
+
+Removed the Read more action and its unused arrow icon. The entire report card remains a native link to `/dive-sites/<id>#daily-report`, including its footer background. The inset buttons are separate sibling controls overlaid inside the card bounds, so they never become invalid nested controls or activate the report link. Full-width snapping, three-line report previews, stable loading space, and the 20 px gap before logged dives remain intact.
+
+The daily-report link expands the destination report and now jumps immediately to it instead of inheriting the page's smooth scrolling. Verified that the report heading lands visibly beneath the fixed header, including native touch taps on the site identity, conditions and report text.
+
+Reviewed rendered desktop and mobile screenshots at 320, 390, 768 and 1440 px. All 86 browser checks passed, covering fourteen viewport widths from 320 to 1440 px; zero, one, three and ten follows; 200% text; long names and condition labels; missing maps; loading and unavailable reports; absence of peeking and document overflow; dots fully inside the card and clear of report text; keyboard and touch navigation; live refresh; orientation changes; footer taps; independent dot activation; and expanded-report scroll positioning. No page JavaScript errors occurred. Screenshots, browser scripts and measurements are available locally in `output/inset-report-dots/`. Tests use deterministic local fixtures in Chromium and touch-mobile emulation.
+
+Validation: 37 focused Python tests and all 195 JavaScript tests passed. The daily-report deep-link test now verifies an immediate scroll. JavaScript syntax and patch whitespace checks passed. Existing unrelated local edits were excluded from this change.

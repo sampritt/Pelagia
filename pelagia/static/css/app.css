@@ -6641,10 +6641,13 @@ img.is-media-loading {
 /* Home shows one full-width report at a time, between the Brief and logged dives. */
 .feed-site-reports { gap: 0; }
 .feed-site-reports[hidden] { display: none; }
+.site-reports-deck { position: relative; min-width: 0; }
 .feed-site-report {
-    grid-template-rows: auto auto auto 1fr auto;
+    grid-template-rows: auto auto auto 1fr;
     scroll-snap-stop: always;
+    -webkit-tap-highlight-color: transparent;
 }
+.site-reports-deck.has-pagination .feed-site-report { padding-bottom: 52px; }
 .feed-site-report:focus-visible { outline-offset: -3px; }
 .feed-site-report .site-report-name { flex-wrap: wrap; gap: 4px 8px; }
 .feed-site-report .site-report-name h3 { flex: 0 1 auto; max-width: 100%; }
@@ -6652,31 +6655,28 @@ img.is-media-loading {
 .feed-site-report .followed-site-report-text { -webkit-line-clamp: 3; }
 .feed-site-report .component-skeleton { grid-template-rows: repeat(3, 1.6em); }
 .feed-site-report .skeleton-line:nth-child(n + 4) { display: none; }
-.site-report-read-more {
-    display: inline-flex;
-    align-items: center;
-    justify-self: start;
-    gap: 6px;
-    min-height: 44px;
-    margin-top: 4px;
-    color: var(--accent-deep);
-    font-size: .8125rem;
-    font-weight: 600;
+.site-reports-pagination {
+    position: absolute;
+    inset-inline: 16px;
+    bottom: 12px;
+    display: flex;
+    justify-content: center;
+    pointer-events: none;
 }
-.site-report-read-more .action-icon { width: 16px; height: 16px; }
-.site-reports-pagination { display: flex; flex-wrap: wrap; justify-content: center; padding-top: 2px; }
 .site-report-dot {
     display: grid;
     place-items: center;
-    width: 28px;
-    min-height: 44px;
+    width: 24px;
+    min-height: 24px;
     padding: 0;
     border: 0;
     border-radius: 8px;
     background: transparent;
     cursor: pointer;
+    pointer-events: auto;
+    -webkit-tap-highlight-color: transparent;
 }
-.site-report-dot span { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); opacity: .45; }
+.site-report-dot span { width: 6px; height: 6px; border-radius: 50%; background: var(--muted); opacity: .4; }
 .site-report-dot[aria-current="true"] span { background: var(--sea); opacity: 1; }
 
 /* Profile follows share the owner header’s primary action treatment. */

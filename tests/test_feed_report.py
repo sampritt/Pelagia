@@ -58,7 +58,7 @@ class FeedReportPageTest(unittest.TestCase):
                 self.assertIn('class="site-report-card feed-site-report" href="/dive-sites/1#daily-report"', html)
                 self.assertIn('data-followed-swell', html)
                 self.assertIn('data-followed-wind', html)
-                self.assertIn('Read more', html)
+                self.assertNotIn('site-report-read-more', html)
                 self.assertNotIn('data-report-dot=', html)
                 self.assertIn('<span class="site-report-featured">FEATURED</span>', html)
 

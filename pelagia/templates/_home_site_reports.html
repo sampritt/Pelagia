@@ -1,5 +1,6 @@
 {% from "_action_icons.html" import action_icon %}
 {% if report_selection.sites %}
+<div class="site-reports-deck{{ ' has-pagination' if report_selection.sites|length > 1 else '' }}">
 <div class="site-reports-track" id="homeSiteReports" data-site-reports-track
      {% if report_selection.sites|length > 1 %}tabindex="0" role="group" aria-roledescription="carousel" aria-label="Followed dive site reports" aria-describedby="siteReportsHelp"{% endif %}>
     {% for item in report_selection.sites %}
@@ -17,4 +18,5 @@
 </div>
 <p class="sr-only" data-report-position role="status" aria-live="polite" aria-atomic="true"></p>
 {% endif %}
+</div>
 {% endif %}

@@ -100,7 +100,7 @@ class DiveBriefTest(unittest.TestCase):
                 self.assertIn('site-reports-track', html)
                 self.assertIn('class="site-report-card feed-site-report" href="/dive-sites/1#daily-report"', html)
                 self.assertEqual(html.count('data-report-dot='), 2)
-                self.assertEqual(html.count('Read more'), 2)
+                self.assertNotIn('site-report-read-more', html)
 
     def test_no_edition_keeps_feed_working_and_deep_links_are_validated(self):
         self.write_edition(date(2026, 10, 21), "Yesterday's stale story.")
