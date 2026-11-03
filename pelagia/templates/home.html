@@ -22,11 +22,6 @@
             </section>
             {% endif %}
             <section class="site-reports" aria-label="Site reports">
-                {% if favorite_sites|selectattr('featured')|list %}
-                <div class="site-reports-header">
-                    <span class="site-report-featured" data-site-reports-featured{% if not favorite_sites[0].featured %} hidden{% endif %}><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0 10.2 5.8 16 8 10.2 10.2 8 16 5.8 10.2 0 8 5.8 5.8Z"/></svg>FEATURED</span>
-                </div>
-                {% endif %}
                 {% if favorite_sites %}
                 <div id="siteReportsTrack" class="site-reports-track" role="region" aria-label="Followed dive sites" tabindex="0" data-site-reports-track>
                     {% for item in favorite_sites %}

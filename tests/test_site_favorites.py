@@ -97,10 +97,9 @@ class DiveSiteFavoritesTest(unittest.TestCase):
         home = self.client.get("/home").get_data(as_text=True)
         reports = home.split('<section class="site-reports"', 1)[1].split("</section>", 1)[0]
         self.assertIn("FEATURED", reports)
-        self.assertIn('data-site-reports-featured', reports)
         card_markup = reports.split('<a class="site-report-card"', 1)[1]
         self.assertIn('data-featured-site-report', card_markup)
-        self.assertNotIn('FEATURED', card_markup)
+        self.assertIn('<span class="site-report-featured">FEATURED</span>', card_markup)
         self.assertIn("Alert Rock", reports)
         self.assertNotIn("Kelp Garden", reports)
         self.assertNotIn("Blue Wall", reports)
