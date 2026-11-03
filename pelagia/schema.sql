@@ -24,6 +24,16 @@ CREATE TABLE IF NOT EXISTS users (
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
+-- One directed relationship stores both following and follower lists.
+CREATE TABLE IF NOT EXISTS user_follows (
+    follower_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    followed_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (follower_id, followed_id),
+    CHECK (follower_id <> followed_id)
+);
+CREATE INDEX IF NOT EXISTS idx_user_follows_followed ON user_follows(followed_id, follower_id);
+
 CREATE TABLE IF NOT EXISTS dive_sites (
     id INTEGER PRIMARY KEY,
     master_site_id TEXT UNIQUE,

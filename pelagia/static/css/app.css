@@ -6602,3 +6602,9 @@ img.is-media-loading {
 
 .site-reports-list .followed-site-report-text { display: block; -webkit-line-clamp: unset; }
 .site-reports-list .site-report-card:not([data-report-state="loading"]) .followed-site-report { min-height: 0; }
+
+.user-follow-form { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-top: 14px; }
+.user-follow-form .user-follow-button { min-width: 112px; min-height: 44px; }
+.user-follow-button.is-following { background: var(--panel); color: var(--accent-deep); border: 1px solid var(--accent-line); box-shadow: none; }
+.user-follow-status { color: var(--muted-strong); font-size: .8125rem; }
+@media (max-width: 640px) { .user-follow-form { grid-column: 1 / -1; } }

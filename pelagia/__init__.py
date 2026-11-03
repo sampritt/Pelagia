@@ -264,7 +264,7 @@ def register_routes(app):
         stats = get_profile_stats(session["user_id"])
         return render_template(
             "home.html",
-            dives=fetch_dives(scope="all", user_id=session["user_id"]),
+            dives=fetch_dives(scope="following", user_id=session["user_id"]),
             latest_my_dive=latest_my_dives[0] if latest_my_dives else None,
             stats=stats,
             user=current_user(),
@@ -560,6 +560,29 @@ def register_routes(app):
         if user is None:
             abort(404)
         return render_user_profile(user, is_owner=user["id"] == session.get("user_id"))
+
+    @app.post("/users/<int:user_id>/follow")
+    @login_required
+    def follow_user(user_id):
+        google_auth.check_csrf()
+        if user_id == session["user_id"]:
+            abort(400, "You cannot follow yourself.")
+        if fetch_user(user_id) is None:
+            abort(404)
+        following = request.form.get("following")
+        if following not in ("true", "false"):
+            abort(400, "Choose whether to follow this diver.")
+        db = database.get_db()
+        with db:
+            if following == "true":
+                db.execute("INSERT OR IGNORE INTO user_follows (follower_id, followed_id) VALUES (?, ?)",
+                           (session["user_id"], user_id))
+            else:
+                db.execute("DELETE FROM user_follows WHERE follower_id = ? AND followed_id = ?",
+                           (session["user_id"], user_id))
+        if request.headers.get("X-Requested-With") == "fetch":
+            return jsonify(following=following == "true")
+        return redirect(url_for("user_profile", user_id=user_id))
 
     @app.route("/api/certifications", methods=("GET",))
     @login_required
@@ -1052,6 +1075,10 @@ def render_user_profile(user, is_owner):
             )
         ],
         is_owner=is_owner,
+        following=database.get_db().execute(
+            "SELECT 1 FROM user_follows WHERE follower_id = ? AND followed_id = ?",
+            (session["user_id"], user["id"]),
+        ).fetchone() is not None,
     )
 
 
@@ -1535,6 +1562,10 @@ def fetch_dives(scope, user_id, limit=80, center_id=None, site_id=None, viewer_u
     if scope == "mine":
         clauses.append("d.user_id = ?")
         params.append(user_id)
+    elif scope == "following":
+        clauses.append("(d.user_id = ? OR EXISTS (SELECT 1 FROM user_follows f "
+                       "WHERE f.follower_id = ? AND f.followed_id = d.user_id))")
+        params.extend((user_id, user_id))
     elif scope == "center":
         clauses.append("d.dive_center_id = ?")
         params.append(center_id)
@@ -1542,7 +1573,7 @@ def fetch_dives(scope, user_id, limit=80, center_id=None, site_id=None, viewer_u
         clauses.append("d.dive_site_id = ?")
         params.append(site_id)
     order_by = "d.date DESC, d.created_at DESC"
-    if scope == "all":
+    if scope in ("all", "following"):
         # Recent uploads surface backdated dives for a rolling seven days.
         # Keep the usual chronology as the fallback and tie breaker.
         order_by = """CASE
