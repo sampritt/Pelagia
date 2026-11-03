@@ -20,8 +20,8 @@ class DiveSiteFavoritesTest(unittest.TestCase):
 
     def test_empty_state_follow_toggle_and_home_site_reports(self):
         empty_home = self.client.get("/home").get_data(as_text=True)
-        self.assertIn('aria-labelledby="siteReportsTitle"', empty_home)
-        self.assertIn('<h2 id="siteReportsTitle" class="site-reports-heading">Site reports</h2>', empty_home)
+        self.assertIn('<section class="site-reports" aria-label="Site reports">', empty_home)
+        self.assertNotIn('id="siteReportsTitle"', empty_home)
         self.assertNotIn('site-reports-meta', empty_home)
         self.assertIn("Check the forecast", empty_home)
         self.assertIn("Follow dive sites to get daily reports on Home.", empty_home)

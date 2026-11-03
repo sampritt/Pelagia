@@ -6000,6 +6000,7 @@ img.is-media-loading {
 }
 
 /* Followed-site reports: compact outlooks with native horizontal browsing. */
+.home-feed-list { gap: 8px; }
 .site-reports {
     container-type: inline-size;
     display: grid;

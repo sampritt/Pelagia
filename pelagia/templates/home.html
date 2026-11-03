@@ -14,20 +14,19 @@
 <h1 class="sr-only">Home</h1>
 <section class="activity-layout">
     <div class="feed-main">
-        <div class="feed-list">
+        <div class="feed-list home-feed-list">
             {% if brief %}
             <section class="daily-update" aria-labelledby="dailyUpdateTitle">
-                <h2 id="dailyUpdateTitle" class="site-reports-heading"><span data-daily-greeting></span>Here’s your daily update.</h2>
+                <h2 id="dailyUpdateTitle" class="site-reports-heading">Good <span data-daily-greeting>morning</span>, {{ user.username }}! Here’s your daily update.</h2>
                 {% include "_dive_brief_card.html" %}
             </section>
             {% endif %}
-            <section class="site-reports" aria-labelledby="siteReportsTitle">
+            <section class="site-reports" aria-label="Site reports">
+                {% if favorite_sites|selectattr('featured')|list %}
                 <div class="site-reports-header">
-                    <h2 id="siteReportsTitle" class="site-reports-heading">Site reports</h2>
-                    {% if favorite_sites|selectattr('featured')|list %}
                     <span class="site-report-featured" data-site-reports-featured{% if not favorite_sites[0].featured %} hidden{% endif %}><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0 10.2 5.8 16 8 10.2 10.2 8 16 5.8 10.2 0 8 5.8 5.8Z"/></svg>FEATURED</span>
-                    {% endif %}
                 </div>
+                {% endif %}
                 {% if favorite_sites %}
                 <div id="siteReportsTrack" class="site-reports-track" role="region" aria-label="Followed dive sites" tabindex="0" data-site-reports-track>
                     {% for item in favorite_sites %}

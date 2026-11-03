@@ -8,7 +8,7 @@
             if (!greeting) return;
             const hour = new Date().getHours();
             const period = hour < 12 ? 'morning' : hour < 18 ? 'afternoon' : 'evening';
-            greeting.textContent = `Good ${period}! `;
+            greeting.textContent = period;
         }
         updateGreeting();
         window.addEventListener('pageshow', updateGreeting);
