@@ -6603,10 +6603,11 @@ img.is-media-loading {
 .site-reports-list .followed-site-report-text { display: block; -webkit-line-clamp: unset; }
 .site-reports-list .site-report-card:not([data-report-state="loading"]) .followed-site-report { min-height: 0; }
 
-/* Diver follows use the same quiet action chip as dive-site follows. */
-.user-follow-form { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-top: 8px; }
-.user-follow-button { width: max-content; box-shadow: none; }
-.user-follow-status { flex-basis: 100%; color: var(--muted-strong); font-size: .8125rem; }
+/* Profile follows share the owner header’s primary action treatment. */
+.user-follow-form { display: grid; gap: 8px; margin-top: 12px; }
+.user-follow-form .user-follow-button { width: 100%; min-height: 40px; }
+.user-follow-button.following .action-icon { fill: currentColor; }
+.user-follow-status { color: var(--muted-strong); font-size: .8125rem; }
 .user-follow-status:empty { display: none; }
 .diver-identity .certification-tag { color: var(--muted-strong); border-color: var(--line); background: #f4f7f9; font-weight: 600; }
 @media (max-width: 640px) { .user-follow-form { grid-column: 1 / -1; } }

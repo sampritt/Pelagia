@@ -7,3 +7,9 @@ Certification tags use a neutral surface and quieter weight so metadata does not
 Visually reviewed local fixtures on desktop (1440px) and mobile (390px, plus the long certification at 320px): bio + certification, neither, long bio only, and long certification only. Checked the real dive-site Follow control as a comparison. Confirmed no horizontal overflow at the narrow breakpoint, clean wrapping, and silent follow/unfollow with the star retained. Screenshots: output/follow-style-review/.
 
 Validation: 17 user-follow/profile tests and seven PWA tests passed; JavaScript syntax and patch checks passed.
+
+## Updated direction
+
+Follow now uses the personal profile's Log dive primary-button/compact styling. It spans the available identity-content width on desktop and the full header content width on mobile. The bio appears above the button, making Follow the final action in the introduction. Success messages remain removed and certification stays neutral.
+
+Rechecked Follow/Following at 1440 and 390px, plus a profile without bio or certification at 320px. No overflow. All 17 follow/profile tests pass. Latest screenshots: output/follow-wide-review/.
