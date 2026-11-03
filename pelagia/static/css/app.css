@@ -6202,7 +6202,7 @@ img.is-media-loading {
     .site-report-card:hover { border-color: var(--accent-line); }
     .site-report-card:hover h3 { color: var(--accent-deep); }
 }
-.site-reports :is(a, button):active { background-color: var(--accent-soft); }
+.site-reports button:active { background-color: var(--accent-soft); }
 
 .site-reports-empty { display: grid; grid-template-columns: 44px minmax(0, 1fr); align-items: start; gap: 16px; padding: 22px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); }
 .site-reports-empty-icon { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 12px; color: #007e88; background: #edf6f5; }
