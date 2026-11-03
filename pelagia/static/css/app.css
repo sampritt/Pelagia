@@ -6000,7 +6000,7 @@ img.is-media-loading {
 }
 
 /* Followed-site reports: compact outlooks with native horizontal browsing. */
-.home-feed-list { gap: 6px; }
+.home-feed-list { gap: 20px; }
 .site-reports {
     container-type: inline-size;
     display: grid;
@@ -6595,3 +6595,10 @@ img.is-media-loading {
 .depth-axis-end { right: calc(100% - 40px); bottom: 29px; }
 .time-axis-start { left: 52px; bottom: 12px; }
 .time-axis-end { right: 16px; bottom: 12px; }
+
+/* Site reports are a normal vertical feed with content-sized cards. */
+.site-reports-list { display: grid; gap: 16px; min-width: 0; }
+.site-reports-list > .site-report-card { grid-template-rows: auto; grid-row: auto; gap: 0; }
+
+.site-reports-list .followed-site-report-text { display: block; -webkit-line-clamp: unset; }
+.site-reports-list .site-report-card:not([data-report-state="loading"]) .followed-site-report { min-height: 0; }

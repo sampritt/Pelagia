@@ -1,11 +1,5 @@
-{% extends "base.html" %}
-{% block title %}Feed - Pelagia{% endblock %}
-
-{% block content %}
-<section class="activity-layout">
-    <div class="feed-main">
         <section class="dive-logs" aria-labelledby="feedTitle">
-            <h1 id="feedTitle" class="sr-only">Feed</h1>
+            <h2 id="feedTitle" class="sr-only">Logged dives</h2>
             <div class="dive-logs-list">
                 {% if dives %}
                     {% for dive in dives %}
@@ -20,7 +14,3 @@
                 {% endif %}
             </div>
         </section>
-    </div>
-    {% include "_dive_summary.html" %}
-</section>
-{% endblock %}

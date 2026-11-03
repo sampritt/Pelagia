@@ -50,11 +50,12 @@ class DiveBriefTest(unittest.TestCase):
         path = self.write_edition(date(2026, 9, 4))
         path.write_bytes(SAMPLE.read_bytes())
         html = self.client.get("/home").get_data(as_text=True)
-        self.assertLess(html.index('class="brief-card"'), html.index('<section class="site-reports"'))
+        self.assertLess(html.index('class="brief-card"'), html.index('<section class="dive-logs"'))
         self.assertIn("Friday, September 4, 2026", html)
         card = html.split('<article class="brief-card"', 1)[1].split("</article>", 1)[0]
         self.assertIn('class="brief-card-disclosure" data-brief-disclosure open>', card)
-        self.assertIn('Good <span data-daily-greeting>morning</span>, tester! Here’s your daily update.', html)
+        self.assertNotIn('data-daily-greeting', html)
+        self.assertNotIn('data-followed-site-report', html)
         self.assertIn("Florida scientists breed 61,000 coral larvae", card)
         self.assertIn('href="/brief/2026-09-04"', card)
         self.assertNotIn("Scientists working in the Florida Keys", card)
@@ -85,8 +86,9 @@ class DiveBriefTest(unittest.TestCase):
         self.app.config["DIVE_BRIEF_SAMPLE_PATH"] = str(SAMPLE)
         html = self.client.get("/home").data
         self.assertNotIn(b'class="brief-card"', html)
-        self.assertIn(b'aria-label="Site reports"', html)
-        self.assertNotIn(b"No dives yet", html)
+        self.assertIn(b'aria-labelledby="feedTitle"', html)
+        self.assertNotIn(b'data-followed-site-report', html)
+        self.assertIn(b"No dives yet", html)
         for edition in ("2026-09-04", "bad-date", "2026-02-30", "20261021", ".."):
             self.assertEqual(self.client.get(f"/brief/{edition}").status_code, 404)
         self.assertEqual(self.app.test_client().get("/brief/2026-09-04").status_code, 302)

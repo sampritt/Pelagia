@@ -18,13 +18,13 @@ class DiveSiteFavoritesTest(unittest.TestCase):
         self.client = self.app.test_client()
         self.signup(self.client)
 
-    def test_empty_state_follow_toggle_and_home_site_reports(self):
-        empty_home = self.client.get("/home").get_data(as_text=True)
+    def test_empty_state_follow_toggle_and_reports(self):
+        empty_home = self.client.get("/reports").get_data(as_text=True)
         self.assertIn('<section class="site-reports" aria-label="Site reports">', empty_home)
         self.assertNotIn('id="siteReportsTitle"', empty_home)
         self.assertNotIn('site-reports-meta', empty_home)
         self.assertIn("Check the forecast", empty_home)
-        self.assertIn("Follow dive sites to get daily reports on Home.", empty_home)
+        self.assertIn("Follow dive sites to get daily reports here.", empty_home)
         self.assertIn('href="/explore">Explore dive sites</a>', empty_home)
         self.assertNotIn("data-site-reports-track", empty_home)
         self.assertNotIn("No dives yet", empty_home)
@@ -45,10 +45,10 @@ class DiveSiteFavoritesTest(unittest.TestCase):
         self.assertIn('aria-pressed="true"', followed_profile)
         self.assertIn("Following", followed_profile)
 
-        home = self.client.get("/home").get_data(as_text=True)
+        home = self.client.get("/reports").get_data(as_text=True)
         reports = home.split('<section class="site-reports"', 1)[1].split("</section>", 1)[0]
         self.assertIn("Alert Rock", reports)
-        self.assertIn('class="site-reports-track"', reports)
+        self.assertIn('class="site-reports-list"', reports)
         self.assertIn('class="site-report-card"', reports)
         self.assertIn('aria-labelledby="followedSiteTitle1"', reports)
         self.assertIn('data-followed-site-report', reports)
@@ -60,7 +60,7 @@ class DiveSiteFavoritesTest(unittest.TestCase):
         self.assertNotIn('site-report-view', reports)
         self.assertNotIn('Read more', reports)
         self.assertNotIn('data-site-reports-navigation', reports)
-        self.assertIn('aria-label="Followed dive sites" tabindex="0"', reports)
+        self.assertNotIn("data-site-reports-track", reports)
         self.assertNotIn("species-row", reports)
         self.assertNotIn("Explore dive site", reports)
         self.assertNotIn("logged dive", reports)
@@ -77,9 +77,9 @@ class DiveSiteFavoritesTest(unittest.TestCase):
             self.client.post("/api/dive-sites/1/favorite").get_json(),
             {"favorited": False},
         )
-        empty_home = self.client.get("/home").get_data(as_text=True)
+        empty_home = self.client.get("/reports").get_data(as_text=True)
         self.assertIn("Check the forecast", empty_home)
-        self.assertIn("Follow dive sites to get daily reports on Home.", empty_home)
+        self.assertIn("Follow dive sites to get daily reports here.", empty_home)
 
     def test_daily_feature_requires_seven_sightings_and_ocean_and_is_not_duplicated(self):
         with self.app.app_context():
@@ -94,7 +94,7 @@ class DiveSiteFavoritesTest(unittest.TestCase):
                     SELECT id, latitude, longitude, ? FROM dive_sites WHERE id = ?""", (feature, site_id))
             db.commit()
 
-        home = self.client.get("/home").get_data(as_text=True)
+        home = self.client.get("/reports").get_data(as_text=True)
         reports = home.split('<section class="site-reports"', 1)[1].split("</section>", 1)[0]
         self.assertIn("FEATURED", reports)
         card_markup = reports.split('<a class="site-report-card"', 1)[1]
@@ -105,7 +105,7 @@ class DiveSiteFavoritesTest(unittest.TestCase):
         self.assertNotIn("Blue Wall", reports)
         self.assertEqual(reports.count('data-followed-site-report'), 1)
         self.client.post("/api/dive-sites/1/favorite")
-        followed = self.client.get("/home").get_data(as_text=True)
+        followed = self.client.get("/reports").get_data(as_text=True)
         reports = followed.split('<section class="site-reports"', 1)[1].split("</section>", 1)[0]
         self.assertEqual(reports.count('data-followed-site-report'), 1)
         self.assertEqual(reports.count("FEATURED"), 1)
@@ -121,8 +121,8 @@ class DiveSiteFavoritesTest(unittest.TestCase):
                            [(dive_id, f"Species {i}") for i in range(7)])
             db.commit()
         with patch("pelagia.water_type.classify_site", return_value={"feature": "OCEAN"}) as classify:
-            self.assertIn("FEATURED", self.client.get("/home").get_data(as_text=True))
-            self.assertIn("FEATURED", self.client.get("/home").get_data(as_text=True))
+            self.assertIn("FEATURED", self.client.get("/reports").get_data(as_text=True))
+            self.assertIn("FEATURED", self.client.get("/reports").get_data(as_text=True))
             self.assertEqual(classify.call_count, 1)
 
     def test_ten_site_limit_does_not_block_unfollow(self):
@@ -151,7 +151,7 @@ class DiveSiteFavoritesTest(unittest.TestCase):
             self.client.post("/api/dive-sites/11/favorite").get_json(),
             {"favorited": True},
         )
-        home = self.client.get("/home").get_data(as_text=True)
+        home = self.client.get("/reports").get_data(as_text=True)
         reports = home.split('<section class="site-reports"', 1)[1].split("</section>", 1)[0]
         self.assertNotIn("<time", reports)
         self.assertNotIn("10/10 followed", home)
@@ -181,6 +181,25 @@ class DiveSiteFavoritesTest(unittest.TestCase):
             self.assertIsNone(
                 db.execute("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'dive_site_likes'").fetchone()
             )
+
+    def test_home_contains_logged_dives_and_reports_has_its_own_navigation(self):
+        self.client.post('/api/dive-sites/1/favorite')
+        self.client.post('/dive/new', data={'date': '2026-11-02', 'site_name': 'Alert Rock',
+                                          'dive_site_id': '1', 'depth_m': '20', 'duration_min': '45'})
+        for path in ('/home', '/feed'):
+            home = self.client.get(path).get_data(as_text=True)
+            self.assertIn('data-dive-card', home)
+            self.assertNotIn('data-followed-site-report', home)
+            self.assertNotIn('data-daily-greeting', home)
+            self.assertIn('class="active" href="/home"', home)
+        reports = self.client.get('/reports').get_data(as_text=True)
+        self.assertIn('data-followed-site-report', reports)
+        self.assertNotIn('data-dive-card', reports)
+        self.assertNotIn('class="brief-card"', reports)
+        self.assertIn('class="site-reports-list"', reports)
+        self.assertIn('class="active" href="/reports" aria-current="page"', reports)
+        self.assertIn('<span>Reports</span>', reports)
+        self.assertNotIn('<span>Feed</span>', reports)
 
 
 if __name__ == "__main__":

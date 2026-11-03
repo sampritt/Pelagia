@@ -3,18 +3,8 @@
     const DEADLINE_MS = 120000;
 
     function initFollowedSiteReports() {
-        const greeting = document.querySelector('[data-daily-greeting]');
-        function updateGreeting() {
-            if (!greeting) return;
-            const hour = new Date().getHours();
-            const period = hour < 12 ? 'morning' : hour < 18 ? 'afternoon' : 'evening';
-            greeting.textContent = period;
-        }
-        updateGreeting();
-        window.addEventListener('pageshow', updateGreeting);
         const cards = [...document.querySelectorAll('[data-followed-site-report]')];
         if (!cards.length) return;
-        const track = document.querySelector('[data-site-reports-track]');
         let stopped = false;
         const controllers = new Set();
         const timers = new Map();
@@ -157,17 +147,6 @@
             loadCard(card, loadConditions(card));
         });
 
-        track?.addEventListener('keydown', (event) => {
-            if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
-            event.preventDefault();
-            if (event.key === 'Home' || event.key === 'End') {
-                track.scrollTo({left: event.key === 'Home' ? 0 : track.scrollWidth});
-                return;
-            }
-            const distance = cards[0].getBoundingClientRect().width + 12;
-            track.scrollBy({left: event.key === 'ArrowLeft' ? -distance : distance});
-        });
-
         window.addEventListener('pagehide', () => {
             stopped = true;
             generation++;
@@ -177,7 +156,6 @@
             timers.clear();
         });
         window.addEventListener('pageshow', (event) => {
-            updateFeaturedLabel();
             if (!event.persisted) return;
             stopped = false;
             cards.forEach((card) => {
