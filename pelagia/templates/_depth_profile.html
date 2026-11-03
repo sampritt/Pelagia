@@ -1,23 +1,21 @@
 <figure class="detail-photo-slide depth-profile-slide" role="group" aria-label="Dive depth profile">
-    <svg class="depth-profile-chart" role="img" aria-labelledby="depthProfileTitle-{{ dive.id }} depthProfileDescription-{{ dive.id }}">
-        <title id="depthProfileTitle-{{ dive.id }}">Depth over time</title>
-        <desc id="depthProfileDescription-{{ dive.id }}">Dive depth increases downward. Maximum recorded depth {{ display_metric(depth_chart.max_depth_m, 'length') }} over {{ '%.0f'|format(depth_chart.duration_minutes) }} minutes.</desc>
-        <defs>
-            <linearGradient id="depthProfileFill-{{ dive.id }}" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stop-color="var(--sea)" stop-opacity=".08" />
-                <stop offset="100%" stop-color="var(--accent)" stop-opacity=".38" />
-            </linearGradient>
-        </defs>
-        <svg x="15%" y="14%" width="79%" height="68%" viewBox="44 28 716 222" preserveAspectRatio="none" overflow="visible">
+    <div class="depth-profile-chart" role="img" aria-labelledby="depthProfileTitle-{{ dive.id }} depthProfileDescription-{{ dive.id }}">
+        <span class="sr-only" id="depthProfileTitle-{{ dive.id }}">Depth over time</span>
+        <span class="sr-only" id="depthProfileDescription-{{ dive.id }}">Dive depth increases downward. Maximum recorded depth {{ display_metric(depth_chart.max_depth_m, 'length') }} over {{ '%.0f'|format(depth_chart.duration_minutes) }} minutes.</span>
+        <svg class="depth-profile-plot" viewBox="44 28 716 222" preserveAspectRatio="none" aria-hidden="true">
+            <defs>
+                <linearGradient id="depthProfileFill-{{ dive.id }}" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stop-color="var(--sea)" stop-opacity=".08" />
+                    <stop offset="100%" stop-color="var(--accent)" stop-opacity=".38" />
+                </linearGradient>
+            </defs>
             <path class="depth-profile-grid" d="M44 28H760 M44 139H760 M44 250H760" />
             <path d="{{ depth_chart.fill }}" fill="url(#depthProfileFill-{{ dive.id }})" />
             <path class="depth-profile-line" d="{{ depth_chart.line }}" />
         </svg>
-        <g class="depth-profile-axis">
-            <text x="12%" y="14%" dy="4" text-anchor="end">0</text>
-            <text x="12%" y="82%" dy="4" text-anchor="end">{{ display_metric(depth_chart.max_depth_m, 'length') }}</text>
-            <text x="15%" y="93%">0 min</text>
-            <text x="94%" y="93%" text-anchor="end">{{ '%.0f'|format(depth_chart.duration_minutes) }} min</text>
-        </g>
-    </svg>
+        <span class="depth-profile-axis depth-axis-start" aria-hidden="true">0 {{ display_unit('length') }}</span>
+        <span class="depth-profile-axis depth-axis-end" aria-hidden="true">{{ display_metric(depth_chart.max_depth_m, 'length') }}</span>
+        <span class="depth-profile-axis time-axis-start" aria-hidden="true">0 min</span>
+        <span class="depth-profile-axis time-axis-end" aria-hidden="true">{{ '%.0f'|format(depth_chart.duration_minutes) }} min</span>
+    </div>
 </figure>

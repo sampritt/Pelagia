@@ -130,8 +130,14 @@ function renderMiniTileMap(map) {
     }
 }
 
+const observedStaticMaps = new WeakSet();
 function initStaticMaps(root = document) {
-    root.querySelectorAll("[data-static-map]").forEach(renderMiniTileMap);
+    root.querySelectorAll("[data-static-map]").forEach((map) => {
+        renderMiniTileMap(map);
+        if (typeof ResizeObserver === "undefined" || observedStaticMaps.has(map)) return;
+        observedStaticMaps.add(map);
+        new ResizeObserver(() => renderMiniTileMap(map)).observe(map);
+    });
 }
 
 const debounce = (fn, wait = 180) => {

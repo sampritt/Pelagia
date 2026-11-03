@@ -1910,7 +1910,7 @@ input[type="range"] {
     scroll-snap-align: start;
 }
 
-.detail-photo-slide img {
+.detail-photo-slide > img {
     display: block;
     width: 100%;
     height: 100%;
@@ -6378,7 +6378,7 @@ img.is-media-loading {
     .explore-card { transition: none; }
 }
 
-/* The depth profile and photos share one swipeable frame below the map. */
+/* Detail galleries and feed media use a single row of visuals. */
 .dive-detail-media { grid-template-columns: minmax(0, 1fr); }
 .activity-media { grid-template-columns: minmax(0, 1fr); }
 .activity-media .detail-media-gallery .detail-photo-carousel { height: 240px; min-height: 240px; max-height: 240px; }
@@ -6576,13 +6576,22 @@ img.is-media-loading {
     .dive-detail-title .site-destination-link { transition: none; }
 }
 
-/* Feed visuals share a single, native horizontal scrolling surface. */
+/* A glimpse of the next artifact makes native scrolling discoverable. */
 .activity-media .detail-photo-carousel {
-    gap: 0;
+    grid-auto-columns: calc(100% - 28px);
+    gap: 10px;
     scrollbar-width: none;
     overscroll-behavior-inline: contain;
     -webkit-overflow-scrolling: touch;
 }
+.activity-media .detail-photo-carousel:has(> :only-child) { grid-auto-columns: 100%; }
 .activity-media .detail-photo-carousel::-webkit-scrollbar { display: none; }
 .activity-media .detail-photo-slide { scroll-snap-stop: always; }
 .activity-media .mini-map { height: 100%; min-height: 0; max-height: none; }
+.depth-profile-chart { position: relative; padding: 0; }
+.depth-profile-plot { position: absolute; left: 52px; top: 20px; width: calc(100% - 68px); height: calc(100% - 54px); overflow: visible; }
+.depth-profile-chart > .depth-profile-axis { position: absolute; line-height: 1; color: var(--muted); font-variant-numeric: tabular-nums; }
+.depth-axis-start { right: calc(100% - 40px); top: 15px; }
+.depth-axis-end { right: calc(100% - 40px); bottom: 29px; }
+.time-axis-start { left: 52px; bottom: 12px; }
+.time-axis-end { right: 16px; bottom: 12px; }
