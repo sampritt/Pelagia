@@ -30,9 +30,14 @@ class ProfileTest(unittest.TestCase):
             with app.app_context():
                 location = database.get_db().execute("SELECT country_or_area FROM dive_sites WHERE country_or_area IS NOT NULL LIMIT 1").fetchone()[0]
             settings = owner.get("/you/settings").get_data(as_text=True)
-            self.assertLess(settings.index('id="profileNameTitle"'), settings.index('id="profileLocationTitle"'))
-            self.assertLess(settings.index('id="profileLocationTitle"'), settings.index('id="profileUnitsTitle"'))
-            self.assertIn(f'<option value="{location}">', settings)
+            profile = settings.split('aria-labelledby="settingsProfileTitle"', 1)[1].split('</section>', 1)[0]
+            for field in ('display_name', 'home_location', 'starting_dive_count'):
+                self.assertIn(f'name="{field}"', profile)
+            self.assertIn('data-profile-location-options', profile)
+            self.assertIn(location, profile)
+            self.assertNotIn('<datalist', settings)
+            self.assertNotIn('id="profileNameTitle"', settings)
+            self.assertNotIn('id="profileLocationTitle"', settings)
             self.assertEqual(owner.post('/you/settings', data={'display_name': '  Alex Diver  ', 'home_location': location.lower()}).status_code, 302)
             for client, path in ((owner, '/you'), (viewer, '/users/1')):
                 self.assertIn('<h1>Alex Diver</h1>', client.get(path).get_data(as_text=True))

@@ -5869,7 +5869,13 @@ img.is-media-loading {
 .settings-unit-list { display: grid; }
 .settings-unit-list .profile-unit-row { min-height: 60px; padding-block: 12px; border-bottom: 1px solid var(--line); }
 .settings-unit-list .profile-unit-row:last-child { border-bottom: 0; padding-bottom: 0; }
-.settings-text-input { width: 100%; max-width: 420px; }
+.settings-profile-fields { display: grid; gap: 28px; margin-top: 24px; }
+.settings-profile-field > label { font-size: 0.85rem; font-weight: 700; }
+.settings-profile-field .settings-description { margin: 6px 0 12px; }
+.settings-text-input, .settings-location { width: 100%; max-width: 420px; }
+.settings-location input { width: 100%; }
+.settings-location .autocomplete-menu { scroll-margin-block: 84px 100px; }
+.settings-location .autocomplete-menu button[aria-selected="true"] { background: var(--accent-soft); }
 .settings-dive-count { width: 100%; max-width: 220px; }
 .settings-account-email { overflow-wrap: anywhere; }
 .settings-account-email strong { font-weight: 700; }

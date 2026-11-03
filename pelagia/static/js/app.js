@@ -1796,6 +1796,85 @@ function initArrowNavigation(form) {
     });
 }
 
+function initProfileLocation() {
+    const field = document.querySelector("[data-profile-location]");
+    if (!field) return;
+    const input = field.querySelector("[data-profile-location-input]");
+    const results = field.querySelector("[data-profile-location-results]");
+    const locations = JSON.parse(field.querySelector("[data-profile-location-options]").textContent);
+    let options = [];
+    let active = -1;
+    const close = () => {
+        results.hidden = true;
+        active = -1;
+        input.setAttribute("aria-expanded", "false");
+        input.removeAttribute("aria-activedescendant");
+    };
+    const validate = () => {
+        const value = input.value.trim().toLocaleLowerCase();
+        const valid = !value || locations.some(location => location.toLocaleLowerCase() === value);
+        input.setCustomValidity(valid ? "" : "Choose a location from the suggestions.");
+    };
+    const choose = location => {
+        input.value = location;
+        validate();
+        input.focus();
+        close();
+    };
+    const search = () => {
+        const query = input.value.trim().toLocaleLowerCase();
+        close();
+        results.replaceChildren();
+        options = locations.filter(location => location.toLocaleLowerCase().includes(query)).slice(0, 20);
+        options.forEach((location, index) => {
+            const button = document.createElement("button");
+            button.type = "button";
+            button.id = `profileLocationOption-${index}`;
+            button.tabIndex = -1;
+            button.setAttribute("role", "option");
+            button.setAttribute("aria-selected", "false");
+            button.textContent = location;
+            button.addEventListener("click", () => choose(location));
+            results.appendChild(button);
+        });
+        if (!options.length) {
+            const message = document.createElement("p");
+            message.className = "suggestion-message";
+            message.setAttribute("role", "status");
+            message.textContent = "No matches found. Try another search.";
+            results.appendChild(message);
+        }
+        results.hidden = false;
+        input.setAttribute("aria-expanded", "true");
+        results.scrollIntoView({ block: "nearest" });
+    };
+    input.addEventListener("input", () => { validate(); search(); });
+    input.addEventListener("focus", search);
+    input.addEventListener("keydown", event => {
+        if (event.key === "Escape") { event.preventDefault(); close(); return; }
+        if (event.key === "Enter" && !results.hidden && active >= 0) {
+            event.preventDefault();
+            choose(options[active]);
+            return;
+        }
+        if (!["ArrowDown", "ArrowUp"].includes(event.key)) return;
+        event.preventDefault();
+        if (results.hidden) search();
+        if (!options.length) return;
+        active = active < 0 ? (event.key === "ArrowDown" ? 0 : options.length - 1)
+            : (active + (event.key === "ArrowDown" ? 1 : -1) + options.length) % options.length;
+        Array.from(results.children).forEach((button, index) => button.setAttribute("aria-selected", String(index === active)));
+        input.setAttribute("aria-activedescendant", results.children[active].id);
+        results.children[active].scrollIntoView({ block: "nearest" });
+    });
+    input.addEventListener("blur", () => {
+        window.setTimeout(() => { if (!field.contains(document.activeElement)) close(); }, 0);
+    });
+    document.addEventListener("click", event => { if (!field.contains(event.target)) close(); });
+}
+
+document.addEventListener("DOMContentLoaded", initProfileLocation);
+
 function initCertificationPicker(picker) {
     const form = picker.querySelector("form");
     const input = picker.querySelector("[data-certification-input]");
