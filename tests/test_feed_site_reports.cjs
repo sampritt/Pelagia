@@ -14,6 +14,7 @@ function node() {
         hasAttribute(name) { return name in this.attrs; },
         removeAttribute(name) { delete this.attrs[name]; },
         addEventListener(name, callback) { this.handlers[name] = callback; },
+        removeEventListener(name) { delete this.handlers[name]; },
     };
 }
 
@@ -42,36 +43,29 @@ const flush = async () => {
     for (let i = 0; i < 3; i++) await new Promise(resolve => setImmediate(resolve));
 };
 
-function setup(cards, fetch, {viewportWidth = 300, localHour = 9, feed = null} = {}) {
+function setup(cards, fetch, {feed = null} = {}) {
     const window = node();
     let timer = 0;
     const timers = new Map();
     window.setTimeout = (callback, delay) => { const id = ++timer; timers.set(id, {callback, delay}); return id; };
     window.clearTimeout = id => timers.delete(id);
     window.requestAnimationFrame = callback => callback();
+    window.matchMedia = () => ({matches: true});
     let starts = 0, finishes = 0;
     window.PelagiaLoading = {begin() { starts++; return () => { finishes++; }; }};
-    const track = node();
-    const featuredLabel = node();
-    const greeting = node();
-    featuredLabel.hidden = true;
-    track.getBoundingClientRect = () => ({left: 0, right: viewportWidth});
-    track.scrollWidth = 1000;
-    track.scrollLeft = 0;
-    track.scrollTo = ({left}) => { track.scrollLeft = left; };
-    track.scrollBy = ({left}) => { track.scrollLeft += left; };
-    cards.forEach((card, index) => { card.item.getBoundingClientRect = () => ({width: 300, left: index * 312 - track.scrollLeft, right: index * 312 + 300 - track.scrollLeft}); });
+    cards.forEach((card, index) => { card.item.getBoundingClientRect = () => ({width: 300, left: index * 312, right: index * 312 + 300}); });
     const document = {
         readyState: 'complete',
         handlers: {},
         addEventListener(name, callback) { this.handlers[name] = callback; },
+        removeEventListener(name) { delete this.handlers[name]; },
         querySelectorAll: () => cards.map(item => item.item),
-        querySelector: selector => selector === '[data-feed-report]' ? feed : selector === '[data-site-reports-track]' ? track : selector === '[data-site-reports-featured]' ? featuredLabel : selector === '[data-daily-greeting]' ? greeting : null,
+        querySelector: selector => selector === '[data-feed-report]' ? feed : null,
     };
     vm.runInNewContext(fs.readFileSync('pelagia/static/js/feed-site-reports.js', 'utf8'), {
-        window, document, fetch, AbortController, Date: class extends Date { getHours() { return localHour; } }, Promise, Error,
+        window, document, fetch, AbortController, Date, Promise, Error,
     });
-    return {window, document, timers, track, featuredLabel, greeting, starts: () => starts, finishes: () => finishes};
+    return {window, document, timers, starts: () => starts, finishes: () => finishes};
 }
 
 test('every followed card loads its cached report preview', async () => {
@@ -80,7 +74,7 @@ test('every followed card loads its cached report preview', async () => {
     const state = setup(cards, async (url, options) => {
         calls.push({url, options});
         if (url.endsWith('/conditions')) return response(200, {status: 'complete', current: {swell: 'Choppy', swell_height_m: 0.65, swell_period_s: 10, wind_speed_kn: 12.3}});
-        return response(200, {status: 'complete', report: `Daily report for ${url.includes('/1/') ? 'one' : 'two'} with enough words to fill the four-line preview.`});
+        return response(200, {status: 'complete', report: `Daily report for ${url.includes('/1/') ? 'one' : 'two'} with enough words to fill the report preview.`});
     });
     await flush();
     assert.equal(calls.length, 4);
@@ -99,23 +93,17 @@ test('every followed card loads its cached report preview', async () => {
     assert.equal(calls.length, 4);
 });
 
-function compactCard(id) {
-    const result = card(id);
-    const query = result.item.querySelector;
-    result.item.querySelector = selector => selector === '[data-followed-swell]' ? null : query(selector);
-    return result;
-}
-
 function feedHost(replacement) {
     const feed = node();
     feed.dataset = {selectionUrl: '/api/feed/site-report', selectionKey: '1:today', nextRefresh: (Date.now() + 3000) / 1000};
     feed.contains = () => false;
-    feed.querySelectorAll = () => [replacement.item];
+    feed.querySelector = () => null;
+    feed.querySelectorAll = () => (Array.isArray(replacement) ? replacement : [replacement]).map(card => card.item);
     return feed;
 }
 
-test('midnight replaces the single preview, initializes its map, and preserves keyboard focus', async () => {
-    const current = compactCard(1), replacement = compactCard(2), feed = feedHost(replacement);
+test('midnight refreshes full cards, initializes its map, and preserves keyboard focus', async () => {
+    const current = card(1), replacement = card(2), feed = feedHost(replacement);
     let focused = false, maps = 0;
     feed.contains = () => true;
     replacement.item.focus = options => { focused = options.preventScroll; };
@@ -139,7 +127,7 @@ test('midnight replaces the single preview, initializes its map, and preserves k
 });
 
 test('browser Back rechecks selection without flashing or reloading a still-current report', async () => {
-    const current = compactCard(1), feed = feedHost(current), calls = [];
+    const current = card(1), feed = feedHost(current), calls = [];
     const state = setup([current], async url => {
         calls.push(url);
         return response(200, url === feed.dataset.selectionUrl
@@ -157,7 +145,7 @@ test('browser Back rechecks selection without flashing or reloading a still-curr
 });
 
 test('offline selection preserves the current card and retries; leaving cancels the retry', async () => {
-    const current = compactCard(1), feed = feedHost(current);
+    const current = card(1), feed = feedHost(current);
     const state = setup([current], async url => url === feed.dataset.selectionUrl
         ? response(503, {}) : response(200, {status: 'complete', report: 'Quiet conditions.'}), {feed});
     await flush();
@@ -171,7 +159,7 @@ test('offline selection preserves the current card and retries; leaving cancels 
 });
 
 test('a hidden feed can gain its featured fallback after returning online', async () => {
-    const replacement = compactCard(2), feed = feedHost(replacement);
+    const replacement = card(2), feed = feedHost(replacement);
     feed.hidden = true;
     feed.dataset.selectionKey = '';
     const state = setup([], async url => response(200, url === feed.dataset.selectionUrl
@@ -184,7 +172,7 @@ test('a hidden feed can gain its featured fallback after returning online', asyn
 });
 
 test('background tabs defer midnight selection until they become visible', async () => {
-    const current = compactCard(1), feed = feedHost(current), calls = [];
+    const current = card(1), feed = feedHost(current), calls = [];
     const state = setup([current], async url => {
         calls.push(url);
         return response(200, url === feed.dataset.selectionUrl
@@ -201,52 +189,6 @@ test('background tabs defer midnight selection until they become visible', async
     state.document.handlers.visibilitychange();
     await flush();
     assert.equal(calls.filter(url => url === feed.dataset.selectionUrl).length, 1);
-});
-
-test('compact feed previews load report text without requesting headline conditions', async () => {
-    const followed = compactCard(1);
-    const calls = [];
-    setup([followed], async url => {
-        calls.push(url);
-        return response(200, {status: 'complete', report: 'Gentle swells settle over the reef. Light winds hold through the morning.'});
-    });
-    await flush();
-    assert.deepEqual(calls, ['/api/dive-sites/1/report']);
-    assert.equal(followed.item.dataset.reportState, 'ready');
-    assert.match(followed.reportText.textContent, /^Gentle swells/);
-});
-
-test('cold compact previews warm dependencies only when the report requires them', async () => {
-    const followed = compactCard(1);
-    const calls = [];
-    let reportCalls = 0;
-    setup([followed], async url => {
-        calls.push(url);
-        if (url.endsWith('/report')) return ++reportCalls === 1
-            ? response(202, {status: 'pending', reason: 'dependencies'})
-            : response(200, {status: 'complete', report: 'A quiet morning on the reef.'});
-        return response(200, {status: 'complete'});
-    });
-    await flush();
-    assert.equal(reportCalls, 2);
-    assert.equal(calls.filter(url => url.endsWith('/conditions')).length, 1);
-    assert.equal(calls.filter(url => url.endsWith('/description')).length, 1);
-    assert.equal(followed.reportText.textContent, 'A quiet morning on the reef.');
-});
-
-test('compact feed previews resume interrupted loading when returning with browser Back', async () => {
-    const followed = compactCard(1);
-    let resumed = false;
-    const state = setup([followed], (_url, {signal}) => resumed
-        ? Promise.resolve(response(200, {status: 'complete', report: 'Settled conditions.'}))
-        : new Promise((_resolve, reject) => signal.addEventListener('abort', () => reject(new Error('Aborted')))));
-    state.window.handlers.pagehide();
-    await flush();
-    resumed = true;
-    state.window.handlers.pageshow({persisted: true});
-    await flush();
-    assert.equal(followed.item.dataset.reportState, 'ready');
-    assert.equal(followed.reportText.textContent, 'Settled conditions.');
 });
 
 test('feet, descriptor colors, and wind boundaries are normalized', async () => {
@@ -325,7 +267,7 @@ test('failed conditions end a cold report without duplicate requests or polling'
     assert.equal(state.timers.size, 0);
 });
 
-test('short reports stay compact and failures remain actionable', async () => {
+test('short reports and failures remain actionable', async () => {
     const short = card(1), failed = card(2);
     short.reportText.scrollHeight = short.reportText.clientHeight;
     setup([short, failed], async url => url.includes('/1/')
@@ -382,4 +324,69 @@ test('returning through browser Back resumes interrupted reports and preserves c
     assert.equal(calls.filter(url => url.endsWith('/1/report')).length, 1);
     assert.equal(calls.filter(url => url.endsWith('/2/report')).length, 2);
     assert.ok(cards.every(card => card.item.dataset.reportState === 'ready'));
+});
+
+function carouselFeed(cards) {
+    const feed = feedHost(cards);
+    const track = node(), position = node(), dots = cards.map((_, i) => node());
+    track.scrollLeft = 0;
+    track.width = 300;
+    track.getBoundingClientRect = () => ({left: 0});
+    track.scrollTo = ({left, behavior}) => { track.scrollLeft = left; track.behavior = behavior; };
+    dots.forEach((dot, i) => { dot.dataset.reportDot = String(i); dot.closest = () => dot; });
+    cards.forEach((card, i) => {
+        const query = card.item.querySelector;
+        card.item.querySelector = selector => selector === 'h3' ? {textContent: `Site ${i + 1}`} : query(selector);
+    });
+    feed.querySelector = selector => selector === '[data-site-reports-track]' ? track
+        : selector === '[data-report-position]' ? position : null;
+    const queryAll = feed.querySelectorAll;
+    feed.querySelectorAll = selector => selector === '[data-report-dot]' ? dots : queryAll(selector);
+    return {feed, track, position, dots};
+}
+
+const complete = async url => response(200, {status: 'complete', report: 'Light winds.'});
+
+test('carousel dots, keyboard bounds, native scroll, and resize preserve the selected report', async () => {
+    const cards = [card(1), card(2), card(3)];
+    const {feed, track, position, dots} = carouselFeed(cards);
+    const state = setup(cards, complete, {feed});
+    // Reflect the carousel's real scroll offset in each card's position.
+    cards.forEach((card, i) => { card.item.getBoundingClientRect = () => ({left: i * (track.width + 12) - track.scrollLeft}); });
+    assert.equal(dots[0].attrs['aria-current'], 'true');
+    feed.handlers.click({target: dots[1]});
+    assert.equal(track.scrollLeft, 312);
+    assert.equal(dots[1].attrs['aria-current'], 'true');
+    assert.equal(dots[0].attrs['aria-current'], undefined);
+    const key = value => track.handlers.keydown({key: value, preventDefault() {}});
+    key('End');
+    assert.equal(track.scrollLeft, 624);
+    key('ArrowRight');
+    assert.equal(track.scrollLeft, 624);
+    key('Home');
+    key('ArrowLeft');
+    assert.equal(track.scrollLeft, 0);
+    track.scrollLeft = 312;
+    track.handlers.scroll();
+    assert.match(position.textContent, /Report 2 of 3: Site 2/);
+    track.width = 500;
+    state.window.handlers.resize();
+    assert.equal(track.scrollLeft, 512);
+    assert.equal(dots[1].attrs['aria-current'], 'true');
+    assert.equal(track.behavior, 'auto');
+    await flush();
+});
+
+test('carousel keyboard navigation moves a focused card with the visible report', async () => {
+    const cards = [card(1), card(2)];
+    const {feed, track} = carouselFeed(cards);
+    const state = setup(cards, complete, {feed});
+    cards.forEach((card, i) => { card.item.getBoundingClientRect = () => ({left: i * 312 - track.scrollLeft}); });
+    let focused = false;
+    state.document.activeElement = cards[0].item;
+    cards[1].item.focus = options => { focused = options.preventScroll; };
+    track.handlers.keydown({key: 'ArrowRight', preventDefault() {}});
+    assert.equal(focused, true);
+    assert.equal(track.scrollLeft, 312);
+    await flush();
 });

@@ -80,7 +80,7 @@ class DiveBriefTest(unittest.TestCase):
             self.assertIn("The revised story", dive_brief.load_brief().body_html)
         self.assertEqual(self.client.get("/brief/2026-10-23").status_code, 404)
 
-    def test_compact_site_reports_follow_the_brief_and_precede_logged_dives(self):
+    def test_full_site_reports_follow_the_brief_and_precede_logged_dives(self):
         self.write_edition(date(2026, 10, 22))
         self.client.post('/api/dive-sites/1/favorite')
         self.client.post('/api/dive-sites/2/favorite')
@@ -91,14 +91,16 @@ class DiveBriefTest(unittest.TestCase):
                 html = self.client.get(path).get_data(as_text=True)
                 self.assertLess(html.index('class="brief-card"'), html.index('class="site-reports feed-site-reports"'))
                 self.assertLess(html.index('class="site-reports feed-site-reports"'), html.index('<section class="dive-logs"'))
-                self.assertEqual(html.count('class="site-report-card feed-site-report"'), 1)
-                self.assertEqual(html.count('data-followed-report-text'), 1)
-                self.assertEqual(html.count('class="mini-map site-report-map'), 1)
-                self.assertNotIn('data-followed-swell', html)
-                self.assertNotIn('data-followed-wind', html)
+                self.assertEqual(html.count('class="site-report-card feed-site-report"'), 2)
+                self.assertEqual(html.count('data-followed-report-text'), 2)
+                self.assertEqual(html.count('class="mini-map site-report-map'), 2)
+                self.assertIn('data-followed-swell', html)
+                self.assertIn('data-followed-wind', html)
                 self.assertNotIn('SITE REPORT', html)
-                self.assertNotIn('site-reports-track', html)
-                self.assertIn('class="site-report-card feed-site-report" href="/reports"', html)
+                self.assertIn('site-reports-track', html)
+                self.assertIn('class="site-report-card feed-site-report" href="/dive-sites/1#daily-report"', html)
+                self.assertEqual(html.count('data-report-dot='), 2)
+                self.assertEqual(html.count('Read more'), 2)
 
     def test_no_edition_keeps_feed_working_and_deep_links_are_validated(self):
         self.write_edition(date(2026, 10, 21), "Yesterday's stale story.")

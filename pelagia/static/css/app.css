@@ -6037,7 +6037,7 @@ img.is-media-loading {
     background: #f4f7f9;
 }
 
-/* Followed-site reports: compact outlooks with native horizontal browsing. */
+/* Full site reports with native horizontal browsing on Home. */
 .home-feed-list { gap: 20px; }
 .site-reports {
     container-type: inline-size;
@@ -6064,28 +6064,23 @@ img.is-media-loading {
 .site-reports-track {
     display: grid;
     grid-auto-flow: column;
-    grid-auto-columns: calc((100% - 12px) / 2);
-    grid-template-rows: repeat(4, auto);
+    grid-auto-columns: 100%;
     column-gap: 12px;
     min-width: 0;
     max-width: 100%;
     overflow-x: auto;
     overscroll-behavior-inline: contain;
-    padding: 2px;
-    scroll-padding-inline: 2px;
+    padding: 0;
     scroll-snap-type: x mandatory;
     scrollbar-width: none;
     -webkit-overflow-scrolling: touch;
 }
 
 .site-reports-track::-webkit-scrollbar { display: none; }
-.site-reports-track:has(> .site-report-card:only-child) { grid-auto-columns: 100%; }
 
 .site-report-card {
     display: grid;
-    /* Share content-sized rows so long identities and status labels stay aligned. */
-    grid-template-rows: subgrid;
-    grid-row: span 4;
+    grid-template-rows: auto;
     min-width: 0;
     padding: 20px;
     border: 1px solid var(--line);
@@ -6222,9 +6217,6 @@ img.is-media-loading {
 .site-reports-empty p { max-width: 42ch; margin: 5px 0 0; color: var(--muted-strong); font-size: .85rem; }
 .site-reports-empty .primary-button { grid-column: 2; justify-self: start; min-height: 44px; }
 
-@container (max-width: 640px) {
-    .site-reports-track { grid-auto-columns: 86%; }
-}
 @media (max-width: 560px) {
     .site-report-card { padding: 16px; }
     .site-report-card-main { gap: 10px; }
@@ -6646,34 +6638,46 @@ img.is-media-loading {
 .site-reports-list .followed-site-report-text { display: block; -webkit-line-clamp: unset; }
 .site-reports-list .site-report-card:not([data-report-state="loading"]) .followed-site-report { min-height: 0; }
 
-/* Compact report previews sit between the Brief and logged dives on Home. */
-.feed-site-reports { gap: 20px; }
+/* Home shows one full-width report at a time, between the Brief and logged dives. */
+.feed-site-reports { gap: 0; }
 .feed-site-reports[hidden] { display: none; }
 .feed-site-report {
-    grid-template-columns: 56px minmax(0, 1fr);
-    grid-template-rows: auto;
-    grid-row: auto;
-    align-items: start;
-    gap: 14px;
-    padding: 18px;
+    grid-template-rows: auto auto auto 1fr auto;
+    scroll-snap-stop: always;
 }
-.feed-site-report .site-report-map { width: 56px; height: 56px; min-height: 56px; max-height: 56px; border-radius: 10px; }
+.feed-site-report:focus-visible { outline-offset: -3px; }
 .feed-site-report .site-report-name { flex-wrap: wrap; gap: 4px 8px; }
 .feed-site-report .site-report-name h3 { flex: 0 1 auto; max-width: 100%; }
-.feed-site-report .followed-site-report { min-height: 3em; margin-top: 8px; font-size: .8125rem; }
-.feed-site-report .followed-site-report-text {
-    margin: 0;
-    color: var(--ink-soft);
-    font-size: inherit;
-    line-height: 1.5;
-    -webkit-line-clamp: 2;
+.feed-site-report .followed-site-report { min-height: 4.8em; }
+.feed-site-report .followed-site-report-text { -webkit-line-clamp: 3; }
+.feed-site-report .component-skeleton { grid-template-rows: repeat(3, 1.6em); }
+.feed-site-report .skeleton-line:nth-child(n + 4) { display: none; }
+.site-report-read-more {
+    display: inline-flex;
+    align-items: center;
+    justify-self: start;
+    gap: 6px;
+    min-height: 44px;
+    margin-top: 4px;
+    color: var(--accent-deep);
+    font-size: .8125rem;
+    font-weight: 600;
 }
-.feed-site-report .component-skeleton { grid-template-rows: repeat(2, 1.5em); }
-.feed-site-report .skeleton-line:nth-child(n + 3) { display: none; }
-@media (max-width: 560px) {
-    .feed-site-report { grid-template-columns: 48px minmax(0, 1fr); gap: 12px; padding: 16px; }
-    .feed-site-report .site-report-map { width: 48px; height: 48px; min-height: 48px; max-height: 48px; }
+.site-report-read-more .action-icon { width: 16px; height: 16px; }
+.site-reports-pagination { display: flex; flex-wrap: wrap; justify-content: center; padding-top: 2px; }
+.site-report-dot {
+    display: grid;
+    place-items: center;
+    width: 28px;
+    min-height: 44px;
+    padding: 0;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    cursor: pointer;
 }
+.site-report-dot span { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); opacity: .45; }
+.site-report-dot[aria-current="true"] span { background: var(--sea); opacity: 1; }
 
 /* Profile follows share the owner header’s primary action treatment. */
 .user-follow-form { display: grid; gap: 8px; margin-top: 12px; }

@@ -6,7 +6,7 @@ from unittest.mock import patch
 
 import test_reference_autocomplete as fixtures
 from pelagia import db as database
-from pelagia.feed_report import select_followed_site
+from pelagia.feed_report import report_schedule
 
 
 def site(site_id, latitude, longitude, followed_at='2026-10-01 12:00:00'):
@@ -16,44 +16,27 @@ def site(site_id, latitude, longitude, followed_at='2026-10-01 12:00:00'):
 
 class FeedReportSelectionTest(unittest.TestCase):
     def select(self, sites, instant):
-        return select_followed_site(sites, datetime.fromisoformat(instant))
+        return report_schedule(sites, datetime.fromisoformat(instant))
 
-    def test_switches_at_midnight_using_coordinates_without_forecast_caches(self):
-        california = site(1, 36.612, -121.902)
-        galapagos = site(2, -.392, -90.287, '2026-11-01 12:00:00')
-        sites = [galapagos, california]
-        selected, _, next_refresh = self.select(sites, '2026-11-03T07:59:59+00:00')
-        self.assertEqual(selected['id'], 2)
+    def test_every_followed_site_stays_in_the_key_across_midnight(self):
+        sites = [site(2, -.392, -90.287), site(1, 36.612, -121.902)]
+        key, next_refresh = self.select(sites, '2026-11-03T07:59:59+00:00')
+        self.assertEqual(key, '2:2026-11-03|1:2026-11-02')
         self.assertEqual(next_refresh, datetime.fromisoformat('2026-11-03T08:00:00+00:00').timestamp())
-        self.assertEqual(self.select(sites, '2026-11-03T08:00:00+00:00')[0]['id'], 1)
+        self.assertEqual(self.select(sites, '2026-11-03T08:00:00+00:00')[0], '2:2026-11-03|1:2026-11-03')
 
-    def test_equal_midnights_use_recent_follow_even_across_the_date_line(self):
-        kiribati = site(1, 1.8721, -157.4278, '2026-11-01 12:00:00')
-        hawaii = site(2, 21.3069, -157.8583, '2026-11-02 12:00:00')
-        selected, local_date, _ = self.select([kiribati, hawaii], '2026-11-03T11:00:00+00:00')
-        self.assertEqual(selected['id'], 2)
-        self.assertEqual(str(local_date), '2026-11-03')
-
-    def test_dst_uses_the_offset_at_midnight_instead_of_the_current_offset(self):
-        new_york = site(1, 40.7128, -74.006, '2026-11-01 06:00:00')
-        lima = site(2, -12.0464, -77.0428)
-        self.assertEqual(self.select([new_york, lima], '2026-11-01T07:00:00+00:00')[0]['id'], 2)
-
-    def test_fractional_hour_timezones_are_not_rounded_to_longitude_bands(self):
-        nepal = site(1, 27.7172, 85.3240, '2026-11-02 12:00:00')
-        india = site(2, 19.0760, 72.8777)
-        self.assertEqual(self.select([nepal, india], '2026-11-03T18:45:00+00:00')[0]['id'], 2)
-
-    def test_next_midnight_observes_the_short_day_at_spring_forward(self):
-        _, _, next_refresh = self.select([site(1, 40.7128, -74.006)], '2026-03-08T05:30:00+00:00')
+    def test_refresh_observes_daylight_saving_and_fractional_offsets(self):
+        _, next_refresh = self.select([site(1, 40.7128, -74.006)], '2026-03-08T05:30:00+00:00')
         self.assertEqual(next_refresh, datetime.fromisoformat('2026-03-09T04:00:00+00:00').timestamp())
+        key, next_refresh = self.select([site(1, 27.7172, 85.3240)], '2026-11-03T18:14:00+00:00')
+        self.assertEqual(key, '1:2026-11-03')
+        self.assertEqual(next_refresh, datetime.fromisoformat('2026-11-03T18:15:00+00:00').timestamp())
 
-    def test_missing_coordinates_fall_back_to_follow_recency(self):
-        unknown = site(1, None, None, '2026-11-02 12:00:00')
-        invalid = site(2, 1000, float('nan'))
-        california = site(3, 36.612, -121.902)
-        self.assertEqual(self.select([unknown, invalid], '2026-11-03T09:00:00+00:00')[0]['id'], 1)
-        self.assertEqual(self.select([unknown, california], '2026-11-03T09:00:00+00:00')[0]['id'], 3)
+    def test_missing_coordinates_keep_all_sites_and_refresh_at_utc_midnight(self):
+        sites = [site(1, None, None), site(2, 1000, float('nan'))]
+        key, next_refresh = self.select(sites, '2026-11-03T09:00:00+00:00')
+        self.assertEqual(key, '1:2026-11-03|2:2026-11-03')
+        self.assertEqual(next_refresh, datetime.fromisoformat('2026-11-04T00:00:00+00:00').timestamp())
 
 
 class FeedReportPageTest(unittest.TestCase):
@@ -67,16 +50,19 @@ class FeedReportPageTest(unittest.TestCase):
         self.client = self.app.test_client()
         self.signup(self.client)
 
-    def test_featured_fallback_keeps_only_the_featured_badge_and_links_to_reports(self):
+    def test_featured_fallback_is_a_full_card_linking_to_the_daily_site_report(self):
         with patch('pelagia.fetch_daily_featured_site', return_value=site(1, 36.612, -121.902)):
             for path in ('/home', '/feed', '/welcome'):
                 html = self.client.get(path).get_data(as_text=True)
                 self.assertEqual(html.count('class="site-report-card feed-site-report"'), 1)
-                self.assertIn('class="site-report-card feed-site-report" href="/reports"', html)
-                self.assertNotIn('DAILY REPORT', html)
+                self.assertIn('class="site-report-card feed-site-report" href="/dive-sites/1#daily-report"', html)
+                self.assertIn('data-followed-swell', html)
+                self.assertIn('data-followed-wind', html)
+                self.assertIn('Read more', html)
+                self.assertNotIn('data-report-dot=', html)
                 self.assertIn('<span class="site-report-featured">FEATURED</span>', html)
 
-    def test_follows_suppress_featured_and_api_returns_only_the_selected_preview(self):
+    def test_follows_suppress_featured_and_api_returns_every_full_card(self):
         self.client.post('/api/dive-sites/1/favorite')
         self.client.post('/api/dive-sites/2/favorite')
         with self.app.app_context():
@@ -86,19 +72,22 @@ class FeedReportPageTest(unittest.TestCase):
             db.commit()
         instant = datetime.fromisoformat('2026-11-03T08:30:00+00:00')
         with patch('pelagia.fetch_daily_featured_site') as featured, \
-                patch('pelagia.feed_report.select_followed_site', side_effect=lambda sites: select_followed_site(sites, instant)), \
+                patch('pelagia.feed_report.report_schedule', side_effect=lambda sites: report_schedule(sites, instant)), \
                 patch('pelagia.site_reports.generate') as generate:
             html = self.client.get('/home').get_data(as_text=True)
-            self.assertEqual(html.count('class="site-report-card feed-site-report"'), 1)
+            self.assertEqual(html.count('class="site-report-card feed-site-report"'), 2)
+            self.assertEqual(html.count('data-report-dot='), 2)
+            self.assertIn('id="followedSiteTitle2"', html)
             self.assertIn('id="followedSiteTitle1"', html)
             self.assertNotIn('data-featured-site-report', html)
             response = self.client.get('/api/feed/site-report')
             self.assertEqual(response.status_code, 200)
             self.assertEqual(response.headers['Cache-Control'], 'private, no-store')
             payload = response.get_json()
-            self.assertEqual(payload['key'], '1:2026-11-03')
-            self.assertEqual(payload['html'].count('class="site-report-card feed-site-report"'), 1)
-            self.assertIn('href="/reports"', payload['html'])
+            self.assertEqual(set(payload['key'].split('|')), {'1:2026-11-03', '2:2026-11-03'})
+            self.assertEqual(payload['html'].count('class="site-report-card feed-site-report"'), 2)
+            self.assertIn('href="/dive-sites/1#daily-report"', payload['html'])
+            self.assertIn('href="/dive-sites/2#daily-report"', payload['html'])
             self.assertGreater(payload['next_refresh'], instant.timestamp())
             featured.assert_not_called()
             generate.assert_not_called()
@@ -110,6 +99,30 @@ class FeedReportPageTest(unittest.TestCase):
             self.assertEqual(payload['key'], '')
             self.assertNotIn('class="site-report-card feed-site-report"', self.client.get('/home').get_data(as_text=True))
         self.assertEqual(self.app.test_client().get('/api/feed/site-report').status_code, 302)
+
+    def test_single_follow_has_no_pagination_and_ten_follows_all_have_cards(self):
+        self.client.post('/api/dive-sites/1/favorite')
+        with patch('pelagia.fetch_daily_featured_site') as featured:
+            html = self.client.get('/home').get_data(as_text=True)
+            self.assertEqual(html.count('data-followed-site-report'), 1)
+            self.assertNotIn('data-report-dot=', html)
+            featured.assert_not_called()
+        with self.app.app_context():
+            db = database.get_db()
+            db.executemany(
+                "INSERT INTO dive_sites (id, master_site_id, name, country_or_area) VALUES (?, ?, ?, 'Ocean')",
+                [(i, f'EXTRA-{i}', f'Site {i}') for i in range(4, 11)],
+            )
+            db.commit()
+        for site_id in range(2, 11):
+            self.assertEqual(self.client.post(f'/api/dive-sites/{site_id}/favorite').status_code, 200)
+        with patch('pelagia.fetch_daily_featured_site') as featured:
+            html = self.client.get('/api/feed/site-report').get_json()['html']
+            self.assertEqual(html.count('data-followed-site-report'), 10)
+            self.assertEqual(html.count('data-report-dot='), 10)
+            for site_id in range(1, 11):
+                self.assertEqual(html.count(f'href="/dive-sites/{site_id}#daily-report"'), 1)
+            featured.assert_not_called()
 
     def test_following_the_current_featured_site_changes_the_refresh_key_and_badge(self):
         with patch('pelagia.fetch_daily_featured_site', return_value=site(1, 36.612, -121.902)):

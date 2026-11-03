@@ -23,13 +23,11 @@
                 {% include "_dive_brief_card.html" %}
             </section>
             {% endif %}
-            <section class="site-reports feed-site-reports" aria-label="Daily site report"
+            <section class="site-reports feed-site-reports" aria-label="Daily site reports"
                      data-feed-report data-selection-url="{{ url_for('api_feed_site_report') }}"
                      data-selection-key="{{ report_selection.key }}" data-next-refresh="{{ report_selection.next_refresh }}"
-                     {% if not report_selection.site %}hidden{% endif %}>
-                {% if report_selection.site %}
-                    {% with item=report_selection.site %}{% include "_feed_site_report.html" %}{% endwith %}
-                {% endif %}
+                     {% if not report_selection.sites %}hidden{% endif %}>
+                {% include "_home_site_reports.html" %}
             </section>
             {% include "_logged_dive_feed.html" %}
         </div>

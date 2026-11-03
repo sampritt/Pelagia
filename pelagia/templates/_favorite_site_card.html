@@ -1,5 +1,5 @@
 {% set has_coords = item.latitude is not none and item.longitude is not none %}
-<a class="site-report-card" href="{{ url_for('dive_site_profile', site_id=item.id) }}#daily-report"
+<a class="site-report-card{{ ' feed-site-report' if preview else '' }}" href="{{ url_for('dive_site_profile', site_id=item.id) }}#daily-report"
    aria-labelledby="followedSiteTitle{{ item.id }}"
    {% if item.featured %}data-featured-site-report{% endif %}
    data-followed-site-report data-report-state="loading" data-length-unit="{{ units.length }}"
@@ -33,4 +33,5 @@
     <div class="followed-site-report" data-followed-report-body>
         <p class="followed-site-report-text" data-followed-report-text role="status" aria-live="polite" aria-atomic="true">Preparing today’s report…</p>
     </div>
+    {% if preview %}<span class="site-report-read-more">Read more {{ action_icon("arrow-right") }}</span>{% endif %}
 </a>

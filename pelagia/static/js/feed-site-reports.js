@@ -12,6 +12,62 @@
         const loading = new Map();
         let generation = 0;
         let selectionTimer, selectionController;
+        let carousel;
+
+        function initCarousel() {
+            const track = feed?.querySelector('[data-site-reports-track]');
+            if (!track || cards.length < 2) return null;
+            const dots = [...feed.querySelectorAll('[data-report-dot]')];
+            const position = feed.querySelector('[data-report-position]');
+            let index = 0;
+            const announce = () => {
+                dots.forEach((dot, i) => {
+                    if (i === index) dot.setAttribute('aria-current', 'true');
+                    else dot.removeAttribute('aria-current');
+                });
+                const message = `Report ${index + 1} of ${cards.length}: ${cards[index].querySelector('h3').textContent}`;
+                if (position.textContent !== message) position.textContent = message;
+            };
+            const goTo = (next, behavior = 'smooth') => {
+                index = Math.max(0, Math.min(cards.length - 1, next));
+                const left = track.scrollLeft + cards[index].getBoundingClientRect().left - track.getBoundingClientRect().left;
+                track.scrollTo({left, behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : behavior});
+                announce();
+            };
+            const onScroll = () => {
+                const left = track.getBoundingClientRect().left;
+                index = cards.reduce((nearest, card, i) =>
+                    Math.abs(card.getBoundingClientRect().left - left) < Math.abs(cards[nearest].getBoundingClientRect().left - left) ? i : nearest, 0);
+                announce();
+            };
+            const onKey = (event) => {
+                if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
+                const next = {ArrowLeft: index - 1, ArrowRight: index + 1, Home: 0, End: cards.length - 1}[event.key];
+                if (next === undefined) return;
+                event.preventDefault();
+                goTo(next);
+                if (cards.includes(document.activeElement)) cards[index].focus({preventScroll: true});
+            };
+            const onDot = (event) => {
+                const dot = event.target.closest('[data-report-dot]');
+                if (dot) goTo(Number(dot.dataset.reportDot));
+            };
+            const onResize = () => goTo(index, 'instant');
+            track.addEventListener('scroll', onScroll, {passive: true});
+            track.addEventListener('keydown', onKey);
+            feed.addEventListener('click', onDot);
+            const observer = window.ResizeObserver ? new window.ResizeObserver(onResize) : null;
+            observer?.observe(track);
+            window.addEventListener('resize', onResize);
+            onScroll();
+            return {goTo, get index() { return index; }, destroy() {
+                track.removeEventListener('scroll', onScroll);
+                track.removeEventListener('keydown', onKey);
+                feed.removeEventListener('click', onDot);
+                window.removeEventListener('resize', onResize);
+                observer?.disconnect();
+            }};
+        }
 
         const delay = (milliseconds) => new Promise((resolve) => {
             const timer = window.setTimeout(() => { timers.delete(timer); resolve(); }, milliseconds);
@@ -123,7 +179,7 @@
                             dependenciesStarted = true;
                             const [, conditions] = await Promise.all([
                                 warmDependency(card.dataset.descriptionUrl, 'POST', controller, deadline),
-                                conditionsReady || warmDependency(card.dataset.conditionsUrl, 'GET', controller, deadline),
+                                conditionsReady,
                             ]);
                             if (conditions?.status !== 'complete') throw new Error('Conditions unavailable');
                         } else await delay(POLL_MS);
@@ -147,7 +203,7 @@
 
         function startCards() {
             cards.forEach((card) => {
-                loadCard(card, card.querySelector('[data-followed-swell]') ? loadConditions(card) : undefined);
+                loadCard(card, loadConditions(card));
             });
         }
 
@@ -181,18 +237,26 @@
                     || !Number.isFinite(data.next_refresh)) throw new Error('Selection unavailable');
                 if (data.key !== feed.dataset.selectionKey) {
                     const restoreFocus = feed.contains(document.activeElement);
+                    const currentUrl = cards[carousel?.index || 0]?.dataset.reportUrl;
+                    const focusedDot = document.activeElement?.hasAttribute('data-report-dot');
+                    carousel?.destroy();
                     cancelLoads();
                     feed.innerHTML = data.html;
                     feed.hidden = !data.html.trim();
                     feed.dataset.selectionKey = data.key;
                     cards = [...feed.querySelectorAll('[data-followed-site-report]')];
                     window.initStaticMaps?.(feed);
+                    carousel = initCarousel();
+                    const index = Math.max(0, cards.findIndex(card => card.dataset.reportUrl === currentUrl));
+                    carousel?.goTo(index, 'instant');
                     startCards();
-                    if (restoreFocus) (cards[0] || document.querySelector('.brief-card summary'))?.focus({preventScroll: true});
+                    if (restoreFocus) (focusedDot && feed.querySelector(`[data-report-dot="${index}"]`)
+                        || cards[index] || document.querySelector('.brief-card summary')
+                        || document.querySelector('#mainContent'))?.focus({preventScroll: true});
                 }
                 feed.dataset.nextRefresh = data.next_refresh;
             } catch (_error) {
-                // Preserve the visible preview and its native Reports link while offline.
+                // Preserve the visible cards and their site links while offline.
                 retry = true;
             } finally {
                 window.clearTimeout(timeout);
@@ -203,6 +267,7 @@
             }
         }
 
+        carousel = initCarousel();
         startCards();
         scheduleSelection();
 
@@ -218,7 +283,7 @@
             stopped = false;
             cards.forEach((card) => {
                 const needsReport = card.dataset.reportState === 'loading';
-                const conditionsReady = card.querySelector('[data-followed-swell]') && (card.dataset.conditionsState === 'loading' || needsReport)
+                const conditionsReady = (card.dataset.conditionsState === 'loading' || needsReport)
                     ? loadConditions(card) : undefined;
                 if (needsReport) loadCard(card, conditionsReady);
             });

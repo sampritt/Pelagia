@@ -294,7 +294,7 @@ def register_routes(app):
     def api_feed_site_report():
         selection = fetch_home_report(session["user_id"])
         response = jsonify(
-            html=render_template("_feed_site_report.html", item=selection["site"]) if selection["site"] else "",
+            html=render_template("_home_site_reports.html", report_selection=selection) if selection["sites"] else "",
             key=selection["key"], next_refresh=selection["next_refresh"],
         )
         response.headers["Cache-Control"] = "private, no-store"
@@ -1943,20 +1943,18 @@ def fetch_report_sites(user_id):
 
 def fetch_home_report(user_id):
     sites = fetch_favorite_dive_sites(user_id)
-    site, local_date, next_midnight = feed_report.select_followed_site(sites)
     if not sites:
         site = fetch_daily_featured_site()
         if site:
             site["featured"] = True
-            site, local_date, next_midnight = feed_report.select_followed_site([site])
-    # Featured selection follows the existing application calendar. Unknown
-    # coordinates also get a daily recheck without substituting a featured site.
-    if not sites or next_midnight is None:
+            sites = [site]
+    key, next_midnight = feed_report.report_schedule(sites)
+    # The featured fallback also rotates at the application calendar boundary.
+    if not sites or sites[0].get("featured"):
         from datetime import datetime, time
         calendar_midnight = datetime.combine(date.today() + timedelta(days=1), time.min).timestamp()
         next_midnight = min(next_midnight, calendar_midnight) if next_midnight else calendar_midnight
-    key = f"{site['id']}:{local_date}" + (":featured" if site.get("featured") else "") if site else ""
-    return {"site": site, "key": key,
+    return {"sites": sites, "key": key,
             "next_refresh": next_midnight}
 
 
