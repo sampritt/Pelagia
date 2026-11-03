@@ -79,7 +79,7 @@
 
     {% if dive.species %}
         <div class="detail-panel">
-            <h2>Marine Life</h2>
+            <h2>Marine life</h2>
             <div class="species-row detail-species">
                 {% for species in dive.species %}
                     <span>{{ species.common_name }}</span>
@@ -106,6 +106,7 @@
                 <span class="detail-action-copy"><span>Comment</span><span class="sr-only">on dive. Comments:</span><span data-comment-count>{{ dive.comment_count }}</span></span>
             </a>
         </div>
+        <h2 class="comments-heading">Comments</h2>
         <div class="comments-block" data-comments>
             {% if dive.comments %}
                 {% for comment in dive.comments %}
@@ -119,7 +120,7 @@
             {% endif %}
         </div>
         <form id="comments" class="comment-form" data-comment-form data-dive-id="{{ dive.id }}">
-            <input name="body" required maxlength="600" autocomplete="off" aria-label="Add a comment" placeholder="Add a comment">
+            <textarea name="body" rows="2" required maxlength="600" aria-label="Add a comment" placeholder="Add a comment…"></textarea>
             <button class="primary-button compact" type="submit" aria-label="Post comment">Post</button>
         </form>
     </div>

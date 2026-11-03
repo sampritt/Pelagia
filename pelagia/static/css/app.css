@@ -6202,7 +6202,7 @@ img.is-media-loading {
 .site-report-card[data-report-state="unavailable"] .followed-site-report-text { color: var(--muted-strong); }
 
 .site-reports :is(a, button):focus-visible,
-.site-reports-track:focus-visible { outline: 2px solid var(--sea); outline-offset: 2px; }
+.site-reports-track:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .site-reports-track:focus-visible { border-radius: 4px; outline-offset: 0; }
 @media (hover: hover) and (pointer: fine) {
     .site-report-card:hover { border-color: var(--accent-line); }
@@ -6677,7 +6677,7 @@ img.is-media-loading {
     -webkit-tap-highlight-color: transparent;
 }
 .site-report-dot span { width: 6px; height: 6px; border-radius: 50%; background: var(--muted); opacity: .4; }
-.site-report-dot[aria-current="true"] span { background: var(--sea); opacity: 1; }
+.site-report-dot[aria-current="true"] span { background: var(--accent); opacity: 1; }
 
 /* Profile follows share the owner header’s primary action treatment. */
 .user-follow-form { display: grid; gap: 8px; margin-top: 12px; }
@@ -6710,3 +6710,145 @@ img.is-media-loading {
     .founder-welcome-footer { margin-top: 20px; padding-top: 16px; }
     .founder-welcome-footer .user-follow-form { flex-grow: 1; }
 }
+
+/* Feed reports and dive logs share a quiet card and typography system. */
+.dive-card {
+    border-color: var(--line);
+    box-shadow: var(--shadow-xs);
+    transition: border-color 160ms ease, box-shadow 160ms ease;
+    -webkit-tap-highlight-color: transparent;
+}
+.dive-card:hover, .dive-card:focus-visible {
+    transform: none;
+    border-color: var(--line);
+    box-shadow: var(--shadow-xs);
+}
+.dive-card:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.dive-card-title h2, .site-report-identity h3 {
+    color: var(--ink);
+    font-size: 1.125rem;
+    font-weight: 700;
+    letter-spacing: -.025em;
+    line-height: 1.4;
+}
+.dive-card-title p, .site-report-identity p { color: var(--muted-strong); font-size: .8125rem; line-height: 1.5; }
+.dive-card-head strong, .dive-detail-author strong { font-size: .875rem; font-weight: 650; }
+.dive-card-head p, .dive-detail-author p { color: var(--muted-strong); font-size: .75rem; }
+.dive-card .stat-stack small, .dive-detail .detail-headline-stats small {
+    color: var(--muted-strong);
+    font-size: .75rem;
+    font-weight: 500;
+    letter-spacing: 0;
+    text-transform: none;
+}
+.dive-card .stat-stack span { font-size: 1.5rem; letter-spacing: -.03em; }
+.dive-card .species-row { gap: 6px; }
+.dive-card .species-row > span, .dive-detail .species-row > span { font-weight: 500; }
+.dive-card :is(a, button), .dive-detail :is(a, button), .detail-gallery-dots button {
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+}
+.dive-card :is(a, button):focus-visible, .dive-detail :is(a, button, textarea):focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
+}
+.dive-card .social-action:active, .dive-detail .social-action:active { background: var(--accent-soft); }
+@media (hover: hover) and (pointer: fine) {
+    .dive-card:hover { border-color: var(--accent-line); box-shadow: 0 3px 12px rgba(4, 34, 55, .06); }
+}
+
+/* Consistent inset visuals; enough of the next slide remains to invite a swipe. */
+.detail-media-gallery .detail-photo-carousel {
+    grid-auto-columns: calc(100% - 52px);
+    gap: 12px;
+    scrollbar-width: none;
+    overscroll-behavior-inline: contain;
+}
+.detail-media-gallery .detail-photo-carousel:has(> :only-child) { grid-auto-columns: 100%; }
+.detail-media-gallery .detail-photo-carousel::-webkit-scrollbar { display: none; }
+.detail-media-gallery .detail-photo-slide { border-radius: 12px; scroll-snap-stop: always; cursor: auto; }
+.detail-media-gallery .mini-map { height: 100%; min-height: 0; max-height: none; }
+.detail-photo-carousel:focus-visible { outline-offset: -2px; border-radius: 12px; }
+.detail-media-gallery .coordinate-label {
+    color: var(--ink-soft);
+    background: rgba(255, 255, 255, .93);
+    border: 1px solid var(--line);
+    border-radius: 7px;
+    box-shadow: var(--shadow-xs);
+    font-size: .6875rem;
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+}
+.detail-gallery-dots { gap: 0; padding-top: 0; }
+.detail-gallery-dots button {
+    display: grid;
+    place-items: center;
+    width: 28px;
+    min-height: 44px;
+    padding: 0;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+}
+.detail-gallery-dots button[aria-pressed="true"] span { background: var(--accent); opacity: 1; }
+.detail-gallery-dots button:active { background: var(--accent-soft); }
+.depth-profile-slide { background: var(--panel-tint); }
+.depth-profile-label { position: absolute; top: 14px; left: 16px; color: var(--ink-soft); font-size: .75rem; font-weight: 600; }
+.depth-profile-plot { left: 54px; top: 48px; width: calc(100% - 72px); height: calc(100% - 84px); }
+.depth-profile-line { stroke: var(--accent); stroke-width: 2; }
+.depth-profile-grid { stroke-dasharray: 3 5; vector-effect: non-scaling-stroke; }
+.depth-profile-chart > .depth-profile-axis { color: var(--muted-strong); font-size: .6875rem; }
+.depth-axis-start { right: calc(100% - 44px); top: 43px; }
+.depth-axis-end { right: calc(100% - 44px); bottom: 31px; }
+.time-axis-start { left: 54px; bottom: 14px; }
+.time-axis-end { right: 18px; bottom: 14px; }
+
+/* Expanded logs retain the same visual scale, with quieter data panels. */
+.dive-media-note { margin: 0; color: var(--muted-strong); font-size: .8125rem; }
+.dive-detail-title h1 { font-size: clamp(1.5rem, 3vw, 2rem); line-height: 1.25; letter-spacing: -.035em; }
+.dive-detail .detail-headline-stats {
+    padding: 18px 20px;
+    border: 1px solid var(--line);
+    background: var(--panel);
+    box-shadow: var(--shadow-xs);
+}
+.dive-detail .detail-headline-stats div { gap: 8px; padding: 0 16px; }
+.dive-detail .detail-headline-stats div:first-child { padding-left: 0; }
+.dive-detail .detail-headline-stats div + div { border-color: var(--line); }
+.dive-detail .detail-headline-stats span { color: var(--ink); font-size: 2rem; letter-spacing: -.035em; line-height: 1.15; }
+.dive-detail .detail-headline-stats em { display: inline; margin: 0 0 0 6px; color: var(--muted-strong); font-size: .875rem; font-weight: 500; }
+.dive-detail .detail-panel, .dive-detail .detail-social, .dive-detail .notes-block { box-shadow: var(--shadow-xs); }
+.dive-detail :is(.detail-panel, .notes-block) h2, .comments-heading {
+    margin: 0;
+    color: var(--ink-soft);
+    font-size: .9375rem;
+    font-weight: 650;
+    line-height: 1.5;
+    letter-spacing: 0;
+    text-transform: none;
+}
+.dive-detail .detail-metric-list dt { color: var(--muted-strong); font-size: .75rem; font-weight: 500; letter-spacing: 0; text-transform: none; }
+.dive-detail .detail-metric-list dd { font-size: .9375rem; font-weight: 600; }
+.dive-detail .detail-pressure-summary { border-color: var(--line); background: var(--panel-tint); }
+.dive-detail .sac-metric { border-color: var(--line); }
+.dive-detail .detail-species { margin: 0; }
+.dive-detail .notes-block { padding: 20px; border-radius: var(--radius); background: var(--panel); }
+.dive-detail .notes-block p { margin-top: 10px; color: var(--ink-soft); font-size: .9375rem; line-height: 1.7; }
+.dive-detail .comments-block { gap: 0; padding: 0; border: 0; border-radius: 0; background: transparent; }
+.dive-detail .comment { gap: 5px; padding: 14px 0; }
+.dive-detail .comment:first-child { padding-top: 0; }
+.dive-detail .comment strong { font-size: .8125rem; font-weight: 650; }
+.dive-detail .comment p { color: var(--ink-soft); font-size: .9375rem; line-height: 1.6; }
+.dive-detail .comments-block > .muted { margin: 0; font-size: .875rem; }
+.dive-detail .comment-form { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 10px; scroll-margin-block: 100px; }
+.dive-detail .comment-form textarea { width: 100%; min-width: 0; min-height: 68px; max-height: 240px; padding: 12px; border-radius: 12px; resize: vertical; font: inherit; font-size: 16px; line-height: 1.5; }
+.dive-detail .comment-form textarea:focus { box-shadow: none; }
+.dive-detail .comment-form .primary-button { min-height: 44px; margin-bottom: 1px; padding-inline: 16px; border-radius: 10px; box-shadow: none; }
+@media (max-width: 560px) {
+    .detail-media-gallery .detail-photo-carousel { grid-auto-columns: calc(100% - 40px); gap: 10px; }
+    .dive-card-title h2, .site-report-identity h3 { font-size: 1.0625rem; }
+    .dive-detail .detail-panel, .dive-detail .detail-social, .dive-detail .notes-block { padding: 16px; }
+    .dive-detail .detail-headline-stats { padding: 16px; }
+    .dive-detail-author .dive-type-label::before { display: none; }
+}
+@media (prefers-reduced-motion: reduce) { .dive-card { transition: none; } }

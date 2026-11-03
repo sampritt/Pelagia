@@ -35,7 +35,7 @@ class ProfileChartTest(unittest.TestCase):
 
 
 class FeedGalleryTest(unittest.TestCase):
-    def render_gallery(self, *, chart=True, coords=True, photos=2):
+    def render_gallery(self, *, chart=True, coords=True, photos=2, feed=True, public=False):
         from pathlib import Path
         from jinja2 import Environment, FileSystemLoader, select_autoescape
 
@@ -47,12 +47,12 @@ class FeedGalleryTest(unittest.TestCase):
                 'photos': [{'filename': f'{i}.jpg'} for i in range(photos)]}
         profile = {'max_depth_m': 30, 'duration_minutes': 40, 'fill': '', 'line': ''} if chart else None
         return env.get_template('_dive_gallery.html').render(
-            dive=dive, depth_chart=profile, public_preview=False, feed_gallery=True, has_coords=coords)
+            dive=dive, depth_chart=profile, public_preview=public, feed_gallery=feed, detail_gallery=not feed, has_coords=coords)
 
     def test_feed_orders_available_slides_without_indicators(self):
         html = self.render_gallery()
-        self.assertLess(html.index('Dive depth profile'), html.index('Dive location map'))
-        self.assertLess(html.index('Dive location map'), html.index('/uploads/0.jpg'))
+        self.assertLess(html.index('Dive location map'), html.index('Dive depth profile'))
+        self.assertLess(html.index('Dive depth profile'), html.index('/uploads/0.jpg'))
         self.assertLess(html.index('/uploads/0.jpg'), html.index('/uploads/1.jpg'))
         self.assertNotIn('data-gallery-dot', html)
 
@@ -62,3 +62,13 @@ class FeedGalleryTest(unittest.TestCase):
         self.assertNotIn('Dive location map', html)
         self.assertIn('/uploads/0.jpg', html)
         self.assertNotIn('data-dive-gallery', self.render_gallery(chart=False, coords=False, photos=0))
+
+    def test_detail_gallery_starts_with_map_and_public_preview_hides_depth(self):
+        detail = self.render_gallery(feed=False)
+        self.assertLess(detail.index('Dive location map'), detail.index('Dive depth profile'))
+        self.assertIn('data-gallery-dot', detail)
+        public = self.render_gallery(feed=False, public=True)
+        self.assertIn('Dive location map', public)
+        self.assertIn('/uploads/0.jpg', public)
+        self.assertNotIn('Dive depth profile', public)
+        self.assertNotIn('data-gallery-dot', self.render_gallery(feed=False, chart=False, photos=0))

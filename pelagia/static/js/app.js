@@ -308,7 +308,7 @@ function initDiveInteractions() {
             return;
         }
         event.preventDefault();
-        const input = (form || centerForm || siteForm).querySelector("input[name='body']");
+        const input = (form || centerForm || siteForm).querySelector("[name='body']");
         const body = input.value.trim();
         if (!body) {
             return;
@@ -340,6 +340,7 @@ function initDiveInteractions() {
             if (input.value.trim() === body) input.value = "";
             const commentsContainer = form.closest("[data-dive-detail]")?.querySelector("[data-comments]");
             renderComments(commentsContainer, data.comments);
+            window.PelagiaLoading?.announce("Comment posted.");
             document.querySelectorAll(`[data-open-dive='${form.dataset.diveId}'] [data-comment-count], [data-dive-detail] [data-comment-count]`).forEach((span) => {
                 span.textContent = data.comments.length;
             });
@@ -596,7 +597,7 @@ async function toggleSiteFavorite(siteId) {
 function focusDiveComment() {
     const form = document.querySelector("[data-comment-form]");
     if (!form) return;
-    form.querySelector("input[name='body']")?.focus({ preventScroll: true });
+    form.querySelector("[name='body']")?.focus({ preventScroll: true });
     form.scrollIntoView({ block: "center" });
 }
 
@@ -2338,18 +2339,21 @@ function initDiveGalleries() {
             Math.abs(slides[best].getBoundingClientRect().left - track.getBoundingClientRect().left) ? index : best, 0);
         const update = () => {
             const index = currentIndex();
-            dots.forEach((dot, i) => dot.classList.toggle("is-active", i === index));
+            dots.forEach((dot, i) => dot.setAttribute("aria-pressed", String(i === index)));
         };
-        const move = (delta) => {
-            const index = Math.max(0, Math.min(slides.length - 1, currentIndex() + delta));
-            track.scrollBy({left: slides[index].getBoundingClientRect().left - track.getBoundingClientRect().left,
+        const moveTo = (index) => {
+            track.scrollTo({left: track.scrollLeft + slides[index].getBoundingClientRect().left - track.getBoundingClientRect().left,
                 behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth"});
         };
         track.addEventListener("keydown", (event) => {
-            if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+            if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
+            if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
             event.preventDefault();
-            move(event.key === "ArrowRight" ? 1 : -1);
+            const index = event.key === "Home" ? 0 : event.key === "End" ? slides.length - 1
+                : Math.max(0, Math.min(slides.length - 1, currentIndex() + (event.key === "ArrowRight" ? 1 : -1)));
+            moveTo(index);
         });
+        dots.forEach((dot, index) => dot.addEventListener("click", () => moveTo(index)));
         track.addEventListener("scroll", update, {passive: true});
         window.addEventListener("resize", update);
         update();

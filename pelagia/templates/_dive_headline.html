@@ -68,20 +68,10 @@
         {% endif %}
     </div>
 
-    {% set has_chart = depth_chart and not public_preview %}
-    {% set slide_count = (dive.photos|length) + (1 if has_chart else 0) %}
-    <div class="dive-detail-media {{ 'no-photos' if not slide_count else '' }}">
-        <div class="mini-map detail-map {{ 'map-pending' if not has_coords else '' }}" {% if has_coords %}data-static-map data-map-lat="{{ dive.latitude }}" data-map-lng="{{ dive.longitude }}" data-map-zoom="10"{% endif %}>
-            <span class="map-pin"></span>
-            <span class="coordinate-label">
-                {% if has_coords %}
-                    {{ "%.4f"|format(dive.latitude) }}, {{ "%.4f"|format(dive.longitude) }}
-                {% else %}
-                    Coordinates pending
-                {% endif %}
-            </span>
-        </div>
+    {% set detail_gallery = true %}
+    <div class="dive-detail-media">
         {% include "_dive_gallery.html" %}
+        {% if not has_coords %}<p class="dive-media-note">Coordinates pending</p>{% endif %}
     </div>
 
     <div class="detail-headline-stats" aria-label="Dive stats">

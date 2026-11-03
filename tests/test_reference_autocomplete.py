@@ -1555,7 +1555,7 @@ Kelp House,2 Harbor Way,Alaska,https://kelp.example.test
             home_response = client.get("/feed")
             self.assertEqual(home_response.status_code, 200)
             self.assertIn(b'data-dive-slides', home_response.data)
-            self.assertEqual(home_response.data.count(b'data-gallery-dot'), 3)
+            self.assertNotIn(b'data-gallery-dot', home_response.data)
             self.assertEqual(home_response.data.count(b"uploads/dives/"), 3)
 
             profile_response = client.get("/you")
