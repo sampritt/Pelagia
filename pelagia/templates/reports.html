@@ -4,7 +4,7 @@
 {% block content %}
 <section class="activity-layout">
     <div class="feed-main">
-        <h1 class="sr-only">Reports</h1>
+        <h1 class="reports-page-title">Daily reports</h1>
             <section class="site-reports" aria-label="Site reports">
                 {% if favorite_sites %}
                 <div class="site-reports-list">
@@ -15,11 +15,14 @@
                 {% else %}
                 <div class="site-reports-empty">
                     <span class="site-reports-empty-icon" aria-hidden="true">{{ action_icon("compass") }}</span>
-                    <div><h3>Check the forecast</h3><p>Follow dive sites to get daily reports here.</p></div>
-                    <a class="primary-button compact" href="{{ url_for('explore.index') }}">Explore dive sites</a>
+                    <div><h3>Check the forecast</h3></div>
                 </div>
                 {% endif %}
             </section>
+        <footer class="reports-page-footer">
+            <p>Follow dive sites to get daily reports in your feed.</p>
+            <a class="primary-button compact" href="{{ url_for('explore.index') }}">Explore dive sites</a>
+        </footer>
     </div>
     {% include "_dive_summary.html" %}
 </section>

@@ -48,7 +48,7 @@ class DiveSiteFavoritesTest(unittest.TestCase):
         self.assertNotIn('id="siteReportsTitle"', empty_home)
         self.assertNotIn('site-reports-meta', empty_home)
         self.assertIn("Check the forecast", empty_home)
-        self.assertIn("Follow dive sites to get daily reports here.", empty_home)
+        self.assertIn("Follow dive sites to get daily reports in your feed.", empty_home)
         self.assertIn('href="/explore">Explore dive sites</a>', empty_home)
         self.assertNotIn("data-site-reports-track", empty_home)
         self.assertNotIn("No dives yet", empty_home)
@@ -103,7 +103,7 @@ class DiveSiteFavoritesTest(unittest.TestCase):
         )
         empty_home = self.client.get("/reports").get_data(as_text=True)
         self.assertIn("Check the forecast", empty_home)
-        self.assertIn("Follow dive sites to get daily reports here.", empty_home)
+        self.assertIn("Follow dive sites to get daily reports in your feed.", empty_home)
 
     def test_daily_feature_requires_seven_sightings_and_ocean_and_is_not_duplicated(self):
         with self.app.app_context():
