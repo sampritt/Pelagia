@@ -43,7 +43,7 @@ class FounderWelcomeTest(unittest.TestCase):
                     self.assertIn('Hi new.diver ', html)
                     self.assertIn('👋', html)
                     self.assertIn('Welcome to Pelagia! My name is Sam and I built this app.', html)
-                    self.assertIn('You can use this space to log dives, follow friends, check the conditions, plan your next trip, and much more.', html)
+                    self.assertIn('You can log dives, follow friends, check the conditions, plan your next trip, and much more.', html)
                     self.assertIn('Happy diving!', html)
                     self.assertIn('src="/uploads/profiles/founder.jpg"', html)
                     self.assertIn('action="/users/2/follow"', html)
