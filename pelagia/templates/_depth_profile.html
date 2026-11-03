@@ -8,17 +8,16 @@
                 <stop offset="100%" stop-color="var(--accent)" stop-opacity=".38" />
             </linearGradient>
         </defs>
-        <svg x="8%" y="10%" width="87%" height="76%" viewBox="44 28 716 222" preserveAspectRatio="none" overflow="visible">
+        <svg x="15%" y="14%" width="79%" height="68%" viewBox="44 28 716 222" preserveAspectRatio="none" overflow="visible">
             <path class="depth-profile-grid" d="M44 28H760 M44 139H760 M44 250H760" />
             <path d="{{ depth_chart.fill }}" fill="url(#depthProfileFill-{{ dive.id }})" />
             <path class="depth-profile-line" d="{{ depth_chart.line }}" />
         </svg>
         <g class="depth-profile-axis">
-            <text x="6%" y="10%" dy="4" text-anchor="end">0</text>
-            <text x="6%" y="86%" dy="4" text-anchor="end">{{ display_metric(depth_chart.max_depth_m, 'length', include_unit=False) }}</text>
-            <text x="8%" y="95%">0 min</text>
-            <text x="95%" y="95%" text-anchor="end">{{ '%.0f'|format(depth_chart.duration_minutes) }} min</text>
-            <text x="8%" y="6%">{{ display_unit('length') }}</text>
+            <text x="12%" y="14%" dy="4" text-anchor="end">0</text>
+            <text x="12%" y="82%" dy="4" text-anchor="end">{{ display_metric(depth_chart.max_depth_m, 'length') }}</text>
+            <text x="15%" y="93%">0 min</text>
+            <text x="94%" y="93%" text-anchor="end">{{ '%.0f'|format(depth_chart.duration_minutes) }} min</text>
         </g>
     </svg>
 </figure>

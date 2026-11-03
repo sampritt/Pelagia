@@ -57,18 +57,9 @@
         {% endif %}
     </div>
 
-    <div class="activity-media {{ 'no-photos' if not dive.photos else '' }}">
-        <div class="mini-map {{ 'map-pending' if not has_coords else '' }}" {% if has_coords %}data-static-map data-map-lat="{{ dive.latitude }}" data-map-lng="{{ dive.longitude }}" data-map-zoom="10"{% endif %}>
-            <span class="map-pin"></span>
-            <span class="coordinate-label">
-                {% if has_coords %}
-                    {{ "%.3f"|format(dive.latitude) }}, {{ "%.3f"|format(dive.longitude) }}
-                {% else %}
-                    Coordinates pending
-                {% endif %}
-            </span>
-        </div>
-        {% set depth_chart = dive.depth_chart %}
+    {% set depth_chart = dive.depth_chart %}
+    {% set feed_gallery = true %}
+    <div class="activity-media">
         {% include "_dive_gallery.html" %}
     </div>
 

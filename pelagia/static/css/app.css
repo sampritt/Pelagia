@@ -6575,3 +6575,14 @@ img.is-media-loading {
 @media (prefers-reduced-motion: reduce) {
     .dive-detail-title .site-destination-link { transition: none; }
 }
+
+/* Feed visuals share a single, native horizontal scrolling surface. */
+.activity-media .detail-photo-carousel {
+    gap: 0;
+    scrollbar-width: none;
+    overscroll-behavior-inline: contain;
+    -webkit-overflow-scrolling: touch;
+}
+.activity-media .detail-photo-carousel::-webkit-scrollbar { display: none; }
+.activity-media .detail-photo-slide { scroll-snap-stop: always; }
+.activity-media .mini-map { height: 100%; min-height: 0; max-height: none; }
