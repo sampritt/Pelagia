@@ -1656,10 +1656,10 @@ function initSpeciesPicker(form, getCountry) {
                 button.textContent = name;
                 button.addEventListener("click", () => {
                     addSpecies(name);
-                    button.classList.add("is-selected");
                 });
                 suggestions.appendChild(button);
             });
+            syncSpeciesSuggestions();
         });
     };
 
@@ -1713,12 +1713,18 @@ function initSpeciesPicker(form, getCountry) {
         renderTags();
     }
 
+    function syncSpeciesSuggestions() {
+        Array.from(suggestions.children).forEach((button) => {
+            button.disabled = selected.some((name) => name.toLowerCase() === button.textContent.toLowerCase());
+        });
+    }
+
     function renderTags() {
         tags.innerHTML = "";
         selected.forEach((name, index) => {
             const tag = document.createElement("span");
             tag.className = "tag";
-            tag.innerHTML = `${escapeHtml(name)} <button type="button" aria-label="Remove ${escapeHtml(name)}">&times;</button>`;
+            tag.innerHTML = `<span class="species-tag-name">${escapeHtml(name)}</span> <button type="button" aria-label="Remove ${escapeHtml(name)}">&times;</button>`;
             tag.querySelector("button").addEventListener("click", () => {
                 selected.splice(index, 1);
                 renderTags();
@@ -1726,6 +1732,7 @@ function initSpeciesPicker(form, getCountry) {
             tags.appendChild(tag);
         });
         hidden.value = JSON.stringify(selected);
+        syncSpeciesSuggestions();
     }
 
     renderTags();

@@ -1189,7 +1189,7 @@ textarea:focus {
     gap: 8px;
 }
 
-.species-row span,
+.species-row > span,
 .tag,
 .suggestion-pill {
     max-width: 100%;
@@ -3187,13 +3187,13 @@ textarea:focus {
     letter-spacing: 0.075em;
 }
 
-.species-row span,
+.species-row > span,
 .tag,
 .suggestion-pill {
     border-color: rgba(0, 169, 173, 0.16);
     color: #087d83;
     background: rgba(0, 169, 173, 0.08);
-    font-weight: 700;
+    font-weight: 500;
 }
 
 .dive-actions {
@@ -5157,11 +5157,6 @@ body:has(.pwa-install-dialog[open]) { overflow: hidden; }
 .history-series-bar:focus,
 .history-series-bar:hover { fill: var(--accent); stroke: var(--accent-deep); stroke-width: 2; outline: none; }
 .sac-date-labels { display: flex; justify-content: space-between; gap: 16px; margin: -12px 2% 0 6%; color: var(--muted); font-size: 0.7rem; }
-.sac-data-table { margin-top: 22px; color: var(--muted); font-size: 0.73rem; }
-.sac-data-table summary { cursor: pointer; }
-.sac-data-table table { width: 100%; margin-top: 12px; border-collapse: collapse; text-align: left; }
-.sac-data-table td,
-.sac-data-table th { padding: 10px 4px; border-bottom: 1px solid var(--line); font-variant-numeric: tabular-nums; }
 .sac-empty { display: grid; justify-items: center; gap: 10px; padding: 35px 10px; text-align: center; }
 .sac-empty > svg { width: 48px; height: 40px; margin-bottom: 5px; fill: none; stroke: var(--accent-deep); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .sac-empty h3 { font-size: 0.95rem; }
@@ -5617,7 +5612,6 @@ textarea { resize: vertical; }
     .history-switch button { padding-inline: 2px; font-size: 0.7rem; }
     .history-chart-heading { margin-bottom: 8px; }
     .history-chart-heading h3 { font-size: 0.85rem; }
-    .sac-data-table { margin-top: 18px; }
 }
 
 .auth-divider { display: flex; align-items: center; gap: 16px; color: #597276; font-size: 12px; margin: 24px 0; }
@@ -6742,8 +6736,6 @@ img.is-media-loading {
     text-transform: none;
 }
 .dive-card .stat-stack span { font-size: 1.5rem; letter-spacing: -.03em; }
-.dive-card .species-row { gap: 6px; }
-.dive-card .species-row > span, .dive-detail .species-row > span { font-weight: 500; }
 .dive-card :is(a, button), .dive-detail :is(a, button), .detail-gallery-dots button {
     -webkit-tap-highlight-color: transparent;
     touch-action: manipulation;
@@ -6852,3 +6844,80 @@ img.is-media-loading {
     .dive-detail-author .dive-type-label::before { display: none; }
 }
 @media (prefers-reduced-motion: reduce) { .dive-card { transition: none; } }
+
+/* One species treatment across sightings, logged dives, and the wildlife picker. */
+.species-row, .tag-row, .suggestion-row { gap: 6px; }
+.species-row > span, .tag, .suggestion-pill { font-size: .76rem; line-height: 1.5; overflow-wrap: anywhere; }
+.site-sightings-tags strong { color: inherit; font-size: inherit; font-weight: 600; font-variant-numeric: tabular-nums; }
+.species-tag-name { min-width: 0; overflow-wrap: anywhere; }
+.species-panel .tag { min-height: 44px; gap: 2px; padding-block: 0; padding-right: 0; }
+.species-panel .tag button { flex: 0 0 44px; width: 44px; height: 44px; border-radius: 50%; color: inherit; background: transparent; font-size: 20px; }
+.species-panel .suggestion-pill { min-height: 44px; padding-inline: 12px; }
+.species-panel .suggestion-pill:disabled { opacity: 1; color: #087d83; border-color: rgba(0, 169, 173, .35); background: rgba(0, 169, 173, .14); cursor: default; }
+.species-panel :is(.tag button, .suggestion-pill) { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+.species-panel :is(.tag button, .suggestion-pill):focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.species-panel :is(.tag button, .suggestion-pill:not(:disabled)):active { background: rgba(0, 169, 173, .18); }
+@media (hover: hover) and (pointer: fine) {
+    .species-panel :is(.tag button, .suggestion-pill:not(:disabled)):hover { background: rgba(0, 169, 173, .14); }
+}
+
+/* Profiles use the same calm surfaces and metric hierarchy as expanded dives. */
+.diver-profile { max-width: 980px; gap: 24px; }
+.diver-identity { padding: 24px; gap: 20px; box-shadow: var(--shadow-xs); }
+.diver-identity .profile-avatar { width: 88px; height: 88px; }
+.diver-identity h1 { font-size: clamp(1.5rem, 3vw, 2rem); line-height: 1.25; letter-spacing: -.035em; }
+.diver-eyebrow { margin-bottom: 6px; color: var(--muted-strong); font-size: .75rem; font-weight: 500; letter-spacing: 0; text-transform: none; }
+.diver-headline { margin-top: 10px; gap: 8px 12px; }
+.diver-identity .certification-tag { border-radius: 8px; background: var(--panel-tint); font-weight: 500; overflow-wrap: anywhere; }
+.certification-tag button { min-width: 44px; min-height: 44px; border-radius: 8px; }
+.certification-tag form { flex-shrink: 0; margin-block: -5px; }
+.diver-profile .profile-text-button { display: inline-flex; align-items: center; min-height: 44px; color: var(--muted-strong); }
+.diver-profile .profile-bio { color: var(--ink-soft); font-size: .9375rem; line-height: 1.7; }
+.diver-profile .bio-placeholder { color: var(--muted-strong); }
+.diver-profile .profile-edit-button { flex-basis: 44px; min-height: 44px; padding: 12px; border-radius: 10px; }
+.diver-profile .profile-settings-button { width: 44px; height: 44px; border-radius: 10px; }
+.diver-profile .profile-section-heading { margin-bottom: 14px; }
+.diver-profile .profile-section-heading h2 { color: var(--ink-soft); font-size: .9375rem; font-weight: 650; letter-spacing: 0; }
+.diver-profile .profile-section-heading > span { color: var(--muted-strong); font-size: .75rem; }
+.diver-metrics-grid, .profile-sac-panel { border-radius: var(--radius); box-shadow: var(--shadow-xs); }
+.diver-metrics-grid > div { padding: 20px; min-width: 0; }
+.diver-metrics-grid small { margin-bottom: 8px; font-size: .75rem; font-weight: 500; }
+.diver-metrics-grid span { font-size: 2rem; line-height: 1.15; letter-spacing: -.035em; overflow-wrap: anywhere; }
+.diver-metrics-grid em { color: var(--muted-strong); font-size: .875rem; font-weight: 500; }
+.diver-metrics-grid p { margin-top: 8px; color: var(--muted-strong); font-size: .75rem; }
+.profile-sac-panel { padding: 20px; }
+.history-switch { max-width: none; margin-bottom: 20px; }
+.history-switch button { font-weight: 500; }
+.history-switch button[aria-pressed="true"] { color: var(--accent-deep); background: var(--panel); box-shadow: var(--shadow-xs); font-weight: 600; }
+.history-chart-heading { margin-bottom: 22px; }
+.history-chart-heading h3 { color: var(--ink-soft); font-size: .8125rem; font-weight: 600; letter-spacing: 0; }
+.history-chart-heading .sac-chart-legend { font-size: .75rem; }
+.history-chart-heading .sac-chart-legend i { background: var(--accent); }
+.profile-history-plot { position: relative; height: 190px; margin-left: 42px; margin-right: 4px; }
+.profile-history-plot .profile-sac-chart { width: 100%; height: 100%; min-height: 0; }
+.history-axis-label { position: absolute; right: calc(100% + 10px); transform: translateY(-50%); color: var(--muted-strong); font-size: 11px; line-height: 1; font-variant-numeric: tabular-nums; }
+.profile-sac-chart .sac-grid-line { vector-effect: non-scaling-stroke; }
+.profile-sac-chart .history-series-bar { fill: var(--accent); fill-opacity: .68; vector-effect: non-scaling-stroke; }
+.profile-sac-chart .history-series-bar:focus { fill-opacity: 1; stroke: var(--accent-deep); stroke-width: 2; }
+.sac-date-labels { margin: 12px 4px 0 42px; color: var(--muted-strong); font-size: .6875rem; }
+.sac-empty p { color: var(--muted-strong); }
+.diver-profile :is(a, button, summary) { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+.diver-profile :is(a, button, summary, textarea, input):focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.diver-profile :is(.profile-text-button, .profile-edit-button, .profile-settings-button, .certification-tag button):active { background: var(--accent-soft); }
+@media (hover: hover) and (pointer: fine) {
+    .profile-sac-chart .history-series-bar:hover { fill-opacity: 1; stroke: var(--accent-deep); stroke-width: 2; }
+}
+@media (max-width: 640px) {
+    .diver-identity { padding: 20px 16px; grid-template-columns: 64px minmax(0, 1fr); gap: 0 14px; }
+    .diver-identity .profile-avatar { width: 64px; height: 64px; }
+    .diver-identity h1 { font-size: 1.5rem; }
+    .diver-identity .diver-eyebrow { font-size: .75rem; }
+    .diver-headline { margin-top: 16px; }
+    .diver-profile .diver-header-actions .profile-settings-button { width: 44px; height: 44px; }
+    .diver-metrics-grid > div { padding: 16px; }
+    .profile-sac-panel { padding: 16px; }
+    .history-switch button { font-size: .75rem; }
+    .profile-history-plot { height: 170px; margin-left: 34px; }
+    .sac-date-labels { margin-left: 34px; }
+    .diver-profile .profile-bio-form textarea { font-size: 16px; }
+}

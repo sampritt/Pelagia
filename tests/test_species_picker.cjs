@@ -61,7 +61,10 @@ test("editing allows adding, deduplicating, removing all, and reopening species"
     parts.suggestions.children[1].handlers.click();
     assert.deepEqual(JSON.parse(hidden.value), ["Coral", "Reef Fish", "Turtle"]);
     assert.equal(parts.tags.children.length, 3);
+    assert.equal(parts.suggestions.children[0].disabled, true);
+    assert.equal(parts.suggestions.children[1].disabled, true);
     parts.tags.children[0].querySelector("button").handlers.click();
+    assert.equal(parts.suggestions.children[1].disabled, false);
     const updated = ["Reef Fish", "Turtle"];
     assert.deepEqual(JSON.parse(hidden.value), updated);
     const reopened = setup(updated);

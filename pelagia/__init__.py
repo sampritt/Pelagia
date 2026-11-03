@@ -1132,10 +1132,10 @@ def render_user_profile(user, is_owner):
             dict(key=key, title=title, unit=unit,
                  history=get_profile_sac_history(user["id"], key, length_unit=unit_preferences()["length"]))
             for key, title, unit in (
-                ("sac_rate_l_min", "SAC rate", "L/min"),
-                ("depth_m", "Max depth", display_unit("length")),
-                ("duration_min", "Duration", "min"),
                 ("dive_count", "Number of dives", "dives"),
+                ("duration_min", "Duration", "min"),
+                ("depth_m", "Max depth", display_unit("length")),
+                ("sac_rate_l_min", "SAC rate", "L/min"),
             )
         ],
         is_owner=is_owner,
@@ -1761,38 +1761,37 @@ def get_profile_sac_history(user_id, metric="sac_rate_l_min", *, length_unit="m"
            WHERE user_id = ? AND COALESCE(is_deleted, 0) = 0
            ORDER BY date, id""", (user_id,),
     ).fetchall()
-    days = {}
-    rates = []
-    axis_days = set()
+    dated_rows = []
     for row in rows:
         try:
-            axis_days.add(date.fromisoformat(row["date"][:10]))
+            day = date.fromisoformat(row["date"][:10])
         except (TypeError, ValueError):
-            pass
-        rate = row["value"]
+            continue
+        dated_rows.append((day, row["value"]))
+    last_day = max((day for day, _ in dated_rows), default=None)
+    first_day = last_day - timedelta(days=13) if last_day else None
+    days = {}
+    rates = []
+    for day, rate in dated_rows:
+        if day < first_day:
+            continue
         if not isinstance(rate, (int, float)) or not math.isfinite(rate) or rate < 0:
             continue
         if metric == "depth_m":
             rate = display_measurement(rate, length_unit)
         rates.append(rate)
-        try:
-            day = date.fromisoformat(row["date"][:10])
-        except (TypeError, ValueError):
-            continue
         days.setdefault(day, []).append(rate)
     width, height, left, right, top, bottom = 800, 240, 48, 18, 18, 32
     chart_values = [len(values) for values in days.values()] if metric == "dive_count" else rates
     ceiling = max(4, math.ceil(max(chart_values, default=0) / 4) * 4)
-    first_day = min(axis_days) if axis_days else None
-    span = max((max(axis_days) - first_day).days, 1) if axis_days else 1
-    # Use the shared date scale to keep bars equally wide across metrics.
-    ordered_days = sorted(axis_days)
-    min_gap = min(((b - a).days for a, b in zip(ordered_days, ordered_days[1:])), default=span)
-    bar_width = min(56, (width - left - right) * min_gap / (span + min_gap) * 0.8)
+    # All four metrics share fourteen daily slots, anchored to the latest dive,
+    # even when that dive has no value for the selected metric.
+    span = 13
+    bar_width = (width - left - right) / 14 * 0.8
     points = []
     for day, day_rates in sorted(days.items()):
         value = len(day_rates) if metric == "dive_count" else statistics.median(day_rates)
-        x = left + bar_width / 2 + (day - first_day).days / span * (width - left - right - bar_width) if len(axis_days) > 1 else (width + left - right) / 2
+        x = left + bar_width / 2 + (day - first_day).days / span * (width - left - right - bar_width)
         points.append({
             "date": day.isoformat(), "label": day.strftime("%b %d, %Y"),
             "value": value, "display": format_metric(value), "count": len(day_rates),
@@ -1801,7 +1800,7 @@ def get_profile_sac_history(user_id, metric="sac_rate_l_min", *, length_unit="m"
     median = statistics.median(rates) if rates else None
     return {
         "median": median, "count": len(rates), "points": points,
-        "date_labels": [day.strftime("%b %d, %Y") for day in sorted(axis_days)],
+        "date_labels": [day.strftime("%b %d, %Y") for day in (first_day, last_day)] if last_day else [],
         "width": width, "height": height, "left": left, "right": right,
         "top": top, "bottom": bottom, "bar_width": bar_width,
         "polyline": " ".join(f"{p['x']:g},{p['y']:g}" for p in points),

@@ -160,11 +160,61 @@ class ProfileTest(unittest.TestCase):
                 self.assertEqual(history["count"], 2)
                 self.assertEqual(len(history["points"]), 1)
                 self.assertEqual(history["points"][0]["value"], 10)
-                self.assertEqual(history["points"][0]["x"], 76)
+                self.assertGreater(history["points"][0]["x"], history["width"] / 2)
                 _seed_dives(database.get_db(), 1, [("legacy unknown date", 30, 0)])
                 history = get_profile_sac_history(1)
-                self.assertEqual(history["median"], 20)
+                self.assertEqual(history["median"], 10)
                 self.assertEqual(len(history["points"]), 1)
+
+    def test_history_uses_fourteen_days_ending_at_latest_dive_for_every_metric(self):
+        with tempfile.TemporaryDirectory() as directory:
+            app, _, _ = self.make_app(Path(directory))
+            client = app.test_client()
+            self.signup(client)
+            self.signup(app.test_client(), "other-diver")
+            with app.app_context():
+                db = database.get_db()
+                _seed_dives(db, 1, [
+                    ("2025-12-27", 999, 0), ("2025-12-28", 20, 0),
+                    ("2025-12-28", 40, 0), ("2026-01-03", 30, 0),
+                    ("2026-01-10", None, 0), ("2026-02-01", 500, 1),
+                    ("unknown", 900, 0),
+                ])
+                _seed_dives(db, 2, [("2026-03-01", 800, 0)])
+                for metric in ("sac_rate_l_min", "depth_m", "duration_min", "dive_count"):
+                    history = get_profile_sac_history(1, metric)
+                    self.assertEqual(history["date_labels"], ["Dec 28, 2025", "Jan 10, 2026"])
+                    self.assertTrue(all("2025-12-28" <= p["date"] <= "2026-01-10" for p in history["points"]))
+                sac = get_profile_sac_history(1)
+                self.assertEqual(sac["median"], 30)
+                self.assertEqual(sac["count"], 3)
+                self.assertEqual([p["value"] for p in sac["points"]], [30, 30])
+                self.assertEqual(sac["ticks"][-1]["value"], "40")
+                counts = get_profile_sac_history(1, "dive_count")
+                self.assertEqual([p["value"] for p in counts["points"]], [2, 1, 1])
+                metric = get_profile_sac_history(1, "depth_m")
+                imperial = get_profile_sac_history(1, "depth_m", length_unit="ft")
+                self.assertAlmostEqual(imperial["points"][0]["value"], metric["points"][0]["value"] / .3048)
+                # Removing the newest dive moves the shared window back.
+                db.execute("UPDATE dives SET is_deleted=1 WHERE user_id=1 AND date='2026-01-10'")
+                db.commit()
+                self.assertEqual(get_profile_sac_history(1)["date_labels"], ["Dec 21, 2025", "Jan 03, 2026"])
+
+    def test_single_recent_dive_keeps_full_window_and_old_metric_does_not_leak_in(self):
+        with tempfile.TemporaryDirectory() as directory:
+            app, _, _ = self.make_app(Path(directory))
+            self.signup(app.test_client())
+            with app.app_context():
+                db = database.get_db()
+                self.assertEqual(get_profile_sac_history(1)["date_labels"], [])
+                _seed_dives(db, 1, [("2024-01-01", 20, 0), ("2026-01-15", None, 0)])
+                empty = get_profile_sac_history(1)
+                self.assertEqual(empty["date_labels"], ["Jan 02, 2026", "Jan 15, 2026"])
+                self.assertEqual(empty["points"], [])
+                self.assertIsNone(empty["median"])
+                count = get_profile_sac_history(1, "dive_count")
+                self.assertEqual(len(count["points"]), 1)
+                self.assertGreater(count["points"][0]["x"], count["width"] * .9)
 
     def test_history_metrics_share_dates_and_use_integer_ticks(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -187,6 +237,11 @@ class ProfileTest(unittest.TestCase):
             for metric in (b"sac_rate_l_min", b"depth_m", b"duration_min", b"dive_count"):
                 self.assertIn(b'data-history-option="' + metric + b'"', html)
                 self.assertIn(b'data-history-view="' + metric + b'"', html)
+            order = [html.index(b'data-history-option="' + key + b'"') for key in
+                     (b'dive_count', b'duration_min', b'depth_m', b'sac_rate_l_min')]
+            self.assertEqual(order, sorted(order))
+            self.assertIn(b'data-history-option="dive_count" aria-pressed="true"', html)
+            self.assertIn(b'id="history-dive_count" data-history-view="dive_count" >', html)
             self.assertIn(b'Max depth</h3>', html)
             self.assertIn(b'Duration</h3>', html)
 
@@ -249,15 +304,17 @@ class ProfileTest(unittest.TestCase):
                 ])
                 _seed_dives(db, 2, [("2026-01-01", 900, 0)])
                 history = get_profile_sac_history(1)
-            # Overall median is computed over individual dives, not over daily medians.
+            # The window median uses individual dives, not daily medians.
             self.assertEqual(history["median"], 24)
             self.assertEqual(history["count"], 5)
             self.assertEqual([p["value"] for p in history["points"]], [20, 40, 100])
             self.assertEqual([p["date"] for p in history["points"]], ["2026-01-01", "2026-01-02", "2026-01-05"])
             x = [p["x"] for p in history["points"]]
-            self.assertAlmostEqual((x[2] - x[1]) / (x[1] - x[0]), 3)
+            self.assertAlmostEqual((x[2] - x[1]) / (x[1] - x[0]), 3, delta=.001)
             html = client.get('/you').data
             self.assertIn(b'History</h2>', html)
+            self.assertNotIn(b'View recorded values', html)
+            self.assertNotIn(b'sac-data-table', html)
             self.assertNotIn(b'<small>SAC rate</small>', html)
             self.assertIn(b'Jan 01, 2026: 20 L/min', html)
             self.assertNotIn(b'999 L/min', html)

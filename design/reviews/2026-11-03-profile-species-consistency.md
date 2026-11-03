@@ -1,0 +1,11 @@
+# Profile and species consistency sign-off
+
+Species tags now use one shared weight, type size, color, fill, border, and radius across logged dives, expanded dives, site sightings, Explore cards, public site previews, and the wildlife picker. Interactive picker tags retain 44 px remove/add targets. Already-added suggestions disable consistently and re-enable on removal; long names wrap without displacing controls.
+
+Profile identity, metrics, certification, bio controls, and history panels follow the feed’s calmer typography, borders, spacing, shadows, and blue interaction states. History axes remain 11 px at every viewport size. The history selectors are reversed: # of dives (default), Duration, Max depth, SAC rate. The recorded-values control and table are removed; bars retain accessible value labels and titles.
+
+Every history metric uses the latest non-deleted, valid logged dive date and the preceding 13 days. Missing metrics do not shift the shared window. Daily aggregation, unit conversion, lifetime metrics, and the complete logbook are retained. Boundary, cross-year, sparse/empty, missing-value, deletion, invalid-date, and other-user cases are tested.
+
+Browser review used isolated Flask fixtures at 320, 390, 430, 768, 1024, and 1440 px. Verified exact computed tag-style parity, no horizontal overflow, all four chart views, dates/default selection, long names, empty profiles, bio save/cancel, certification remove/add, follow/unfollow, species add/remove/re-add, save/reopen persistence, and new-dive selection. Public sightings, touch chart switching, touch species add/remove, and 844 × 390 landscape layout were also checked. Local screenshots and review scripts: `output/profile-species-consistency/`. Browser testing uses Chromium with mobile emulation, not physical devices.
+
+Validation: 36 focused Python tests passed; all 14 profile tests passed again after the final chart requests. All 198 JavaScript tests pass. Full discovery ran 411 Python tests, retaining the same 12 failure reports and two errors as before this change (obsolete navigation expectations and exposure-data fixtures), plus one skip; no new failures. Syntax and patch whitespace checks pass. Existing README and site-report-generation edits remain excluded.
