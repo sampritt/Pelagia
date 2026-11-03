@@ -6620,3 +6620,24 @@ img.is-media-loading {
 .user-follow-status:empty { display: none; }
 .diver-identity .certification-tag { color: var(--muted-strong); border-color: var(--line); background: #f4f7f9; font-weight: 600; }
 @media (max-width: 640px) { .user-follow-form { grid-column: 1 / -1; } }
+
+/* A personal introduction at the start of a new diver’s feed. */
+.founder-welcome { min-width: 0; padding: 28px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); box-shadow: var(--shadow-xs); }
+.founder-welcome h2 { margin: 0 0 16px; font-size: 1.25rem; font-weight: 700; line-height: 1.4; letter-spacing: -.025em; overflow-wrap: anywhere; }
+.founder-welcome-message { display: grid; gap: 14px; color: var(--ink-soft); line-height: 1.7; }
+.founder-welcome-message p { margin: 0; }
+.founder-welcome-footer { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--line); }
+.founder-welcome-identity { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.founder-welcome-identity:hover strong { color: var(--accent); }
+.founder-welcome-avatar { display: grid; place-items: center; flex: 0 0 48px; width: 48px; height: 48px; overflow: hidden; border-radius: 50%; background: var(--accent-soft); color: var(--accent); font-size: 1.25rem; font-weight: 700; }
+.founder-welcome-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.founder-welcome-signature { display: grid; gap: 3px; min-width: 0; }
+.founder-welcome-signature strong { color: var(--ink); font-size: .9375rem; }
+.founder-welcome-signature > span { color: var(--muted-strong); font-size: .75rem; }
+.founder-welcome-footer .user-follow-form { flex: 0 0 112px; margin: 0; }
+.founder-welcome-footer .user-follow-button { min-height: 44px; }
+@media (max-width: 640px) {
+    .founder-welcome { padding: 20px; }
+    .founder-welcome-footer { margin-top: 20px; padding-top: 16px; }
+    .founder-welcome-footer .user-follow-form { flex-grow: 1; }
+}

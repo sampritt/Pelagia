@@ -1,0 +1,9 @@
+{% from "_action_icons.html" import action_icon %}
+{% macro user_follow(target, following=false) %}
+<form class="user-follow-form" method="post" action="{{ url_for('follow_user', user_id=target.id) }}" data-user-follow>
+    <input type="hidden" name="csrf_token" value="{{ google_csrf_token() }}">
+    <input type="hidden" name="following" value="{{ 'false' if following else 'true' }}">
+    <button class="primary-button compact user-follow-button {{ 'following' if following else '' }}" type="submit" aria-pressed="{{ 'true' if following else 'false' }}">{{ action_icon("favorite") }}<span data-user-follow-label>{{ 'Following' if following else 'Follow' }}</span></button>
+    <span class="user-follow-status" role="status" aria-live="polite"></span>
+</form>
+{% endmacro %}

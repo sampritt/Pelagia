@@ -1,0 +1,22 @@
+{% from "_user_follow.html" import user_follow with context %}
+<article class="founder-welcome" aria-labelledby="founderWelcomeTitle">
+    <h2 id="founderWelcomeTitle">Hi {{ user.username }} <span role="img" aria-label="waving hand">👋</span></h2>
+    <div class="founder-welcome-message">
+        <p>Welcome to Pelagia! My name is Sam and I built this app. I hope you find it both useful and fun.</p>
+        <p>You can use the search bar above to look up dive sites and much more. Follow a dive site to get daily reports straight to your feed; follow a friend to see their logged dives.</p>
+        <p>Happy diving!</p>
+    </div>
+    <footer class="founder-welcome-footer">
+        <a class="founder-welcome-identity" href="{{ url_for('user_profile', user_id=founder.id) }}" aria-label="View {{ founder.username }}’s profile">
+            <span class="founder-welcome-avatar">
+                {% if founder.profile_photo %}
+                <img src="{{ uploaded_file_url(founder.profile_photo) }}" alt="" width="48" height="48">
+                {% else %}
+                <span>{{ founder.username[:1]|upper }}</span>
+                {% endif %}
+            </span>
+            <span class="founder-welcome-signature"><strong>Sam</strong><span>@{{ founder.username }} · Founder</span></span>
+        </a>
+        {{ user_follow(founder) }}
+    </footer>
+</article>

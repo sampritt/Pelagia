@@ -15,6 +15,9 @@
 <section class="activity-layout">
     <div class="feed-main">
         <div class="feed-list home-feed-list">
+            {% if founder %}
+            {% include "_founder_welcome.html" %}
+            {% endif %}
             {% if brief %}
             <section class="daily-update" aria-label="The Dive Brief">
                 {% include "_dive_brief_card.html" %}
@@ -30,5 +33,11 @@
 <dialog id="diveBriefDialog" class="brief-dialog" data-brief-dialog aria-labelledby="briefTitle">
     {% include "_dive_brief_reader.html" %}
 </dialog>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+{% if founder %}
+<script defer src="{{ url_for('static', filename='js/user-follow.js', v=pwa_asset_version) }}"></script>
 {% endif %}
 {% endblock %}

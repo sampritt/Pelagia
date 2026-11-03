@@ -262,6 +262,13 @@ def register_routes(app):
     def home():
         latest_my_dives = fetch_dives(scope="mine", user_id=session["user_id"], limit=1)
         stats = get_profile_stats(session["user_id"])
+        founder = database.get_db().execute(
+            """SELECT id, username, profile_photo FROM users
+               WHERE username = 'davyjones' AND id <> ?
+               AND NOT EXISTS (SELECT 1 FROM dives WHERE user_id = ?)
+               AND NOT EXISTS (SELECT 1 FROM user_follows WHERE follower_id = ?)""",
+            (session["user_id"],) * 3,
+        ).fetchone()
         return render_template(
             "home.html",
             dives=fetch_dives(scope="following", user_id=session["user_id"]),
@@ -270,6 +277,7 @@ def register_routes(app):
             user=current_user(),
             brief=dive_brief.load_brief(),
             show_welcome=request.endpoint == "welcome",
+            founder=founder,
         )
 
     @app.get("/feed")
