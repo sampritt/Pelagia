@@ -4,7 +4,7 @@
 <div class="site-reports-track" id="homeSiteReports" data-site-reports-track
      {% if report_selection.sites|length > 1 %}tabindex="0" role="group" aria-roledescription="carousel" aria-label="Followed dive site reports" aria-describedby="siteReportsHelp"{% endif %}>
     {% for item in report_selection.sites %}
-        {% with preview=true %}{% include "_favorite_site_card.html" %}{% endwith %}
+        {% include "_favorite_site_card.html" %}
     {% endfor %}
 </div>
 {% if report_selection.sites|length > 1 %}

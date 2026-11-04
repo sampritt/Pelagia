@@ -2199,7 +2199,7 @@ input[type="range"] {
         right: 12px;
         bottom: 12px;
         display: grid;
-        grid-template-columns: repeat(5, minmax(0, 1fr));
+        grid-template-columns: repeat(3, minmax(0, 1fr));
         align-items: center;
         gap: 6px;
         padding: 6px;
@@ -4424,7 +4424,7 @@ input[type="range"] {
         bottom: max(12px, env(safe-area-inset-bottom));
         max-width: 560px;
         margin-inline: auto;
-        grid-template-columns: repeat(5, minmax(0, 1fr));
+        grid-template-columns: repeat(3, minmax(0, 1fr));
         align-items: stretch;
         gap: 4px;
         padding: 6px;
@@ -6204,19 +6204,11 @@ img.is-media-loading {
 }
 .site-reports button:active { background-color: var(--accent-soft); }
 
-.site-reports-empty { display: grid; grid-template-columns: 44px minmax(0, 1fr); align-items: start; gap: 16px; padding: 22px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); }
-.site-reports-empty-icon { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 12px; color: #007e88; background: #edf6f5; }
-.site-reports-empty-icon .action-icon { width: 24px; height: 24px; }
-.site-reports-empty h3 { margin-top: 2px; line-height: 1.4; }
-.site-reports-empty p { max-width: 42ch; margin: 5px 0 0; color: var(--muted-strong); font-size: .85rem; }
-.site-reports-empty .primary-button { grid-column: 2; justify-self: start; min-height: 44px; }
-
 @media (max-width: 560px) {
     .site-report-card { padding: 16px; }
     .site-report-card-main { gap: 10px; }
     .site-report-card .site-report-map { flex-basis: 56px; width: 56px; height: 56px; min-height: 56px; max-height: 56px; }
     .site-report-identity h3 { font-size: .9375rem; }
-    .site-reports-empty { padding: 18px; gap: 12px; }
 }
 @media (prefers-reduced-motion: reduce) {
     .site-report-card { transition: none; }
@@ -6619,18 +6611,6 @@ img.is-media-loading {
 .depth-axis-end { right: calc(100% - 40px); bottom: 29px; }
 .time-axis-start { left: 52px; bottom: 12px; }
 .time-axis-end { right: 16px; bottom: 12px; }
-
-/* Site reports are a normal vertical feed with content-sized cards. */
-.reports-page-title { margin: 0; padding-inline: 2px; font-size: .9375rem; font-weight: 600; line-height: 1.5; color: var(--ink-soft); }
-.reports-page-footer { display: grid; justify-items: center; gap: 14px; padding: 20px 16px 8px; text-align: center; }
-.reports-page-footer p { max-width: 42ch; margin: 0; color: var(--muted-strong); font-size: .8125rem; line-height: 1.6; }
-.reports-page-footer .primary-button { min-height: 44px; padding-inline: 18px; border-radius: 12px; box-shadow: var(--shadow-xs); }
-.reports-page-empty { gap: 18px; padding: 32px 20px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); box-shadow: var(--shadow-xs); }
-.site-reports-list { display: grid; gap: 16px; min-width: 0; }
-.site-reports-list > .site-report-card { grid-template-rows: auto; grid-row: auto; gap: 0; }
-
-.site-reports-list .followed-site-report-text { display: block; -webkit-line-clamp: unset; }
-.site-reports-list .site-report-card:not([data-report-state="loading"]) .followed-site-report { min-height: 0; }
 
 /* Home shows one full-width report at a time, between the Brief and logged dives. */
 .feed-site-reports { gap: 0; }

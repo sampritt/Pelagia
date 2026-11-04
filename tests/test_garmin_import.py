@@ -253,9 +253,9 @@ class GarminImportTest(unittest.TestCase):
 
     def test_primary_navigation_has_equal_labels_and_tracks_nested_pages(self):
         self.save(self.import_dive())
-        for path, destination, current in [("/home", "/home", "page"), ("/welcome", "/home", "page"), ("/feed", "/feed", "page"), ("/explore", "/explore", "page"),
+        for path, destination, current in [("/home", "/home", "page"), ("/welcome", "/home", "page"), ("/feed", "/home", "location"), ("/explore", "/explore", "page"),
                                            ("/dive/new", "/dive/new", "page"), ("/dive/1/edit", "/dive/new", "location"),
-                                           ("/dive/1", "/feed", "location"), ("/dive-sites/2544", "/explore", "location"),
+                                           ("/dive/1", "/home", "location"), ("/dive-sites/2544", "/explore", "location"),
                                            ("/you", "/you", "page"), ("/you/settings", "/you", "location")]:
             with self.subTest(path=path):
                 response = self.client.get(path)
@@ -263,5 +263,9 @@ class GarminImportTest(unittest.TestCase):
                 navigations = re.findall(r'<nav class="(?:desktop-nav|mobile-nav)".*?</nav>', response.get_data(as_text=True), re.S)
                 self.assertEqual(len(navigations), 2)
                 for navigation in navigations:
-                    self.assertEqual(re.findall(r"<span>(.*?)</span>", navigation), ["Home", "Explore", "Log dive", "Feed", "Profile"])
-                    self.assertEqual(re.findall(r'<a class="active" href="([^"]+)" aria-current="([^"]+)"', navigation), [(destination, current)])
+                    labels = ["Home", "Explore", "Log dive"]
+                    if 'class="desktop-nav"' in navigation:
+                        labels.append("Profile")
+                    self.assertEqual(re.findall(r"<span>(.*?)</span>", navigation), labels)
+                    expected = [] if destination == "/you" and 'class="mobile-nav"' in navigation else [(destination, current)]
+                    self.assertEqual(re.findall(r'<a class="active" href="([^"]+)" aria-current="([^"]+)"', navigation), expected)

@@ -104,11 +104,11 @@ test('navigation keeps chrome usable, resets on history restore, and recovers fr
     assert.match(status.textContent, /try again/);
 });
 
-test('Home aliases and Reports use the appropriate loading layouts', () => {
+test('Home aliases use the Home loading layout', () => {
     const { loading, tick, shell } = setup();
-    for (const path of ['/home', '/welcome', '/feed', '/reports']) {
+    for (const path of ['/home', '/welcome', '/feed']) {
         loading.startNavigation(path); tick(160);
-        assert.equal(shell.dataset.layout, path === '/reports' ? 'reports' : 'home');
+        assert.equal(shell.dataset.layout, 'home');
         assert.equal(shell.innerHTML.includes('skeleton-identity'), true);
         assert.equal(shell.innerHTML.includes('skeleton-metrics'), true);
         loading.resetNavigation();
