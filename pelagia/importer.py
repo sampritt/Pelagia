@@ -78,13 +78,34 @@ def import_reference_data(db_path, config, config_path):
     species["id"] = range(1, len(species) + 1)
     species = species[["id", "country_or_area", "common_name"]]
 
-    centers = centers_raw[["name", "physical_address", "location", "website"]].dropna(subset=["name"]).copy()
+    center_columns = ["name", "physical_address", "location", "website"]
+    # Distinct PADI profile IDs can legitimately share the same name/address
+    # (for example, a current profile and a legacy profile for one operator).
+    # Preserve those records when the enriched source provides a stable ID;
+    # older four-column CSVs retain the historical deduplication behavior.
+    identity_columns = [
+        column for column in ("padi_id", "osm_id", "padi_url") if column in centers_raw.columns
+    ]
+    center_columns.extend(identity_columns)
+    centers = centers_raw[center_columns].dropna(subset=["name"]).copy()
     for column in ("name", "physical_address", "location", "website"):
         centers[column] = centers[column].fillna("").astype(str).str.strip()
-    centers = centers[centers["name"] != ""].drop_duplicates(["name", "physical_address", "location"]).copy()
+    dedupe_columns = ["name", "physical_address", "location"]
+    if identity_columns:
+        centers["_source_identity"] = centers[identity_columns].apply(
+            lambda row: next((str(value).strip() for value in row if str(value).strip() and str(value).lower() != "nan"), ""),
+            axis=1,
+        )
+        dedupe_columns.append("_source_identity")
+    centers = centers[centers["name"] != ""].drop_duplicates(dedupe_columns).copy()
     centers["id"] = range(1, len(centers) + 1)
-    centers["latitude"] = None
-    centers["longitude"] = None
+    for column in ("latitude", "longitude"):
+        if column in centers_raw:
+            centers[column] = pd.to_numeric(
+                centers_raw.loc[centers.index, column], errors="coerce"
+            )
+        else:
+            centers[column] = None
     centers = centers[["id", "name", "physical_address", "location", "website", "latitude", "longitude"]]
 
     db_file = Path(db_path)
