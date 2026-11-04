@@ -216,7 +216,7 @@ node --test tests/test_*.cjs
 
 ## Home and Feed
 
-The bottom navigation has three equal touch targets in this order: **Home**, **Explore**, **Log dive**, with safe-area spacing. Profile remains accessible through the header avatar and the desktop navigation. Home (`/home`) and its `/feed` alias contain The Dive Brief, site reports and the community’s logged dives, preserving their ordering, photos, likes, comments and sharing. Dive detail pages select Home; the brief returns to Home. The separate Reports view has been removed. Home retains the desktop dive-summary rail and its loading placeholders.
+The bottom navigation has four equal touch targets in this order: **Home**, **Explore**, **Log dive**, **Profile**, with safe-area spacing. Desktop navigation uses the same order, and Profile is also accessible through the header avatar. Home (`/home`) and its `/feed` alias contain The Dive Brief, site reports and the community’s logged dives, preserving their ordering, photos, likes, comments and sharing. Dive detail pages select Home; the brief returns to Home. The separate Reports view has been removed. Home retains the desktop dive-summary rail and its loading placeholders.
 
 ## Loading feedback
 

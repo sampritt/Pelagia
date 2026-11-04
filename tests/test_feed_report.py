@@ -136,13 +136,12 @@ class FeedReportPageTest(unittest.TestCase):
         self.assertNotIn('>FEATURED</span>', after['html'])
 
     def test_bottom_navigation_order_and_active_states(self):
-        for path, selected in (('/home', 'Home'), ('/explore', 'Explore'), ('/dive/new', 'Log dive')):
+        for path, selected in (('/home', 'Home'), ('/explore', 'Explore'), ('/dive/new', 'Log dive'), ('/you', 'Profile')):
             html = self.client.get(path).get_data(as_text=True)
             mobile = html.split('<nav class="mobile-nav"', 1)[1].split('</nav>', 1)[0]
-            labels = ['Home', 'Explore', 'Log dive']
-            self.assertEqual(mobile.count('<a '), 3)
+            labels = ['Home', 'Explore', 'Log dive', 'Profile']
+            self.assertEqual(mobile.count('<a '), 4)
             self.assertNotIn('<span>Reports</span>', mobile)
-            self.assertNotIn('<span>Profile</span>', mobile)
             positions = [mobile.index(f'<span>{label}</span>') for label in labels]
             self.assertEqual(positions, sorted(positions))
             active = mobile.split('class="active"', 1)[1].split('</a>', 1)[0]

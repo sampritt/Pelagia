@@ -1,0 +1,7 @@
+# Primary navigation design review
+
+The primary navigation retains four destinations in the same order on desktop and mobile: Home, Explore, Log dive, Profile. Profile is restored to the bottom bar, including its selected state on Profile and Settings. Four equal columns preserve the existing icons, labels, active treatment, rounded bar, safe-area spacing and touch targets. The shared navigation template now defines one destination list for both layouts.
+
+Reviewed rendered Home and selected-Profile screenshots, plus touch landscape. Browser checks cover 320, 360, 390, 430, 768, 820, 821, 1024 and 1440 px, including the mobile/desktop breakpoint. Confirmed four equal targets, at least 44 px target height, no page overflow, correct selection on primary and nested destinations, and direct navigation to Profile from the bottom bar. Landscape uses the existing compact horizontal treatment. No additional issues were found in the navigation and Reports rollback during this pass.
+
+Home/feed report cards, featured and empty states, pagination and keyboard carousel navigation remain available. The separate Reports route returns 404 and no Reports navigation link remains. Validation: 106 focused Python checks, all 198 JavaScript checks and patch whitespace checks passed. Browser review used Chromium with deterministic local fixtures; screenshots are retained locally in `/private/tmp/pelagia-profile-navigation-review/`.

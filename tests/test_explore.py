@@ -70,10 +70,7 @@ class ExploreTest(unittest.TestCase):
         html = self.client.get("/explore").get_data(as_text=True)
         for nav in re.findall(r'<nav class="(?:desktop-nav|mobile-nav)".*?</nav>', html, re.S):
             links = re.findall(r'href="([^"]+)"', nav)
-            expected = ["/home", "/explore", "/dive/new"]
-            if 'class="desktop-nav"' in nav:
-                expected.append("/you")
-            self.assertEqual(links, expected)
+            self.assertEqual(links, ["/home", "/explore", "/dive/new", "/you"])
         self.assertIn("Where will you dive next?", html)
         self.assertNotIn('role="tablist"', html)
         self.assertNotIn("Coming soon", html)

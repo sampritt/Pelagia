@@ -263,9 +263,6 @@ class GarminImportTest(unittest.TestCase):
                 navigations = re.findall(r'<nav class="(?:desktop-nav|mobile-nav)".*?</nav>', response.get_data(as_text=True), re.S)
                 self.assertEqual(len(navigations), 2)
                 for navigation in navigations:
-                    labels = ["Home", "Explore", "Log dive"]
-                    if 'class="desktop-nav"' in navigation:
-                        labels.append("Profile")
+                    labels = ["Home", "Explore", "Log dive", "Profile"]
                     self.assertEqual(re.findall(r"<span>(.*?)</span>", navigation), labels)
-                    expected = [] if destination == "/you" and 'class="mobile-nav"' in navigation else [(destination, current)]
-                    self.assertEqual(re.findall(r'<a class="active" href="([^"]+)" aria-current="([^"]+)"', navigation), expected)
+                    self.assertEqual(re.findall(r'<a class="active" href="([^"]+)" aria-current="([^"]+)"', navigation), [(destination, current)])
