@@ -6906,6 +6906,11 @@ html:has(.place-profile #reviews:target) { scroll-behavior: auto; }
 .place-review-form { display: grid; gap: 12px; padding: 26px 30px; border: 1px solid var(--line); border-radius: 14px; background: var(--panel); }
 .place-review-form > label, .review-rating legend { color: var(--muted-strong); font-size: .8125rem; font-weight: 600; }
 .review-rating { min-width: 0; margin: 0; padding: 0; border: 0; }
+.dive-place-review { min-width: 0; margin: 0; padding: 0; border: 0; gap: 8px; }
+.dive-place-review[hidden] { display: none; }
+.dive-place-review h2 { margin: 0; color: var(--ink); font-size: 1rem; font-weight: 700; line-height: 1.5; overflow-wrap: anywhere; }
+.dive-place-review .review-stars { margin: 0 0 0 -8px; }
+.dive-place-review textarea { min-height: 78px; resize: vertical; }
 .review-stars { display: flex; width: fit-content; margin: 6px 0 2px; }
 .review-star { position: relative; display: grid; place-items: center; width: 44px; height: 44px; border-radius: 8px; cursor: pointer; }
 .review-star input { min-height: 0; }

@@ -1,11 +1,13 @@
 {% extends "base.html" %}
 {% from "_unit_toggle.html" import unit_toggle %}
+{% from "_review_stars.html" import review_stars %}
 {% block title %}Log a Dive - Pelagia{% endblock %}
 
 {% block content %}
 <section class="log-layout">
     <form class="dive-form keyboard-flow" method="post" enctype="multipart/form-data" data-dive-form data-is-edit="{{ 'true' if is_edit else 'false' }}">
         <input type="hidden" name="next" value="{{ next_url }}">
+        <input type="hidden" name="csrf_token" value="{{ google_csrf_token() }}">
         <header class="dive-form-header">
         <div class="section-head">
             <div>
@@ -330,6 +332,17 @@
                 <textarea name="notes" rows="5">{{ dive.notes if is_edit and dive.notes else '' }}</textarea>
             </label>
         </div>
+
+        {% for kind, place_name in [('center', (dive.linked_dive_center_name or dive.dive_center_name) if is_edit else ''), ('site', location.site_name if location else '')] %}
+        {% set review = dive_reviews.get(kind) if dive_reviews else none %}
+        <fieldset class="form-section dive-place-review" data-dive-review="{{ kind }}"{% if not place_name %} hidden disabled{% endif %}>
+            <legend class="sr-only" data-review-legend>How was {{ place_name or '' }}?</legend>
+            <h2 data-review-title aria-hidden="true">How was {{ place_name or '' }}?</h2>
+            {{ review_stars(kind ~ '_review_rating', review.rating if review else none) }}
+            <textarea name="{{ kind }}_review_body" rows="2" maxlength="2000" placeholder="Your review" aria-label="{{ 'Dive center' if kind == 'center' else 'Dive site' }} review">{{ review.body if review else '' }}</textarea>
+            <input type="hidden" name="{{ kind }}_review_action" value="" data-review-action>
+        </fieldset>
+        {% endfor %}
 
         <div class="form-section">
             <div class="form-section-title">

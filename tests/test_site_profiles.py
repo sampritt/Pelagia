@@ -152,7 +152,7 @@ class SiteProfileTest(unittest.TestCase):
             self.assertIn('js/place-profile.js', html)
 
     def test_invalid_reviews_retain_draft_and_complete_profile_sections(self):
-        for rating, body in [('0', 'A draft'), ('6', 'A draft'), ('2.5', 'A draft'), ('', 'A draft'), ('4', ' '), ('5', 'x'*2001)]:
+        for rating, body in [('0', 'A draft'), ('6', 'A draft'), ('2.5', 'A draft'), ('', 'A draft'), ('5', 'x'*2001)]:
             with self.subTest(rating=rating, length=len(body)):
                 response = self.review(rating, body)
                 self.assertEqual(response.status_code, 400)

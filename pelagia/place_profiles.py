@@ -78,13 +78,14 @@ def reviews(place_id, viewer_id, *, kind="center"):
     }
 
 
-def save_review(place_id, user_id, rating, body, *, kind):
+def save_review(place_id, user_id, rating, body, *, kind, commit=True):
     prefix = _prefix(kind)
     db = get_db()
-    with db:
-        db.execute(
-            f"INSERT INTO {prefix}_reviews({prefix}_id, user_id, rating, body) "
-            f"VALUES (?, ?, ?, ?) ON CONFLICT({prefix}_id, user_id) DO UPDATE SET "
-            "rating=excluded.rating, body=excluded.body, updated_at=CURRENT_TIMESTAMP",
-            (place_id, user_id, rating, body),
-        )
+    db.execute(
+        f"INSERT INTO {prefix}_reviews({prefix}_id, user_id, rating, body) "
+        f"VALUES (?, ?, ?, ?) ON CONFLICT({prefix}_id, user_id) DO UPDATE SET "
+        "rating=excluded.rating, body=excluded.body, updated_at=CURRENT_TIMESTAMP",
+        (place_id, user_id, rating, body),
+    )
+    if commit:
+        db.commit()

@@ -367,7 +367,7 @@ CREATE TABLE IF NOT EXISTS dive_center_reviews (
     dive_center_id INTEGER NOT NULL REFERENCES dive_centers(id) ON DELETE CASCADE,
     user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     rating INTEGER NOT NULL CHECK (rating BETWEEN 1 AND 5),
-    body TEXT NOT NULL CHECK (length(trim(body)) BETWEEN 1 AND 2000),
+    body TEXT NOT NULL CHECK (length(trim(body)) BETWEEN 0 AND 2000),
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(dive_center_id, user_id)
@@ -379,7 +379,7 @@ CREATE TABLE IF NOT EXISTS dive_site_reviews (
     dive_site_id INTEGER NOT NULL REFERENCES dive_sites(id) ON DELETE CASCADE,
     user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     rating INTEGER NOT NULL CHECK (rating BETWEEN 1 AND 5),
-    body TEXT NOT NULL CHECK (length(trim(body)) BETWEEN 1 AND 2000),
+    body TEXT NOT NULL CHECK (length(trim(body)) BETWEEN 0 AND 2000),
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(dive_site_id, user_id)

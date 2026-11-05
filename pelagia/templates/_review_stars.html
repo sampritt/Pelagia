@@ -1,0 +1,10 @@
+{% macro review_stars(name, rating=none, required=false) -%}
+<div class="review-stars">
+    {% for star in range(1, 6) %}
+    <label class="review-star">
+        <input class="sr-only" type="radio" name="{{ name }}" value="{{ star }}"{% if required %} required{% endif %} aria-label="{{ star }} {{ 'star' if star == 1 else 'stars' }}"{% if rating == star %} checked{% endif %}>
+        <span aria-hidden="true">★</span>
+    </label>
+    {% endfor %}
+</div>
+{%- endmacro %}

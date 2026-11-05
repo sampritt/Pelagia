@@ -944,6 +944,72 @@ function initDiveComputerImport(form, applyImport) {
     fileInput.addEventListener("change", () => importFile(fileInput.files?.[0]));
 }
 
+function initDiveReviews(form) {
+    const refreshers = [];
+    form.querySelectorAll('[data-dive-review]').forEach((section) => {
+        const kind = section.dataset.diveReview;
+        const name = form.querySelector(kind === 'center' ? '[data-center-input]' : '[data-site-input]');
+        const id = form.querySelector(kind === 'center' ? '#diveCenterId' : '#diveSiteId');
+        const stars = [...section.querySelectorAll('input[type="radio"]')];
+        const body = section.querySelector('textarea');
+        const action = section.querySelector('[data-review-action]');
+        let selected = stars.find(star => star.checked)?.value || '';
+        let original = selected;
+        let placeKey = `${id.value}|${name.value.trim()}`;
+        const validatePlace = () => name.setCustomValidity(selected && !id.value
+            ? `Choose a dive ${kind} from the suggestions to post a review.` : '');
+        const updateAction = () => {
+            action.value = selected ? 'save' : original ? 'delete' : '';
+            validatePlace();
+        };
+        stars.forEach((star) => {
+            star.addEventListener('keydown', (event) => {
+                if (event.key !== ' ' || !star.checked) return;
+                event.preventDefault();
+                star.checked = false;
+                selected = '';
+                updateAction();
+            });
+            star.addEventListener('click', () => {
+                if (selected === star.value) {
+                    star.checked = false;
+                    selected = '';
+                } else selected = star.value;
+                updateAction();
+            });
+            star.addEventListener('change', () => {
+                selected = stars.find(input => input.checked)?.value || '';
+                updateAction();
+            });
+        });
+        body.addEventListener('input', updateAction);
+        const refresh = () => {
+            const title = name.value.trim();
+            const key = `${id.value}|${title}`;
+            if (key !== placeKey) {
+                stars.forEach(star => { star.checked = false; });
+                body.value = '';
+                selected = original = '';
+                action.value = '';
+                placeKey = key;
+            }
+            section.hidden = !title;
+            section.disabled = !title;
+            section.querySelector('[data-review-title]').textContent = `How was ${title}?`;
+            section.querySelector('[data-review-legend]').textContent = `How was ${title}?`;
+            validatePlace();
+        };
+        name.addEventListener('input', () => {
+            // Clear the old association immediately, before the debounced search.
+            id.value = '';
+            refresh();
+        });
+        refreshers.push(refresh);
+        refresh();
+    });
+    return () => refreshers.forEach(refresh => refresh());
+}
+
 function initDiveForm() {
     const form = document.querySelector("[data-dive-form]");
     if (!form) {
@@ -972,6 +1038,7 @@ function initDiveForm() {
     const buddyResults = form.querySelector("[data-buddy-results]");
     const siteId = document.getElementById("diveSiteId");
     const centerId = document.getElementById("diveCenterId");
+    const refreshReviews = initDiveReviews(form);
     const buddyId = document.getElementById("buddyUserId");
     const country = document.getElementById("country");
     const latitude = document.getElementById("latitude");
@@ -1249,7 +1316,6 @@ function initDiveForm() {
     initCurrentStrengthSlider(form);
 
     const siteSearch = debounce(async () => {
-            siteId.value = "";
             const query = siteInput.value.trim();
             if (query.length < 2) {
                 hideMenu(siteResults);
@@ -1262,7 +1328,6 @@ function initDiveForm() {
     centerInput.addEventListener(
         "input",
         debounce(async () => {
-            centerId.value = "";
             const query = centerInput.value.trim();
             if (query.length < 2) {
                 hideMenu(centerResults);
@@ -1296,6 +1361,7 @@ function initDiveForm() {
     function selectSite(site) {
         siteInput.value = site.name;
         siteId.value = site.id;
+        refreshReviews();
         country.value = site.country_or_area || "";
         latitude.value = site.latitude ?? "";
         longitude.value = site.longitude ?? "";
@@ -1327,6 +1393,7 @@ function initDiveForm() {
     function selectCenter(center) {
         centerInput.value = center.name;
         centerId.value = center.id;
+        refreshReviews();
         hideMenu(centerResults);
     }
 
@@ -1350,6 +1417,7 @@ function initDiveForm() {
         ["date", "site_name", "dive_site_id", "country_or_area", "latitude", "longitude"].forEach((field) => {
             if (fields[field] !== undefined) form.elements.namedItem(field).value = fields[field];
         });
+        refreshReviews();
         if (fields.latitude !== undefined || fields.longitude !== undefined) waterTypeLookup.lookup();
         if (fields.oxygen_pct !== undefined) {
             const controls = form.querySelector("[data-gas-mix]");

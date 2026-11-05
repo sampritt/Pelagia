@@ -31,6 +31,7 @@ def init_db():
     db.executescript(schema)
     _reset_water_classifications_once(db)
     _retire_visibility_cache(db)
+    _allow_rating_only_reviews(db)
     _migrate_dive_site_favorites(db)
     # Retire the former page-load OBIS/Luna cache after the offline catalogue
     # has become the only source of imported site sightings.
@@ -98,6 +99,22 @@ def init_db():
     db.execute("CREATE INDEX IF NOT EXISTS idx_dives_user_date ON dives(user_id, date)")
     db.execute("CREATE INDEX IF NOT EXISTS idx_dive_sites_logged_dive_count ON dive_sites(logged_dive_count DESC)")
     db.commit()
+
+
+def _allow_rating_only_reviews(db):
+    """Relax the legacy review-body constraint while preserving reviews and IDs."""
+    with db:
+        db.execute("BEGIN IMMEDIATE")
+        for kind in ("center", "site"):
+            table = f"dive_{kind}_reviews"
+            sql = db.execute("SELECT sql FROM sqlite_master WHERE name=?", (table,)).fetchone()[0]
+            if "BETWEEN 1 AND 2000" not in sql:
+                continue
+            db.execute(sql.replace(table, f"{table}_new", 1).replace("BETWEEN 1 AND 2000", "BETWEEN 0 AND 2000"))
+            db.execute(f"INSERT INTO {table}_new SELECT * FROM {table}")
+            db.execute(f"DROP TABLE {table}")
+            db.execute(f"ALTER TABLE {table}_new RENAME TO {table}")
+            db.execute(f"CREATE INDEX idx_{kind}_reviews_{kind} ON {table}(dive_{kind}_id, updated_at)")
 
 
 def _reset_water_classifications_once(db):

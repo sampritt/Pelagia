@@ -464,6 +464,8 @@ def register_routes(app):
             today=date.today().isoformat(),
             dive=dive,
             is_edit=True,
+            dive_reviews={kind: place_profiles.reviews(dive[f"dive_{kind}_id"], session["user_id"], kind=kind)["my_review"]
+                          for kind in ("center", "site") if dive[f"dive_{kind}_id"]},
             computer_summary=dive_import.computer_data_summary(database.get_db(), dive_id),
             tank_size_l=sac_tank_size(dive),
             next_url=_safe_next_url(request.args.get("next") or request.referrer),
@@ -988,10 +990,10 @@ def register_routes(app):
         rating = request.form.get("rating", "")
         body = request.form.get("body", "").strip()
         valid_ratings = {"1", "2", "3", "4", "5"}
-        if rating not in valid_ratings or not 1 <= len(body) <= 2000:
+        if rating not in valid_ratings or len(body) > 2000:
             render = render_center_profile if kind == "center" else render_site_profile
             return render(
-                place, review_error="Choose a star rating and write a review of 1–2,000 characters.",
+                place, review_error="Choose a star rating. Review text must be 2,000 characters or fewer.",
                 review_draft={"rating": int(rating) if rating in valid_ratings else None, "body": body},
             ), 400
         place_profiles.save_review(place_id, session["user_id"], int(rating), body, kind=kind)
@@ -1169,6 +1171,7 @@ def create_dive_from_request(user_id, form_request):
     # Serialize counting and insertion across workers, before form resolution writes.
     db.execute("BEGIN IMMEDIATE")
     values = dive_values_from_request(form_request, user_id)
+    reviews = dive_reviews_from_request(form_request)
     computer_data = dive_import.computer_data_from_form(form_request.form)
     enforce_dive_limits(db, user_id, values["date"])
     cur = db.execute(
@@ -1222,6 +1225,7 @@ def create_dive_from_request(user_id, form_request):
     dive_import.save_computer_data(db, dive_id, computer_data)
     replace_dive_species(dive_id, values["species_names"], db)
     save_dive_photos(dive_id, form_request, db)
+    save_dive_reviews(values, user_id, reviews, db)
     db.commit()
     return dive_id
 
@@ -1232,6 +1236,7 @@ def update_dive_from_request(dive_id, user_id, form_request):
     existing_dive = fetch_owned_dive(dive_id, user_id)
     default_tank_size_l = sac_tank_size(existing_dive) if existing_dive else 12
     values = dive_values_from_request(form_request, user_id, default_tank_size_l)
+    reviews = dive_reviews_from_request(form_request)
     computer_data = dive_import.computer_data_from_form(form_request.form)
     enforce_dive_limits(db, user_id, values["date"], existing_dive)
     db.execute(
@@ -1314,8 +1319,38 @@ def update_dive_from_request(dive_id, user_id, form_request):
     replace_dive_species(dive_id, values["species_names"], db)
     remove_dive_photos(dive_id, form_request, db)
     save_dive_photos(dive_id, form_request, db)
+    save_dive_reviews(values, user_id, reviews, db)
     db.commit()
     return dive_id
+
+
+def dive_reviews_from_request(form_request):
+    reviews = {}
+    for kind in ("center", "site"):
+        rating = form_request.form.get(f"{kind}_review_rating", "")
+        action = form_request.form.get(f"{kind}_review_action", "")
+        if not rating and action != "delete":
+            continue
+        google_auth.check_csrf()
+        body = form_request.form.get(f"{kind}_review_body", "").strip()
+        if rating and (rating not in {"1", "2", "3", "4", "5"} or len(body) > 2000):
+            abort(400, description="Choose a star rating and keep review text within 2,000 characters.")
+        reviews[kind] = (int(rating) if rating else None, body)
+    return reviews
+
+
+def save_dive_reviews(values, user_id, reviews, db):
+    # The dive and its reviews commit together, after all dive validation succeeds.
+    for kind, (rating, body) in reviews.items():
+        place_id = values[f"dive_{kind}_id"]
+        if not place_id:
+            if rating:
+                abort(400, description=f"Choose a dive {kind} from the suggestions to post its review.")
+            continue
+        if rating is None:
+            db.execute(f"DELETE FROM dive_{kind}_reviews WHERE dive_{kind}_id=? AND user_id=?", (place_id, user_id))
+        else:
+            place_profiles.save_review(place_id, user_id, rating, body, kind=kind, commit=False)
 
 
 def dive_values_from_request(form_request, user_id, default_tank_size_l=12):
