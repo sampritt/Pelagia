@@ -5,6 +5,7 @@ import io
 import math
 
 from .importer import resolve_path
+from . import obis_catalog
 
 
 def _number(value):
@@ -44,23 +45,31 @@ def apply_catalog(db, csv_path):
     if not incoming:
         raise ValueError('Refusing to replace dive sites with an empty catalogue')
     digest = hashlib.sha256(b'dive-site-catalog-v1\0' + content).hexdigest()
+    links_digest = hashlib.sha256(b'dive-site-obis-remap-v1\0' + content).hexdigest()
     with db:
         db.execute('BEGIN IMMEDIATE')
         db.execute('CREATE TABLE IF NOT EXISTS reference_catalog_versions (name TEXT PRIMARY KEY, digest TEXT NOT NULL)')
         previous = db.execute("SELECT digest FROM reference_catalog_versions WHERE name='dive_sites'").fetchone()
         count = db.execute('SELECT COUNT(*) FROM dive_sites').fetchone()[0]
-        if previous and previous[0] == digest and count == len(incoming):
-            return False
-        # Foreign keys detach existing dive logs and clear dependent site data.
-        # Logged names, locations, coordinates, and other dive details remain.
-        db.execute('DELETE FROM dive_sites')
-        db.executemany('''INSERT INTO dive_sites
-            (id, master_site_id, name, country_or_area, country_code, latitude, longitude, max_depth_m)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)''', incoming)
-        db.execute("INSERT OR REPLACE INTO reference_catalog_versions VALUES ('dive_sites', ?)", (digest,))
-    return True
+        replace = not (previous and previous[0] == digest and count == len(incoming))
+        if replace:
+            # Foreign keys detach existing dive logs and clear dependent site
+            # data. Saved OBIS observations survive and are remapped below.
+            db.execute('DELETE FROM dive_sites')
+            db.executemany('''INSERT INTO dive_sites
+                (id, master_site_id, name, country_or_area, country_code, latitude, longitude, max_depth_m)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)''', incoming)
+            db.execute("INSERT OR REPLACE INTO reference_catalog_versions VALUES ('dive_sites', ?)", (digest,))
+        previous_links = db.execute("SELECT digest FROM reference_catalog_versions WHERE name='dive_site_obis_occurrences'").fetchone()
+        remap = replace or not previous_links or previous_links[0] != links_digest
+        if remap:
+            obis_catalog.rebuild_site_occurrences(db)
+            db.execute("INSERT OR REPLACE INTO reference_catalog_versions VALUES ('dive_site_obis_occurrences', ?)", (links_digest,))
+    return replace or remap
 
 
 def apply(db, app):
-    source = app.config['PELAGIA_LOCAL_CONFIG']['data_sources']['dive_sites_csv']
+    source = app.config['PELAGIA_LOCAL_CONFIG'].get('data_sources', {}).get('dive_sites_csv')
+    if not source:
+        return False
     return apply_catalog(db, resolve_path(app.config['PELAGIA_CONFIG_PATH'], source))

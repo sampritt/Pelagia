@@ -13,6 +13,19 @@ startup pattern as dive centers. Starting additional workers or restarting with
 the same catalogue and row count skips replacement. A different CSV triggers a
 new replacement. No separate deployment command is needed.
 
+Every replacement rebuilds `dive_site_obis_occurrences` from saved OBIS
+observations and their Pelagia taxon mappings in the same transaction. It uses
+the ingestion rule: coordinate uncertainty and Cartesian distance must each be
+strictly below 0.5 miles. Observations can link to every qualifying new site;
+old site IDs and names do not determine the match. No OBIS requests are made.
+
+A separate version marker runs this repair once for databases that already
+received the original catalogue rollout, without replacing their sites again.
+Later workers and unchanged restarts skip the repair. Saved observations,
+taxonomy resolutions, and ingestion cursors remain intact. This remaps the
+existing observation corpus; it does not fetch additional observations for
+newly added or relocated sites.
+
 SQLite foreign keys remain enabled. Replacement clears site-dependent favorites,
 comments, reviews, and caches. Existing dive logs retain their recorded names,
 locations, coordinates, and other details, but their `dive_site_id` links become
