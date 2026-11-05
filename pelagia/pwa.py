@@ -1,6 +1,5 @@
 """Public PWA resources with release-specific asset caches."""
 
-import base64
 import hashlib
 import json
 from pathlib import Path
@@ -13,26 +12,15 @@ def init_app(app):
     templates = Path(app.root_path) / "templates"
     assets = ("css/app.css", "css/landing.css", "js/landing.js", "js/app.js", "js/pwa.js", "js/loading.js", "js/welcome.js", "js/explore.js", "js/marine.js", "js/site-report.js", "js/feed-site-reports.js", "js/site-carousel.js", "js/place-profile.js", "js/user-follow.js")
     icons = ("pelagia-mark.png", "favicon.png", "icon-192.png", "icon-512.png", "icon-maskable-512.png", "apple-touch-icon.png")
-    startup_index = static / "img" / "startup" / "screens.json"
-    startup_screens = json.loads(startup_index.read_text())
-    app.jinja_env.globals["pwa_startup_screens"] = startup_screens
-    # Keep the first painted logo independent of stylesheet and image requests.
-    app.jinja_env.globals["pwa_launch_icon"] = base64.b64encode(
-        (static / "img" / "icon-192.png").read_bytes()
-    ).decode("ascii")
     worker = (static / "service-worker.js").read_text()
     digest = hashlib.sha256(worker.encode())
     digest.update(Path(__file__).read_bytes())
     for path in [*(static / asset for asset in assets),
                  *(static / "img" / icon for icon in icons),
-                 static / "manifest.webmanifest", templates / "offline.html",
-                 templates / "_pwa_startup.html", templates / "_pwa_launch.js", startup_index,
-                 *(static / screen["filename"] for screen in startup_screens)]:
+                 static / "manifest.webmanifest", templates / "offline.html"]:
         digest.update(path.read_bytes())
     version = digest.hexdigest()[:16]
     app.jinja_env.globals["pwa_asset_version"] = version
-    # iOS loads its matching launch image itself; don't make every device
-    # download all phone/tablet sizes into the service worker's asset cache.
     precache = ["/offline.html", "/manifest.webmanifest",
                 *(f"/static/{asset}?v={version}" for asset in assets),
                 *(f"/static/img/{icon}" for icon in icons)]

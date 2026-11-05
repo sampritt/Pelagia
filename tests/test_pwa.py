@@ -1,28 +1,14 @@
-import base64
 import io
 import json
 import re
 import tempfile
 import unittest
-from html.parser import HTMLParser
 from pathlib import Path
 from unittest.mock import patch
 
 from PIL import Image
 
 from pelagia import create_app, db
-
-
-class StartupLinkParser(HTMLParser):
-    def __init__(self, html):
-        super().__init__()
-        self.screens = []
-        self.feed(html)
-
-    def handle_starttag(self, tag, attrs):
-        attrs = dict(attrs)
-        if tag == "link" and attrs.get("rel") == "apple-touch-startup-image":
-            self.screens.append(attrs)
 
 
 class PWATest(unittest.TestCase):
@@ -68,50 +54,18 @@ class PWATest(unittest.TestCase):
         touch = Image.open(io.BytesIO(self.get("/static/img/apple-touch-icon.png").data))
         self.assertEqual(touch.size, (180, 180))
 
-    def test_apple_launch_images_match_device_media_and_manifest_background(self):
-        background = json.loads(self.get("/manifest.webmanifest").data)["background_color"]
-        expected_color = tuple(bytes.fromhex(background.removeprefix("#")))
-        pages = [StartupLinkParser(self.get(page).get_data(as_text=True)).screens
-                 for page in ("/", "/login", "/offline.html")]
-        self.assertEqual(pages[0], pages[1])
-        self.assertEqual(pages[0], pages[2])
-        self.assertTrue(pages[0])
-        devices = set()
-        for screen in pages[0]:
-            media = screen["media"]
-            width = int(re.search(r"device-width: (\d+)px", media).group(1))
-            height = int(re.search(r"device-height: (\d+)px", media).group(1))
-            scale = int(re.search(r"device-pixel-ratio: (\d+)", media).group(1))
-            orientation = re.search(r"orientation: (\w+)", media).group(1)
-            devices.add((width, height, scale, orientation))
-            expected_size = (width * scale, height * scale)
-            if orientation == "landscape":
-                expected_size = expected_size[::-1]
-            response = self.get(screen["href"])
-            self.assertEqual(response.status_code, 200, screen["href"])
-            with Image.open(io.BytesIO(response.data)) as image:
-                self.assertEqual(image.size, expected_size)
-                self.assertEqual(image.mode, "RGB")
-                self.assertEqual(image.getpixel((0, 0)), expected_color)
-                self.assertEqual(image.getpixel((image.width - 1, image.height - 1)), expected_color)
-                # A centered, visible logo is present on the otherwise plain background.
-                self.assertNotEqual(image.getpixel((image.width // 2, image.height // 2)), expected_color)
-        for device in ((375, 667, 2), (390, 844, 3), (402, 874, 3), (768, 1024, 2), (1032, 1376, 2)):
-            for orientation in ("portrait", "landscape"):
-                self.assertIn((*device, orientation), devices)
+    def test_pages_have_a_plain_background_without_a_logo_launch_splash(self):
+        for page in ("/", "/login", "/offline.html"):
+            with self.subTest(page=page):
+                html = self.get(page).get_data(as_text=True)
+                self.assertIn('<meta name="color-scheme" content="dark">', html)
+                self.assertLess(html.index("html { background: #031e33;"), html.index('rel="stylesheet"'))
+                self.assertNotIn("pwa-launching", html)
+                self.assertNotIn("apple-touch-startup-image", html)
+                self.assertNotIn("data:image/png;base64,", html)
         source = self.get("/service-worker.js").get_data(as_text=True)
         paths = json.loads(re.search(r"const PRECACHE = (\[.*?\]);", source).group(1))
         self.assertFalse(any("/img/startup/" in path for path in paths))
-
-    def test_launch_background_is_available_before_external_styles(self):
-        for page in ("/", "/login", "/offline.html"):
-            html = self.get(page).get_data(as_text=True)
-            self.assertIn('<meta name="color-scheme" content="dark">', html)
-            self.assertLess(html.index("html { background: #031e33;"), html.index('rel="stylesheet"'))
-            self.assertLess(html.index("root.classList.add('pwa-launching')"), html.index('rel="stylesheet"'))
-            embedded_icon = re.search(r'data:image/png;base64,([^\"]+)', html).group(1)
-            self.assertEqual(base64.b64decode(embedded_icon),
-                             (Path(self.app.static_folder) / "img" / "icon-192.png").read_bytes())
 
     def test_root_worker_has_correct_scope_mime_and_revalidates(self):
         response = self.get("/service-worker.js")
