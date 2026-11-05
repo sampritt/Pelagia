@@ -31,7 +31,7 @@ from werkzeug.exceptions import BadRequest
 
 from . import db as database
 from .importer import import_reference_data
-from . import center_registry
+from . import center_cleanup_startup
 from .metrics import format_metric
 from .units import UNIT_OPTIONS, display_measurement, metric_measurement, pressure_display
 from .dive_options import DIVE_TYPES, CURRENT_TYPES, normalize_options, dive_type_options, current_type_options, gas_mix_label
@@ -111,7 +111,7 @@ def create_app(test_config=None):
     with app.app_context():
         database.init_db()
         _ensure_reference_data(app)
-        center_registry.refresh_centers(database.get_db(), center_registry.configured_csv(app))
+        center_cleanup_startup.apply(database.get_db(), app)
 
     register_routes(app)
     seasons.init_app(app)
