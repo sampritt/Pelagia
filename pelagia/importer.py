@@ -47,7 +47,14 @@ def import_reference_data(db_path, config, config_path):
 
     sites = sites_raw[list(site_columns)].rename(columns=site_columns)
     sites = sites.dropna(subset=["name"]).copy()
-    sites["id"] = range(1, len(sites) + 1)
+    if "legacy_import_id" in sites_raw.columns:
+        # Cleanup removes rows; retain their original database IDs rather than
+        # shifting every subsequent site and any dive references.
+        sites["id"] = pd.to_numeric(sites_raw.loc[sites.index, "legacy_import_id"], errors="raise").astype(int)
+        if sites["id"].duplicated().any() or (sites["id"] <= 0).any():
+            raise ValueError("Dive-site legacy import IDs must be unique positive integers")
+    else:
+        sites["id"] = range(1, len(sites) + 1)
     for column in ("latitude", "longitude", "max_depth_m"):
         sites[column] = pd.to_numeric(sites[column], errors="coerce")
     sites = sites[
@@ -140,7 +147,8 @@ def import_reference_data(db_path, config, config_path):
                     latitude = (SELECT latitude FROM _import_dive_sites WHERE _import_dive_sites.id = dive_sites.id),
                     longitude = (SELECT longitude FROM _import_dive_sites WHERE _import_dive_sites.id = dive_sites.id),
                     max_depth_m = (SELECT max_depth_m FROM _import_dive_sites WHERE _import_dive_sites.id = dive_sites.id)
-                WHERE id IN (SELECT id FROM _import_dive_sites)
+                WHERE master_site_id IS NULL
+                    AND id IN (SELECT id FROM _import_dive_sites)
                     AND NOT EXISTS (
                         SELECT 1
                         FROM _import_dive_sites imported
