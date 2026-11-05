@@ -272,23 +272,36 @@ class SiteDescriptionTest(unittest.TestCase):
         with self.connect() as db:
             self.assertEqual(db.execute("SELECT COUNT(*) FROM dive_site_descriptions").fetchone()[0], 2)
 
-    def test_unverified_or_malformed_output_cannot_become_permanent_results(self):
+    def test_unusable_output_cannot_become_a_permanent_result(self):
+        for payload in ({"status": "completed", "output": []}, response_payload("  "),
+                        {"status": "incomplete", "output": []}):
+            with self.subTest(payload=payload), self.assertRaises(descriptions.GenerationError):
+                descriptions.parse_response(payload)
+
+    def test_citation_errors_do_not_discard_description(self):
         base = response_payload()
-        cases = []
-        no_search = response_payload(descriptions.NO_DESCRIPTION)
-        no_search["output"].pop(0)
-        cases.append(no_search)
         for patch_data in ({"url": "javascript:alert(1)"}, {"url": "https://user:pass@example.com"},
                            {"url": "https://example.com\ninvalid"}, {"start_index": -1}, {"end_index": 100000}):
             bad = copy.deepcopy(base)
             bad["output"][1]["content"][0]["annotations"][0].update(patch_data)
-            cases.append(bad)
-        cases.extend([response_payload(" ".join(["reef"] * 71) + " [source]"),
-                      response_payload("A reef. A wall. A wreck. [source]"),
-                      response_payload("A reef.\nA wall. [source]"), {"status": "completed", "output": []}])
-        for payload in cases:
-            with self.subTest(payload=payload), self.assertRaises(descriptions.GenerationError):
-                descriptions.parse_response(payload)
+            with self.subTest(patch_data=patch_data):
+                description, citations = descriptions.parse_response(bad)
+                self.assertIn("A rocky reef", description)
+                self.assertEqual(citations, [])
+
+    def test_text_is_accepted_without_web_action_or_format_limits(self):
+        text = " ".join(["reef"] * 71) + ". A wall. A wreck.\nMore details."
+        payload = response_payload(text)
+        payload["output"].pop(0)
+        self.assertEqual(descriptions.parse_response(payload), (text, []))
+
+    def test_multiple_output_parts_keep_citation_offsets(self):
+        payload = response_payload("  First detail.")
+        second = response_payload("Second detail. [source]")["output"][1]["content"][0]
+        payload["output"][1]["content"].append(second)
+        description, citations = descriptions.parse_response(payload)
+        self.assertEqual(description, "First detail.\nSecond detail.")
+        self.assertEqual(citations[0]["url"], "https://operator.example/alert-rock")
 
     def test_summary_without_citations_is_valid(self):
         description, citations = descriptions.parse_response(response_payload("A reef reaches 25 m by boat."))
@@ -301,8 +314,8 @@ class SiteDescriptionTest(unittest.TestCase):
         self.assertEqual(descriptions.parse_response(payload),
                          ("Boat trips and equipment rental are available.", []))
         payload["output"][0]["status"] = "in_progress"
-        with self.assertRaises(descriptions.GenerationError):
-            descriptions.parse_response(payload)
+        self.assertEqual(descriptions.parse_response(payload),
+                         ("Boat trips and equipment rental are available.", []))
 
     def test_generated_text_and_titles_are_escaped_in_server_rendering(self):
         payload = response_payload('A reef with <script>alert("x")</script> & rocks. [source]')

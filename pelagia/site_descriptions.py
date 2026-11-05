@@ -184,48 +184,45 @@ def parse_response(payload):
     if not isinstance(payload, dict) or payload.get("status") != "completed":
         raise GenerationError("incomplete response")
     output = payload.get("output")
-    if not isinstance(output, list) or not any(
-        isinstance(item, dict) and item.get("type") == "web_search_call"
-        and item.get("status") == "completed" and item.get("action", {}).get("type") in ("search", "open_page")
-        for item in output
-    ):
-        raise GenerationError("no completed web search")
-    content = [part for item in output if isinstance(item, dict) and item.get("type") == "message"
-               for part in item.get("content", [])]
-    if len(content) != 1 or content[0].get("type") != "output_text":
+    if not isinstance(output, list):
         raise GenerationError("unexpected output")
-    description = content[0].get("text")
-    if not isinstance(description, str) or not description.strip() or len(description) > 6000:
+    parts = [part for item in output if isinstance(item, dict) and item.get("type") == "message"
+             for part in (item.get("content") or []) if isinstance(part, dict)
+             and part.get("type") == "output_text" and isinstance(part.get("text"), str)]
+    description = "\n".join(part["text"] for part in parts)
+    if not description.strip():
         raise GenerationError("invalid description")
     if description.strip() == NO_DESCRIPTION:
         return None, []
 
     citations = []
-    for annotation in content[0].get("annotations", []):
-        if annotation.get("type") != "url_citation":
-            continue
-        start, end = annotation.get("start_index"), annotation.get("end_index")
-        url = annotation.get("url")
-        if (type(start) is not int or type(end) is not int or not 0 <= start < end <= len(description)
-                or not isinstance(url, str) or any(char.isspace() or ord(char) < 32 for char in url)):
-            raise GenerationError("invalid citation")
-        try:
-            parsed_url = urlsplit(url)
-            if (parsed_url.scheme not in ("https", "http") or not parsed_url.hostname
-                    or parsed_url.username is not None or parsed_url.password is not None):
-                raise ValueError("unsafe source URL")
-        except ValueError as exc:
-            raise GenerationError("invalid source URL") from exc
-        citations.append({"start_index": start, "end_index": end, "url": url,
-                          "title": str(annotation.get("title") or "Source")[:300]})
+    offset = 0
+    for part in parts:
+        for annotation in part.get("annotations") or []:
+            if not isinstance(annotation, dict) or annotation.get("type") != "url_citation":
+                continue
+            start, end = annotation.get("start_index"), annotation.get("end_index")
+            url = annotation.get("url")
+            if (type(start) is not int or type(end) is not int or not 0 <= start < end <= len(part["text"])
+                    or not isinstance(url, str) or any(char.isspace() or ord(char) < 32 for char in url)):
+                continue
+            try:
+                parsed_url = urlsplit(url)
+                if (parsed_url.scheme not in ("https", "http") or not parsed_url.hostname
+                        or parsed_url.username is not None or parsed_url.password is not None):
+                    continue
+            except ValueError:
+                continue
+            citations.append({"start_index": start + offset, "end_index": end + offset, "url": url,
+                              "title": str(annotation.get("title") or "Source")[:300]})
+        offset += len(part["text"]) + 1
     citations.sort(key=lambda citation: citation["start_index"])
-    if any(left["end_index"] > right["start_index"]
-           for left, right in zip(citations, citations[1:])):
-        raise GenerationError("overlapping citations")
-    prose = remove_citation_text(description, citations)
-    sentences = re.split(r"(?<=[.!?])\s+(?=[A-Z])", prose)
-    if not prose or len(prose.split()) > 70 or len(sentences) > 2 or "\n" in prose:
-        raise GenerationError("summary is not brief prose")
+    non_overlapping = []
+    for citation in citations:
+        if not non_overlapping or non_overlapping[-1]["end_index"] <= citation["start_index"]:
+            non_overlapping.append(citation)
+    citations = non_overlapping
+    prose = remove_citation_text(description, citations) or description
     citation_metadata = [{"url": citation["url"], "title": citation["title"]}
                          for citation in citations]
     return prose, citation_metadata
