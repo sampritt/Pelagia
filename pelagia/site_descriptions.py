@@ -186,7 +186,7 @@ def parse_response(payload):
     output = payload.get("output")
     if not isinstance(output, list) or not any(
         isinstance(item, dict) and item.get("type") == "web_search_call"
-        and item.get("status") == "completed" and item.get("action", {}).get("type") == "search"
+        and item.get("status") == "completed" and item.get("action", {}).get("type") in ("search", "open_page")
         for item in output
     ):
         raise GenerationError("no completed web search")

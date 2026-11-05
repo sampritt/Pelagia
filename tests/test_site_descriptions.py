@@ -295,6 +295,15 @@ class SiteDescriptionTest(unittest.TestCase):
         self.assertEqual(description, "A reef reaches 25 m by boat.")
         self.assertEqual(citations, [])
 
+    def test_completed_page_open_is_valid_web_research(self):
+        payload = response_payload("Boat trips and equipment rental are available.")
+        payload["output"][0]["action"] = {"type": "open_page", "url": "https://example.com/"}
+        self.assertEqual(descriptions.parse_response(payload),
+                         ("Boat trips and equipment rental are available.", []))
+        payload["output"][0]["status"] = "in_progress"
+        with self.assertRaises(descriptions.GenerationError):
+            descriptions.parse_response(payload)
+
     def test_generated_text_and_titles_are_escaped_in_server_rendering(self):
         payload = response_payload('A reef with <script>alert("x")</script> & rocks. [source]')
         payload["output"][1]["content"][0]["annotations"][0]["title"] = '"><img src=x onerror=alert(1)>'
