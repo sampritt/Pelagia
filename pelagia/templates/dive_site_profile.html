@@ -2,7 +2,7 @@
 {% block title %}{{ site.name }} - Pelagia{% endblock %}
 
 {% block content %}
-<section class="profile-layout">
+<section class="profile-layout place-profile site-profile">
     {% include "_dive_site_headline.html" %}
 
     <details id="daily-report" class="site-report" data-site-report data-url="{{ url_for('api_site_report', site_id=site.id) }}">
@@ -85,37 +85,28 @@
 
     {% include "_dive_site_sightings.html" %}
 
-    <div class="comments-block" data-site-comments>
-        {% if site.comments %}
-            {% for comment in site.comments %}
-                <div class="comment">
-                    <strong><a class="username-link" href="{{ url_for('user_profile', user_id=comment.user_id) }}">{{ comment.username }}</a></strong>
-                    <p>{{ comment.body }}</p>
-                </div>
-            {% endfor %}
-        {% else %}
-            <p class="muted">No comments yet.</p>
-        {% endif %}
-    </div>
-    <form class="comment-form" data-site-comment-form data-site-id="{{ site.id }}">
-        <input name="body" required maxlength="600" autocomplete="off" aria-label="Add a comment" placeholder="Add a comment">
-        <button class="primary-button compact" type="submit" aria-label="Post comment">Post</button>
-    </form>
-
-    <div class="feed-toolbar">
-        <span>{{ recent_dives|length }} recent {{ 'dive' if recent_dives|length == 1 else 'dives' }}</span>
-    </div>
-    {% if recent_dives %}
-        <div class="feed-list compact-list">
-            {% for dive in recent_dives %}
-                {% include "_dive_card.html" %}
-            {% endfor %}
+    <section class="place-nearby" aria-labelledby="nearbyCentersTitle">
+        <div class="profile-section-heading"><h2 id="nearbyCentersTitle">Nearby dive centers</h2><span>Within 10 miles</span></div>
+        {% if nearby_centers %}
+        <div class="site-reports feed-site-reports" data-nearby-carousel data-nearby-label="Dive center">
+            {% with report_selection={'sites': nearby_centers}, nearby=true, nearby_kind='center' %}{% include "_home_site_reports.html" %}{% endwith %}
         </div>
-    {% endif %}
+        {% else %}<p class="place-section-empty">{{ 'No dive centers listed within 10 miles yet.' if site.latitude is not none and site.longitude is not none else 'Nearby dive centers will appear when this site’s location is available.' }}</p>{% endif %}
+    </section>
+    {% with place=site, place_kind="site" %}{% include "_place_reviews.html" %}{% endwith %}
+
+    <section class="place-logged-dives" aria-labelledby="siteDivesTitle">
+        <div class="profile-section-heading"><h2 id="siteDivesTitle">Logged dives</h2><span>{{ recent_dives|length }} recent {{ 'dive' if recent_dives|length == 1 else 'dives' }}</span></div>
+        {% if recent_dives %}
+        <div class="feed-list compact-list">{% for dive in recent_dives %}{% include "_dive_card.html" %}{% endfor %}</div>
+        {% else %}<p class="place-section-empty">No dives logged at this site yet.</p>{% endif %}
+    </section>
 </section>
 {% endblock %}
 
 {% block scripts %}
+<script defer src="{{ url_for('static', filename='js/site-carousel.js', v=pwa_asset_version) }}"></script>
+<script defer src="{{ url_for('static', filename='js/place-profile.js', v=pwa_asset_version) }}"></script>
 <script defer src="{{ url_for('static', filename='js/marine.js', v=pwa_asset_version) }}"></script>
 <script defer src="{{ url_for('static', filename='js/site-report.js', v=pwa_asset_version) }}"></script>
 {% endblock %}

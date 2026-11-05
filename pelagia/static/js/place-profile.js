@@ -1,8 +1,8 @@
 (() => {
     function init() {
         const deck = document.querySelector('[data-nearby-carousel]');
-        if (deck) window.PelagiaSiteCarousel(deck, [...deck.querySelectorAll('.nearby-site-card')], 'Dive site');
-        const form = document.querySelector('.center-review-form');
+        if (deck) window.PelagiaSiteCarousel(deck, [...deck.querySelectorAll('.nearby-place-card')], deck.dataset.nearbyLabel || 'Dive site');
+        const form = document.querySelector('.place-review-form');
         form?.addEventListener('submit', () => {
             const button = form.querySelector('[type="submit"]');
             button.disabled = true;

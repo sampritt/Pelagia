@@ -43,8 +43,9 @@ const flush = async () => {
     for (let i = 0; i < 3; i++) await new Promise(resolve => setImmediate(resolve));
 };
 
-function setup(cards, fetch, {feed = null} = {}) {
+function setup(cards, fetch, {feed = null, history} = {}) {
     const window = node();
+    window.history = history;
     let timer = 0;
     const timers = new Map();
     window.setTimeout = (callback, delay) => { const id = ++timer; timers.set(id, {callback, delay}); return id; };
@@ -389,5 +390,43 @@ test('carousel keyboard navigation moves a focused card with the visible report'
     track.handlers.keydown({key: 'ArrowRight', preventDefault() {}});
     assert.equal(focused, true);
     assert.equal(track.scrollLeft, 312);
+    await flush();
+});
+
+
+test('carousel remembers its linked place in the current history entry and restores browser Back', async () => {
+    const history = {state: {existing: 'preserved'}, replaceState(state) { this.state = state; }};
+    const create = () => {
+        const cards = [card(1), card(2), card(3)];
+        cards.forEach((card, i) => { card.item.attrs.href = `/dive-centers/${i + 1}`; });
+        const deck = carouselFeed(cards);
+        deck.track.id = 'nearbyCenterCards';
+        const state = setup(cards, complete, {feed: deck.feed, history});
+        cards.forEach((card, i) => { card.item.getBoundingClientRect = () => ({left: i * 312 - deck.track.scrollLeft}); });
+        return {...deck, ...state};
+    };
+    const first = create();
+    first.feed.handlers.click({target: first.dots[1]});
+    assert.equal(history.state.existing, 'preserved');
+    assert.equal(history.state.pelagiaCarousels.nearbyCenterCards, '/dive-centers/2');
+    const restored = create();
+    assert.equal(restored.track.scrollLeft, 312);
+    assert.equal(restored.dots[1].attrs['aria-current'], 'true');
+    assert.match(restored.position.textContent, /Report 2 of 3/);
+    await flush();
+});
+
+test('an unavailable saved card and blocked history writes leave carousel navigation usable', async () => {
+    const cards = [card(1), card(2)];
+    cards.forEach((card, i) => { card.item.attrs.href = `/dive-centers/${i + 1}`; });
+    const {feed, track, dots} = carouselFeed(cards);
+    track.id = 'nearbyCenterCards';
+    const history = {state: {pelagiaCarousels: {nearbyCenterCards: '/dive-centers/999'}}, replaceState() { throw new Error('History temporarily unavailable'); }};
+    setup(cards, complete, {feed, history});
+    cards.forEach((card, i) => { card.item.getBoundingClientRect = () => ({left: i * 312 - track.scrollLeft}); });
+    assert.equal(dots[0].attrs['aria-current'], 'true');
+    feed.handlers.click({target: dots[1]});
+    assert.equal(track.scrollLeft, 312);
+    assert.equal(dots[1].attrs['aria-current'], 'true');
     await flush();
 });

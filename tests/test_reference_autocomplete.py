@@ -1342,8 +1342,11 @@ Kelp House,2 Harbor Way,Alaska,https://kelp.example.test
 
             favorite_response = client.post("/api/dive-sites/1/favorite").get_json()
             self.assertEqual(favorite_response, {"favorited": True})
-            comment_response = client.post("/api/dive-sites/1/comments", data={"body": "Great site"}).get_json()
-            self.assertEqual(comment_response["comments"][0]["body"], "Great site")
+            with client.session_transaction() as session:
+                csrf_token = session["google_csrf"]
+            review_response = client.post("/dive-sites/1/reviews", data={"rating": "5", "body": "Great site", "csrf_token": csrf_token})
+            self.assertEqual(review_response.status_code, 302)
+            self.assertIn(b"Great site", client.get(review_response.location).data)
 
     def test_owned_dive_can_be_edited_and_soft_deleted(self):
         with tempfile.TemporaryDirectory() as tmp_dir:

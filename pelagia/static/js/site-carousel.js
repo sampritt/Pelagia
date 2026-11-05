@@ -6,6 +6,20 @@
         const dots = [...feed.querySelectorAll('[data-report-dot]')];
         const position = feed.querySelector('[data-report-position]');
         let index = 0;
+        const historyKey = track.id;
+        const savedHref = window.history?.state?.pelagiaCarousels?.[historyKey];
+        const restoredIndex = savedHref ? cards.findIndex(card => card.getAttribute('href') === savedHref) : -1;
+        const remember = () => {
+            if (!historyKey || !window.history?.replaceState) return;
+            const href = cards[index].getAttribute('href');
+            if (!href || window.history.state?.pelagiaCarousels?.[historyKey] === href) return;
+            try {
+                window.history.replaceState({
+                    ...window.history.state,
+                    pelagiaCarousels: {...window.history.state?.pelagiaCarousels, [historyKey]: href},
+                }, '');
+            } catch (_error) { /* Browsers may temporarily limit history writes. */ }
+        };
         const announce = () => {
             dots.forEach((dot, i) => {
                 if (i === index) dot.setAttribute('aria-current', 'true');
@@ -13,6 +27,7 @@
             });
             const message = `${label} ${index + 1} of ${cards.length}: ${cards[index].querySelector('h3').textContent}`;
             if (position && position.textContent !== message) position.textContent = message;
+            remember();
         };
         const goTo = (next, behavior = 'smooth') => {
             index = Math.max(0, Math.min(cards.length - 1, next));
@@ -45,7 +60,8 @@
         const observer = window.ResizeObserver ? new window.ResizeObserver(onResize) : null;
         observer?.observe(track);
         window.addEventListener('resize', onResize);
-        onScroll();
+        if (restoredIndex >= 0) goTo(restoredIndex, 'instant');
+        else onScroll();
         return {goTo, get index() { return index; }, destroy() {
             track.removeEventListener('scroll', onScroll);
             track.removeEventListener('keydown', onKey);

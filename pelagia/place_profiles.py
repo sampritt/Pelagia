@@ -1,4 +1,4 @@
-"""Nearby dive sites and community review data for dive-center profiles."""
+"""Shared nearby-place discovery and reviews for dive-site and center profiles."""
 
 import math
 
@@ -20,15 +20,30 @@ def coordinates(entity):
 
 
 def nearby_sites(center):
-    origin = coordinates(center)
+    return nearby_places(center, kind="site")
+
+
+def nearby_centers(site):
+    return nearby_places(site, kind="center")
+
+
+def _prefix(kind):
+    if kind not in {"site", "center"}:
+        raise ValueError("Unknown place kind")
+    return f"dive_{kind}"
+
+
+def nearby_places(place, *, kind):
+    prefix = _prefix(kind)
+    origin = coordinates(place)
     if origin is None:
         return []
     lat, lon = map(math.radians, origin)
     # Latitude bounds reduce the catalog scan without excluding antimeridian sites.
     latitude_delta = math.degrees(RADIUS_MILES / EARTH_RADIUS_MILES)
     rows = get_db().execute(
-        'SELECT id, name, country_or_area, latitude, longitude FROM dive_sites '
-        'WHERE latitude BETWEEN ? AND ? AND longitude IS NOT NULL',
+        f"SELECT * FROM {prefix}s "
+        "WHERE latitude BETWEEN ? AND ? AND longitude IS NOT NULL",
         (origin[0] - latitude_delta, origin[0] + latitude_delta),
     ).fetchall()
     matches = []
@@ -44,15 +59,16 @@ def nearby_sites(center):
             matches.append(item)
     matches = sorted(matches, key=lambda item: (item['distance_miles'], item['name'].casefold(), item['id']))[:10]
     for item in matches:
-        cached = site_descriptions.read_cache(item['id'])
+        cached = site_descriptions.read_cache(item['id'], kind=kind)
         item['description'] = (cached or {}).get('description')
     return matches
 
 
-def reviews(center_id, viewer_id):
+def reviews(place_id, viewer_id, *, kind="center"):
+    prefix = _prefix(kind)
     rows = get_db().execute(
-        '''SELECT r.*, u.username FROM dive_center_reviews r JOIN users u ON u.id = r.user_id
-           WHERE r.dive_center_id = ? ORDER BY r.updated_at DESC, r.id DESC''', (center_id,),
+        f"SELECT r.*, u.username FROM {prefix}_reviews r JOIN users u ON u.id = r.user_id "
+        f"WHERE r.{prefix}_id = ? ORDER BY r.updated_at DESC, r.id DESC", (place_id,),
     ).fetchall()
     return {
         'reviews': rows,
@@ -60,3 +76,15 @@ def reviews(center_id, viewer_id):
         'average_rating': sum(row['rating'] for row in rows) / len(rows) if rows else None,
         'my_review': next((row for row in rows if row['user_id'] == viewer_id), None),
     }
+
+
+def save_review(place_id, user_id, rating, body, *, kind):
+    prefix = _prefix(kind)
+    db = get_db()
+    with db:
+        db.execute(
+            f"INSERT INTO {prefix}_reviews({prefix}_id, user_id, rating, body) "
+            f"VALUES (?, ?, ?, ?) ON CONFLICT({prefix}_id, user_id) DO UPDATE SET "
+            "rating=excluded.rating, body=excluded.body, updated_at=CURRENT_TIMESTAMP",
+            (place_id, user_id, rating, body),
+        )

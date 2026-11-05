@@ -1,13 +1,14 @@
 {% from "_action_icons.html" import action_icon %}
-{% set carousel_id = 'nearbySiteCards' if nearby else 'homeSiteReports' %}
-{% set carousel_help = 'nearbySitesHelp' if nearby else 'siteReportsHelp' %}
-{% set card_label = 'dive site' if nearby else 'report' %}
+{% set nearby_center = nearby and nearby_kind == 'center' %}
+{% set carousel_id = 'nearbyCenterCards' if nearby_center else 'nearbySiteCards' if nearby else 'homeSiteReports' %}
+{% set carousel_help = carousel_id ~ 'Help' %}
+{% set card_label = 'dive center' if nearby_center else 'dive site' if nearby else 'report' %}
 {% if report_selection.sites %}
 <div class="site-reports-deck{{ ' has-pagination' if report_selection.sites|length > 1 else '' }}">
 <div class="site-reports-track" id="{{ carousel_id }}" data-site-reports-track
-     {% if report_selection.sites|length > 1 %}tabindex="0" role="group" aria-roledescription="carousel" aria-label="{{ 'Nearby dive sites' if nearby else 'Followed dive site reports' }}" aria-describedby="{{ carousel_help }}"{% endif %}>
+     {% if report_selection.sites|length > 1 %}tabindex="0" role="group" aria-roledescription="carousel" aria-label="{{ 'Nearby dive centers' if nearby_center else 'Nearby dive sites' if nearby else 'Followed dive site reports' }}" aria-describedby="{{ carousel_help }}"{% endif %}>
     {% for item in report_selection.sites %}
-        {% include "_favorite_site_card.html" %}
+        {% if nearby %}{% include "_nearby_place_card.html" %}{% else %}{% include "_favorite_site_card.html" %}{% endif %}
     {% endfor %}
 </div>
 {% if report_selection.sites|length > 1 %}

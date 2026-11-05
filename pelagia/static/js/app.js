@@ -302,27 +302,16 @@ function initDiveInteractions() {
 
     document.addEventListener("submit", async (event) => {
         const form = event.target.closest("[data-comment-form]");
-        const siteForm = event.target.closest("[data-site-comment-form]");
-        if (!form && !siteForm) {
+        if (!form) {
             return;
         }
         event.preventDefault();
-        const input = (form || siteForm).querySelector("[name='body']");
+        const input = form.querySelector("[name='body']");
         const body = input.value.trim();
         if (!body) {
             return;
         }
-        const activeForm = form || siteForm;
-        await withPendingAction(activeForm.querySelectorAll("button[type='submit']"), async () => {
-            if (siteForm) {
-                const data = await fetchJson(`/api/dive-sites/${siteForm.dataset.siteId}/comments`, {
-                    method: "POST",
-                    body: new FormData(siteForm),
-                });
-                if (input.value.trim() === body) input.value = "";
-                renderComments(document.querySelector("[data-site-comments]"), data.comments);
-                return;
-            }
+        await withPendingAction(form.querySelectorAll("button[type='submit']"), async () => {
             const data = await fetchJson(`/api/dives/${form.dataset.diveId}/comments`, {
                 method: "POST",
                 body: new FormData(form),

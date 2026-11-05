@@ -373,3 +373,15 @@ CREATE TABLE IF NOT EXISTS dive_center_reviews (
     UNIQUE(dive_center_id, user_id)
 );
 CREATE INDEX IF NOT EXISTS idx_center_reviews_center ON dive_center_reviews(dive_center_id, updated_at);
+
+CREATE TABLE IF NOT EXISTS dive_site_reviews (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    dive_site_id INTEGER NOT NULL REFERENCES dive_sites(id) ON DELETE CASCADE,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    rating INTEGER NOT NULL CHECK (rating BETWEEN 1 AND 5),
+    body TEXT NOT NULL CHECK (length(trim(body)) BETWEEN 1 AND 2000),
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(dive_site_id, user_id)
+);
+CREATE INDEX IF NOT EXISTS idx_site_reviews_site ON dive_site_reviews(dive_site_id, updated_at);

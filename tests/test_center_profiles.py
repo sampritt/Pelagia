@@ -10,7 +10,7 @@ import requests
 
 import test_reference_autocomplete as fixtures
 from test_site_descriptions import upstream, response_payload
-from pelagia import center_profiles, site_descriptions as descriptions
+from pelagia import place_profiles, site_descriptions as descriptions
 from pelagia import db as database
 
 
@@ -39,7 +39,7 @@ class CenterProfileTest(unittest.TestCase):
         return client.post('/dive-centers/1/reviews', data={'rating': rating, 'body': body, 'csrf_token': token, **extra})
 
     def add_site(self, db, site_id, miles, longitude=0):
-        latitude = math.degrees(miles / center_profiles.EARTH_RADIUS_MILES)
+        latitude = math.degrees(miles / place_profiles.EARTH_RADIUS_MILES)
         db.execute('INSERT INTO dive_sites(id,name,country_or_area,latitude,longitude) VALUES(?,?,?,?,?)',
                    (site_id, f'Reef {site_id}', 'Ocean', latitude, longitude))
 
@@ -52,14 +52,14 @@ class CenterProfileTest(unittest.TestCase):
             self.add_site(db, 31, 10.01)
             db.execute("INSERT INTO dive_site_descriptions(dive_site_id, description, model) VALUES(15,'A shallow coral reef.','test')")
             db.commit()
-            nearby = center_profiles.nearby_sites({'latitude': 0, 'longitude': 0})
+            nearby = place_profiles.nearby_sites({'latitude': 0, 'longitude': 0})
             self.assertEqual(len(nearby), 10)
             self.assertEqual([site['id'] for site in nearby], list(range(15, 5, -1)))
             self.assertEqual(nearby[0]['description'], 'A shallow coral reef.')
             self.assertTrue(all(site['distance_miles'] <= 10 for site in nearby))
             db.execute('DELETE FROM dive_sites WHERE id BETWEEN 4 AND 15')
             db.commit()
-            self.assertEqual([site['id'] for site in center_profiles.nearby_sites({'latitude': 0, 'longitude': 0})], [30])
+            self.assertEqual([site['id'] for site in place_profiles.nearby_sites({'latitude': 0, 'longitude': 0})], [30])
 
     def test_nearby_handles_dateline_missing_invalid_and_zero_coordinates(self):
         with self.app.app_context():
@@ -67,10 +67,10 @@ class CenterProfileTest(unittest.TestCase):
             db.execute("INSERT INTO dive_sites(id,name,latitude,longitude) VALUES(20,'Across dateline',0,-179.99)")
             db.execute("INSERT INTO dive_sites(id,name,latitude,longitude) VALUES(21,'Invalid',0,999)")
             db.commit()
-            sites = center_profiles.nearby_sites({'latitude': 0, 'longitude': 179.99})
+            sites = place_profiles.nearby_sites({'latitude': 0, 'longitude': 179.99})
             self.assertEqual([site['id'] for site in sites], [20])
             for point in ({'latitude': None, 'longitude': 0}, {'latitude': 91, 'longitude': 0}, {'latitude': 'nan', 'longitude': 0}):
-                self.assertEqual(center_profiles.nearby_sites(point), [])
+                self.assertEqual(place_profiles.nearby_sites(point), [])
 
     def test_profile_uses_site_header_home_carousel_and_reviews_without_coordinate_text(self):
         with self.app.app_context():
@@ -200,7 +200,7 @@ class CenterProfileTest(unittest.TestCase):
             db.execute("INSERT INTO users(id,username) VALUES(2,'second.diver')")
             db.execute("INSERT INTO dive_center_reviews(dive_center_id,user_id,rating,body) VALUES(1,2,5,'Great guiding.')")
             db.commit()
-            result = center_profiles.reviews(1, 1)
+            result = place_profiles.reviews(1, 1)
             self.assertEqual(result['review_count'], 2)
             self.assertEqual(result['average_rating'], 4)
             self.assertEqual(result['my_review']['rating'], 3)
