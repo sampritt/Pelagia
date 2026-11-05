@@ -43,6 +43,7 @@
 {% endblock %}
 
 {% block scripts %}
+<script defer src="{{ url_for('static', filename='js/site-carousel.js', v=pwa_asset_version) }}"></script>
 <script defer src="{{ url_for('static', filename='js/feed-site-reports.js', v=pwa_asset_version) }}"></script>
 {% if founder %}
 <script defer src="{{ url_for('static', filename='js/user-follow.js', v=pwa_asset_version) }}"></script>

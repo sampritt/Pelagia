@@ -1,11 +1,11 @@
 {% set has_coords = item.latitude is not none and item.longitude is not none %}
-<a class="site-report-card feed-site-report" href="{{ url_for('dive_site_profile', site_id=item.id) }}#daily-report"
+<a class="site-report-card feed-site-report{{ ' nearby-site-card' if nearby else '' }}" href="{{ url_for('dive_site_profile', site_id=item.id) }}{{ '' if nearby else '#daily-report' }}"
    aria-labelledby="followedSiteTitle{{ item.id }}"
    {% if item.featured %}data-featured-site-report{% endif %}
-   data-followed-site-report data-report-state="loading" data-length-unit="{{ units.length }}"
+   {% if not nearby %}data-followed-site-report data-report-state="loading" data-length-unit="{{ units.length }}"
    data-report-url="{{ url_for('api_site_report', site_id=item.id) }}"
    data-description-url="{{ url_for('api_dive_site_description', site_id=item.id) }}"
-   data-conditions-url="{{ url_for('api_site_conditions', site_id=item.id) }}">
+   data-conditions-url="{{ url_for('api_site_conditions', site_id=item.id) }}"{% endif %}>
     <div class="site-report-card-main">
         <div class="mini-map site-report-map {{ 'map-pending' if not has_coords else '' }}" aria-hidden="true" {% if has_coords %}data-static-map data-map-lat="{{ item.latitude }}" data-map-lng="{{ item.longitude }}" data-map-zoom="10"{% endif %}>
             {% if has_coords %}<span class="map-pin"></span>{% else %}{{ action_icon("compass") }}{% endif %}
@@ -15,6 +15,10 @@
             <p title="{{ item.country_or_area or 'Location pending' }}">{{ item.country_or_area or 'Location pending' }}</p>
         </div>
     </div>
+    {% if nearby %}
+    <div class="nearby-site-details"><span class="nearby-site-distance">{{ '%.1f'|format(item.distance_miles) }} miles from center</span><span class="nearby-site-open">Explore site <span aria-hidden="true">→</span></span></div>
+    <p class="nearby-site-description">{{ item.description or "Explore site conditions, marine sightings and logged dives." }}</p>
+    {% else %}
     <div class="followed-conditions" aria-label="Site conditions">
         <div class="followed-condition">
             <span class="followed-condition-label">Swell</span>
@@ -33,4 +37,5 @@
     <div class="followed-site-report" data-followed-report-body>
         <p class="followed-site-report-text" data-followed-report-text role="status" aria-live="polite" aria-atomic="true">Preparing today’s report…</p>
     </div>
+    {% endif %}
 </a>

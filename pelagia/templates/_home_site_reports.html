@@ -1,19 +1,22 @@
 {% from "_action_icons.html" import action_icon %}
+{% set carousel_id = 'nearbySiteCards' if nearby else 'homeSiteReports' %}
+{% set carousel_help = 'nearbySitesHelp' if nearby else 'siteReportsHelp' %}
+{% set card_label = 'dive site' if nearby else 'report' %}
 {% if report_selection.sites %}
 <div class="site-reports-deck{{ ' has-pagination' if report_selection.sites|length > 1 else '' }}">
-<div class="site-reports-track" id="homeSiteReports" data-site-reports-track
-     {% if report_selection.sites|length > 1 %}tabindex="0" role="group" aria-roledescription="carousel" aria-label="Followed dive site reports" aria-describedby="siteReportsHelp"{% endif %}>
+<div class="site-reports-track" id="{{ carousel_id }}" data-site-reports-track
+     {% if report_selection.sites|length > 1 %}tabindex="0" role="group" aria-roledescription="carousel" aria-label="{{ 'Nearby dive sites' if nearby else 'Followed dive site reports' }}" aria-describedby="{{ carousel_help }}"{% endif %}>
     {% for item in report_selection.sites %}
         {% include "_favorite_site_card.html" %}
     {% endfor %}
 </div>
 {% if report_selection.sites|length > 1 %}
-<p class="sr-only" id="siteReportsHelp">Swipe or use the left and right arrow keys to browse reports.</p>
-<div class="site-reports-pagination" role="group" aria-label="Choose a site report">
+<p class="sr-only" id="{{ carousel_help }}">Swipe or use the left and right arrow keys to browse {{ card_label }}s.</p>
+<div class="site-reports-pagination" role="group" aria-label="Choose a {{ card_label }}">
     {% for item in report_selection.sites %}
     <button type="button" class="site-report-dot" data-report-dot="{{ loop.index0 }}"
-            aria-label="Show report {{ loop.index }} of {{ loop.length }}: {{ item.name }}"
-            aria-controls="homeSiteReports"{% if loop.first %} aria-current="true"{% endif %}><span aria-hidden="true"></span></button>
+            aria-label="Show {{ card_label }} {{ loop.index }} of {{ loop.length }}: {{ item.name }}"
+            aria-controls="{{ carousel_id }}"{% if loop.first %} aria-current="true"{% endif %}><span aria-hidden="true"></span></button>
     {% endfor %}
 </div>
 <p class="sr-only" data-report-position role="status" aria-live="polite" aria-atomic="true"></p>

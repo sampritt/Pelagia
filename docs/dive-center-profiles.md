@@ -1,0 +1,20 @@
+# Dive-center profiles
+
+Dive centers use the dive-site map banner, headline typography, description styling and share control. Map pins use the center's stored coordinates; numeric coordinates are never displayed. The contact panel below the headline contains only the address and website. Public shared profiles use the same headline and cached description, while reviews and logged dives require sign-in.
+
+The first signed-in visit loads a short description through `POST /api/dive-centers/<id>/description`. It reuses the dive-site description service and `gpt-5.6-luna` Responses API request: low reasoning effort, low web-search context and at most one search call. The prompt includes the center's website, name and location, and asks for verified trips, equipment, courses and guide ratios. Unknown information is omitted. The permanent `dive_center_descriptions` cache is separate from dive-site descriptions and ignores the temporary dive-site regeneration flag. Atomic leases prevent duplicate concurrent requests, stale workers cannot overwrite results, and temporary failures have a five-minute retry cooldown. No database write transaction spans the upstream API call. See the [OpenAI web-search documentation](https://developers.openai.com/api/docs/guides/tools-web-search).
+
+Nearby sites use great-circle distance from the center, include the 10-mile boundary, and show the nearest ten at most. Missing or invalid coordinates produce an empty state. The carousel reuses Home's card, deck, dot styling and shared `site-carousel.js` controller. Each card fills the track width, without adjacent cards peeking. Touch, trackpad, pagination dots, arrow keys, Home/End and reduced-motion preferences are supported. Nearby cards link to the site and use an existing cached description when available; browsing them does not generate daily reports.
+
+Reviews require a 1–5 star rating and 1–2,000 characters of written feedback. The CSRF-protected form works without JavaScript, retains invalid drafts, and upserts one review per account and center. Saving returns directly to the reviews section without a confirmation banner. The page shows the average rating, review count and individual reviews. Account and center deletion cascade to reviews. Historical center comments remain in storage, but their posting endpoint and profile workflow have been retired. The logged-dive feed remains below the reviews.
+
+Schema initialization creates the new cache, attempt and review tables idempotently. The PWA release hash and precache include both new scripts.
+
+Focused checks:
+
+```sh
+.venv312/bin/python -m unittest discover -s tests -p 'test_center_profiles.py'
+.venv312/bin/python -m unittest discover -s tests -p 'test_site_descriptions.py'
+.venv312/bin/python -m unittest discover -s tests -p 'test_dive_center_sharing.py'
+node --test tests/test_feed_site_reports.cjs tests/test_dive_center_sharing.cjs
+```

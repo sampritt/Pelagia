@@ -344,3 +344,32 @@ CREATE TABLE IF NOT EXISTS dive_site_reports (
     started_at REAL NOT NULL,
     model TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS dive_center_descriptions (
+    dive_center_id INTEGER PRIMARY KEY REFERENCES dive_centers(id) ON DELETE CASCADE,
+    description TEXT,
+    citations_json TEXT NOT NULL DEFAULT '[]',
+    model TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Pending work and temporary failures must not look like a completed NULL result.
+CREATE TABLE IF NOT EXISTS dive_center_description_attempts (
+    dive_center_id INTEGER PRIMARY KEY REFERENCES dive_centers(id) ON DELETE CASCADE,
+    token TEXT,
+    lease_until REAL NOT NULL DEFAULT 0,
+    retry_after REAL NOT NULL DEFAULT 0
+);
+
+
+CREATE TABLE IF NOT EXISTS dive_center_reviews (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    dive_center_id INTEGER NOT NULL REFERENCES dive_centers(id) ON DELETE CASCADE,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    rating INTEGER NOT NULL CHECK (rating BETWEEN 1 AND 5),
+    body TEXT NOT NULL CHECK (length(trim(body)) BETWEEN 1 AND 2000),
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(dive_center_id, user_id)
+);
+CREATE INDEX IF NOT EXISTS idx_center_reviews_center ON dive_center_reviews(dive_center_id, updated_at);

@@ -7,7 +7,7 @@
         {% if has_map %}
         <figure class="detail-photo-slide mini-map" role="group" aria-label="Dive location map" data-static-map data-map-lat="{{ dive.latitude }}" data-map-lng="{{ dive.longitude }}" data-map-zoom="10">
             <span class="map-pin"></span>
-            <span class="coordinate-label">{{ "%.3f"|format(dive.latitude) }}, {{ "%.3f"|format(dive.longitude) }}</span>
+            {% if not hide_map_coordinates %}<span class="coordinate-label">{{ "%.3f"|format(dive.latitude) }}, {{ "%.3f"|format(dive.longitude) }}</span>{% endif %}
         </figure>
         {% endif %}
         {% if has_chart %}{% include "_depth_profile.html" %}{% endif %}

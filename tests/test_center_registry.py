@@ -26,6 +26,8 @@ class CenterRegistryTest(unittest.TestCase):
             self.db.execute("INSERT INTO dives(user_id, date, site_name, dive_center_id) VALUES(1, '2026-11-04', 'Reef', ?)", (center_id,))
             self.db.execute("INSERT INTO dive_center_likes VALUES(?, 1, CURRENT_TIMESTAMP)", (center_id,))
             self.db.execute("INSERT INTO dive_center_comments(dive_center_id, user_id, body) VALUES(?, 1, 'Comment')", (center_id,))
+            self.db.execute("INSERT INTO dive_center_reviews(dive_center_id,user_id,rating,body) VALUES(?,1,5,'Good guides.')", (center_id,))
+            self.db.execute("INSERT INTO dive_center_descriptions(dive_center_id,description,model) VALUES(?,'Boat diving.','test')", (center_id,))
         self.db.commit()
 
     def write(self, rows):
@@ -45,6 +47,8 @@ class CenterRegistryTest(unittest.TestCase):
         self.assertEqual(self.db.execute("SELECT dive_center_id, dive_center_name FROM dives ORDER BY id").fetchall(), [(5, None), (None, "Old Dive Bar")])
         self.assertEqual(self.db.execute("SELECT dive_center_id FROM dive_center_likes").fetchall(), [(5,)])
         self.assertEqual(self.db.execute("SELECT dive_center_id FROM dive_center_comments").fetchall(), [(5,)])
+        self.assertEqual(self.db.execute("SELECT dive_center_id FROM dive_center_reviews").fetchall(), [(5,)])
+        self.assertEqual(self.db.execute("SELECT dive_center_id FROM dive_center_descriptions").fetchall(), [(5,)])
         self.assertEqual(self.db.execute("PRAGMA foreign_key_check").fetchall(), [])
         self.assertFalse(refresh_centers(self.db, self.csv)["changed"])
         self.write([

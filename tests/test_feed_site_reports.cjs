@@ -62,6 +62,7 @@ function setup(cards, fetch, {feed = null} = {}) {
         querySelectorAll: () => cards.map(item => item.item),
         querySelector: selector => selector === '[data-feed-report]' ? feed : null,
     };
+    vm.runInNewContext(fs.readFileSync('pelagia/static/js/site-carousel.js', 'utf8'), {window, document});
     vm.runInNewContext(fs.readFileSync('pelagia/static/js/feed-site-reports.js', 'utf8'), {
         window, document, fetch, AbortController, Date, Promise, Error,
     });

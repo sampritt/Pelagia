@@ -1,51 +1,40 @@
 {% from "_action_icons.html" import action_icon %}
+{% set has_coords = center.latitude is defined and center.latitude is not none and center.longitude is not none %}
 <div class="center-overview" data-center-sharing>
-    <div class="entity-profile-header center-profile-identity">
-        <div class="entity-profile-copy">
-            <h1>{{ center.name }}</h1>
-            <p class="profile-meta">{{ center.location or "Location pending" }}</p>
+    <div class="site-profile-header">
+        <div class="mini-map site-map-banner {{ 'map-pending' if not has_coords else '' }}" role="region" aria-label="Map of {{ center.name }}" {% if has_coords %}data-static-map data-map-lat="{{ center.latitude }}" data-map-lng="{{ center.longitude }}" data-map-zoom="11"{% endif %}>
+            {% if has_coords %}<span class="map-pin"></span>{% else %}<span class="coordinate-label">Map unavailable</span>{% endif %}
         </div>
-        <div class="profile-actions">
-            {% if public_preview %}
-            <span class="chip-button social-action entity-public-likes" aria-label="{{ center.like_count }} likes">
-                {{ action_icon("like") }}<span>{{ center.like_count }}</span>
-            </span>
-            {% else %}
-            <button class="chip-button social-action like-button {{ 'liked' if center.liked_by_me else '' }}" type="button" aria-pressed="{{ 'true' if center.liked_by_me else 'false' }}" data-center-like data-center-id="{{ center.id }}">
-                {{ action_icon("like") }}
-                <span class="sr-only">Like dive center. Likes:</span><span data-center-like-count>{{ center.like_count }}</span>
-            </button>
-            {% endif %}
-            <a class="chip-button social-action share-button entity-share-button" href="{{ public_url('shared_dive_center', center_id=center.id) }}" data-center-share data-share-title="{{ center.name }} · Dive center on Pelagia" aria-label="Share dive center {{ center.name }}" title="Share dive center">
-                {{ action_icon("share") }}
-            </a>
-            {% if center.website %}
-                <a class="ghost-button" href="{{ center.website }}" target="_blank" rel="noopener">Website</a>
-            {% endif %}
-        </div>
-        <p class="entity-share-status" role="status" aria-live="polite" data-center-share-status></p>
-        <div class="entity-share-fallback" data-center-share-fallback hidden>
-            <label class="sr-only" for="centerShareLink">Public dive center link</label>
-            <input id="centerShareLink" type="url" readonly value="{{ public_url('shared_dive_center', center_id=center.id) }}" data-center-share-link>
+        <div class="entity-profile-header site-profile-identity center-profile-identity">
+            <div class="entity-profile-copy">
+                <h1>{{ center.name }}</h1>
+                <p class="profile-meta">{{ center.location or "Location pending" }}</p>
+                {% if center_description is defined and center_description and center_description.description %}
+                <p class="site-description">{{ center_description.description }}</p>
+                {% elif not public_preview and not center_description %}
+                <div class="site-description" data-site-description data-description-url="{{ url_for('api_dive_center_description', center_id=center.id) }}" aria-live="polite" hidden></div>
+                {% endif %}
+            </div>
+            <div class="profile-actions">
+                <a class="chip-button social-action share-button entity-share-button" href="{{ public_url('shared_dive_center', center_id=center.id) }}" data-center-share data-share-title="{{ center.name }} · Dive center on Pelagia" aria-label="Share dive center {{ center.name }}" title="Share dive center">
+                    {{ action_icon("share") }}
+                </a>
+            </div>
+            <p class="entity-share-status" role="status" aria-live="polite" data-center-share-status></p>
+            <div class="entity-share-fallback" data-center-share-fallback hidden>
+                <label class="sr-only" for="centerShareLink">Public dive center link</label>
+                <input id="centerShareLink" type="url" readonly value="{{ public_url('shared_dive_center', center_id=center.id) }}" data-center-share-link>
+            </div>
         </div>
     </div>
-
-    <div class="center-info-grid">
+    <dl class="center-contact-details">
         <div>
-            <small>Address</small>
-            <span>{{ center.physical_address or "Not listed" }}</span>
+            <dt>Address</dt>
+            <dd>{{ center.physical_address or "Not listed" }}</dd>
         </div>
         <div>
-            <small>Location</small>
-            <span>{{ center.location or "Not listed" }}</span>
+            <dt>Website</dt>
+            <dd>{% if center.website %}<a href="{{ center.website }}" target="_blank" rel="noopener noreferrer">{{ center.website }} <span aria-hidden="true">↗</span></a>{% else %}Not listed{% endif %}</dd>
         </div>
-        <div>
-            <small>Website</small>
-            {% if center.website %}
-                <a href="{{ center.website }}" target="_blank" rel="noopener">{{ center.website }}</a>
-            {% else %}
-                <span>Not listed</span>
-            {% endif %}
-        </div>
-    </div>
+    </dl>
 </div>

@@ -302,18 +302,17 @@ function initDiveInteractions() {
 
     document.addEventListener("submit", async (event) => {
         const form = event.target.closest("[data-comment-form]");
-        const centerForm = event.target.closest("[data-center-comment-form]");
         const siteForm = event.target.closest("[data-site-comment-form]");
-        if (!form && !centerForm && !siteForm) {
+        if (!form && !siteForm) {
             return;
         }
         event.preventDefault();
-        const input = (form || centerForm || siteForm).querySelector("[name='body']");
+        const input = (form || siteForm).querySelector("[name='body']");
         const body = input.value.trim();
         if (!body) {
             return;
         }
-        const activeForm = form || centerForm || siteForm;
+        const activeForm = form || siteForm;
         await withPendingAction(activeForm.querySelectorAll("button[type='submit']"), async () => {
             if (siteForm) {
                 const data = await fetchJson(`/api/dive-sites/${siteForm.dataset.siteId}/comments`, {
@@ -322,15 +321,6 @@ function initDiveInteractions() {
                 });
                 if (input.value.trim() === body) input.value = "";
                 renderComments(document.querySelector("[data-site-comments]"), data.comments);
-                return;
-            }
-            if (centerForm) {
-                const data = await fetchJson(`/api/dive-centers/${centerForm.dataset.centerId}/comments`, {
-                    method: "POST",
-                    body: new FormData(centerForm),
-                });
-                if (input.value.trim() === body) input.value = "";
-                renderComments(document.querySelector("[data-center-comments]"), data.comments);
                 return;
             }
             const data = await fetchJson(`/api/dives/${form.dataset.diveId}/comments`, {
@@ -2041,7 +2031,8 @@ function initSiteDescription() {
     if (!host) return;
     const controller = new AbortController();
     const markup = '<span class="skeleton skeleton-line"></span><span class="skeleton skeleton-line"></span>';
-    const finishLoading = window.PelagiaLoading?.begin(host, "Loading dive site description", markup, { reveal: true }) || (() => {});
+    const descriptionLabel = host.dataset.descriptionUrl.includes("/dive-centers/") ? "Loading dive center description" : "Loading dive site description";
+    const finishLoading = window.PelagiaLoading?.begin(host, descriptionLabel, markup, { reveal: true }) || (() => {});
     let stopped = false;
     let pollTimer;
     const stop = () => {

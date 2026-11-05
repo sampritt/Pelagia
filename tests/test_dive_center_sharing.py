@@ -34,7 +34,7 @@ class DiveCenterSharingTest(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         html = response.get_data(as_text=True)
         for visible in ("Shark Bay Dive Center", "Galapagos Ecuador", "1 Ocean Road", 'href="https://example.test"',
-                        'aria-label="1 likes"', "Create your free account", "logged dives and community comments"):
+                        "Create your free account", "logged dives and diver reviews"):
             self.assertIn(visible, html)
         for private in ("PRIVATE_DIVER", "PRIVATE_LOG_TITLE", "PRIVATE_LOG_NOTES", "PRIVATE_SPECIES", "PRIVATE_CENTER_COMMENT",
                         "data-center-comment", "data-center-like", 'class="feed-list', 'class="shared-topbar"', 'href="/dive/1"'):
@@ -50,15 +50,18 @@ class DiveCenterSharingTest(unittest.TestCase):
              patch("pelagia.fetch_dive_center", side_effect=AssertionError("Private center loaded")):
             self.assertEqual(self.app.test_client().get("/share/dive-center/1").status_code, 200)
         with self.app.app_context():
-            self.assertEqual(set(fetch_public_dive_center(1)), {"id", "name", "physical_address", "location", "website", "like_count"})
+            self.assertEqual(set(fetch_public_dive_center(1)), {"id", "name", "physical_address", "location", "website", "latitude", "longitude"})
 
-    def test_full_center_has_share_beside_like_and_keeps_its_feed(self):
+    def test_full_center_has_only_share_and_keeps_its_feed(self):
         html = self.client.get("/dive-centers/1").get_data(as_text=True)
         actions = html.split('<div class="profile-actions">', 1)[1].split("</div>", 1)[0]
-        self.assertLess(actions.index("data-center-like"), actions.index("data-center-share"))
+        self.assertIn("data-center-share", actions)
+        self.assertNotIn("data-center-like", actions)
+        self.assertNotIn("data-site-favorite", actions)
         self.assertIn('href="https://pelagia.example/share/dive-center/1"', actions)
         self.assertIn("PRIVATE_LOG_TITLE", html)
-        self.assertIn("PRIVATE_CENTER_COMMENT", html)
+        self.assertNotIn("PRIVATE_CENTER_COMMENT", html)
+        self.assertIn("Diver reviews", html)
 
     def test_signed_in_share_visitors_open_the_full_center(self):
         response = self.client.get("/share/dive-center/1")
@@ -77,7 +80,7 @@ class DiveCenterSharingTest(unittest.TestCase):
         self.assertEqual(parse_qs(urlsplit(signup.location).query)["next"], ["/dive-centers/1"])
         self.assertIn(b"next=/dive-centers/1", guest.get(signup.location).data)
         self.assertEqual(guest.get("/dive-centers/1").status_code, 302)
-        self.assertEqual(guest.post("/api/dive-centers/1/comments", data={"body": "Guest comment"}).status_code, 302)
+        self.assertEqual(guest.post("/dive-centers/1/reviews", data={"body": "Guest review", "rating": "5"}).status_code, 302)
 
     def test_missing_centers_and_unlisted_details(self):
         with self.app.app_context():
@@ -88,7 +91,7 @@ class DiveCenterSharingTest(unittest.TestCase):
         html = guest.get("/share/dive-center/2").get_data(as_text=True)
         self.assertIn("Kelp House", html)
         self.assertIn("Location pending", html)
-        self.assertEqual(html.count("Not listed"), 3)
+        self.assertEqual(html.count("Not listed"), 2)
         self.assertIn("Create your free account", html)
         self.assertNotIn('href="None"', html)
         for client in (guest, self.client):

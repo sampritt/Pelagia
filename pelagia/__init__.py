@@ -38,7 +38,7 @@ from .dive_options import DIVE_TYPES, CURRENT_TYPES, normalize_options, dive_typ
 from . import google_auth, email_auth
 from . import pwa
 from . import dive_brief
-from . import site_descriptions
+from . import site_descriptions, center_profiles
 from . import seasons
 from . import marine
 from . import site_reports
@@ -864,7 +864,11 @@ def register_routes(app):
         if center is None:
             abort(404)
         recent_dives = fetch_dives(scope="center", user_id=session["user_id"], center_id=center_id, limit=6)
-        return render_template("dive_center_profile.html", center=center, recent_dives=recent_dives)
+        return render_template(
+            "dive_center_profile.html", center=center, recent_dives=recent_dives,
+            center_description=site_descriptions.read_cache(center_id, kind="center"),
+            nearby_sites=center_profiles.nearby_sites(center),
+        )
 
     @app.get("/share/dive-center/<int:center_id>")
     def shared_dive_center(center_id):
@@ -877,6 +881,7 @@ def register_routes(app):
             location = f" in {center['location']}" if center["location"] else ""
             response = app.make_response(render_template(
                 "shared_dive_center.html", center=center, public_preview=True,
+                center_description=site_descriptions.read_cache(center_id, kind="center"),
                 description=f"Explore {center['name']}{location}. Discover this dive center on Pelagia.",
                 share_url=public_url("shared_dive_center", center_id=center_id),
                 center_url=url_for("dive_center_profile", center_id=center_id),
@@ -959,22 +964,33 @@ def register_routes(app):
         ).fetchone()["count"]
         return jsonify({"liked": liked, "count": count})
 
-    @app.route("/api/dive-centers/<int:center_id>/comments", methods=("POST",))
+    @app.post("/dive-centers/<int:center_id>/reviews")
     @login_required
-    def api_dive_center_comment(center_id):
-        body = request.form.get("body", "").strip()
-        if not body:
-            return jsonify({"error": "Comment cannot be empty."}), 400
-        db = database.get_db()
-        if db.execute("SELECT 1 FROM dive_centers WHERE id = ?", (center_id,)).fetchone() is None:
-            abort(404)
-        db.execute(
-            "INSERT INTO dive_center_comments (dive_center_id, user_id, body) VALUES (?, ?, ?)",
-            (center_id, session["user_id"], body[:600]),
-        )
-        db.commit()
+    def save_dive_center_review(center_id):
+        google_auth.check_csrf()
         center = fetch_dive_center(center_id, session["user_id"])
-        return jsonify({"comments": [dict(comment) for comment in center["comments"]]})
+        if center is None:
+            abort(404)
+        rating = request.form.get("rating", "")
+        body = request.form.get("body", "").strip()
+        if rating not in {"1", "2", "3", "4", "5"} or not 1 <= len(body) <= 2000:
+            return render_template(
+                "dive_center_profile.html", center=center,
+                center_description=site_descriptions.read_cache(center_id, kind="center"),
+                nearby_sites=center_profiles.nearby_sites(center),
+                recent_dives=fetch_dives(scope="center", user_id=session["user_id"], center_id=center_id, limit=6),
+                review_error="Choose a star rating and write a review of 1–2,000 characters.",
+                review_draft={"rating": int(rating) if rating in {"1", "2", "3", "4", "5"} else None, "body": body},
+            ), 400
+        db = database.get_db()
+        with db:
+            db.execute(
+                """INSERT INTO dive_center_reviews(dive_center_id, user_id, rating, body)
+                   VALUES (?, ?, ?, ?) ON CONFLICT(dive_center_id, user_id) DO UPDATE SET
+                   rating=excluded.rating, body=excluded.body, updated_at=CURRENT_TIMESTAMP""",
+                (center_id, session["user_id"], int(rating), body),
+            )
+        return redirect(url_for("dive_center_profile", center_id=center_id) + "#reviews")
 
     @app.route("/api/dive-sites/<int:site_id>/favorite", methods=("POST",))
     @login_required
@@ -1834,35 +1850,10 @@ def get_profile_stats(user_id):
 
 
 def fetch_dive_center(center_id, viewer_user_id):
-    row = database.get_db().execute(
-        """
-        SELECT
-            dc.*,
-            (SELECT COUNT(*) FROM dive_center_likes WHERE dive_center_id = dc.id) AS like_count,
-            (SELECT COUNT(*) FROM dive_center_comments WHERE dive_center_id = dc.id) AS comment_count,
-            EXISTS(
-                SELECT 1 FROM dive_center_likes
-                WHERE dive_center_id = dc.id AND user_id = ?
-            ) AS liked_by_me
-        FROM dive_centers dc
-        WHERE dc.id = ?
-        """,
-        (viewer_user_id, center_id),
-    ).fetchone()
+    row = database.get_db().execute("SELECT * FROM dive_centers WHERE id = ?", (center_id,)).fetchone()
     if row is None:
         return None
-    center = dict(row)
-    center["comments"] = database.get_db().execute(
-        """
-        SELECT c.id, c.body, c.created_at, u.id AS user_id, u.username
-        FROM dive_center_comments c
-        JOIN users u ON u.id = c.user_id
-        WHERE c.dive_center_id = ?
-        ORDER BY c.created_at
-        """,
-        (center_id,),
-    ).fetchall()
-    return center
+    return dict(row, **center_profiles.reviews(center_id, viewer_user_id))
 
 
 def fetch_dive_site(site_id, viewer_user_id):
