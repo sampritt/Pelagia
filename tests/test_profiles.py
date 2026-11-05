@@ -63,7 +63,7 @@ class ProfileTest(unittest.TestCase):
             for path in ("/you", "/users/1"):
                 html = owner.get(path).data
                 self.assertIn(b'<span class="diver-dive-count"><strong>42</strong> dives</span>', html)
-                self.assertIn(b'<small>Dives</small><span>42</span><p>Total lifetime dives</p>', html)
+                self.assertNotIn(b'class="profile-metrics"', html)
                 self.assertNotIn(b'<small>SAC rate</small>', html)
                 self.assertIn(b'profile-sac-chart', html)
                 self.assertNotIn(b'name="starting_dive_count"', html)
@@ -76,7 +76,7 @@ class ProfileTest(unittest.TestCase):
             self.signup(viewer, "viewer")
             public = viewer.get("/users/1").data
             self.assertIn(b'<strong>42</strong> dives', public)
-            self.assertIn(b'<small>Dives</small><span>42</span>', public)
+            self.assertNotIn(b'class="diver-metrics-grid"', public)
             self.assertNotIn(b'name="starting_dive_count"', public)
             self.assertEqual(viewer.post("/users/1", data={"starting_dive_count": "99"}).status_code, 405)
             viewer.post("/you", data={"starting_dive_count": "1", "user_id": "1"})
@@ -84,7 +84,6 @@ class ProfileTest(unittest.TestCase):
             self.assertIn(b'<strong>42</strong> dives', owner.get("/you").data)
             owner.post("/you", data={"starting_dive_count": "0"})
             self.assertIn(b'<strong>2</strong> dives', owner.get("/you").data)
-            self.assertIn(b'<small>Dives</small><span>2</span>', owner.get("/you").data)
 
     def test_settings_save_units_and_count_together(self):
         with tempfile.TemporaryDirectory() as directory:

@@ -1564,9 +1564,8 @@ Kelp House,2 Harbor Way,Alaska,https://kelp.example.test
             profile_response = client.get("/you")
             self.assertEqual(profile_response.status_code, 200)
             profile_html = profile_response.data
-            self.assertLess(profile_html.index(b"<small>Dives</small>"), profile_html.index(b"<small>Max depth</small>"))
+            self.assertNotIn(b'class="diver-metrics-grid"', profile_html)
             self.assertNotIn(b"<small>SAC rate</small>", profile_html)
-            self.assertIn(b"<small>Max depth</small><span>12 <em>m</em></span>", profile_html)
             self.assertNotIn(b'History</h2>', profile_html)
             self.assertIn(b'Bottom time</h3>', profile_html)
             self.assertIn(b'data-history-view="sac_rate_l_min"', profile_html)

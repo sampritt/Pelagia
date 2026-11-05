@@ -78,14 +78,6 @@
         {% endif %}
     </header>
 
-    <section class="profile-metrics" aria-labelledby="profileMetricsTitle">
-        <div class="profile-section-heading"><h2 id="profileMetricsTitle">Metrics</h2><span>All time</span></div>
-        <div class="diver-metrics-grid">
-            <div><small>Dives</small><span>{{ total_dive_count }}</span><p>Total lifetime dives</p></div>
-            <div><small>Max depth</small><span>{{ display_metric(stats.summary.max_depth_m, 'length', include_unit=False) }} <em>{{ display_unit('length') }}</em></span><p>Deepest recorded dive</p></div>
-        </div>
-    </section>
-
     <section class="profile-sac-panel" aria-label="Daily dive charts" aria-roledescription="carousel" data-profile-history>
         <div class="history-track" data-history-track tabindex="0" aria-label="Daily dive charts" aria-describedby="historyHelp">
         {% for chart in profile_histories %}
@@ -125,8 +117,7 @@
         <p class="sr-only" data-history-status aria-live="polite" aria-atomic="true">1 of 4: Bottom time</p>
     </section>
 
-    <section class="profile-logbook" aria-labelledby="profileLogbookTitle">
-        <div class="profile-section-heading"><h2 id="profileLogbookTitle">Dive log</h2><span>{{ dives|length }} {{ 'dive' if dives|length == 1 else 'dives' }} · Newest first</span></div>
+    <section class="profile-logbook" aria-label="Logged dives">
         {% if dives %}
         <div class="feed-list compact-list">{% for dive in dives %}{% include "_dive_card.html" %}{% endfor %}</div>
         {% else %}
