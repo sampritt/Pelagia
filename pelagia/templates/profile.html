@@ -86,14 +86,12 @@
         </div>
     </section>
 
-    <section class="profile-sac-panel" aria-labelledby="historyTitle" data-profile-history>
-        <div class="profile-section-heading"><h2 id="historyTitle">History</h2></div>
-        <div class="history-switch" role="group" aria-label="History chart metric">
-            {% for chart in profile_histories %}<button type="button" data-history-option="{{ chart.key }}" aria-pressed="{{ 'true' if loop.first else 'false' }}" aria-controls="history-{{ chart.key }}">{{ "# of dives" if chart.key == "dive_count" else chart.title }}</button>{% endfor %}
-        </div>
+    <section class="profile-sac-panel" aria-label="Daily dive charts" aria-roledescription="carousel" data-profile-history>
+        <div class="history-track" data-history-track tabindex="0" aria-label="Daily dive charts" aria-describedby="historyHelp">
         {% for chart in profile_histories %}
-        <div id="history-{{ chart.key }}" data-history-view="{{ chart.key }}" {% if not loop.first %}hidden{% endif %}>
-        <div class="history-chart-heading"><h3>{{ "Dives per day" if chart.key == "dive_count" else chart.title }}</h3><span class="sac-chart-legend"><i aria-hidden="true"></i> {{ chart.unit }}</span></div>
+        <div class="history-slide" id="history-{{ chart.key }}" data-history-view="{{ chart.key }}" role="group" aria-roledescription="slide" aria-label="{{ loop.index }} of {{ loop.length }}: {{ chart.title }}" {% if not loop.first %}inert{% endif %}>
+        <div class="history-chart-heading"><h3>{{ chart.title }}</h3><span class="sac-chart-legend"><i aria-hidden="true"></i> {{ chart.unit }}</span></div>
+        <div class="history-chart-body">
         {% if chart.history.points %}
         <div class="profile-history-plot">
         {% for tick in chart.history.ticks %}
@@ -101,7 +99,7 @@
         {% endfor %}
         <svg class="profile-sac-chart" viewBox="{{ chart.history.left }} {{ chart.history.top }} {{ chart.history.width - chart.history.left - chart.history.right }} {{ chart.history.height - chart.history.top - chart.history.bottom }}" preserveAspectRatio="none" role="img" aria-labelledby="{{ chart.key }}ChartTitle {{ chart.key }}ChartDescription">
             <title id="{{ chart.key }}ChartTitle">{{ chart.title }} history for {{ user.username }}</title>
-            <desc id="{{ chart.key }}ChartDescription">Chronological {{ chart.title|lower }} in {{ chart.unit }}. {% if chart.key == "dive_count" %}Total recorded dives per day.{% else %}Multiple recorded dives on a day are combined using their median.{% endif %} {{ chart.history.count }} recorded dives across {{ chart.history.points|length }} days.</desc>
+            <desc id="{{ chart.key }}ChartDescription">Chronological {{ chart.title|lower }} in {{ chart.unit }}. {% if chart.key == "dive_count" %}Total recorded dives per day.{% elif chart.key == "duration_min" %}Sum of recorded dive durations per day.{% elif chart.key == "depth_m" %}Deepest recorded depth per day.{% else %}Mean of dives with a measured SAC rate per day; dives without a measurement are excluded.{% endif %} {{ chart.history.count }} recorded dives across {{ chart.history.points|length }} days.</desc>
             {% for tick in chart.history.ticks %}
             <line class="sac-grid-line" x1="{{ chart.history.left }}" y1="{{ '%g'|format(tick.y) }}" x2="{{ chart.history.width - chart.history.right }}" y2="{{ '%g'|format(tick.y) }}"></line>
             {% endfor %}
@@ -117,7 +115,14 @@
         <div class="sac-empty"><svg viewBox="0 0 48 40" aria-hidden="true"><path d="M4 4v30h40M10 26l9-9 9 4 12-14"></path></svg><h3>{{ "Your air consumption, over time" if chart.key == "sac_rate_l_min" else "Your " ~ chart.title|lower ~ ", over time" }}</h3><p>{{ "Log a dive to start your daily dive history." if chart.key == "dive_count" else "Log a dive with " ~ chart.title|lower ~ " data to start your history." }}</p></div>
         {% endif %}
         </div>
+        </div>
         {% endfor %}
+        </div>
+        <div class="history-pagination" role="group" aria-label="Choose daily chart">
+            {% for chart in profile_histories %}<button class="history-dot" type="button" data-history-dot="{{ loop.index0 }}" aria-label="{{ chart.title }}" aria-current="{{ 'true' if loop.first else 'false' }}" aria-controls="history-{{ chart.key }}"><span aria-hidden="true"></span></button>{% endfor %}
+        </div>
+        <p class="sr-only" id="historyHelp">Swipe horizontally or use the left and right arrow keys to change charts.</p>
+        <p class="sr-only" data-history-status aria-live="polite" aria-atomic="true">1 of 4: Bottom time</p>
     </section>
 
     <section class="profile-logbook" aria-labelledby="profileLogbookTitle">

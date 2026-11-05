@@ -306,7 +306,7 @@ User profiles show every active logged dive, newest first. Owners can change the
 
 Profile metrics show dives logged in Pelagia and maximum depth. In profile settings, owners can save a non-negative integer **Starting dive count** for dives not logged in the app. The headline total adds that starting count to active dives logged in Pelagia; the metrics and logbook continue to reflect logged dives. Existing accounts start at zero.
 
-The chronological SAC chart takes the median recorded SAC in L/min for each day and spaces observations by date. Dives with no recorded SAC remain in the log and do not affect the chart. The chart includes an expandable table of daily values.
+The profile chart card is a horizontal carousel: **Bottom time** (default, sum of dive durations per day), **Max depth** (deepest dive per day), **Dives per day**, and **Average SAC rate** (arithmetic mean of measured SAC rates per day, in L/min). Dives with no SAC measurement are excluded from that mean. All four charts share the fourteen days ending on the latest active dive. Swipe or scroll horizontally, select the pagination dots, or use the arrow/Home/End keys. Charts and empty states keep the same card height; offscreen chart values stay out of keyboard navigation.
 
 Dive site profiles use the site's coordinate map as their header, with a pending state when coordinates are missing. Dive centers use a compact header without a banner image.
 

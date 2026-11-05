@@ -189,7 +189,7 @@ class ProfileTest(unittest.TestCase):
                 self.assertEqual(sac["median"], 30)
                 self.assertEqual(sac["count"], 3)
                 self.assertEqual([p["value"] for p in sac["points"]], [30, 30])
-                self.assertEqual(sac["ticks"][-1]["value"], "40")
+                self.assertEqual(sac["ticks"][-1]["value"], "32")
                 counts = get_profile_sac_history(1, "dive_count")
                 self.assertEqual([p["value"] for p in counts["points"]], [2, 1, 1])
                 metric = get_profile_sac_history(1, "depth_m")
@@ -234,16 +234,42 @@ class ProfileTest(unittest.TestCase):
                 self.assertEqual(histories[0]["points"][0]["x"], histories[1]["points"][1]["x"])
                 self.assertEqual([p["value"] for p in histories[2]["points"]], [40, 40, 40])
             html = client.get("/you").data
-            for metric in (b"sac_rate_l_min", b"depth_m", b"duration_min", b"dive_count"):
-                self.assertIn(b'data-history-option="' + metric + b'"', html)
+            for metric in (b"duration_min", b"depth_m", b"dive_count", b"sac_rate_l_min"):
                 self.assertIn(b'data-history-view="' + metric + b'"', html)
-            order = [html.index(b'data-history-option="' + key + b'"') for key in
-                     (b'dive_count', b'duration_min', b'depth_m', b'sac_rate_l_min')]
+            order = [html.index(b'data-history-view="' + key + b'"') for key in
+                     (b'duration_min', b'depth_m', b'dive_count', b'sac_rate_l_min')]
             self.assertEqual(order, sorted(order))
-            self.assertIn(b'data-history-option="dive_count" aria-pressed="true"', html)
-            self.assertIn(b'id="history-dive_count" data-history-view="dive_count" >', html)
+            self.assertIn(b'aria-label="Bottom time" aria-current="true"', html)
+            self.assertIn(b'data-history-track tabindex="0"', html)
+            self.assertNotIn(b'history-switch', html)
+            self.assertNotIn(b'History</h2>', html)
             self.assertIn(b'Max depth</h3>', html)
-            self.assertIn(b'Duration</h3>', html)
+            self.assertIn(b'Bottom time</h3>', html)
+            self.assertIn(b'Dives per day</h3>', html)
+            self.assertIn(b'Average SAC rate</h3>', html)
+
+    def test_daily_metrics_sum_duration_take_max_depth_and_average_only_measured_sac(self):
+        with tempfile.TemporaryDirectory() as directory:
+            app, _, _ = self.make_app(Path(directory))
+            self.signup(app.test_client())
+            self.signup(app.test_client(), "other-diver")
+            with app.app_context():
+                db = database.get_db()
+                db.executemany(
+                    """INSERT INTO dives(user_id,date,site_name,duration_min,depth_m,sac_rate_l_min,is_deleted)
+                       VALUES(?,'2026-01-01','Reef',?,?,?,?)""",
+                    [(1, 30, 10, 10, 0), (1, 45, 18, 20, 0), (1, 55, 30, 60, 0),
+                     (1, 20, 22, None, 0), (1, 10, 12, 0, 0), (1, 999, 999, 999, 1),
+                     (2, 999, 999, 999, 0)],
+                )
+                for metric, expected in (("duration_min", 160), ("depth_m", 30),
+                                         ("dive_count", 5), ("sac_rate_l_min", 22.5)):
+                    history = get_profile_sac_history(1, metric)
+                    self.assertEqual([p["value"] for p in history["points"]], [expected])
+                    self.assertGreaterEqual(int(history["ticks"][-1]["value"]), expected)
+                    self.assertGreaterEqual(history["points"][0]["y"], history["top"])
+                self.assertEqual(get_profile_sac_history(1)["points"][0]["count"], 4)
+                self.assertAlmostEqual(get_profile_sac_history(1, "depth_m", length_unit="ft")["points"][0]["value"], 30 / .3048)
 
     def test_daily_dive_counts_include_missing_metrics_and_exclude_other_or_deleted_dives(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -262,7 +288,7 @@ class ProfileTest(unittest.TestCase):
                 self.assertEqual([p["value"] for p in history["points"]], [6, 2])
                 self.assertEqual(history["ticks"][-1]["value"], "8")
             html = client.get("/you").data
-            self.assertIn(b"# of dives", html)
+            self.assertNotIn(b"# of dives", html)
             self.assertIn(b"Dives per day", html)
             self.assertIn(b"Jan 01, 2026: 6 dives", html)
 
@@ -307,16 +333,16 @@ class ProfileTest(unittest.TestCase):
             # The window median uses individual dives, not daily medians.
             self.assertEqual(history["median"], 24)
             self.assertEqual(history["count"], 5)
-            self.assertEqual([p["value"] for p in history["points"]], [20, 40, 100])
+            self.assertEqual([p["value"] for p in history["points"]], [18, 40, 100])
             self.assertEqual([p["date"] for p in history["points"]], ["2026-01-01", "2026-01-02", "2026-01-05"])
             x = [p["x"] for p in history["points"]]
             self.assertAlmostEqual((x[2] - x[1]) / (x[1] - x[0]), 3, delta=.001)
             html = client.get('/you').data
-            self.assertIn(b'History</h2>', html)
+            self.assertNotIn(b'History</h2>', html)
             self.assertNotIn(b'View recorded values', html)
             self.assertNotIn(b'sac-data-table', html)
             self.assertNotIn(b'<small>SAC rate</small>', html)
-            self.assertIn(b'Jan 01, 2026: 20 L/min', html)
+            self.assertIn(b'Jan 01, 2026: 18 L/min', html)
             self.assertNotIn(b'999 L/min', html)
             # Missing rates and soft-deleted dives leave a clear, honest empty state.
             with sqlite3.connect(db_path) as db:

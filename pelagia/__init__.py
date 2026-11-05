@@ -1131,10 +1131,10 @@ def render_user_profile(user, is_owner):
             dict(key=key, title=title, unit=unit,
                  history=get_profile_sac_history(user["id"], key, length_unit=unit_preferences()["length"]))
             for key, title, unit in (
-                ("dive_count", "Number of dives", "dives"),
-                ("duration_min", "Duration", "min"),
+                ("duration_min", "Bottom time", "min"),
                 ("depth_m", "Max depth", display_unit("length")),
-                ("sac_rate_l_min", "SAC rate", "L/min"),
+                ("dive_count", "Dives per day", "dives"),
+                ("sac_rate_l_min", "Average SAC rate", "L/min"),
             )
         ],
         is_owner=is_owner,
@@ -1781,19 +1781,20 @@ def get_profile_sac_history(user_id, metric="sac_rate_l_min", *, length_unit="m"
         rates.append(rate)
         days.setdefault(day, []).append(rate)
     width, height, left, right, top, bottom = 800, 240, 48, 18, 18, 32
-    chart_values = [len(values) for values in days.values()] if metric == "dive_count" else rates
-    ceiling = max(4, math.ceil(max(chart_values, default=0) / 4) * 4)
+    aggregate = {"dive_count": len, "duration_min": sum, "depth_m": max,
+                 "sac_rate_l_min": statistics.mean}[metric]
+    daily_values = [(day, aggregate(values), len(values)) for day, values in sorted(days.items())]
+    ceiling = max(4, math.ceil(max((value for _, value, _ in daily_values), default=0) / 4) * 4)
     # All four metrics share fourteen daily slots, anchored to the latest dive,
     # even when that dive has no value for the selected metric.
     span = 13
     bar_width = (width - left - right) / 14 * 0.8
     points = []
-    for day, day_rates in sorted(days.items()):
-        value = len(day_rates) if metric == "dive_count" else statistics.median(day_rates)
+    for day, value, count in daily_values:
         x = left + bar_width / 2 + (day - first_day).days / span * (width - left - right - bar_width)
         points.append({
             "date": day.isoformat(), "label": day.strftime("%b %d, %Y"),
-            "value": value, "display": format_metric(value), "count": len(day_rates),
+            "value": value, "display": format_metric(value), "count": count,
             "x": round(x, 2), "y": round(height - bottom - value / ceiling * (height - top - bottom), 2),
         })
     median = statistics.median(rates) if rates else None

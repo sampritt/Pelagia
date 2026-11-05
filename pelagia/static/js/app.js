@@ -2302,16 +2302,38 @@ function initLinkSharing({share, status, fallback, link}, messages) {
 
 function initProfileHistory() {
     document.querySelectorAll("[data-profile-history]").forEach((section) => {
-        section.querySelectorAll("[data-history-option]").forEach((button) => {
-            button.addEventListener("click", () => {
-                section.querySelectorAll("[data-history-option]").forEach((option) => {
-                    option.setAttribute("aria-pressed", String(option === button));
-                });
-                section.querySelectorAll("[data-history-view]").forEach((view) => {
-                    view.hidden = view.dataset.historyView !== button.dataset.historyOption;
-                });
-            });
+        const track = section.querySelector("[data-history-track]");
+        const slides = Array.from(section.querySelectorAll("[data-history-view]"));
+        const dots = Array.from(section.querySelectorAll("[data-history-dot]"));
+        const status = section.querySelector("[data-history-status]");
+        let selected = 0;
+        const currentIndex = () => Math.max(0, Math.min(slides.length - 1,
+            Math.round(track.scrollLeft / track.clientWidth)));
+        const update = () => {
+            const index = currentIndex();
+            dots.forEach((dot, i) => dot.setAttribute("aria-current", String(i === index)));
+            slides.forEach((slide, i) => { slide.inert = i !== index; });
+            if (index !== selected) status.textContent = slides[index].getAttribute("aria-label");
+            selected = index;
+        };
+        const moveTo = (index, instant = false) => track.scrollTo({
+            left: index * track.clientWidth,
+            behavior: instant || window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth",
         });
+        dots.forEach((dot, index) => dot.addEventListener("click", () => moveTo(index)));
+        section.addEventListener("keydown", (event) => {
+            if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
+            if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+            event.preventDefault();
+            // Keep focus on a stable control when the focused chart bar leaves view.
+            if (event.target.closest("[data-history-view]")) track.focus({preventScroll: true});
+            const index = event.key === "Home" ? 0 : event.key === "End" ? slides.length - 1
+                : Math.max(0, Math.min(slides.length - 1, currentIndex() + (event.key === "ArrowRight" ? 1 : -1)));
+            moveTo(index);
+        });
+        track.addEventListener("scroll", update, {passive: true});
+        new ResizeObserver(() => moveTo(selected, true)).observe(track);
+        update();
     });
 }
 

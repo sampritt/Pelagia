@@ -1,0 +1,9 @@
+# Profile chart carousel review
+
+Removed the History heading and segmented metric selector. The graph card now contains four full-width, horizontally snapping slides in this order: Bottom time (default), Max depth, Dives per day, Average SAC rate. Bottom time sums recorded dive durations each day; depth takes the daily maximum; SAC takes the arithmetic mean of measured rates, excluding missing values. Deleted and other-user dives remain excluded. All views retain the same fourteen-day window, anchored to the latest active dive.
+
+Native touch and trackpad scrolling, clickable pagination dots, and Arrow/Home/End keys change views. The selected dot and accessible announcement follow the visible slide. Offscreen bars are inert. Reduced-motion preferences disable animated programmatic scrolling. Resize preserves the selected view.
+
+Chromium review covered 320, 390, 430, 768, 1024, and 1440 px widths, plus 844 × 390 touch landscape. Checked all four charts, empty profiles, imperial depth, and another user's profile. Card height is 328 px on phones and 356 px on desktop, including empty views. Dots retain their vertical position, and the card maintains 24 px spacing from neighboring sections with no horizontal page overflow. Actual browser touch events verified swipes in both directions and vertical page scrolling through the chart; keyboard navigation, trackpad scrolling, and dot clicks passed. Screenshots and browser measurements are local in `output/profile-chart-carousel/`. Touch checks used Chrome mobile emulation, not physical devices.
+
+Validation: all 16 focused Python tests and all 200 JavaScript tests pass. Full Python discovery ran 474 tests with one skip. The obsolete History-title expectation was updated and passes on rerun. Three unrelated reports remain: the email welcome test expects the retired Site reports heading, and two exposure tests receive missing advice from their fixtures. Whitespace checks pass.
