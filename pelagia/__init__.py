@@ -870,7 +870,7 @@ def register_routes(app):
         recent_dives = fetch_dives(scope="center", user_id=session["user_id"], center_id=center_id, limit=6)
         return render_template(
             "dive_center_profile.html", center=center, recent_dives=recent_dives,
-            center_description=site_descriptions.read_cache(center_id, kind="center"),
+            center_description=site_descriptions.read_page_cache(center_id, kind="center"),
             nearby_sites=place_profiles.nearby_sites(center),
             review_error=review_error, review_draft=review_draft,
         )

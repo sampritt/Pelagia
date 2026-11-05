@@ -19,6 +19,9 @@ NO_DESCRIPTION = "NO_VERIFIED_DESCRIPTION"
 # TEMPORARY: Force every dive-site page visit to regenerate and overwrite its cache row.
 # Revert this to False to restore normal persistent-cache behavior.
 TEMPORARY_FORCE_REGENERATION = False
+# TEMPORARY: Refresh center descriptions on every signed-in profile visit.
+# Revert this to False to restore normal persistent-cache behavior.
+TEMPORARY_FORCE_CENTER_REGENERATION = True
 INSTRUCTIONS = """Perform a SIMPLE and BRIEF internet search for this exact dive site.
 Verify that sources match BOTH its name AND geographic location; use coordinates
 to disambiguate when available. Coordinates are provided only to identify the
@@ -60,7 +63,11 @@ class GenerationError(Exception):
     """An attempt failed without establishing that a description is unavailable."""
 
 
-def force_regeneration():
+def force_regeneration(*, kind="site"):
+    if kind == "center":
+        return current_app.config.get(
+            "FORCE_DIVE_CENTER_DESCRIPTION_REGENERATION", TEMPORARY_FORCE_CENTER_REGENERATION
+        )
     return current_app.config.get(
         "FORCE_DIVE_SITE_DESCRIPTION_REGENERATION", TEMPORARY_FORCE_REGENERATION
     )
@@ -105,9 +112,9 @@ def read_cache(site_id, db=None, *, kind="site"):
     }
 
 
-def read_page_cache(site_id):
+def read_page_cache(site_id, *, kind="site"):
     """Temporarily make every rendered page initiate a fresh generation request."""
-    return None if force_regeneration() else read_cache(site_id)
+    return None if force_regeneration(kind=kind) else read_cache(site_id, kind=kind)
 
 
 def claim_generation(db, site_id, force=False, *, kind="site"):
@@ -279,7 +286,7 @@ def init_app(app, login_required):
         site = db.execute(f"SELECT * FROM {table} WHERE id = ?", (site_id,)).fetchone()
         if site is None:
             return jsonify(error="Dive center not found" if kind == "center" else "Dive site not found"), 404
-        force = kind == "site" and force_regeneration()
+        force = force_regeneration(kind=kind)
         if not force:
             cached = read_cache(site_id, db, kind=kind)
             if cached is not None:

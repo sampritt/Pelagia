@@ -20,6 +20,7 @@ class CenterProfileTest(unittest.TestCase):
         self.addCleanup(self.directory.cleanup)
         self.app, self.db_path, _ = fixtures.ReferenceAutocompleteTest().make_app(Path(self.directory.name))
         self.app.config['OPENAI_API_KEY'] = 'test-key'
+        self.app.config['FORCE_DIVE_CENTER_DESCRIPTION_REGENERATION'] = False
         self.client = self.app.test_client()
         fixtures.ReferenceAutocompleteTest().signup(self.client)
         with self.app.app_context():
@@ -152,6 +153,37 @@ class CenterProfileTest(unittest.TestCase):
             self.assertIsNone(descriptions.read_cache(1))
             self.assertIsNotNone(descriptions.read_cache(1, kind='center'))
 
+    def test_temporary_center_refresh_replaces_cached_descriptions_and_null_results(self):
+        for cached_text in ('Boat trips are available.', descriptions.NO_DESCRIPTION):
+            with self.subTest(cached_text=cached_text):
+                with self.app.app_context():
+                    db = database.get_db()
+                    db.execute('DELETE FROM dive_center_descriptions WHERE dive_center_id=1')
+                    db.commit()
+                self.app.config['FORCE_DIVE_CENTER_DESCRIPTION_REGENERATION'] = False
+                with patch.object(descriptions.requests, 'post', return_value=upstream(response_payload(cached_text))):
+                    self.assertEqual(self.description().status_code, 200)
+
+                # Exercise the temporary default, independently of the site flag.
+                del self.app.config['FORCE_DIVE_CENTER_DESCRIPTION_REGENERATION']
+                self.app.config['FORCE_DIVE_SITE_DESCRIPTION_REGENERATION'] = False
+                html = self.client.get('/dive-centers/1').get_data(as_text=True)
+                self.assertIn('data-site-description', html)
+                self.assertNotIn('Boat trips are available.', html)
+                refreshed = 'Guided boat dives and equipment rentals are available.'
+                with patch.object(descriptions.requests, 'post', return_value=upstream(response_payload(refreshed))) as post:
+                    self.assertEqual(self.description().get_json()['description'], refreshed)
+                    self.assertEqual(self.description().get_json()['description'], refreshed)
+                    self.assertEqual(post.call_count, 2)
+                with self.app.app_context():
+                    self.assertEqual(descriptions.read_cache(1, kind='center')['description'], refreshed)
+
+                self.app.config['FORCE_DIVE_CENTER_DESCRIPTION_REGENERATION'] = False
+                with patch.object(descriptions.requests, 'post') as post:
+                    self.assertEqual(self.description().get_json()['description'], refreshed)
+                    post.assert_not_called()
+                self.assertNotIn('data-site-description', self.client.get('/dive-centers/1').get_data(as_text=True))
+
     def test_description_null_is_permanent_but_failures_are_retryable(self):
         with patch.object(descriptions.requests, 'post', side_effect=requests.Timeout):
             response = self.description()
@@ -170,6 +202,7 @@ class CenterProfileTest(unittest.TestCase):
             self.assertEqual(post.call_count, 1)
 
     def test_description_claim_deduplicates_and_stale_workers_cannot_publish(self):
+        self.app.config['FORCE_DIVE_CENTER_DESCRIPTION_REGENERATION'] = True
         with self.app.app_context():
             db = database.get_db()
             state, token = descriptions.claim_generation(db, 1, kind='center')
