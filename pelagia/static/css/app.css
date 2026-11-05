@@ -6913,11 +6913,21 @@ html:has(.place-profile #reviews:target) { scroll-behavior: auto; }
 .center-contact-details a:hover { text-decoration: underline; }
 .place-profile :is(.place-nearby, .place-reviews, .place-logged-dives) { min-width: 0; }
 .place-profile .profile-section-heading { margin-bottom: 14px; }
-.nearby-place-card { gap: 16px; grid-template-rows: auto auto 1fr; }
-.nearby-place-details { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: .75rem; }
-.nearby-place-distance { color: var(--muted-strong); }
-.nearby-place-open { flex-shrink: 0; color: var(--accent-deep); font-weight: 600; }
-.nearby-place-description { align-self: start; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; margin: 0; color: var(--muted-strong); font-size: .875rem; line-height: 1.65; overflow-wrap: anywhere; }
+/* Compact navigation cards keep the same height across nearby places. */
+.nearby-place-card { min-height: 144px; align-content: center; scroll-snap-stop: always; -webkit-tap-highlight-color: transparent; }
+.nearby-place-card .site-report-card-main { gap: 16px; }
+.nearby-place-card .site-report-map { flex-basis: 72px; width: 72px; height: 72px; min-height: 72px; max-height: 72px; }
+.nearby-place-card .site-report-identity { flex: 1; display: grid; gap: 4px; }
+.nearby-place-card .site-report-name { align-items: center; }
+.nearby-place-card .site-report-identity p { margin: 0; -webkit-line-clamp: 1; }
+.nearby-place-distance { color: var(--muted-strong); font-size: .75rem; line-height: 1.5; white-space: nowrap; }
+.nearby-place-card:focus-visible { outline-offset: -3px; }
+.nearby-places-deck .site-reports-pagination { position: static; margin-top: 4px; min-height: 24px; }
+@media (max-width: 640px) {
+    .nearby-place-card { min-height: 128px; padding: 16px; }
+    .nearby-place-card .site-report-card-main { gap: 12px; }
+    .nearby-place-card .site-report-map { flex-basis: 64px; width: 64px; height: 64px; min-height: 64px; max-height: 64px; }
+}
 .place-section-empty { margin: 0; padding: 24px; border: 1px solid var(--line); border-radius: 14px; background: var(--panel); color: var(--muted-strong); font-size: .875rem; line-height: 1.6; }
 .place-review-form { display: grid; gap: 12px; padding: 26px 30px; border: 1px solid var(--line); border-radius: 14px; background: var(--panel); }
 .place-review-form > label, .review-rating legend { color: var(--muted-strong); font-size: .8125rem; font-weight: 600; }

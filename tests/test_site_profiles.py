@@ -38,8 +38,8 @@ class SiteProfileTest(unittest.TestCase):
             db = database.get_db()
             for i in range(4, 16):
                 self.add_center(db, i, 15-i)
-            self.add_center(db, 30, 10)
-            self.add_center(db, 31, 10.01)
+            self.add_center(db, 30, 30)
+            self.add_center(db, 31, 30.01)
             db.execute("INSERT INTO dive_center_descriptions(dive_center_id,description,model) VALUES(15,'Guided reef trips and rental equipment.','fixture')")
             db.commit()
             with patch('pelagia.site_descriptions.generate_description', side_effect=AssertionError('Unexpected generation')):
@@ -74,7 +74,7 @@ class SiteProfileTest(unittest.TestCase):
         markers = ['site-sightings-panel', 'id="nearbyCentersTitle"', 'id="reviews"', 'id="siteDivesTitle"']
         self.assertEqual([html.index(marker) for marker in markers], sorted(html.index(marker) for marker in markers))
         for value in ('data-nearby-carousel', 'data-nearby-label="Dive center"', 'nearby-center-card',
-                      'site-reports-track', 'data-report-dot="1"', 'Within 10 miles', 'miles from site',
+                      'site-reports-track', 'data-report-dot="1"', 'Within 30 miles', 'miles from site',
                       'href="/dive-centers/20"', 'name="rating"', 'Logged reef dive',
                       'js/place-profile.js', 'data-site-share', 'data-site-favorite', 'Log dive'):
             self.assertIn(value, html)
@@ -82,6 +82,10 @@ class SiteProfileTest(unittest.TestCase):
         self.assertNotIn('data-site-comment', html)
         self.assertEqual(html.count('name="rating"'), 5)
         self.assertNotIn('data-followed-site-report', html)
+        self.assertNotIn('nearby-place-open', html)
+        self.assertNotIn('nearby-place-description', html)
+        self.assertNotIn('Explore site conditions', html)
+        self.assertNotIn('See center details', html)
         self.assertNotIn('/api/dive-centers/20/description', html)
         self.assertEqual(self.client.post('/api/dive-sites/1/comments', data={'body': 'Retired'}).status_code, 404)
         with self.app.app_context():
@@ -89,7 +93,7 @@ class SiteProfileTest(unittest.TestCase):
 
     def test_zero_single_and_missing_coordinate_states(self):
         html = self.client.get('/dive-sites/1').get_data(as_text=True)
-        self.assertIn('No dive centers listed within 10 miles yet.', html)
+        self.assertIn('No dive centers listed within 30 miles yet.', html)
         self.assertNotIn('data-report-dot', html)
         with self.app.app_context():
             db = database.get_db()

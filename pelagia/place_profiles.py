@@ -5,7 +5,7 @@ import math
 from .db import get_db
 from . import site_descriptions
 
-RADIUS_MILES = 10
+RADIUS_MILES = 30
 EARTH_RADIUS_MILES = 3958.7613
 
 

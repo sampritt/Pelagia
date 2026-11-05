@@ -2,20 +2,16 @@
 {% set location = item.location if is_center else item.country_or_area %}
 {% set title_id = ('nearbyCenterTitle' if is_center else 'nearbySiteTitle') ~ item.id %}
 {% set has_coords = item.latitude is not none and item.longitude is not none %}
-<a class="site-report-card feed-site-report nearby-place-card {{ 'nearby-center-card' if is_center else 'nearby-site-card' }}"
-   href="{{ url_for('dive_center_profile', center_id=item.id) if is_center else url_for('dive_site_profile', site_id=item.id) }}" aria-labelledby="{{ title_id }}">
+<a class="site-report-card nearby-place-card {{ 'nearby-center-card' if is_center else 'nearby-site-card' }}"
+   href="{{ url_for('dive_center_profile', center_id=item.id) if is_center else url_for('dive_site_profile', site_id=item.id) }}" aria-labelledby="{{ title_id }}" aria-describedby="{{ title_id }}Location {{ title_id }}Distance">
     <div class="site-report-card-main">
         <div class="mini-map site-report-map {{ 'map-pending' if not has_coords else '' }}" aria-hidden="true" {% if has_coords %}data-static-map data-map-lat="{{ item.latitude }}" data-map-lng="{{ item.longitude }}" data-map-zoom="10"{% endif %}>
             {% if has_coords %}<span class="map-pin"></span>{% else %}{{ action_icon("compass") }}{% endif %}
         </div>
         <div class="site-report-identity">
             <div class="site-report-name"><h3 id="{{ title_id }}" title="{{ item.name }}">{{ item.name }}</h3></div>
-            <p title="{{ location or 'Location pending' }}">{{ location or 'Location pending' }}</p>
+            <p id="{{ title_id }}Location" title="{{ location or 'Location pending' }}">{{ location or 'Location pending' }}</p>
+            <span class="nearby-place-distance" id="{{ title_id }}Distance">{{ '%.1f'|format(item.distance_miles) }} miles from {{ 'site' if is_center else 'center' }}</span>
         </div>
     </div>
-    <div class="nearby-place-details">
-        <span class="nearby-place-distance">{{ '%.1f'|format(item.distance_miles) }} miles from {{ 'site' if is_center else 'center' }}</span>
-        <span class="nearby-place-open">{{ 'View center' if is_center else 'Explore site' }} <span aria-hidden="true">→</span></span>
-    </div>
-    <p class="nearby-place-description">{{ item.description or ('See center details, contact information and diver reviews.' if is_center else 'Explore site conditions, marine sightings and logged dives.') }}</p>
 </a>

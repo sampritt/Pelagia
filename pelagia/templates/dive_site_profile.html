@@ -86,12 +86,12 @@
     {% include "_dive_site_sightings.html" %}
 
     <section class="place-nearby" aria-labelledby="nearbyCentersTitle">
-        <div class="profile-section-heading"><h2 id="nearbyCentersTitle">Nearby dive centers</h2><span>Within 10 miles</span></div>
+        <div class="profile-section-heading"><h2 id="nearbyCentersTitle">Nearby dive centers</h2><span>Within 30 miles</span></div>
         {% if nearby_centers %}
         <div class="site-reports feed-site-reports" data-nearby-carousel data-nearby-label="Dive center">
             {% with report_selection={'sites': nearby_centers}, nearby=true, nearby_kind='center' %}{% include "_home_site_reports.html" %}{% endwith %}
         </div>
-        {% else %}<p class="place-section-empty">{{ 'No dive centers listed within 10 miles yet.' if site.latitude is not none and site.longitude is not none else 'Nearby dive centers will appear when this site’s location is available.' }}</p>{% endif %}
+        {% else %}<p class="place-section-empty">{{ 'No dive centers listed within 30 miles yet.' if site.latitude is not none and site.longitude is not none else 'Nearby dive centers will appear when this site’s location is available.' }}</p>{% endif %}
     </section>
     {% with place=site, place_kind="site" %}{% include "_place_reviews.html" %}{% endwith %}
 

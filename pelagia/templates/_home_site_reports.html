@@ -4,7 +4,7 @@
 {% set carousel_help = carousel_id ~ 'Help' %}
 {% set card_label = 'dive center' if nearby_center else 'dive site' if nearby else 'report' %}
 {% if report_selection.sites %}
-<div class="site-reports-deck{{ ' has-pagination' if report_selection.sites|length > 1 else '' }}">
+<div class="site-reports-deck{{ ' nearby-places-deck' if nearby else '' }}{{ ' has-pagination' if report_selection.sites|length > 1 else '' }}">
 <div class="site-reports-track" id="{{ carousel_id }}" data-site-reports-track
      {% if report_selection.sites|length > 1 %}tabindex="0" role="group" aria-roledescription="carousel" aria-label="{{ 'Nearby dive centers' if nearby_center else 'Nearby dive sites' if nearby else 'Followed dive site reports' }}" aria-describedby="{{ carousel_help }}"{% endif %}>
     {% for item in report_selection.sites %}

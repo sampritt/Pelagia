@@ -48,15 +48,15 @@ class CenterProfileTest(unittest.TestCase):
             db = database.get_db()
             for i in range(4, 16):
                 self.add_site(db, i, 15 - i)
-            self.add_site(db, 30, 10)
-            self.add_site(db, 31, 10.01)
+            self.add_site(db, 30, 30)
+            self.add_site(db, 31, 30.01)
             db.execute("INSERT INTO dive_site_descriptions(dive_site_id, description, model) VALUES(15,'A shallow coral reef.','test')")
             db.commit()
             nearby = place_profiles.nearby_sites({'latitude': 0, 'longitude': 0})
             self.assertEqual(len(nearby), 10)
             self.assertEqual([site['id'] for site in nearby], list(range(15, 5, -1)))
             self.assertEqual(nearby[0]['description'], 'A shallow coral reef.')
-            self.assertTrue(all(site['distance_miles'] <= 10 for site in nearby))
+            self.assertTrue(all(site['distance_miles'] <= 30 for site in nearby))
             db.execute('DELETE FROM dive_sites WHERE id BETWEEN 4 AND 15')
             db.commit()
             self.assertEqual([site['id'] for site in place_profiles.nearby_sites({'latitude': 0, 'longitude': 0})], [30])
@@ -82,7 +82,7 @@ class CenterProfileTest(unittest.TestCase):
         html = self.client.get('/dive-centers/1').get_data(as_text=True)
         for value in ('site-profile-header', 'site-map-banner', 'data-map-lat="0.0"', 'data-center-share',
                       'data-nearby-carousel', 'site-reports-track', 'data-report-dot="1"', 'nearby-site-card',
-                      'Within 10 miles', 'name="rating"', 'name="body"', 'Logged dives'):
+                      'Within 30 miles', 'name="rating"', 'name="body"', 'Logged dives'):
             self.assertIn(value, html)
         self.assertNotIn('coordinate-label', html)
         self.assertIn('Nearby logged dive', html)
@@ -90,13 +90,17 @@ class CenterProfileTest(unittest.TestCase):
         self.assertNotIn('data-center-comment', html)
         self.assertNotIn('data-site-favorite', html)
         self.assertNotIn('data-followed-site-report', html)
+        self.assertNotIn('nearby-place-open', html)
+        self.assertNotIn('nearby-place-description', html)
+        self.assertNotIn('Explore site conditions', html)
+        self.assertNotIn('See center details', html)
         self.assertEqual(html.count('name="rating"'), 5)
         self.assertIn('/dive-sites/20"', html)
         self.assertNotIn('#daily-report', html)
 
     def test_zero_one_and_missing_location_states(self):
         html = self.client.get('/dive-centers/1').get_data(as_text=True)
-        self.assertIn('No dive sites listed within 10 miles yet.', html)
+        self.assertIn('No dive sites listed within 30 miles yet.', html)
         self.assertNotIn('data-report-dot', html)
         with self.app.app_context():
             db = database.get_db()
