@@ -91,9 +91,18 @@
         const editing = document.activeElement?.matches("input:not([type=range]):not([type=checkbox]):not([type=radio]), textarea, [contenteditable=true]");
         const covered = window.visualViewport && window.innerHeight - window.visualViewport.height > 150;
         document.documentElement.classList.toggle("pwa-keyboard-open", Boolean(editing && covered));
-        if (window.visualViewport) document.documentElement.style.setProperty("--pwa-viewport-height", `${window.visualViewport.height}px`);
+        if (window.visualViewport) {
+            const viewport = window.visualViewport;
+            // The keyboard can pan the visual viewport after focusing a fixed input.
+            // Follow that pan only for header search; preserve native pinch zoom.
+            const searching = document.activeElement?.matches("[data-global-search-input]");
+            const searchTop = searching && viewport.scale === 1 ? Math.max(0, viewport.offsetTop) : 0;
+            document.documentElement.style.setProperty("--pwa-search-top", `${searchTop}px`);
+            document.documentElement.style.setProperty("--pwa-viewport-height", `${viewport.height}px`);
+        }
     }
     window.visualViewport?.addEventListener("resize", syncKeyboard);
+    window.visualViewport?.addEventListener("scroll", syncKeyboard);
     document.addEventListener("focusin", syncKeyboard);
     document.addEventListener("focusout", syncKeyboard);
     syncKeyboard();

@@ -4411,7 +4411,7 @@ input[type="range"] {
         top: calc(var(--pwa-topbar-height) + env(safe-area-inset-top) + 8px);
         left: max(15px, env(safe-area-inset-left));
         right: max(15px, env(safe-area-inset-right));
-        max-height: min(360px, calc(100dvh - var(--pwa-topbar-height) - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 120px));
+        max-height: min(360px, max(0px, calc(var(--pwa-viewport-height, 100dvh) - var(--pwa-topbar-height) - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 24px)));
     }
 
     .topbar-search::after {
@@ -4878,6 +4878,7 @@ body:has(.share-dialog[open]) { overflow: hidden; }
 }
 
 .topbar {
+    top: var(--pwa-search-top, 0px);
     height: calc(var(--pwa-topbar-height) + env(safe-area-inset-top));
     padding-top: env(safe-area-inset-top);
     padding-left: max(24px, calc((100vw - var(--content)) / 2), env(safe-area-inset-left));

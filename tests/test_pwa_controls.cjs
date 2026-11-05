@@ -20,8 +20,9 @@ async function setup(options = {}) {
     dialog.close = () => {dialog.open = false; dialog.handlers.close();};
     const parts = Object.fromEntries(["offline-notice", "update-notice", "install-notice", "update", "retry"].map(name => [name, element()]));
     const classes = new Set();
+    const styles = {};
     const document = element();
-    document.documentElement = {classList: {toggle(name, enabled) {if (enabled) classes.add(name); else classes.delete(name);}}, style: {setProperty() {}}};
+    document.documentElement = {classList: {toggle(name, enabled) {if (enabled) classes.add(name); else classes.delete(name);}}, style: {setProperty(name, value) {styles[name] = value;}}};
     document.querySelectorAll = selector => selector === "[data-pwa-guide]" ? [guide] : [install];
     document.querySelector = selector => selector === "[data-pwa-install-dialog]" ? dialog : parts[selector.match(/data-pwa-(.*)\]/)[1]];
     document.visibilityState = "visible";
@@ -37,6 +38,9 @@ async function setup(options = {}) {
     window.location = {origin: "https://pelagia.example", reload() {reloads++;}};
     window.visualViewport = element();
     window.visualViewport.height = 844;
+    window.visualViewport.offsetTop = 0;
+    window.visualViewport.scale = 1;
+    if (options.visualViewport === false) delete window.visualViewport;
     const registration = element();
     const worker = element();
     registration.installing = worker;
@@ -51,7 +55,7 @@ async function setup(options = {}) {
     const warnings = [];
     vm.runInContext(fs.readFileSync(path.join(__dirname, "../pelagia/static/js/pwa.js"), "utf8"), vm.createContext({window, document, navigator, URL, console: {warn: (...args) => warnings.push(args)}}));
     await new Promise(resolve => setImmediate(resolve));
-    return {install, guide, close, dialog, parts, classes, window, document, navigator, serviceWorker, registration, worker, messages, registrations, warnings, displayMode,
+    return {install, guide, close, dialog, parts, classes, styles, window, document, navigator, serviceWorker, registration, worker, messages, registrations, warnings, displayMode,
         get reloads() {return reloads;}, get checks() {return checks;}};
 }
 
@@ -161,6 +165,61 @@ test("the mobile navigation clears the keyboard and offline retry reloads the cu
     assert.equal(s.classes.has("pwa-keyboard-open"), false);
     s.parts.retry.handlers.click();
     assert.equal(s.reloads, 1);
+});
+
+test("header search follows keyboard viewport panning after scrolling and resets on blur", async () => {
+    const s = await setup();
+    const viewport = s.window.visualViewport;
+    s.document.activeElement = {matches: () => true};
+    s.document.handlers.focusin();
+    assert.equal(s.styles["--pwa-search-top"], "0px");
+
+    viewport.height = 420;
+    viewport.offsetTop = 180;
+    viewport.handlers.resize();
+    assert.equal(s.styles["--pwa-search-top"], "180px");
+    assert.equal(s.styles["--pwa-viewport-height"], "420px");
+    assert.equal(s.classes.has("pwa-keyboard-open"), true);
+
+    // The keyboard can pan without another resize.
+    viewport.offsetTop = 240;
+    viewport.handlers.scroll();
+    assert.equal(s.styles["--pwa-search-top"], "240px");
+
+    s.document.activeElement = null;
+    s.document.handlers.focusout();
+    assert.equal(s.styles["--pwa-search-top"], "0px");
+    assert.equal(s.classes.has("pwa-keyboard-open"), false);
+    viewport.height = 844;
+    viewport.offsetTop = 0;
+    viewport.handlers.resize();
+    assert.equal(s.styles["--pwa-viewport-height"], "844px");
+});
+
+test("viewport compensation leaves other inputs and pinch zoom alone", async () => {
+    const s = await setup();
+    const viewport = s.window.visualViewport;
+    viewport.offsetTop = 180;
+    viewport.height = 420;
+    s.document.activeElement = {matches: selector => selector !== "[data-global-search-input]"};
+    viewport.handlers.scroll();
+    assert.equal(s.styles["--pwa-search-top"], "0px");
+    assert.equal(s.classes.has("pwa-keyboard-open"), true);
+
+    s.document.activeElement = {matches: () => true};
+    viewport.scale = 2;
+    viewport.handlers.resize();
+    assert.equal(s.styles["--pwa-search-top"], "0px");
+    viewport.scale = 1;
+    viewport.offsetTop = -20;
+    viewport.handlers.scroll();
+    assert.equal(s.styles["--pwa-search-top"], "0px");
+
+    const legacy = await setup({visualViewport: false});
+    legacy.document.activeElement = {matches: () => true};
+    legacy.document.handlers.focusin();
+    assert.equal(legacy.classes.has("pwa-keyboard-open"), false);
+    assert.equal(legacy.styles["--pwa-search-top"], undefined);
 });
 
 
