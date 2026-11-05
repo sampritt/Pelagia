@@ -48,9 +48,7 @@ useful information, or cannot be confidently matched, you MUST perform one light
 broader internet search using the center's name and location. Otherwise you may use
 one lightweight supplemental search. Keep the total to at most two search calls.
 You may use a verified alternate official website and reliable supplemental sources.
-Establish identity using the center's name and geographic location, with physical_address
-and supplied coordinates as supporting evidence. Allow minor postcode, spelling,
-transliteration and address-format differences; an exact address match is not required.
+Use the supplied location as context when searching for the center's name.
 Do not use facts from similarly named centers or other branches. An inaccessible or
 unhelpful supplied URL alone is not a reason to return NO_VERIFIED_DESCRIPTION.
 Write an original English summary of 1–2 sentences, at most 70 words,
@@ -237,7 +235,7 @@ def generate_description(site, *, kind="site"):
     api_key = current_app.config["OPENAI_API_KEY"].strip()
     if not api_key:
         raise GenerationError("OpenAI credentials unavailable")
-    fields = ("name", "location", "website", "physical_address", "latitude", "longitude") if kind == "center" else (
+    fields = ("name", "location", "website", "latitude", "longitude") if kind == "center" else (
         "name", "country_or_area", "country_code", "latitude", "longitude")
     site_data = {field: site[field] for field in fields}
     tag = "dive_center_data" if kind == "center" else "dive_site_data"
