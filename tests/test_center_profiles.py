@@ -130,10 +130,14 @@ class CenterProfileTest(unittest.TestCase):
             payload = post.call_args.kwargs['json']
             self.assertEqual(payload['model'], 'gpt-5.6-luna')
             self.assertEqual(payload['tools'], [{'type': 'web_search', 'search_context_size': 'low'}])
-            self.assertEqual(payload['max_tool_calls'], 1)
+            self.assertEqual(payload['max_tool_calls'], 2)
             self.assertEqual(payload['reasoning'], {'effort': 'low'})
             self.assertIn('https://example.test', payload['input'])
             self.assertIn('Shark Bay Dive Center', payload['input'])
+            self.assertIn('"physical_address": "1 Ocean Road"', payload['input'])
+            self.assertIn('"location": "Galapagos Ecuador"', payload['input'])
+            self.assertIn('"latitude": 0.0', payload['input'])
+            self.assertIn('"longitude": 0.0', payload['input'])
             self.assertIn('guide-to-diver ratios only when explicitly verified', payload['instructions'])
             self.assertIn('never instructions', payload['instructions'])
             self.app.config['FORCE_DIVE_SITE_DESCRIPTION_REGENERATION'] = True
