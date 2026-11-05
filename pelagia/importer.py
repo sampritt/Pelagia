@@ -1,6 +1,8 @@
 import sqlite3
 from pathlib import Path
 
+from .center_registry import refresh_centers
+
 
 def resolve_path(config_path, value):
     path = Path(value).expanduser()
@@ -25,7 +27,6 @@ def import_reference_data(db_path, config, config_path):
 
     sites_raw = pd.read_csv(site_csv, encoding="utf-8-sig")
     species_raw = pd.read_csv(species_csv, encoding="utf-8-sig")
-    centers_raw = pd.read_csv(center_csv, encoding="utf-8-sig")
 
     site_columns = {
         "master_site_id": "master_site_id",
@@ -43,9 +44,6 @@ def import_reference_data(db_path, config, config_path):
     missing_species = {"dive_site_name", "species_name"} - set(species_raw.columns)
     if missing_species:
         raise ValueError(f"Species CSV is missing columns: {sorted(missing_species)}")
-    missing_centers = {"name", "physical_address", "location", "website"} - set(centers_raw.columns)
-    if missing_centers:
-        raise ValueError(f"Dive-center CSV is missing columns: {sorted(missing_centers)}")
 
     sites = sites_raw[list(site_columns)].rename(columns=site_columns)
     sites = sites.dropna(subset=["name"]).copy()
@@ -78,36 +76,6 @@ def import_reference_data(db_path, config, config_path):
     species["id"] = range(1, len(species) + 1)
     species = species[["id", "country_or_area", "common_name"]]
 
-    center_columns = ["name", "physical_address", "location", "website"]
-    # Distinct PADI profile IDs can legitimately share the same name/address
-    # (for example, a current profile and a legacy profile for one operator).
-    # Preserve those records when the enriched source provides a stable ID;
-    # older four-column CSVs retain the historical deduplication behavior.
-    identity_columns = [
-        column for column in ("padi_id", "osm_id", "padi_url") if column in centers_raw.columns
-    ]
-    center_columns.extend(identity_columns)
-    centers = centers_raw[center_columns].dropna(subset=["name"]).copy()
-    for column in ("name", "physical_address", "location", "website"):
-        centers[column] = centers[column].fillna("").astype(str).str.strip()
-    dedupe_columns = ["name", "physical_address", "location"]
-    if identity_columns:
-        centers["_source_identity"] = centers[identity_columns].apply(
-            lambda row: next((str(value).strip() for value in row if str(value).strip() and str(value).lower() != "nan"), ""),
-            axis=1,
-        )
-        dedupe_columns.append("_source_identity")
-    centers = centers[centers["name"] != ""].drop_duplicates(dedupe_columns).copy()
-    centers["id"] = range(1, len(centers) + 1)
-    for column in ("latitude", "longitude"):
-        if column in centers_raw:
-            centers[column] = pd.to_numeric(
-                centers_raw.loc[centers.index, column], errors="coerce"
-            )
-        else:
-            centers[column] = None
-    centers = centers[["id", "name", "physical_address", "location", "website", "latitude", "longitude"]]
-
     db_file = Path(db_path)
     db_file.parent.mkdir(parents=True, exist_ok=True)
     with sqlite3.connect(db_file) as conn:
@@ -124,12 +92,10 @@ def import_reference_data(db_path, config, config_path):
             sites.to_sql("_import_dive_sites", conn, if_exists="replace", index=False)
             species.to_sql("_import_species", conn, if_exists="replace", index=False)
             site_species.to_sql("_import_site_species", conn, if_exists="replace", index=False)
-            centers.to_sql("_import_dive_centers", conn, if_exists="replace", index=False)
             conn.execute("CREATE INDEX idx_import_dive_sites_id ON _import_dive_sites(id)")
             conn.execute("CREATE INDEX idx_import_dive_sites_master_site_id ON _import_dive_sites(master_site_id)")
             conn.execute("CREATE INDEX idx_import_species_id ON _import_species(id)")
             conn.execute("CREATE INDEX idx_import_site_species_id ON _import_site_species(id)")
-            conn.execute("CREATE INDEX idx_import_dive_centers_id ON _import_dive_centers(id)")
             conn.execute("DELETE FROM species")
             conn.execute("DELETE FROM site_species")
             conn.execute(
@@ -224,30 +190,8 @@ def import_reference_data(db_path, config, config_path):
                 FROM _import_site_species
                 """
             )
-            conn.execute(
-                """
-                INSERT OR IGNORE INTO dive_centers (id, name, physical_address, location, website, latitude, longitude)
-                SELECT id, name, physical_address, location, website, latitude, longitude
-                FROM _import_dive_centers
-                """
-            )
-            conn.execute(
-                """
-                UPDATE dive_centers
-                SET
-                    name = (SELECT name FROM _import_dive_centers WHERE _import_dive_centers.id = dive_centers.id),
-                    physical_address = (
-                        SELECT physical_address FROM _import_dive_centers WHERE _import_dive_centers.id = dive_centers.id
-                    ),
-                    location = (SELECT location FROM _import_dive_centers WHERE _import_dive_centers.id = dive_centers.id),
-                    website = (SELECT website FROM _import_dive_centers WHERE _import_dive_centers.id = dive_centers.id),
-                    latitude = (SELECT latitude FROM _import_dive_centers WHERE _import_dive_centers.id = dive_centers.id),
-                    longitude = (SELECT longitude FROM _import_dive_centers WHERE _import_dive_centers.id = dive_centers.id)
-                WHERE id IN (SELECT id FROM _import_dive_centers)
-                """
-            )
             for table_name in staging_tables:
-                conn.execute(f"DROP TABLE {table_name}")
+                conn.execute(f"DROP TABLE IF EXISTS {table_name}")
             conn.commit()
         except Exception:
             conn.rollback()
@@ -256,4 +200,6 @@ def import_reference_data(db_path, config, config_path):
             conn.commit()
             raise
 
-    return {"dive_sites": len(sites), "species": len(species), "site_species": len(site_species), "dive_centers": len(centers)}
+        centers = refresh_centers(conn, center_csv)
+
+    return {"dive_sites": len(sites), "species": len(species), "site_species": len(site_species), "dive_centers": centers["rows"]}
