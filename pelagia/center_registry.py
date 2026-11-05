@@ -8,11 +8,6 @@ import math
 from collections import defaultdict
 from pathlib import Path
 
-import click
-from flask import current_app
-from flask.cli import with_appcontext
-
-
 FIELDS = ("name", "physical_address", "location", "website", "latitude", "longitude")
 
 
@@ -53,7 +48,7 @@ def _read_rows(content):
     return list(rows.values())
 
 
-def refresh_centers(db, csv_path, *, force=False):
+def refresh_centers(db, csv_path):
     """Replace catalogue contents once per CSV change, serializing web workers.
 
     Matching shops keep their integer IDs. Obsolete shops are removed; their
@@ -67,7 +62,7 @@ def refresh_centers(db, csv_path, *, force=False):
         db.execute("CREATE TABLE IF NOT EXISTS reference_catalog_versions (name TEXT PRIMARY KEY, digest TEXT NOT NULL)")
         previous = db.execute("SELECT digest FROM reference_catalog_versions WHERE name='dive_centers'").fetchone()
         count = db.execute("SELECT COUNT(*) FROM dive_centers").fetchone()[0]
-        if not force and previous and previous[0] == digest and count == len(incoming):
+        if previous and previous[0] == digest and count == len(incoming):
             db.commit()
             return {"changed": False, "rows": len(incoming)}
         columns = {row[1] for row in db.execute("PRAGMA table_info(dive_centers)")}
@@ -127,15 +122,3 @@ def configured_csv(app):
     from .importer import resolve_path
     return resolve_path(app.config["PELAGIA_CONFIG_PATH"], app.config["PELAGIA_LOCAL_CONFIG"].get(
         "data_sources", {}).get("dive_centers_csv", "data/padi_dive_centers.csv"))
-
-
-@click.command("refresh-dive-centers")
-@with_appcontext
-def refresh_command():
-    """Replace the searchable shop registry with the configured CSV."""
-    from .db import get_db
-    click.echo(json.dumps(refresh_centers(get_db(), configured_csv(current_app), force=True)))
-
-
-def init_app(app):
-    app.cli.add_command(refresh_command)

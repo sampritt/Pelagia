@@ -114,7 +114,6 @@ def create_app(test_config=None):
         center_registry.refresh_centers(database.get_db(), center_registry.configured_csv(app))
 
     register_routes(app)
-    center_registry.init_app(app)
     seasons.init_app(app)
     explore.init_app(app, login_required)
     dive_import.init_app(app, current_user)

@@ -61,7 +61,7 @@ class CenterRegistryTest(unittest.TestCase):
             refresh_centers(self.db, self.csv)
         self.assertEqual(self.db.execute("SELECT id FROM dive_centers ORDER BY id").fetchall(), [(5,), (10,)])
 
-    def test_startup_updates_search_with_populated_database_and_cli_is_available(self):
+    def test_startup_updates_search_with_populated_database(self):
         from pelagia import create_app
         app, db_path, config_path = fixtures.ReferenceAutocompleteTest().make_app(self.root)
         client = app.test_client()
@@ -77,4 +77,3 @@ class CenterRegistryTest(unittest.TestCase):
             session["user_id"] = 1
         self.assertTrue(refreshed_client.get("/api/dive-centers?q=Evolution").get_json())
         self.assertTrue(any(item.get("type") == "center" for item in refreshed_client.get("/api/search?q=Evolution").get_json()))
-        self.assertEqual(restarted.test_cli_runner().invoke(args=["refresh-dive-centers"]).exit_code, 0)
