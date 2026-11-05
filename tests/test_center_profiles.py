@@ -154,7 +154,7 @@ class CenterProfileTest(unittest.TestCase):
             self.assertIsNone(descriptions.read_cache(1))
             self.assertIsNotNone(descriptions.read_cache(1, kind='center'))
 
-    def test_temporary_center_refresh_replaces_cached_descriptions_and_null_results(self):
+    def test_explicit_center_refresh_replaces_cached_descriptions_and_null_results(self):
         for cached_text in ('Boat trips are available.', descriptions.NO_DESCRIPTION):
             with self.subTest(cached_text=cached_text):
                 with self.app.app_context():
@@ -165,8 +165,8 @@ class CenterProfileTest(unittest.TestCase):
                 with patch.object(descriptions.requests, 'post', return_value=upstream(response_payload(cached_text))):
                     self.assertEqual(self.description().status_code, 200)
 
-                # Exercise the temporary default, independently of the site flag.
-                del self.app.config['FORCE_DIVE_CENTER_DESCRIPTION_REGENERATION']
+                # Explicit refresh remains independent of the site flag.
+                self.app.config['FORCE_DIVE_CENTER_DESCRIPTION_REGENERATION'] = True
                 self.app.config['FORCE_DIVE_SITE_DESCRIPTION_REGENERATION'] = False
                 html = self.client.get('/dive-centers/1').get_data(as_text=True)
                 self.assertIn('data-site-description', html)
@@ -182,6 +182,23 @@ class CenterProfileTest(unittest.TestCase):
                 self.app.config['FORCE_DIVE_CENTER_DESCRIPTION_REGENERATION'] = False
                 with patch.object(descriptions.requests, 'post') as post:
                     self.assertEqual(self.description().get_json()['description'], refreshed)
+                    post.assert_not_called()
+                self.assertNotIn('data-site-description', self.client.get('/dive-centers/1').get_data(as_text=True))
+
+    def test_default_center_cache_is_persistent(self):
+        del self.app.config['FORCE_DIVE_CENTER_DESCRIPTION_REGENERATION']
+        for cached_text in ('Boat trips are available.', descriptions.NO_DESCRIPTION):
+            with self.subTest(cached_text=cached_text):
+                with self.app.app_context():
+                    db = database.get_db()
+                    db.execute('DELETE FROM dive_center_descriptions WHERE dive_center_id=1')
+                    db.commit()
+                with patch.object(descriptions.requests, 'post', return_value=upstream(response_payload(cached_text))) as post:
+                    self.assertEqual(self.description().status_code, 200)
+                    self.assertEqual(self.description().status_code, 200)
+                    self.assertEqual(post.call_count, 1)
+                with patch.object(descriptions.requests, 'post') as post:
+                    self.assertEqual(self.description().status_code, 200)
                     post.assert_not_called()
                 self.assertNotIn('data-site-description', self.client.get('/dive-centers/1').get_data(as_text=True))
 

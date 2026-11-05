@@ -21,7 +21,7 @@ NO_DESCRIPTION = "NO_VERIFIED_DESCRIPTION"
 TEMPORARY_FORCE_REGENERATION = False
 # TEMPORARY: Refresh center descriptions on every signed-in profile visit.
 # Revert this to False to restore normal persistent-cache behavior.
-TEMPORARY_FORCE_CENTER_REGENERATION = True
+TEMPORARY_FORCE_CENTER_REGENERATION = False
 INSTRUCTIONS = """Perform a SIMPLE and BRIEF internet search for this exact dive site.
 Verify that sources match BOTH its name AND geographic location; use coordinates
 to disambiguate when available. Coordinates are provided only to identify the

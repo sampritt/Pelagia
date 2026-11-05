@@ -4,8 +4,7 @@ import unittest
 from pathlib import Path
 
 import test_reference_autocomplete as fixtures
-from pelagia import db as database
-from pelagia.dive_site_cleanup_startup import apply_catalog
+from pelagia import create_app, db as database
 
 
 class ObisCatalogDisplayTest(unittest.TestCase):
@@ -83,19 +82,10 @@ class ObisCatalogDisplayTest(unittest.TestCase):
         self.assertNotIn("dive_site_obis_species", tables)
         self.assertNotIn("dive_site_obis_species_attempts", tables)
 
-    def test_remapped_species_appear_on_replacement_site_profile(self):
-        catalog = Path(self.directory.name) / 'replacement.csv'
-        catalog.write_text(
-            'master_site_id,dive_site_name,country_or_area,country_code,latitude,longitude,max_depth_m,legacy_import_id\n'
-            'NEW,Replacement Reef,Alaska,US,54.1,-132.9,25,7\n'
-        )
+    def test_existing_species_links_survive_restart_without_bootstrap(self):
         with self.app.app_context():
             db = database.get_db()
             species_id = db.execute("SELECT id FROM species WHERE common_name='Coral'").fetchone()[0]
-            db.execute(
-                "INSERT INTO pelagia_species_obis_taxa VALUES (?, 100, 'Test Coral', 'Species', 'test')",
-                (species_id,),
-            )
             db.execute("""INSERT INTO obis_occurrences
                 (obis_id, queried_taxon_id, decimal_latitude, decimal_longitude,
                  coordinate_uncertainty_m, raw_json)
@@ -104,11 +94,13 @@ class ObisCatalogDisplayTest(unittest.TestCase):
                 "INSERT INTO dive_site_obis_occurrences VALUES (1, ?, 'saved', 0)", (species_id,),
             )
             db.commit()
-            apply_catalog(db, catalog)
-        html = self.client.get('/dive-sites/7').get_data(as_text=True)
+            db.execute("UPDATE dive_sites SET name='Renamed Reef' WHERE id=1")
+            db.commit()
+        restarted = create_app(dict(self.app.config))
+        html = restarted.test_client().get('/share/dive-site/1').get_data(as_text=True)
         sightings = html.split('<div class="site-sightings-panel">', 1)[1].split('</div>', 2)[0]
         self.assertEqual(sightings.count('Coral'), 1)
-        self.assertIn('Replacement Reef', html)
+        self.assertIn('Renamed Reef', html)
 
 
 if __name__ == "__main__":

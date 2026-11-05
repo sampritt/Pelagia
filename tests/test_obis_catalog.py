@@ -154,50 +154,6 @@ class ObisCatalogTest(unittest.TestCase):
         )
         self.assertEqual(len(api.calls), 1)
 
-    def test_rebuild_uses_all_saved_taxon_queries_and_current_coordinates(self):
-        self.db.executemany(
-            "INSERT INTO pelagia_species_obis_taxa "
-            "(species_id, taxon_id, scientific_name, source) VALUES (?, ?, 'Test', 'test')",
-            [(1, 100), (2, 200)],
-        )
-        self.db.executemany(
-            "INSERT INTO obis_occurrences "
-            "(obis_id, queried_taxon_id, decimal_latitude, decimal_longitude, "
-            "coordinate_uncertainty_m, raw_json) VALUES (?, ?, ?, ?, ?, '{}')",
-            [
-                ('shared', 100, 0, 0.001, 10),
-                ('legacy', 100, 0, 0, 10),
-                ('uncertain', 100, 0, 0, obis_catalog.RADIUS_MILES * obis_catalog.METERS_PER_MILE),
-                ('distant', 100, 1, 1, 10),
-                ('dateline', 100, 0, -179.9995, 10),
-            ],
-        )
-        self.db.executemany(
-            "INSERT INTO obis_occurrence_queries VALUES ('shared', ?)", [(100,), (200,)],
-        )
-        self.db.execute("INSERT INTO dive_site_obis_occurrences VALUES (10, 1, 'distant', 0)")
-        self.db.execute("INSERT INTO dive_sites VALUES (11, 'Overlapping', 0, 0.002)")
-        self.db.execute("INSERT INTO dive_sites VALUES (12, 'Across dateline', 0, 179.9995)")
-        self.db.execute("INSERT INTO dive_sites VALUES (13, 'No coordinates', NULL, NULL)")
-        self.db.commit()
-
-        with self.db:
-            self.assertEqual(obis_catalog.rebuild_site_occurrences(self.db), 7)
-        links = self.db.execute(
-            "SELECT dive_site_id, species_id, obis_id, distance_meters "
-            "FROM dive_site_obis_occurrences ORDER BY dive_site_id, species_id, obis_id"
-        ).fetchall()
-        self.assertEqual([tuple(row)[:3] for row in links], [
-            (10, 1, 'legacy'), (10, 1, 'shared'), (10, 2, 'shared'),
-            (11, 1, 'legacy'), (11, 1, 'shared'), (11, 2, 'shared'),
-            (12, 1, 'dateline'),
-        ])
-        self.assertAlmostEqual(links[1]['distance_meters'], 111.195, places=2)
-        self.assertEqual(self.db.execute('SELECT COUNT(*) FROM obis_occurrences').fetchone()[0], 5)
-        with self.db:
-            self.assertEqual(obis_catalog.rebuild_site_occurrences(self.db), 7)
-        self.assertEqual(self.db.execute('PRAGMA foreign_key_check').fetchall(), [])
-
 
 if __name__ == "__main__":
     unittest.main()

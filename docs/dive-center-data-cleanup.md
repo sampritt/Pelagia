@@ -23,11 +23,11 @@ reviews and cached descriptions before deleting duplicates. A user who reviewed
 both duplicates retains their most recently edited review. Removed centers'
 logged dives retain the recorded center name and lose only the catalogue link.
 
-The temporary `pelagia/center_cleanup_startup.py` hook invokes the existing
-registry refresh during app startup. The registry locks the database and records
-the CSV digest, so multiple workers and later restarts do not repeat the update.
-After the rollout the hook can be removed and `create_app` can call the registry
-refresh directly again; leave the registry and CSV in place.
+`create_app()` invokes the registry directly during app startup. The registry
+locks the database and records the CSV digest, so multiple workers and later
+restarts do not repeat an unchanged catalogue update. The temporary rollout
+hook has been removed. Center descriptions use their persistent cache by
+default; forced refresh on every profile visit is disabled.
 
 Website checks use bounded requests and write resumable JSONL evidence with
 timestamps, HTTP statuses, redirects and failure reasons. Social profiles and

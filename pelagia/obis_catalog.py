@@ -9,7 +9,6 @@ import time
 from collections import defaultdict
 from dataclasses import dataclass
 from datetime import date, datetime, timezone
-from itertools import groupby
 from pathlib import Path
 from urllib.parse import quote
 
@@ -235,55 +234,6 @@ def load_sites(db):
         if latitude is not None and longitude is not None and -90 <= latitude <= 90 and -180 <= longitude <= 180:
             sites.append(DiveSite(row["id"], latitude, longitude))
     return sites
-
-
-def rebuild_site_occurrences(db):
-    """Remap saved observations to current sites inside the caller's transaction.
-
-    Site deletion cascades to links, but leaves observations, query provenance,
-    and Pelagia taxon resolutions intact. No upstream requests are needed.
-    """
-    radius_m = RADIUS_MILES * METERS_PER_MILE
-    site_index = DiveSiteIndex(load_sites(db), radius_m)
-    # An observation can have been returned by several taxon queries. Include
-    # all of them, plus the original query for catalogues predating provenance.
-    rows = db.execute(
-        """WITH occurrence_taxa AS (
-            SELECT obis_id, taxon_id FROM obis_occurrence_queries
-            UNION
-            SELECT obis_id, queried_taxon_id FROM obis_occurrences
-        )
-        SELECT DISTINCT o.obis_id, o.decimal_latitude, o.decimal_longitude,
-                        taxa.species_id
-        FROM obis_occurrences o
-        JOIN occurrence_taxa q ON q.obis_id = o.obis_id
-        JOIN pelagia_species_obis_taxa taxa ON taxa.taxon_id = q.taxon_id
-        WHERE o.decimal_latitude BETWEEN -90 AND 90
-          AND o.decimal_longitude BETWEEN -180 AND 180
-          AND o.coordinate_uncertainty_m >= 0
-          AND o.coordinate_uncertainty_m < ?
-        ORDER BY o.obis_id""",
-        (radius_m,),
-    )
-    db.execute("DELETE FROM dive_site_obis_occurrences")
-    pending = []
-    count = 0
-    insert = (
-        "INSERT INTO dive_site_obis_occurrences "
-        "(dive_site_id, species_id, obis_id, distance_meters) VALUES (?, ?, ?, ?)"
-    )
-    for obis_id, group in groupby(rows, key=lambda row: row["obis_id"]):
-        records = list(group)
-        nearby = site_index.nearby(records[0]["decimal_latitude"], records[0]["decimal_longitude"])
-        for site, distance in nearby:
-            for record in records:
-                pending.append((site.id, record["species_id"], obis_id, distance))
-                count += 1
-                if len(pending) >= 1000:
-                    db.executemany(insert, pending)
-                    pending.clear()
-    db.executemany(insert, pending)
-    return count
 
 
 def _worms_records(api: JsonApi, path: str):
