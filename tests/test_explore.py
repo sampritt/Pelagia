@@ -121,15 +121,35 @@ class ExploreTest(unittest.TestCase):
         self.db.commit()
         data = self.client.get('/api/explore?location=Canada&kind=centers').get_json()
         self.assertEqual(re.findall(r'<h2>(.*?)</h2>', data['html']),
-                         ['Between both sites', 'Cross-border center', 'Near first site'])
+                         ['Between both sites', 'Near first site', 'Cross-border center'])
         self.assertEqual(data['total'], 3)
         self.assertEqual(data['html'].count('<h2>Between both sites</h2>'), 1)
+
+    def test_region_centers_rank_rating_then_dives_then_site_feed_order(self):
+        self.db.execute("UPDATE dive_sites SET latitude=49.5, longitude=-123.3 WHERE id=2")
+        self.add_obis_species(2, 'Manta ray', 'center-rank')
+        self.add_center('Zulu first-site tie', latitude=49.5, rating=4, dives=2)
+        self.add_center('First site fewer dives', latitude=49.5, rating=4, dives=1)
+        self.add_center('First site lower rating', latitude=49.5, rating=3, dives=20)
+        self.add_center('Unrated first site', latitude=49.5, dives=30)
+        self.add_center('Alpha later-site tie', rating=4, dives=2)
+        self.add_center('Later site more dives', rating=4, dives=3)
+        self.add_center('Later site best rating', rating=5)
+        sites = self.client.get('/api/explore?location=Canada').get_json()
+        self.assertEqual(re.findall(r'<h2>(.*?)</h2>', sites['html']),
+                         ['Northern Wall', 'Maple Reef'])
+        data = self.client.get('/api/explore?location=Canada&kind=centers').get_json()
+        self.assertEqual(re.findall(r'<h2>(.*?)</h2>', data['html']), [
+            'Later site best rating', 'Later site more dives',
+            'Zulu first-site tie', 'Alpha later-site tie', 'First site fewer dives',
+            'First site lower rating', 'Unrated first site',
+        ])
 
     def test_region_centers_include_sites_beyond_the_first_feed_page(self):
         self.db.execute("DELETE FROM dive_sites")
         self.db.executemany("INSERT INTO dive_sites (name, country_or_area, latitude, longitude) VALUES (?, 'Canada', ?, 0)",
                             [(f'Site {i:02}', i) for i in range(PAGE_SIZE + 1)])
-        self.add_center('Last site center', latitude=PAGE_SIZE, longitude=0)
+        self.add_center('Last site center', latitude=PAGE_SIZE, longitude=0, rating=5)
         for i in range(PAGE_SIZE + 2):
             self.add_center(f'Center {i:02}', latitude=0, longitude=0)
         first = self.client.get('/api/explore?location=Canada&kind=centers').get_json()
@@ -141,7 +161,8 @@ class ExploreTest(unittest.TestCase):
         second_ids = re.findall(r'href="/dive-centers/(\d+)"', second['html'])
         self.assertEqual(len(first_ids), PAGE_SIZE)
         self.assertFalse(set(first_ids) & set(second_ids))
-        self.assertIn('Last site center', second['html'])
+        self.assertEqual(re.findall(r'<h2>(.*?)</h2>', first['html'])[0], 'Last site center')
+        self.assertNotIn('Last site center', second['html'])
 
     def test_center_radius_boundary_antimeridian_and_empty_state(self):
         from pelagia.explore import CENTER_RADIUS_KM, EARTH_RADIUS_KM

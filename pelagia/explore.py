@@ -63,6 +63,7 @@ def center_feed_data(location, page=1, *, origin=None, radius_km=None):
     def rank(center):
         return (
             -(center["average_rating"] or 0), -center["logged_dive_count"],
+            center.get("site_rank", 0),
             center["name"].casefold(), center["id"],
         )
 
@@ -70,7 +71,6 @@ def center_feed_data(location, page=1, *, origin=None, radius_km=None):
         matches = [center for center in centers if cartesian_distance_km(
             *origin, center["latitude"], center["longitude"]
         ) <= radius_km]
-        matches.sort(key=rank)
     else:
         sites = get_db().execute(
             f"""SELECT {SITE_COLUMNS}, {SPECIES_COUNT} FROM dive_sites
@@ -84,17 +84,16 @@ def center_feed_data(location, page=1, *, origin=None, radius_km=None):
         delta = math.degrees(CENTER_RADIUS_KM / EARTH_RADIUS_KM)
         assigned = set()
         matches = []
-        for site in sites:
+        for site_rank, site in enumerate(sites):
             start = bisect_left(latitudes, site["latitude"] - delta)
             stop = bisect_right(latitudes, site["latitude"] + delta)
-            group = []
             for center in centers[start:stop]:
                 if center["id"] not in assigned and cartesian_distance_km(
                     site["latitude"], site["longitude"], center["latitude"], center["longitude"]
                 ) <= CENTER_RADIUS_KM:
                     assigned.add(center["id"])
-                    group.append(center)
-            matches.extend(sorted(group, key=rank))
+                    matches.append(dict(center, site_rank=site_rank))
+    matches.sort(key=rank)
     start = (page - 1) * PAGE_SIZE
     result.update(
         items=matches[start:start + PAGE_SIZE], total=len(matches),
