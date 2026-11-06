@@ -4,8 +4,12 @@
 {% block content %}
 {% set distance_unit = initial_nearby.unit if initial_nearby else ('mi' if units.length == 'ft' else 'km') %}
 {% set radius = initial_nearby.radius if initial_nearby else (15 if distance_unit == 'mi' else 50) %}
-<section class="explore-layout" aria-label="Explore dive sites" data-explore data-location="{{ '' if initial_nearby else location }}" data-query="{{ request.args.get('nearby', '') if not initial_nearby else '' }}">
+<section class="explore-layout" aria-label="Explore diving" data-kind="{{ kind }}" data-explore data-location="{{ '' if initial_nearby else location }}" data-query="{{ request.args.get('nearby', '') if not initial_nearby else '' }}">
     <script type="application/json" data-explore-initial-nearby>{{ initial_nearby|tojson }}</script>
+    <div class="explore-filters" role="group" aria-label="Show in explore">
+        <button class="explore-filter" type="button" data-explore-kind="sites" aria-pressed="{{ 'true' if kind == 'sites' else 'false' }}" aria-controls="exploreResults">Dive sites</button>
+        <button class="explore-filter" type="button" data-explore-kind="centers" aria-pressed="{{ 'true' if kind == 'centers' else 'false' }}" aria-controls="exploreResults">Dive centers</button>
+    </div>
     <div class="explore-distance-bar" data-explore-distance {% if not initial_nearby %}hidden{% endif %}>
         <div class="explore-radius-header">
             <div class="explore-radius-place">
@@ -31,7 +35,7 @@
         </div>
     </div>
     <p class="explore-count" role="status" aria-live="polite" data-explore-count></p>
-    <div id="exploreResults" class="explore-results" aria-label="Dive sites" data-explore-results>
+    <div id="exploreResults" class="explore-results" aria-label="{{ 'Dive centers' if kind == 'centers' else 'Dive sites' }}" data-explore-results>
         {% include '_explore_results.html' %}
     </div>
     <button class="ghost-button explore-more" type="button" data-explore-more data-next-page="{{ next_page or '' }}" {% if not next_page %}hidden{% endif %}>Show more</button>

@@ -6301,8 +6301,17 @@ img.is-media-loading {
     .mobile-nav a svg { width: 19px; height: 19px; }
 }
 
-/* Explore pairs live distance controls with a compact, map-led site feed. */
+/* Explore pairs live distance controls with shared site and center cards. */
 .explore-layout { width: min(100%, 760px); margin-inline: auto; }
+.explore-filters { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; }
+.explore-filter { appearance: none; -webkit-appearance: none; display: inline-flex; align-items: center; justify-content: center; min-height: 44px; margin: 0; padding: 9px 17px; border: 1px solid var(--line); border-radius: 999px; background: var(--panel); color: var(--muted-strong); box-shadow: none; font: inherit; font-size: .8rem; font-weight: 600; line-height: 1.3; cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent; transition: background 140ms ease, border-color 140ms ease, color 140ms ease; }
+.explore-filter[aria-pressed="true"] { border-color: var(--accent-line); background: var(--accent-soft); color: var(--accent-deep); }
+@media (hover: hover) { .explore-filter:hover { border-color: var(--accent-line); color: var(--accent-deep); } }
+.explore-filter:active { background: var(--accent-soft); }
+.explore-filter:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.explore-center-rating { display: inline-flex; align-items: center; gap: 5px; margin: -7px 0 15px; color: var(--ink-soft); font-size: .8rem; font-weight: 600; }
+.explore-center-rating > span:first-child { color: var(--accent-deep); }
+.explore-rating-scale { color: var(--muted-strong); font-weight: 400; }
 .explore-count { min-height: 18px; margin: 0 3px 14px; color: var(--muted-strong); font-size: .72rem; line-height: 1.6; }
 .explore-count:empty { display: none; }
 .explore-results { display: grid; gap: 16px; min-height: 170px; }

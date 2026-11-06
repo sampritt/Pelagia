@@ -1,10 +1,12 @@
+{% set is_center = kind|default('sites') == 'centers' %}
 {% set has_coords = item.latitude is not none and item.longitude is not none %}
-<a class="explore-card explore-site-card" href="{{ url_for('dive_site_profile', site_id=item.id) }}">
+<a class="explore-card {{ 'explore-center-card' if is_center else 'explore-site-card' }}" href="{{ url_for('dive_center_profile', center_id=item.id) if is_center else url_for('dive_site_profile', site_id=item.id) }}">
     <div class="explore-card-copy">
-        <span class="explore-card-kind">Dive site</span><h2>{{ item.name }}</h2>
-        <p>{{ item.country_or_area or 'Location pending' }}</p>
+        <span class="explore-card-kind">{{ 'Dive center' if is_center else 'Dive site' }}</span><h2>{{ item.name }}</h2>
+        <p>{{ (item.location if is_center else item.country_or_area) or 'Location pending' }}</p>
+        {% if is_center and item.average_rating %}<span class="explore-center-rating" aria-label="{{ '%.1f'|format(item.average_rating) }} out of 5 stars"><span aria-hidden="true">★</span> {{ '%.1f'|format(item.average_rating) }} <span class="explore-rating-scale">/ 5</span></span>{% endif %}
         {% if item.logged_dive_count %}<span class="explore-dive-count">{{ item.logged_dive_count }} logged {{ 'dive' if item.logged_dive_count == 1 else 'dives' }}</span>{% endif %}
-        <span class="explore-card-link">Explore dive site <span aria-hidden="true">↗</span></span>
+        <span class="explore-card-link">Explore {{ 'dive center' if is_center else 'dive site' }} <span aria-hidden="true">↗</span></span>
     </div>
     <div class="mini-map explore-card-map {{ 'map-pending' if not has_coords else '' }}" role="img" aria-label="Map of {{ item.name }}{% if not has_coords %}: coordinates pending{% endif %}" {% if has_coords %}data-static-map data-map-lat="{{ item.latitude }}" data-map-lng="{{ item.longitude }}" data-map-zoom="10"{% endif %}>
         {% if has_coords %}<span class="map-pin"></span>{% else %}<span class="coordinate-label">Coordinates pending</span>{% endif %}

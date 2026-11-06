@@ -28,10 +28,12 @@ function setup({ nearby = initialNearby, query = "", location = "", unit = "mi",
     const units = [element(), element()];
     units[0].value = "mi"; units[0].checked = unit === "mi";
     units[1].value = "km"; units[1].checked = unit === "km";
+    const filters = [element(), element()];
+    filters[0].dataset.exploreKind = "sites"; filters[1].dataset.exploreKind = "centers";
     const root = element();
     root.dataset = { query, location };
     root.querySelector = selector => parts[selector.match(/data-explore-(.+)\]/)[1]];
-    root.querySelectorAll = () => units;
+    root.querySelectorAll = selector => selector.includes("kind") ? filters : units;
     const document = element(); document.querySelector = () => root;
     const window = element();
     window.location = { href: "http://localhost/explore", reload() { window.reloaded = true; } };
@@ -53,7 +55,7 @@ function setup({ nearby = initialNearby, query = "", location = "", unit = "mi",
     });
     vm.runInContext(fs.readFileSync("pelagia/static/js/explore.js", "utf8"), context);
     document.emit("DOMContentLoaded");
-    return { parts, units, requests, saves, window };
+    return { parts, units, filters, requests, saves, window };
 }
 const flush = async () => { await Promise.resolve(); await Promise.resolve(); };
 const geoResult = { html: "Nearby cards", total: 3, next_page: 2, query: "Victoria", radius: 15, unit: "mi",
@@ -72,7 +74,7 @@ test("a saved place restores controls without fetching or geocoding again", () =
 test("free-text search geocodes once, then pagination and slider reuse coordinates", async () => {
     const { parts, requests, window, saves } = setup({ nearby: null, query: "Victoria" });
     assert.equal(parts.distance.hidden, true);
-    assert.deepEqual(JSON.parse(requests[0].options.body), { query: "Victoria", radius: 15, unit: "mi" });
+    assert.deepEqual(JSON.parse(requests[0].options.body), { query: "Victoria", radius: 15, unit: "mi", kind: "sites" });
     requests[0].resolve(geoResult); await flush();
     assert.equal(parts.distance.hidden, false);
     assert.equal(parts.count.textContent, "");
@@ -92,7 +94,7 @@ test("free-text search geocodes once, then pagination and slider reuse coordinat
 
 test("metric searches default to 50 km and zero sites still show an adjustable radius", async () => {
     const { parts, requests } = setup({ nearby: null, query: "Victoria", unit: "km" });
-    assert.deepEqual(JSON.parse(requests[0].options.body), { query: "Victoria", radius: 50, unit: "km" });
+    assert.deepEqual(JSON.parse(requests[0].options.body), { query: "Victoria", radius: 50, unit: "km", kind: "sites" });
     requests[0].resolve({ ...geoResult, total: 0, unit: "km", radius: 50, html: "No dive sites here yet" }); await flush();
     assert.equal(parts.distance.hidden, false);
     assert.equal(parts.count.textContent, "");
@@ -157,4 +159,51 @@ test("regional results paginate without showing radius controls", async () => {
     assert.match(requests[0].url, /location=Canada&page=2/);
     requests[0].resolve({ html: "More", total: 33, next_page: null }); await flush();
     assert.equal(parts.count.textContent, "");
+});
+
+
+test("filter switches cancel stale pages, update selection and retain the radius through pagination", async () => {
+    const { parts, filters, requests, window } = setup();
+    parts.more.dataset.nextPage = 2; parts.more.emit("click");
+    filters[1].emit("click");
+    assert.equal(requests[0].options.signal.aborted, true);
+    assert.equal(filters[1].attrs["aria-pressed"], "true");
+    assert.equal(filters[0].attrs["aria-pressed"], "false");
+    assert.equal(parts.results.attrs["aria-label"], "Dive centers");
+    assert.match(requests[1].url, /kind=centers/);
+    assert.match(requests[1].url, /radius=15/);
+    assert.match(window.location.href, /kind=centers/);
+    requests[1].resolve({ html: "Centers", next_page: 2 }); await flush();
+    requests[0].resolve({ html: "Stale sites", next_page: 3 }); await flush();
+    assert.equal(parts.results.innerHTML, "Centers");
+    parts.more.emit("click");
+    assert.match(requests[2].url, /page=2&kind=centers/);
+    filters[1].emit("click"); assert.equal(requests.length, 3);
+    filters[0].emit("click");
+    assert.match(requests[3].url, /page=1&kind=sites/);
+    assert.equal(parts["radius-number"].value, "15");
+});
+
+test("changing filters while geocoding reuses the lookup and loads the latest selection", async () => {
+    const { parts, filters, requests } = setup({ nearby: null, query: "Victoria" });
+    filters[1].emit("click");
+    assert.equal(requests.length, 1);
+    requests[0].resolve(geoResult); await flush();
+    assert.equal(requests.length, 2);
+    assert.match(requests[1].url, /latitude=48.4/);
+    assert.match(requests[1].url, /kind=centers/);
+    requests[1].resolve({ html: "Centers", next_page: null }); await flush();
+    assert.equal(parts.results.innerHTML, "Centers");
+});
+
+test("regional filter switching retains location and center errors offer the right retry", async () => {
+    const { parts, filters, requests, window } = setup({ nearby: null, location: "Canada" });
+    filters[1].emit("click");
+    assert.match(requests[0].url, /location=Canada&page=1&kind=centers/);
+    assert.match(window.location.href, /location=Canada&kind=centers/);
+    requests[0].reject(new Error("offline")); await flush();
+    assert.match(parts.count.textContent, /Couldn't load dive centers/);
+    parts.more.emit("click");
+    assert.match(requests[1].url, /kind=centers/);
+    assert.equal(parts.distance.hidden, true);
 });

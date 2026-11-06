@@ -12,6 +12,9 @@ function initExplore() {
     const radiusMax = root.querySelector("[data-explore-radius-limit]");
     const placeLabel = root.querySelector("[data-explore-place-label]");
     const units = Array.from(root.querySelectorAll("[data-explore-unit]"));
+    const filters = Array.from(root.querySelectorAll("[data-explore-kind]"));
+    let kind = root.dataset.kind || "sites";
+    const feedLabel = () => kind === "centers" ? "dive centers" : "dive sites";
     let nearby = JSON.parse(root.querySelector("[data-explore-initial-nearby]").textContent);
     let feedRequest;
     let pendingPreference;
@@ -46,11 +49,12 @@ function initExplore() {
 
     function writeHistory() {
         const url = new URL(window.location.href);
-        url.search = new URLSearchParams({
+        const search = nearby ? {
             nearby: nearby.query, display: nearby.displayName,
             latitude: nearby.latitude, longitude: nearby.longitude,
             radius: nearby.radius, unit: nearby.unit,
-        }).toString();
+        } : root.dataset.query ? { nearby: root.dataset.query } : { location: root.dataset.location };
+        url.search = new URLSearchParams({ ...search, kind }).toString();
         window.history.replaceState(null, "", url);
     }
 
@@ -103,13 +107,14 @@ function initExplore() {
         const timeout = window.setTimeout(() => { timedOut = true; controller.abort(); }, 15000);
         more.hidden = true;
         if (page === 1) { results.replaceChildren(); count.textContent = ""; }
-        const end = window.PelagiaLoading?.begin(results, "Loading dive sites") || (() => {});
+        const end = window.PelagiaLoading?.begin(results, `Loading ${feedLabel()}`) || (() => {});
         try {
             const params = new URLSearchParams(selected ? {
                 query: selected.query, display_name: selected.displayName,
                 latitude: selected.latitude, longitude: selected.longitude,
                 radius: selected.radius, unit: selected.unit, page,
             } : { location: root.dataset.location, page });
+            params.set("kind", kind);
             const endpoint = selected ? "/api/explore/nearby" : "/api/explore";
             const data = await fetchJson(`${endpoint}?${params}`, { signal: controller.signal });
             if (feedRequest !== controller) return;
@@ -118,7 +123,7 @@ function initExplore() {
             if (remember && selected) rememberNearby(selected);
         } catch (error) {
             if (feedRequest !== controller || (error.name === "AbortError" && !timedOut)) return;
-            offerRetry("Couldn't load dive sites. Please try again.", page);
+            offerRetry(`Couldn't load ${feedLabel()}. Please try again.`, page);
         } finally {
             window.clearTimeout(timeout);
             end();
@@ -127,6 +132,12 @@ function initExplore() {
     }
 
     async function searchPlace() {
+        feedRequest?.abort();
+        const controller = new AbortController();
+        feedRequest = controller;
+        const searchKind = kind;
+        let timedOut = false;
+        const timeout = window.setTimeout(() => { timedOut = true; controller.abort(); }, 15000);
         const query = root.dataset.query;
         const unit = selectedUnit();
         const radius = Number(number.value);
@@ -138,8 +149,10 @@ function initExplore() {
             const data = await fetchJson("/api/explore/nearby", {
                 method: "POST",
                 headers: { "Content-Type": "application/json", "X-Requested-With": "fetch" },
-                body: JSON.stringify({ query, radius, unit }),
+                body: JSON.stringify({ query, radius, unit, kind: searchKind }),
+                signal: controller.signal,
             });
+            if (feedRequest !== controller) return;
             if (data.error === "no_results") {
                 count.textContent = `No search results for ${query}. Try another place in Search Pelagia above.`;
                 return;
@@ -153,16 +166,33 @@ function initExplore() {
             root.dataset.location = "";
             paintControls();
             end();
-            paintFeed(data, 1);
             writeHistory();
-        } catch (_error) {
+            if (kind === searchKind) paintFeed(data, 1);
+            else loadFeed();
+        } catch (error) {
+            if (feedRequest !== controller || (error.name === "AbortError" && !timedOut)) return;
             offerRetry("Location search is temporarily unavailable. Please try again.", 1);
         } finally {
+            window.clearTimeout(timeout);
             end();
+            if (feedRequest === controller) feedRequest = null;
         }
     }
 
     const updateFeed = debounce(() => loadFeed(1, true), 180);
+    filters.forEach(button => button.addEventListener("click", () => {
+        if (kind === button.dataset.exploreKind) return;
+        kind = button.dataset.exploreKind;
+        root.dataset.kind = kind;
+        filters.forEach(filter => filter.setAttribute("aria-pressed", String(filter === button)));
+        results.setAttribute("aria-label", kind === "centers" ? "Dive centers" : "Dive sites");
+        updateFeed.cancel();
+        writeHistory();
+        if (root.dataset.query) {
+            // Reuse an in-flight geocoding lookup when changing the feed filter.
+            if (!feedRequest) searchPlace();
+        } else loadFeed(1, Boolean(nearby));
+    }));
     function changeRadius(raw, unit = selectedUnit()) {
         const radius = setRadius(raw, unit);
         if (!nearby || (radius === nearby.radius && unit === nearby.unit)) return;

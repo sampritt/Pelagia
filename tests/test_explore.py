@@ -15,7 +15,7 @@ class ExploreTest(unittest.TestCase):
     def setUp(self):
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)
-        with patch("pelagia._load_json_config", return_value={}), patch("pelagia._ensure_reference_data"):
+        with patch("pelagia._load_json_config", return_value={}), patch("pelagia._ensure_reference_data"), patch("pelagia.center_registry.refresh_centers"):
             self.app = create_app({
                 "TESTING": True, "SECRET_KEY": "explore-tests",
                 "DATABASE": str(Path(temporary.name) / "test.sqlite3"),
@@ -61,6 +61,129 @@ class ExploreTest(unittest.TestCase):
             (site_id, species_id, record_id),
         )
         self.db.commit()
+
+    def add_center(self, name, latitude=48.4, longitude=-123.3, rating=None, dives=0):
+        center_id = self.db.execute(
+            "INSERT INTO dive_centers (name, location, latitude, longitude) VALUES (?, 'Canada', ?, ?)",
+            (name, latitude, longitude),
+        ).lastrowid
+        if rating:
+            self.db.execute(
+                "INSERT INTO dive_center_reviews (dive_center_id, user_id, rating, body) VALUES (?, 1, ?, '')",
+                (center_id, rating),
+            )
+        for _ in range(dives):
+            self.db.execute(
+                "INSERT INTO dives (user_id, dive_center_id, site_name, date) VALUES (1, ?, 'Reef', '2026-11-05')",
+                (center_id,),
+            )
+        self.db.commit()
+        return center_id
+
+    def test_center_radius_ranks_by_average_rating_then_non_deleted_dives(self):
+        low = self.add_center("Low rating", rating=3, dives=4)
+        average = self.add_center("Average rating", rating=5)
+        self.db.execute("INSERT INTO dive_center_reviews (dive_center_id, user_id, rating, body) VALUES (?, 2, 3, '')", (average,))
+        self.add_center("Top active", rating=5, dives=2)
+        self.add_center("Top quiet", rating=5)
+        deleted = self.add_center("Deleted activity", rating=5)
+        self.db.execute("INSERT INTO dives (user_id, dive_center_id, site_name, date, is_deleted) VALUES (1, ?, 'Reef', '2026-11-05', 1)", (deleted,))
+        self.add_center("Unrated active", dives=8)
+        self.add_center("Outside", latitude=49.4, rating=5)
+        self.add_center("Missing coordinates", latitude=None)
+        self.db.commit()
+        response = self.client.get('/api/explore/nearby', query_string={
+            'kind': 'centers', 'query': 'Victoria', 'display_name': 'Victoria',
+            'latitude': 48.4, 'longitude': -123.3, 'radius': 15, 'unit': 'mi',
+        })
+        data = response.get_json()
+        self.assertEqual(data['total'], 6)
+        names = re.findall(r'<h2>(.*?)</h2>', data['html'])
+        self.assertEqual(names, ['Top active', 'Deleted activity', 'Top quiet', 'Average rating', 'Low rating', 'Unrated active'])
+        self.assertIn('4.0 out of 5 stars', data['html'])
+        self.assertIn('8 logged dives', data['html'])
+        self.assertIn('explore-center-card', data['html'])
+        self.assertIn(f'href="/dive-centers/{low}"', data['html'])
+        self.assertNotIn('Observed marine species', data['html'])
+
+    def test_region_centers_follow_ranked_sites_and_deduplicate_across_borders(self):
+        self.db.execute("UPDATE dive_sites SET latitude=49.5, longitude=-123.3 WHERE id=2")
+        self.add_obis_species(2, 'Manta ray', 'center-order')
+        self.add_center('Near first site', latitude=48.4, rating=5)
+        crossing = self.add_center('Cross-border center', latitude=49.5, rating=2)
+        self.db.execute("UPDATE dive_centers SET location='Another country' WHERE id=?", (crossing,))
+        self.add_center('Between both sites', latitude=49.0, rating=5)
+        self.add_center('Far in same country', latitude=55)
+        self.add_center('No coordinates', latitude=None)
+        # Move both sites within 30 miles of the middle center.
+        self.db.execute("UPDATE dive_sites SET latitude=48.6 WHERE id=1")
+        self.db.execute("UPDATE dive_sites SET latitude=49.4 WHERE id=2")
+        self.db.commit()
+        data = self.client.get('/api/explore?location=Canada&kind=centers').get_json()
+        self.assertEqual(re.findall(r'<h2>(.*?)</h2>', data['html']),
+                         ['Between both sites', 'Cross-border center', 'Near first site'])
+        self.assertEqual(data['total'], 3)
+        self.assertEqual(data['html'].count('<h2>Between both sites</h2>'), 1)
+
+    def test_region_centers_include_sites_beyond_the_first_feed_page(self):
+        self.db.execute("DELETE FROM dive_sites")
+        self.db.executemany("INSERT INTO dive_sites (name, country_or_area, latitude, longitude) VALUES (?, 'Canada', ?, 0)",
+                            [(f'Site {i:02}', i) for i in range(PAGE_SIZE + 1)])
+        self.add_center('Last site center', latitude=PAGE_SIZE, longitude=0)
+        for i in range(PAGE_SIZE + 2):
+            self.add_center(f'Center {i:02}', latitude=0, longitude=0)
+        first = self.client.get('/api/explore?location=Canada&kind=centers').get_json()
+        second = self.client.get('/api/explore?location=Canada&kind=centers&page=2').get_json()
+        self.assertEqual(first['total'], PAGE_SIZE + 3)
+        self.assertEqual(first['next_page'], 2)
+        self.assertIsNone(second['next_page'])
+        first_ids = re.findall(r'href="/dive-centers/(\d+)"', first['html'])
+        second_ids = re.findall(r'href="/dive-centers/(\d+)"', second['html'])
+        self.assertEqual(len(first_ids), PAGE_SIZE)
+        self.assertFalse(set(first_ids) & set(second_ids))
+        self.assertIn('Last site center', second['html'])
+
+    def test_center_radius_boundary_antimeridian_and_empty_state(self):
+        from pelagia.explore import CENTER_RADIUS_KM, EARTH_RADIUS_KM
+        import math
+        boundary = math.degrees(CENTER_RADIUS_KM / EARTH_RADIUS_KM)
+        self.db.execute("UPDATE dive_sites SET latitude=0, longitude=179.9 WHERE id=1")
+        self.add_center('Across date line', latitude=0, longitude=-179.9)
+        self.add_center('Inside boundary', latitude=boundary - 1e-7, longitude=179.9)
+        self.add_center('Outside boundary', latitude=boundary + 1e-7, longitude=179.9)
+        self.db.commit()
+        data = self.client.get('/api/explore?location=Canada&kind=centers').get_json()
+        self.assertEqual(data['total'], 2)
+        self.assertIn('Across date line', data['html'])
+        self.assertIn('Inside boundary', data['html'])
+        empty = self.client.get('/api/explore?location=Komodo+National+Park&kind=centers').get_json()
+        self.assertIn('No dive centers here yet', empty['html'])
+        self.assertIn('within 30 miles', empty['html'])
+
+    def test_center_selection_restores_in_url_and_place_search(self):
+        self.add_center('Victoria center')
+        html = self.client.get('/explore?location=Canada').get_data(as_text=True)
+        self.assertIn('data-explore-kind="sites" aria-pressed="true"', html)
+        html = self.client.get('/explore?location=Canada&kind=centers').get_data(as_text=True)
+        self.assertIn('data-explore-kind="centers" aria-pressed="true"', html)
+        self.assertIn('Victoria center', html)
+        with patch('pelagia.explore.geocode_place', return_value={
+            'latitude': 48.4, 'longitude': -123.3, 'display_name': 'Victoria',
+        }) as geocode:
+            data = self.client.post('/api/explore/nearby', json={
+                'query': 'Victoria', 'radius': 15, 'unit': 'mi', 'kind': 'centers',
+            }, headers={'X-Requested-With': 'fetch'}).get_json()
+            self.assertEqual(data['total'], 1)
+            self.assertIn('Victoria center', data['html'])
+            restored = self.client.get('/explore?nearby=Victoria&display=Victoria&latitude=48.4&longitude=-123.3&radius=15&unit=mi&kind=centers')
+            self.assertIn('Victoria center', restored.get_data(as_text=True))
+            geocode.assert_called_once()
+        for path in ('/explore?kind=unknown', '/api/explore?kind=unknown',
+                     '/api/explore/nearby?query=x&radius=1&unit=mi&display_name=x&latitude=0&longitude=0&kind=unknown'):
+            self.assertEqual(self.client.get(path).status_code, 400)
+        self.assertEqual(self.client.post('/api/explore/nearby', json={
+            'query': 'Victoria', 'radius': 15, 'unit': 'mi', 'kind': [],
+        }, headers={'X-Requested-With': 'fetch'}).status_code, 400)
 
     def test_requires_login_and_adds_explore_in_both_navigation_bars(self):
         anonymous = self.app.test_client()

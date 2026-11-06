@@ -2,6 +2,7 @@
 
 import json
 import math
+from bisect import bisect_left, bisect_right
 
 import requests
 from flask import Blueprint, abort, current_app, jsonify, render_template, request, session
@@ -27,6 +28,79 @@ SPECIES_COUNT = """(
 EARTH_RADIUS_KM = 6371.0088
 NOMINATIM_ENDPOINT = "https://nominatim.openstreetmap.org/search"
 RADIUS_LIMITS = {"mi": 100, "km": 160}
+CENTER_RADIUS_KM = 30 * 1.609344
+
+
+def feed_kind(source):
+    kind = source.get("kind", "sites")
+    if kind not in ("sites", "centers"):
+        abort(400)
+    return kind
+
+
+def center_feed_data(location, page=1, *, origin=None, radius_km=None):
+    """Rank nearby centers, mapping regional matches to the first ranked site."""
+    result = {
+        "location": location, "kind": "centers", "nearby": origin is not None,
+        "items": [], "total": 0, "next_page": None,
+    }
+    if not location:
+        return result
+    centers = [dict(row) for row in get_db().execute(
+        """SELECT c.*, coalesce(d.logged_dive_count, 0) AS logged_dive_count,
+                  r.average_rating
+           FROM dive_centers c
+           LEFT JOIN (SELECT dive_center_id, count(*) AS logged_dive_count FROM dives
+                      WHERE coalesce(is_deleted, 0) = 0 GROUP BY dive_center_id) d
+               ON d.dive_center_id = c.id
+           LEFT JOIN (SELECT dive_center_id, avg(rating) AS average_rating
+                      FROM dive_center_reviews GROUP BY dive_center_id) r
+               ON r.dive_center_id = c.id
+           WHERE c.latitude BETWEEN -90 AND 90 AND c.longitude BETWEEN -180 AND 180
+           ORDER BY c.latitude, c.id"""
+    )]
+
+    def rank(center):
+        return (
+            -(center["average_rating"] or 0), -center["logged_dive_count"],
+            center["name"].casefold(), center["id"],
+        )
+
+    if origin is not None:
+        matches = [center for center in centers if cartesian_distance_km(
+            *origin, center["latitude"], center["longitude"]
+        ) <= radius_km]
+        matches.sort(key=rank)
+    else:
+        sites = get_db().execute(
+            f"""SELECT {SITE_COLUMNS}, {SPECIES_COUNT} FROM dive_sites
+                WHERE trim(country_or_area) = ? COLLATE NOCASE
+                    AND latitude BETWEEN -90 AND 90 AND longitude BETWEEN -180 AND 180
+                ORDER BY logged_dive_count DESC, observed_species_count DESC,
+                         name COLLATE NOCASE, id""", (location,)
+        )
+        # A latitude index bounds distance checks even for large regional catalogs.
+        latitudes = [center["latitude"] for center in centers]
+        delta = math.degrees(CENTER_RADIUS_KM / EARTH_RADIUS_KM)
+        assigned = set()
+        matches = []
+        for site in sites:
+            start = bisect_left(latitudes, site["latitude"] - delta)
+            stop = bisect_right(latitudes, site["latitude"] + delta)
+            group = []
+            for center in centers[start:stop]:
+                if center["id"] not in assigned and cartesian_distance_km(
+                    site["latitude"], site["longitude"], center["latitude"], center["longitude"]
+                ) <= CENTER_RADIUS_KM:
+                    assigned.add(center["id"])
+                    group.append(center)
+            matches.extend(sorted(group, key=rank))
+    start = (page - 1) * PAGE_SIZE
+    result.update(
+        items=matches[start:start + PAGE_SIZE], total=len(matches),
+        next_page=page + 1 if page * PAGE_SIZE < len(matches) else None,
+    )
+    return result
 
 
 class GeocodingError(RuntimeError):
@@ -82,8 +156,10 @@ def cartesian_distance_km(latitude, longitude, other_latitude, other_longitude):
     return EARTH_RADIUS_KM * math.hypot(x, y)
 
 
-def nearby_feed_data(latitude, longitude, radius_km, display_name, page=1):
+def nearby_feed_data(latitude, longitude, radius_km, display_name, page=1, kind="sites"):
     """Return one page of nearby sites ranked by dives, then observed species."""
+    if kind == "centers":
+        return center_feed_data(display_name, page, origin=(latitude, longitude), radius_km=radius_km)
     rows = get_db().execute(
         f"""SELECT {SITE_COLUMNS} FROM dive_sites
             WHERE latitude IS NOT NULL AND longitude IS NOT NULL"""
@@ -108,6 +184,7 @@ def nearby_feed_data(latitude, longitude, radius_km, display_name, page=1):
     result = {
         "location": display_name,
         "nearby": True,
+        "kind": "sites",
         "items": matches[start:start + PAGE_SIZE],
         "total": len(matches),
         "next_page": page + 1 if page * PAGE_SIZE < len(matches) else None,
@@ -247,8 +324,10 @@ def add_observations(rows):
     return items
 
 
-def feed_data(location, page=1):
-    result = {"location": location, "items": [], "total": 0, "next_page": None}
+def feed_data(location, page=1, kind="sites"):
+    if kind == "centers":
+        return center_feed_data(location, page)
+    result = {"location": location, "kind": "sites", "items": [], "total": 0, "next_page": None}
     if not location:
         return result
     db = get_db()
@@ -273,6 +352,7 @@ def init_app(app, login_required):
     @blueprint.get("/explore")
     @login_required
     def index():
+        kind = feed_kind(request.args)
         saved = get_db().execute(
             "SELECT explore_location, explore_nearby_json FROM users WHERE id = ?",
             (session["user_id"],),
@@ -294,7 +374,7 @@ def init_app(app, login_required):
                     abort(400)
             else:
                 return render_template(
-                    "explore.html", initial_nearby=None, **feed_data("")
+                    "explore.html", initial_nearby=None, **feed_data("", kind=kind)
                 )
         elif "location" not in request.args:
             initial_nearby = decode_saved_nearby(saved["explore_nearby_json"])
@@ -306,7 +386,7 @@ def init_app(app, login_required):
             )
             data = nearby_feed_data(
                 initial_nearby["latitude"], initial_nearby["longitude"],
-                radius_km, initial_nearby["displayName"],
+                radius_km, initial_nearby["displayName"], kind=kind,
             )
             return render_template(
                 "explore.html", initial_nearby=initial_nearby, **data
@@ -324,7 +404,7 @@ def init_app(app, login_required):
                 requested = latest_dive_location(session["user_id"])
         location = resolve_location(requested)
         return render_template(
-            "explore.html", initial_nearby=None, **feed_data(location)
+            "explore.html", initial_nearby=None, **feed_data(location, kind=kind)
         )
 
     @blueprint.after_request
@@ -349,7 +429,7 @@ def init_app(app, login_required):
         page = request.args.get("page", type=int) if "page" in request.args else 1
         if page is None or page < 1 or page > 10000:
             abort(400)
-        data = feed_data(resolve_location(request.args.get("location")), page)
+        data = feed_data(resolve_location(request.args.get("location")), page, feed_kind(request.args))
         response = jsonify(
             html=render_template("_explore_results.html", **data),
             next_page=data["next_page"], total=data["total"],
@@ -366,6 +446,7 @@ def init_app(app, login_required):
         if not isinstance(payload, dict):
             abort(400)
         query, radius, unit = parse_nearby_request(payload)
+        kind = feed_kind(payload)
         try:
             place = geocode_place(query)
         except GeocodingError as exc:
@@ -374,7 +455,7 @@ def init_app(app, login_required):
             return jsonify(error="no_results", query=query)
         radius_km = radius * 1.609344 if unit == "mi" else radius
         data = nearby_feed_data(
-            place["latitude"], place["longitude"], radius_km, place["display_name"]
+            place["latitude"], place["longitude"], radius_km, place["display_name"], kind=kind
         )
         saved_nearby = {
             "query": query,
@@ -413,7 +494,7 @@ def init_app(app, login_required):
         latitude = parse_coordinate(request.args.get("latitude"), -90, 90)
         longitude = parse_coordinate(request.args.get("longitude"), -180, 180)
         radius_km = radius * 1.609344 if unit == "mi" else radius
-        data = nearby_feed_data(latitude, longitude, radius_km, display_name, page)
+        data = nearby_feed_data(latitude, longitude, radius_km, display_name, page, feed_kind(request.args))
         return jsonify(
             html=render_template("_explore_results.html", **data),
             next_page=data["next_page"], total=data["total"],
