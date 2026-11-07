@@ -23,9 +23,9 @@
             <div class="forecast-card">
                 <div class="forecast-table-scroll" tabindex="0" role="region" aria-label="Hourly conditions; swipe to see all stats">
                     <table class="forecast-table">
-                        <colgroup><col class="forecast-time-column"></colgroup><colgroup><col></colgroup><colgroup><col class="forecast-wind-column" span="2"></colgroup><colgroup span="2"></colgroup><colgroup><col></colgroup><colgroup><col></colgroup>
-                        <thead><tr><th scope="col">Time</th><th scope="col">Current</th><th scope="colgroup" colspan="2">Wind</th><th scope="colgroup" colspan="2">Swell</th><th scope="col" aria-label="Water temperature">Water</th><th scope="col" aria-label="Air temperature">Air</th></tr></thead>
-                        <tbody data-forecast-rows>{% for i in range(8) %}<tr><th scope="row">—</th>{% for j in range(7) %}<td><span class="forecast-placeholder skeleton"></span></td>{% endfor %}</tr>{% endfor %}</tbody>
+                        <colgroup><col class="forecast-time-column"></colgroup><colgroup><col class="forecast-direction-column" span="2"></colgroup><colgroup><col class="forecast-direction-column" span="2"></colgroup><colgroup span="2"></colgroup><colgroup><col></colgroup><colgroup><col></colgroup>
+                        <thead><tr><th scope="col">Time</th><th scope="colgroup" colspan="2">Current</th><th scope="colgroup" colspan="2">Wind</th><th scope="colgroup" colspan="2">Swell</th><th scope="col" aria-label="Water temperature">Water</th><th scope="col" aria-label="Air temperature">Air</th></tr></thead>
+                        <tbody data-forecast-rows>{% for i in range(8) %}<tr><th scope="row">—</th>{% for j in range(8) %}<td><span class="forecast-placeholder skeleton"></span></td>{% endfor %}</tr>{% endfor %}</tbody>
                     </table>
                 </div>
                 <a class="forecast-tide" href="{{ url_for('dive_site_profile', site_id=site.id) }}#forecast-tide" aria-label="Open {{ site.name }} tide chart">

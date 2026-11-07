@@ -15,8 +15,8 @@ from .exposure_recommendations import recommend
 from . import water_type
 
 FIELDS = ('ocean_current_velocity', 'sea_level_height_msl', 'sea_surface_temperature',
-          'swell_wave_height', 'swell_wave_period')
-FIELD_UNITS = dict(zip(FIELDS, ('kn', 'm', '°C', 'm', 's')))
+          'swell_wave_height', 'swell_wave_period', 'ocean_current_direction')
+FIELD_UNITS = dict(zip(FIELDS, ('kn', 'm', '°C', 'm', 's', '°')))
 NONNEGATIVE_FIELDS = {'ocean_current_velocity', 'swell_wave_height', 'swell_wave_period'}
 WEATHER_FIELDS = ('wind_speed_10m', 'wind_direction_10m', 'temperature_2m')
 WEATHER_UNITS = dict(zip(WEATHER_FIELDS, ('kn', '°', '°C')))
@@ -147,13 +147,15 @@ def validate(payload):
             raise ValueError('Misaligned hourly arrays')
         if payload.get('hourly_units', {}).get(field) != FIELD_UNITS[field]:
             raise ValueError('Unexpected marine units')
-        hourly[field] = [v if number(v) and (field not in NONNEGATIVE_FIELDS or v >= 0) else None for v in values]
+        hourly[field] = [v if number(v) and (field not in NONNEGATIVE_FIELDS or v >= 0)
+                         and (field != 'ocean_current_direction' or 0 <= v <= 360) else None for v in values]
     current = payload.get('current')
     if not isinstance(current, dict):
         payload['current'] = {}
     else:
         for field in (*FIELDS, 'time'):
-            if not number(current.get(field)):
+            if (not number(current.get(field))
+                    or (field == 'ocean_current_direction' and not 0 <= current[field] <= 360)):
                 current[field] = None
     return payload
 
@@ -245,7 +247,8 @@ def normalize(payload, now, fetched):
     values, timestamps = {}, {}
     for field in FIELDS:
         value = current.get(field)
-        valid = number(value) and (field not in NONNEGATIVE_FIELDS or value >= 0)
+        valid = (number(value) and (field not in NONNEGATIVE_FIELDS or value >= 0)
+                 and (field != 'ocean_current_direction' or 0 <= value <= 360))
         if fresh and valid and payload.get('current_units', {}).get(field) == FIELD_UNITS[field]:
             values[field], timestamps[field] = value, current_time
         else:
@@ -341,6 +344,7 @@ def normalize(payload, now, fetched):
             height = sample(lookups['swell_wave_height'], stamp)
             period = sample(lookups['swell_wave_period'], stamp)
             day_slots.append(dict(time=stamp, current_kn=sample(lookups[FIELDS[0]], stamp),
+                                  current_direction_deg=sample(lookups['ocean_current_direction'], stamp, True),
                                   wind_speed_kn=sample(speed_lookup, stamp), wind_direction_deg=sample(direction_lookup, stamp, True),
                                   swell_height_m=height, swell_period_s=period, swell=swell_conditions(height, period),
                                   water_temperature_c=sample(lookups[FIELDS[2]], stamp), air_temperature_c=sample(air_lookup, stamp)))

@@ -21,7 +21,7 @@
     function pageMarkup(kind) {
         if (kind === "home") return `<div class="skeleton-feed"><div>${block("title")}<div class="skeleton-card">${block("title")}${block()}</div><div class="skeleton-card">${block("title")}${block("media")}${block()}${block()}</div></div><aside>${identity()}${metrics()}</aside></div>`;
         if (kind === "explore") return `${block("field")}${card()}${card()}`;
-        if (kind === "forecast") return `<div class="forecast-page skeleton-forecast"><div class="forecast-skeleton-dates">${Array.from({length: 7}, () => block()).join("")}</div><div class="forecast-skeleton-tags">${block()}${block()}</div><div class="skeleton-card">${Array.from({length: 8}, () => `<div class="forecast-skeleton-row">${Array.from({length: 8}, () => block()).join("")}</div>`).join("")}${block("chart")}</div></div>`;
+        if (kind === "forecast") return `<div class="forecast-page skeleton-forecast"><div class="forecast-skeleton-dates">${Array.from({length: 7}, () => block()).join("")}</div><div class="forecast-skeleton-tags">${block()}${block()}</div><div class="skeleton-card">${Array.from({length: 8}, () => `<div class="forecast-skeleton-row">${Array.from({length: 9}, () => block()).join("")}</div>`).join("")}${block("chart")}</div></div>`;
         if (kind === "profile") return `${identity()}${metrics()}${block("chart")}${card()}`;
         if (kind === "form") return `${block("title")}<div class="skeleton-card skeleton-fields">${Array.from({ length: 8 }, () => `<div>${block()}${block("field")}</div>`).join("")}</div>`;
         if (kind === "detail") return `${identity()}${block("title")}${block("media")}${metrics()}<div class="skeleton-card">${rows()}</div>`;

@@ -48,6 +48,7 @@ class ForecastTest(unittest.TestCase):
             for slot in day['slots']:
                 i = times.index(slot['time'])
                 self.assertEqual(slot['current_kn'], .4)
+                self.assertEqual(slot['current_direction_deg'], (i * 7.5) % 360)
                 self.assertEqual(slot['wind_speed_kn'], 12.3)
                 self.assertEqual(slot['wind_direction_deg'], 225)
                 self.assertEqual(slot['water_temperature_c'], 28.1)
@@ -103,15 +104,20 @@ class ForecastTest(unittest.TestCase):
         fraction = (stamp - times[before]) / 3600
         raw['hourly']['ocean_current_velocity'][before] = 1
         raw['hourly']['ocean_current_velocity'][before + 1] = 2
+        raw['hourly']['ocean_current_direction'][before] = 350
+        raw['hourly']['ocean_current_direction'][before + 1] = 10
         raw['weather']['hourly']['wind_direction_10m'][before] = 350
         raw['weather']['hourly']['wind_direction_10m'][before + 1] = 10
         slot = marine.normalize(raw, NOW, NOW)['forecast']['days'][0]['slots'][0]
         self.assertEqual(slot['time'], stamp)
         self.assertAlmostEqual(slot['current_kn'], 1 + fraction)
+        self.assertAlmostEqual(slot['current_direction_deg'], (350 + 20 * fraction) % 360)
         self.assertAlmostEqual(slot['wind_direction_deg'], (350 + 20 * fraction) % 360)
         raw['hourly']['ocean_current_velocity'][before + 1] = None
+        raw['hourly']['ocean_current_direction'][before + 1] = None
         slot = marine.normalize(raw, NOW, NOW)['forecast']['days'][0]['slots'][0]
         self.assertIsNone(slot['current_kn'])
+        self.assertIsNone(slot['current_direction_deg'])
 
     def test_forecast_auth_followed_selection_and_featured_fallback(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -149,6 +155,7 @@ class ForecastTest(unittest.TestCase):
                 self.assertNotIn('class="site-report-dot"', page)
                 self.assertNotIn('data-forecast-dot=', page)
                 self.assertNotIn('aria-roledescription="carousel"', page.split('data-forecast ', 1)[1].split('</section>', 1)[0])
+                self.assertIn('scope="colgroup" colspan="2">Current</th>', page)
                 self.assertIn('scope="colgroup" colspan="2">Wind</th>', page)
                 self.assertIn('scope="colgroup" colspan="2">Swell</th>', page)
                 self.assertNotIn('>Direction</th>', page)

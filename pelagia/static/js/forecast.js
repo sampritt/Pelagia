@@ -53,19 +53,22 @@
                 td.appendChild(link); row.appendChild(td);
                 return link;
             }
-            cell('current', 'Current strength', valid(point.current_kn) ? `${tenth(point.current_kn)} kn` : '—', currentGrade(point.current_kn));
-            cell('wind', 'Wind speed', valid(point.wind_speed_kn) ? `${tenth(point.wind_speed_kn)} kn` : '—', windGrade(point.wind_speed_kn));
-            const heading = compass(point.wind_direction_deg);
-            const direction = cell('wind', 'Wind from', heading?.label || '—');
-            if (heading && !loading) {
-                const arrow = svgEl('svg', {viewBox: '-9 -9 18 18', class: 'forecast-wind-marker', 'aria-hidden': 'true'});
+            function directionCell(target, label, degrees, from = false) {
+                const heading = compass(degrees);
+                const direction = cell(target, label, heading?.label || '—');
+                if (!heading || loading) return;
+                const arrow = svgEl('svg', {viewBox: '-9 -9 18 18', class: 'forecast-direction-marker', 'aria-hidden': 'true'});
                 arrow.appendChild(svgEl('circle', {r: 7, class: 'marine-compass-ring'}));
-                const needle = svgEl('g', {transform: `rotate(${(heading.degrees + 180) % 360})`});
+                const needle = svgEl('g', {transform: `rotate(${(heading.degrees + (from ? 180 : 0)) % 360})`});
                 needle.appendChild(svgEl('path', {d: 'M0,-6 L3,2 L0,0 L-3,2 Z', class: 'marine-compass-head'}));
                 needle.appendChild(svgEl('path', {d: 'M0,0 L0,5', class: 'marine-compass-tail'}));
                 arrow.appendChild(needle); direction.appendChild(arrow);
-                direction.title = `Wind from ${heading.label}; arrow points toward the direction of travel`;
+                direction.title = `${label} ${heading.label}; arrow points toward the direction of travel`;
             }
+            cell('current', 'Current strength', valid(point.current_kn) ? `${tenth(point.current_kn)} kn` : '—', currentGrade(point.current_kn));
+            directionCell('current', 'Current toward', point.current_direction_deg);
+            cell('wind', 'Wind speed', valid(point.wind_speed_kn) ? `${tenth(point.wind_speed_kn)} kn` : '—', windGrade(point.wind_speed_kn));
+            directionCell('wind', 'Wind from', point.wind_direction_deg, true);
             const swellValid = valid(point.swell_height_m) && valid(point.swell_period_s) && (point.swell_height_m === 0 || point.swell_period_s > 0);
             const descriptor = typeof point.swell === 'string' ? point.swell : '';
             const swellGrade = swellValid && swellGrades[descriptor.toLowerCase()];

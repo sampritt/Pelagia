@@ -58,6 +58,8 @@ test('slow forecast navigation uses the calendar, eight rows and tide skeleton',
     loading.startNavigation('/forecast'); tick(160);
     assert.equal(shell.dataset.layout, 'forecast');
     assert.equal((shell.innerHTML.match(/forecast-skeleton-row/g) || []).length, 8);
+    const row = shell.innerHTML.split('forecast-skeleton-row')[1].split('</div>')[0];
+    assert.equal((row.match(/class="skeleton skeleton-line"/g) || []).length, 9);
     const dates = shell.innerHTML.split('forecast-skeleton-dates')[1].split('</div>')[0];
     assert.equal((dates.match(/class="skeleton skeleton-line"/g) || []).length, 7);
     assert.ok(shell.innerHTML.indexOf('forecast-skeleton-dates') < shell.innerHTML.indexOf('forecast-skeleton-tags'));

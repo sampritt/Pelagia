@@ -44,30 +44,35 @@ test('rows separate swell height and period with a coupled grade and retain inde
     context.document.createElementNS = (_, tag) => makeNode(tag);
     const body = makeNode('tbody');
     const panel = {dataset: {siteUrl: '/dive-sites/1'}, querySelector: () => body};
-    const point = {time: 1794024000, current_kn: .46, wind_speed_kn: 12.35, wind_direction_deg: 337.5,
+    const point = {time: 1794024000, current_kn: .46, current_direction_deg: 337.5, wind_speed_kn: 12.35, wind_direction_deg: 337.5,
         swell_height_m: .8, swell_period_s: 9, swell: 'Choppy', water_temperature_c: 28.3, air_temperature_c: 26};
     api.renderRows(panel, {timezone: 'Pacific/Galapagos', forecast: {slots: Array(8).fill(point)}}, {length: 'ft', temperature: 'f'});
     assert.equal(body.children.length, 8);
     const cells = body.children[0].children;
-    assert.equal(cells.length, 8);
+    assert.equal(cells.length, 9);
     const links = cells.map(cell => cell.children[0]);
     assert.equal(links[1].textContent, '0.5 kn');
     assert.equal(links[1].dataset.grade, 'green'); // Grade the unrounded model value.
-    assert.equal(links[2].textContent, '12.4 kn');
-    assert.equal(links[3].textContent, 'NNW');
-    assert.equal(links[3].children[0].children[1].attrs.transform, 'rotate(157.5)');
-    assert.equal(links[3].children[0].children[1].children[0].attrs.d, 'M0,-6 L3,2 L0,0 L-3,2 Z');
-    assert.equal(links[3].dataset.grade, undefined);
-    assert.equal(links[4].textContent, '2.6 ft');
-    assert.equal(links[5].textContent, '9s');
-    assert.equal(links[4].dataset.grade, 'yellow');
-    assert.equal(links[5].dataset.grade, links[4].dataset.grade);
-    assert.match(links[4].href, /#forecast-swell$/);
+    assert.equal(links[2].textContent, 'NNW');
+    assert.equal(links[2].dataset.grade, undefined);
+    assert.equal(links[2].children[0].children[1].attrs.transform, 'rotate(337.5)');
+    assert.match(links[2].attrs['aria-label'], /Current toward: NNW/);
+    assert.match(links[2].href, /#forecast-current$/);
+    assert.equal(links[3].textContent, '12.4 kn');
+    assert.equal(links[4].textContent, 'NNW');
+    assert.equal(links[4].children[0].children[1].attrs.transform, 'rotate(157.5)');
+    assert.equal(links[4].children[0].children[1].children[0].attrs.d, 'M0,-6 L3,2 L0,0 L-3,2 Z');
+    assert.equal(links[4].dataset.grade, undefined);
+    assert.equal(links[5].textContent, '2.6 ft');
+    assert.equal(links[6].textContent, '9s');
+    assert.equal(links[5].dataset.grade, 'yellow');
+    assert.equal(links[6].dataset.grade, links[5].dataset.grade);
     assert.match(links[5].href, /#forecast-swell$/);
-    assert.equal(links[6].textContent, '83°F');
-    assert.equal(links[7].textContent, '79°F');
-    assert.match(links[6].href, /#forecast-conditions$/);
+    assert.match(links[6].href, /#forecast-swell$/);
+    assert.equal(links[7].textContent, '83°F');
+    assert.equal(links[8].textContent, '79°F');
     assert.match(links[7].href, /#forecast-conditions$/);
+    assert.match(links[8].href, /#forecast-conditions$/);
     api.renderRows(panel, {timezone: 'Pacific/Galapagos', forecast: {slots: Array(8).fill(point)}}, {length: 'ft', temperature: 'f'}, {loading: true});
     assert.equal(body.children.length, 8);
     for (const row of body.children) {
@@ -79,6 +84,27 @@ test('rows separate swell height and period with a coupled grade and retain inde
             assert.equal(link.dataset.grade, undefined);
             assert.equal(link.textContent, undefined);
         }
+    }
+});
+
+test('current direction preserves north and wraparound and leaves invalid or missing values neutral', () => {
+    const makeNode = tag => ({tag, children: [], dataset: {}, attrs: {},
+        appendChild(node) {this.children.push(node);}, replaceChildren() {this.children = [];},
+        setAttribute(key, value) {this.attrs[key] = value;}});
+    context.document.createElement = makeNode;
+    context.document.createElementNS = (_, tag) => makeNode(tag);
+    const body = makeNode('tbody');
+    const panel = {dataset: {siteUrl: '/dive-sites/1'}, querySelector: () => body};
+    for (const degrees of [0, 90, 180, 270, 360, null, undefined, -1, 361, NaN, Infinity, true, '90']) {
+        api.renderRows(panel, {timezone: 'UTC', forecast: {slots: [{time: 1794024000, current_direction_deg: degrees}]}},
+            {length: 'm', temperature: 'c'});
+        const link = body.children[0].children[2].children[0];
+        assert.equal(link.dataset.grade, undefined);
+        const valid = typeof degrees === 'number' && Number.isFinite(degrees) && degrees >= 0 && degrees <= 360;
+        assert.equal(link.textContent, valid ? api.compass(degrees).label : '—');
+        assert.equal(link.children.length, valid ? 1 : 0);
+        if (valid) assert.equal(link.children[0].children[1].attrs.transform, `rotate(${degrees % 360})`);
+        else assert.match(link.attrs['aria-label'], /unavailable/);
     }
 });
 
