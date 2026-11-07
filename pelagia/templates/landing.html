@@ -28,7 +28,6 @@
     <div class="phone-screen" style="--screen-aspect: {{ width }} / 1280">
         <img src="{{ url_for('static', filename='img/landing/' ~ filename) }}" alt="{{ alt }}" width="{{ width }}" height="1280" loading="lazy" decoding="async" draggable="false">
         {% if 'phone-dive' in extra %}<span class="phone-depth-profile" aria-hidden="true"></span>{% endif %}
-        {% if 'phone-site' in extra %}<span class="phone-scrollbar-mask" aria-hidden="true"></span>{% endif %}
         <span class="phone-island" aria-hidden="true"></span>
         <span class="phone-battery" aria-hidden="true"></span>
         <span class="phone-avatar" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="3.5"/><path d="M5 21v-2a7 7 0 0 1 14 0v2"/></svg></span>
@@ -82,8 +81,8 @@
             </div>
             <div class="product-visual plan-visual paired-visual">
                 <div class="visual-orbit" aria-hidden="true"></div>
-                {{ phone('forecast-batu-bolong.jpg', 'Pelagia forecast for Batu Bolong, with hourly current speed and direction and a tide chart.', 'phone-secondary phone-forecast') }}
-                {{ phone('plan.jpg', 'Pelagia dive site overview for Batu Bolong in Indonesia, with its map and description.', 'phone-primary phone-site') }}
+                {{ phone('plan-melissas-garden.jpg', 'Pelagia dive site overview for Melissa’s Garden in Indonesia, with its map and description.', 'phone-secondary phone-site') }}
+                {{ phone('forecast-melissas-garden.jpg', 'Pelagia forecast for Melissa’s Garden, with hourly current speed and direction and a tide chart.', 'phone-primary phone-forecast') }}
             </div>
         </section>
 
