@@ -55,6 +55,27 @@ def rainfall_payload(zone='Pacific/Galapagos', now=NOW):
 
 
 class MarineRulesTest(unittest.TestCase):
+    def test_swell_daily_peak_pairs_period_and_preserves_missing_and_zero(self):
+        data = payload()
+        zone = ZoneInfo(data['timezone'])
+        today = datetime.fromtimestamp(NOW, zone).date()
+        hourly = data['hourly']
+        indices = [i for i, stamp in enumerate(hourly['time'])
+                   if datetime.fromtimestamp(stamp, zone).date() == today]
+        hourly['swell_wave_height'][indices[2]] = 2.4
+        hourly['swell_wave_period'][indices[2]] = 12.5
+        hourly['swell_wave_period'][indices[3]] = 20
+        daily = marine.normalize(data, NOW, NOW)['charts']['swell_daily']
+        self.assertEqual(len(daily), 7)
+        self.assertEqual(daily[0], dict(time=datetime.combine(today, datetime.min.time(), zone).timestamp(),
+                                      height_m=2.4, period_s=12.5))
+        hourly['swell_wave_height'] = [0] * len(hourly['time'])
+        hourly['swell_wave_period'] = [0] * len(hourly['time'])
+        self.assertEqual(marine.normalize(data, NOW, NOW)['charts']['swell_daily'][0]['height_m'], 0)
+        hourly['swell_wave_height'] = [None] * len(hourly['time'])
+        daily = marine.normalize(data, NOW, NOW)['charts']['swell_daily']
+        self.assertTrue(all(p['height_m'] is None and p['period_s'] is None for p in daily))
+
     def test_swell_categories_and_invalid_data(self):
         for height, period, expected in [(0, 0, 'Calm'), (.249, 4, 'Calm'), (.25, 8, 'Light'),
                 (.75, 8, 'Choppy'), (1.5, 8, 'Rough'), (2.5, 8, 'Very rough'),
@@ -250,11 +271,11 @@ class MarineEndpointTest(unittest.TestCase):
         self.assertNotIn(b'<small>VISIBILITY</small>', page.data)
         self.assertNotIn(b'data-marine-value="strength"', page.data)
         self.assertNotIn(b'<details class="marine-attribution">', page.data)
-        chart_titles = [b'<h2>Current</h2>', b'<h2>Tide</h2>', b'<h2>Rain</h2>', b'<h2>Wind</h2>']
+        chart_titles = [b'<h2>Current</h2>', b'<h2>Tide</h2>', b'<h2>Rain</h2>', b'<h2>Wind</h2>', b'<h2>Swell</h2>']
         self.assertTrue(all(title in page.data for title in chart_titles))
         self.assertEqual([page.data.index(title) for title in chart_titles], sorted(page.data.index(title) for title in chart_titles))
-        self.assertEqual(page.data.count(b'>7 days</button>'), 2)
-        self.assertEqual(page.data.count(b'>24h</button>'), 2)
+        self.assertEqual(page.data.count(b'>7 days</button>'), 3)
+        self.assertEqual(page.data.count(b'>24h</button>'), 3)
         self.assertIn(b'data-marine-value="swell"', page.data)
         self.assertIn(b'data-marine-value="wind"', page.data)
         self.assertIn(b'<small>Swell</small>', page.data)
@@ -273,7 +294,12 @@ class MarineEndpointTest(unittest.TestCase):
 
     def test_cache_expiry_coordinates_and_pending(self):
         self.assertEqual(self.client.get(self.url).status_code, 200)
-        self.client.get(self.url); self.assertEqual(self.fetch.call_count, 1)
+        cached = self.client.get(self.url).get_json()
+        self.assertEqual(self.fetch.call_count, 1)
+        self.assertEqual(len(cached['charts']['swell_daily']), 7)
+        self.assertEqual(len(cached['charts']['swell_hourly']), 24)
+        self.assertEqual(cached['charts']['swell_daily'][0]['height_m'], .8)
+        self.assertEqual(cached['charts']['swell_daily'][0]['period_s'], 8)
         with self.app.app_context():
             db = database.get_db()
             db.execute('UPDATE marine_forecast_cache SET expires_at=0, lease_until=?', (NOW + 10,)); db.commit()

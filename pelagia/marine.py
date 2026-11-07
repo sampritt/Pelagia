@@ -228,6 +228,14 @@ def normalize(payload, now, fetched):
     swell_lookup = {p['time']: p for p in swell}
     swell_hourly = [swell_lookup.get(hour + i * 3600, dict(time=hour + i * 3600,
                     height_m=None, period_s=None, descriptor=None)) for i in range(24)]
+    swell_daily = []
+    for offset in range(7):
+        day = today + timedelta(days=offset)
+        samples = [p for p in swell if number(p['height_m'])
+                   and datetime.fromtimestamp(p['time'], zone).date() == day]
+        peak = max(samples, key=lambda p: p['height_m']) if samples else {}
+        swell_daily.append(dict(time=datetime.combine(day, datetime.min.time(), zone).timestamp(),
+                                height_m=peak.get('height_m'), period_s=peak.get('period_s')))
     weather = payload.get('weather') or {}
     weather_hourly = weather.get('hourly') or {}
     weather_times = weather_hourly.get('time') or []
@@ -280,7 +288,7 @@ def normalize(payload, now, fetched):
                             current_daily=daily, current_hourly=window(FIELDS[0], 24),
                             tide_hourly=window(FIELDS[1], 24),
                             wind_hourly=wind, wind_daily=wind_daily, moon_phase_daily=moon,
-                            swell_hourly=swell_hourly, swell_seven_days=swell))
+                            swell_daily=swell_daily, swell_hourly=swell_hourly, swell_seven_days=swell))
 
 
 def request_json(url, params):

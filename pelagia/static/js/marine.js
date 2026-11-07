@@ -53,7 +53,7 @@
     }
     const decimal = value => Number(value.toFixed(2));
 
-    function renderChart(host, points, { tide = false, wind = false, rainfall = false, daily = false, zone, lengthUnit = 'm', moons = [] }) {
+    function renderChart(host, points, { tide = false, wind = false, swell = false, rainfall = false, daily = false, zone, lengthUnit = 'm', moons = [] }) {
         points = points || [];
         host.replaceChildren();
         host.removeAttribute('data-can-scroll');
@@ -63,7 +63,7 @@
             return;
         }
         const left = 80, right = 22, top = 32, bottom = 168;
-        const name = rainfall ? 'Rainfall' : tide ? 'Tide level' : wind ? 'Wind speed' : 'Current strength';
+        const name = rainfall ? 'Rainfall' : tide ? 'Tide level' : wind ? 'Wind speed' : swell ? 'Swell height' : 'Current strength';
         const width = Math.max(rainfall ? 240 : daily ? 240 : tide ? 650 : 900, host.clientWidth || 550), height = 220;
         const values = points.map(p => p.value).filter(finite);
         let min = tide ? Math.min(...values) : 0;
@@ -75,7 +75,8 @@
         const rainfallMagnitude = 10 ** Math.floor(Math.log10(rainfallRoughStep || 1));
         const rainfallNormalized = rainfallRoughStep / rainfallMagnitude;
         const rainfallStep = (rainfallNormalized <= 1 ? 1 : rainfallNormalized <= 2 ? 2 : rainfallNormalized <= 5 ? 5 : 10) * rainfallMagnitude;
-        if (rainfall) max = Math.max(rainfallStep * 4, 1);
+        if (rainfall || swell) max = Math.max(rainfallStep * 4, 1);
+        const swellStep = max / 4;
         if (min === max) { min -= .05; max += .05; }
         const y = value => bottom - (value - min) / (max - min) * (bottom - top);
         const x = i => left + (i + .5) * (width - left - right) / points.length;
@@ -96,20 +97,23 @@
         const ticks = tide ? [{ value: min, label: 'Low' }, { value: max, label: 'High' }]
             : rainfall ? [0, 1, 2, 3, 4].map(i => ({ value: i * rainfallStep, label: `${Number((i * rainfallStep).toFixed(2))} mm` }))
             : wind ? [0, 1, 2, 3, 4].map(i => ({ value: i * windStep, label: `${i * windStep} kn` }))
+            : swell ? [0, 1, 2, 3, 4].map(i => ({ value: i * swellStep, label: `${decimal(i * swellStep)} ${lengthUnit}` }))
             : [{ value: .25, label: 'Light' }, { value: .75, label: 'Moderate' }, { value: 1.5, label: 'Strong' }, { value: 2.25, label: 'Very Strong' }];
         ticks.forEach(tick => {
             axis.appendChild(el('text', { x: left - 10, y: y(tick.value) + 4, 'text-anchor': 'end' }, tick.label));
         });
-        (tide ? [min, max] : rainfall ? [rainfallStep, rainfallStep * 2, rainfallStep * 3, max] : wind ? [windStep, windStep * 2, windStep * 3, max] : [.5, 1, 2]).forEach(value => {
+        (tide ? [min, max] : rainfall ? [rainfallStep, rainfallStep * 2, rainfallStep * 3, max] : wind ? [windStep, windStep * 2, windStep * 3, max] : swell ? [swellStep, swellStep * 2, swellStep * 3, max] : [.5, 1, 2]).forEach(value => {
             svg.appendChild(el('line', { x1: left, x2: width - right, y1: y(value), y2: y(value), class: 'marine-guide' }));
         });
         svg.appendChild(el('line', { x1: left, x2: width - right, y1: bottom, y2: bottom, class: 'marine-baseline' }));
         const valueLabel = value => tide
             ? `${(value * (lengthUnit === 'ft' ? 1 / .3048 : 1)).toFixed(2)} ${lengthUnit} above global mean sea level`
             : rainfall ? `${Number(value.toFixed(2))} mm total rainfall`
+            : swell ? `${decimal(value)} ${lengthUnit}`
             : `${value.toFixed(2)} knots`;
         const moonLookup = new Map(moons.map(point => [point.time, point.phase]));
         const contextLabel = point => {
+            if (swell) return finite(point.value) && finite(point.period_s) ? `; ${Math.round(point.period_s)}s` : '';
             const heading = wind && compassHeading(point.direction_deg);
             const phase = daily && !wind && !tide && moonLookup.get(point.time);
             return heading ? `; wind from ${heading.label}` : phase ? `; ${phase} moon` : '';
@@ -118,6 +122,8 @@
             if (wind) {
                 const heading = windHeading(point.direction_deg);
                 if (heading) svg.appendChild(windMarker(heading, x(i)));
+            } else if (swell && finite(point.value) && finite(point.period_s)) {
+                svg.appendChild(el('text', { x: x(i), y: 12, 'text-anchor': 'middle', 'dominant-baseline': 'central', class: 'marine-swell-period' }, `${Math.round(point.period_s)}s`));
             } else if (daily && !tide && moonLookup.get(point.time)) {
                 svg.appendChild(moonMarker(moonLookup.get(point.time), x(i)));
             }
@@ -170,6 +176,7 @@
             readoutValue.textContent = finite(point.value) ? (tide
                 ? `${(point.value * (lengthUnit === 'ft' ? 1 / .3048 : 1)).toFixed(2)} ${lengthUnit}`
                 : rainfall ? `${Number(point.value.toFixed(2))} mm`
+                : swell ? `${decimal(point.value)} ${lengthUnit}`
                 : `${decimal(point.value)} kn`) : '—';
             readoutValue.textContent += contextLabel(point);
             cursor.setAttribute('x1', x(selected)); cursor.setAttribute('x2', x(selected));
@@ -195,7 +202,7 @@
             event.preventDefault(); select(index, true);
         });
         scroll.setAttribute('aria-label', `${name} ${rainfall ? 'history' : 'forecast'}. Use left and right arrow keys to inspect values.`);
-        readout.title = rainfall ? 'Monthly rainfall total in millimeters' : tide ? 'Height above global mean sea level' : wind ? 'Wind speed in knots and source direction' : 'Current velocity in knots';
+        readout.title = rainfall ? 'Monthly rainfall total in millimeters' : tide ? 'Height above global mean sea level' : wind ? 'Wind speed in knots and source direction' : swell ? `Swell height in ${lengthUnit}` : 'Current velocity in knots';
         const list = document.createElement('ul'); list.className = 'sr-only';
         points.forEach(point => {
             const item = document.createElement('li');
@@ -229,9 +236,10 @@
         const tideChart = host.querySelector('[data-marine-chart="tide"]');
         const windChart = host.querySelector('[data-marine-chart="wind"]');
         const rainfallChart = host.querySelector('[data-marine-chart="rainfall"]');
-        const chartNodes = [currentChart, tideChart, windChart, rainfallChart].filter(Boolean);
+        const swellChart = host.querySelector('[data-marine-chart="swell"]');
+        const chartNodes = [currentChart, tideChart, windChart, rainfallChart, swellChart].filter(Boolean);
         const buttons = [...host.querySelectorAll('[data-marine-range]')];
-        const ranges = { current: 'daily', wind: 'daily' };
+        const ranges = { current: 'daily', wind: 'daily', swell: 'daily' };
         let result, controller, deadline, poll, ends = [], stopped = false, generation = 0;
         const finish = () => { ends.forEach(end => end()); ends = []; };
         const clear = () => { window.clearTimeout(poll); window.clearTimeout(deadline); finish(); };
@@ -245,6 +253,12 @@
             if (windChart && (!target || target === 'wind')) {
                 const points = ranges.wind === 'daily' ? result.charts.wind_daily : result.charts.wind_hourly?.slice(0, 24).map(point => ({ ...point, value: point.speed_kn }));
                 renderChart(windChart, points, { wind: true, daily: ranges.wind === 'daily', zone: result.timezone });
+            }
+            if (swellChart && (!target || target === 'swell')) {
+                const points = result.charts[ranges.swell === 'daily' ? 'swell_daily' : 'swell_hourly'];
+                renderChart(swellChart, points?.map(point => ({ ...point,
+                    value: finite(point.height_m) ? point.height_m * (host.dataset.lengthUnit === 'ft' ? 1 / .3048 : 1) : null,
+                })), { swell: true, daily: ranges.swell === 'daily', zone: result.timezone, lengthUnit: host.dataset.lengthUnit });
             }
         };
         const unavailable = (noCoordinates = false) => {
@@ -265,6 +279,7 @@
                 'Tide level is only available for ocean dive sites',
                 'Wind forecast is only available for ocean dive sites',
                 'Rainfall history is only available for ocean dive sites',
+                'Swell forecast is only available for ocean dive sites',
             ];
             chartNodes.forEach((node, index) => {
                 node.replaceChildren();
@@ -347,7 +362,7 @@
             if (!result) return;
             const target = button.dataset.marineTarget || 'current';
             ranges[target] = button.dataset.marineRange;
-            const chart = { current: currentChart, wind: windChart }[target];
+            const chart = { current: currentChart, wind: windChart, swell: swellChart }[target];
             chart.dataset.selectedIndex = '0';
             buttons.filter(item => (item.dataset.marineTarget || 'current') === target)
                 .forEach(item => item.setAttribute('aria-pressed', String(item === button)));

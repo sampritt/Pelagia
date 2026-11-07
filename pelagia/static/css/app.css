@@ -6411,6 +6411,7 @@ img.is-media-loading {
 .marine-chart-scroll { overflow-x: auto; padding-left: 0; scrollbar-width: thin; }
 .marine-chart-scroll svg { display: block; max-width: none; }
 .marine-chart svg text { fill: var(--muted); font-size: 12px; font-family: inherit; }
+.marine-chart svg .marine-swell-period { font-size: 10px; font-variant-numeric: tabular-nums; }
 .marine-y-axis { position: absolute; z-index: 1; left: 0; top: 0; width: 80px; height: 220px; background: var(--panel, #fff); pointer-events: none; }
 .marine-current-bar { fill: var(--sea); }
 .marine-moon-disc { fill: var(--ink); }
