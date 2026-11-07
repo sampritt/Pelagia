@@ -10,7 +10,7 @@ from flask import Response, render_template, send_from_directory
 def init_app(app):
     static = Path(app.static_folder)
     templates = Path(app.root_path) / "templates"
-    assets = ("css/app.css", "css/landing.css", "js/landing.js", "js/app.js", "js/pwa.js", "js/loading.js", "js/welcome.js", "js/explore.js", "js/marine.js", "js/site-report.js", "js/feed-site-reports.js", "js/site-carousel.js", "js/place-profile.js", "js/user-follow.js")
+    assets = ("css/app.css", "css/landing.css", "js/landing.js", "js/app.js", "js/pwa.js", "js/loading.js", "js/welcome.js", "js/explore.js", "js/marine.js", "js/forecast.js", "js/site-report.js", "js/feed-site-reports.js", "js/site-carousel.js", "js/place-profile.js", "js/user-follow.js")
     icons = ("pelagia-mark.png", "favicon.png", "icon-192.png", "icon-512.png", "icon-maskable-512.png", "apple-touch-icon.png")
     worker = (static / "service-worker.js").read_text()
     digest = hashlib.sha256(worker.encode())

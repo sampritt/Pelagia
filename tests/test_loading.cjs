@@ -53,6 +53,15 @@ function setup() {
     return { context, document, window, status, shell, main, tick, observeMedia, loading: window.PelagiaLoading };
 }
 
+test('slow forecast navigation uses the calendar, eight rows and tide skeleton', () => {
+    const {loading, tick, shell} = setup();
+    loading.startNavigation('/forecast'); tick(160);
+    assert.equal(shell.dataset.layout, 'forecast');
+    assert.equal((shell.innerHTML.match(/forecast-skeleton-row/g) || []).length, 8);
+    assert.match(shell.innerHTML, /forecast-skeleton-dates/);
+    assert.match(shell.innerHTML, /skeleton-chart/);
+});
+
 test('fast regions never flash; slow regions restore prior busy and inert states', () => {
     const { loading, tick } = setup();
     const host = element();

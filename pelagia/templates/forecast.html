@@ -1,0 +1,48 @@
+{% extends 'base.html' %}
+{% block title %}Forecast - Pelagia{% endblock %}
+{% block content %}
+<section class="forecast-page" data-forecast data-temperature-unit="{{ units.temperature }}" data-length-unit="{{ units.length }}" aria-label="Dive site forecasts" aria-roledescription="carousel">
+    {% if forecast_sites|length > 1 %}
+    <div class="forecast-navigation">
+        <div class="forecast-dots" role="group" aria-label="Choose a dive site">
+            {% for site in forecast_sites %}<button class="site-report-dot" type="button" data-forecast-dot="{{ loop.index0 }}" aria-label="{{ site.name }}"{% if loop.first %} aria-current="true"{% endif %}><span aria-hidden="true"></span></button>{% endfor %}
+        </div>
+    </div>
+    {% endif %}
+    <p class="sr-only" role="status" aria-live="polite" data-forecast-position></p>
+    <div class="forecast-track" data-forecast-track>
+        {% for site in forecast_sites %}
+        <article class="forecast-site" data-forecast-site="{{ site.id }}" data-url="{{ url_for('api_site_conditions', site_id=site.id) }}" data-site-url="{{ url_for('dive_site_profile', site_id=site.id) }}" data-timezone="{{ site.timezone }}" data-days='{{ site.forecast_days|tojson }}' data-coordinates="{{ 'true' if site.latitude is not none and site.longitude is not none else 'false' }}" aria-label="{{ site.name }}" aria-roledescription="slide">
+            <header class="forecast-heading">
+                <h1><a href="{{ url_for('dive_site_profile', site_id=site.id) }}">{{ site.name }}</a></h1>
+                <p class="forecast-local" data-forecast-local><span class="skeleton forecast-clock-placeholder" aria-hidden="true"></span><span class="sr-only">Local time loading</span></p>
+            </header>
+            <div class="forecast-dates" role="group" aria-label="Forecast date">
+                {% for label in ['Today', 'Tomorrow', 'Day after'] %}
+                {% set day = site.forecast_days[loop.index0] if site.forecast_days else none %}
+                <button type="button" data-forecast-day="{{ loop.index0 }}" aria-pressed="{{ 'true' if loop.first else 'false' }}"{% if day %} aria-label="{{ label }}, {{ day.month }} {{ day.day }}"{% endif %}>
+                    <span data-calendar-month>{{ day.month if day else '—' }}</span><strong data-calendar-date>{{ day.day if day else '—' }}</strong><span>{{ label }}</span>
+                </button>
+                {% endfor %}
+            </div>
+            <div class="forecast-table-scroll" tabindex="0" role="region" aria-label="Hourly conditions; swipe to see all stats">
+                <table class="forecast-table">
+                    <thead><tr><th scope="col">Time</th><th scope="col">Current</th><th scope="col">Wind</th><th scope="col">Direction</th><th scope="col">Swell height</th><th scope="col">Swell period</th><th scope="col"><svg class="forecast-temperature-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3s-7 7.5-7 12a7 7 0 0 0 14 0c0-4.5-7-12-7-12Z"/></svg><span class="sr-only">Water temperature</span></th><th scope="col"><svg class="forecast-temperature-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.4 1.4m11.2 11.2L19 19M5 19l1.4-1.4M17.6 6.4 19 5"/></svg><span class="sr-only">Air temperature</span></th></tr></thead>
+                    <tbody data-forecast-rows>{% for i in range(8) %}<tr><th scope="row">—</th>{% for j in range(7) %}<td><span class="forecast-placeholder skeleton"></span></td>{% endfor %}</tr>{% endfor %}</tbody>
+                </table>
+            </div>
+            <a class="forecast-tide" href="{{ url_for('dive_site_profile', site_id=site.id) }}#forecast-tide" aria-label="Open {{ site.name }} tide chart">
+                <div class="forecast-tide-heading"><h2>Tide</h2><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17 17 7M7 7h10v10"/></svg></div>
+                <div data-forecast-tide><span class="skeleton forecast-tide-placeholder"></span></div>
+            </a>
+            <p class="sr-only" role="status" data-forecast-status>Loading forecast</p>
+            <div class="forecast-feedback" data-forecast-feedback hidden><span>Unavailable</span><button class="ghost-button compact" type="button" data-forecast-retry hidden>Retry</button></div>
+        </article>
+        {% else %}
+        <div class="forecast-empty"><h1>Forecast</h1><a class="primary-button" href="{{ url_for('explore.index') }}">Explore dive sites</a></div>
+        {% endfor %}
+    </div>
+    <noscript><p>Enable JavaScript to load hourly forecasts.</p></noscript>
+</section>
+{% endblock %}
+{% block scripts %}<script defer src="{{ url_for('static', filename='js/forecast.js', v=pwa_asset_version) }}"></script>{% endblock %}

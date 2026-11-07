@@ -4,6 +4,7 @@ import os
 import re
 import unicodedata
 import statistics
+import time
 import uuid
 from datetime import date, timedelta
 from functools import wraps
@@ -290,6 +291,17 @@ def register_routes(app):
     @login_required
     def feed():
         return home()
+
+    @app.get("/forecast")
+    @login_required
+    def forecast():
+        sites = fetch_home_report(session["user_id"])["sites"]
+        for site in sites:
+            coords = marine.coordinates(site)
+            zone = feed_report.coordinate_zone(*coords) if coords else None
+            site["timezone"] = str(zone) if zone else ""
+            site["forecast_days"] = marine.forecast_days(time.time(), zone) if zone else []
+        return render_template("forecast.html", forecast_sites=sites)
 
     @app.get("/api/feed/site-report")
     @login_required

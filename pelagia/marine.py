@@ -18,8 +18,8 @@ FIELDS = ('ocean_current_velocity', 'sea_level_height_msl', 'sea_surface_tempera
           'swell_wave_height', 'swell_wave_period')
 FIELD_UNITS = dict(zip(FIELDS, ('kn', 'm', '°C', 'm', 's')))
 NONNEGATIVE_FIELDS = {'ocean_current_velocity', 'swell_wave_height', 'swell_wave_period'}
-WEATHER_FIELDS = ('wind_speed_10m', 'wind_direction_10m')
-WEATHER_UNITS = dict(zip(WEATHER_FIELDS, ('kn', '°')))
+WEATHER_FIELDS = ('wind_speed_10m', 'wind_direction_10m', 'temperature_2m')
+WEATHER_UNITS = dict(zip(WEATHER_FIELDS, ('kn', '°', '°C')))
 MOON_PHASES = ('New', 'First Quarter', 'Full', 'Last Quarter')
 
 
@@ -31,6 +31,20 @@ def strength(value):
     if not number(value) or value < 0:
         return '-'
     return 'Light' if value < .5 else 'Moderate' if value < 1 else 'Strong' if value < 2 else 'Very Strong'
+
+
+def forecast_days(now, zone):
+    """Three site-local calendar days, with eight wall-clock forecast slots each."""
+    today = datetime.fromtimestamp(now, zone).date()
+    days = []
+    for offset in range(3):
+        day = today + timedelta(days=offset)
+        start = datetime.combine(day, datetime.min.time(), zone)
+        days.append(dict(date=day.isoformat(), label=('Today', 'Tomorrow', 'Day after')[offset],
+                         month=day.strftime('%b'), day=day.day, weekday=day.strftime('%a'),
+                         start=start.timestamp(), end=(start + timedelta(days=1)).timestamp(),
+                         times=[(start + timedelta(hours=3 * i)).timestamp() for i in range(8)]))
+    return days
 
 
 def swell_conditions(height, period):
@@ -62,7 +76,7 @@ def coordinates(site):
     return None
 
 
-def tide_phase(points, now):
+def tide_extrema(points):
     """Find extrema including plateaus; never bridge a gap in hourly samples."""
     extrema = []
     i = 1
@@ -80,7 +94,11 @@ def tide_phase(points, now):
             if kind:
                 extrema.append(((points[start]['time'] + points[end]['time']) / 2, kind))
         i += 1
-    near = [(abs(t - now), t, label) for t, label in extrema if abs(t - now) <= 3600]
+    return extrema
+
+
+def tide_phase(points, now):
+    near = [(abs(t - now), t, label) for t, label in tide_extrema(points) if abs(t - now) <= 3600]
     if near:
         return min(near)[2]
     hour = points[0]['time'] + int((now - points[0]['time']) // 3600) * 3600
@@ -138,14 +156,20 @@ def validate_weather(payload):
         raise ValueError('Invalid weather hourly interval')
     for field in WEATHER_FIELDS:
         values = hourly.get(field)
+        # Old cached responses and partial upstream responses can lack air temperature.
+        if values is None and field == 'temperature_2m':
+            hourly[field] = [None] * len(times)
+            continue
         if not isinstance(values, list) or len(values) != len(times):
             raise ValueError('Misaligned weather hourly arrays')
         if payload.get('hourly_units', {}).get(field) != WEATHER_UNITS[field]:
             raise ValueError('Unexpected weather units')
         if field == 'wind_speed_10m':
             hourly[field] = [v if number(v) and v >= 0 else None for v in values]
-        else:
+        elif field == 'wind_direction_10m':
             hourly[field] = [v if number(v) and 0 <= v <= 360 else None for v in values]
+        else:
+            hourly[field] = [v if number(v) else None for v in values]
     daily = payload['daily']
     daily_times, phases = daily['time'], daily['moon_phase']
     if (not isinstance(daily_times, list) or not all(number(t) for t in daily_times)
@@ -242,6 +266,7 @@ def normalize(payload, now, fetched):
     wind = []
     speed_lookup = dict(zip(weather_times, weather_hourly.get('wind_speed_10m') or []))
     direction_lookup = dict(zip(weather_times, weather_hourly.get('wind_direction_10m') or []))
+    air_lookup = dict(zip(weather_times, weather_hourly.get('temperature_2m') or []))
     for i in range(24):
         timestamp = hour + i * 3600
         wind.append(dict(time=timestamp, speed_kn=speed_lookup.get(timestamp),
@@ -276,7 +301,41 @@ def normalize(payload, now, fetched):
                                           point['time']), default=None)
     if closest_moon is not None:
         closest_moon['phase'] = moon_phase(closest_moon['value'])
+
+    lookups = {field: {p['time']: p['value'] for p in points} for field, points in series.items()}
+
+    def sample(lookup, stamp, circular=False):
+        if stamp in lookup:
+            return lookup[stamp]
+        before = max((t for t in lookup if t < stamp), default=None)
+        after = min((t for t in lookup if t > stamp), default=None)
+        if before is None or after is None or after - before > 3600:
+            return None
+        a, b = lookup[before], lookup[after]
+        if not number(a) or not number(b):
+            return None
+        delta = (b - a + 180) % 360 - 180 if circular else b - a
+        value = a + delta * (stamp - before) / (after - before)
+        return value % 360 if circular else value
+
+    tide_lookup = lookups[FIELDS[1]]
+    extrema = tide_extrema(series[FIELDS[1]])
+    days = []
+    for day in forecast_days(now, zone):
+        day_slots = []
+        for stamp in day['times']:
+            height = sample(lookups['swell_wave_height'], stamp)
+            period = sample(lookups['swell_wave_period'], stamp)
+            day_slots.append(dict(time=stamp, current_kn=sample(lookups[FIELDS[0]], stamp),
+                                  wind_speed_kn=sample(speed_lookup, stamp), wind_direction_deg=sample(direction_lookup, stamp, True),
+                                  swell_height_m=height, swell_period_s=period, swell=swell_conditions(height, period),
+                                  water_temperature_c=sample(lookups[FIELDS[2]], stamp), air_temperature_c=sample(air_lookup, stamp)))
+        day_times = [day['start'], *(t for t in times if day['start'] < t < day['end']), day['end']]
+        days.append(dict(day, slots=day_slots, tide=[dict(time=t, value=sample(tide_lookup, t)) for t in day_times],
+                         extrema=[dict(time=t, kind=kind, value=sample(tide_lookup, t))
+                                  for t, kind in extrema if day['start'] <= t < day['end']]))
     return dict(status='complete', timezone=payload['timezone'], fetched_at=fetched,
+                forecast=dict(days=days),
                 current=dict(velocity_kn=values[FIELDS[0]], strength=strength(values[FIELDS[0]]),
                              temperature_c=values[FIELDS[2]], sea_level_m=values[FIELDS[1]],
                              wind_speed_kn=wind_speed,
@@ -304,7 +363,7 @@ def fetch_weather(lat, lon, now=None):
                   timezone='auto', timeformat='unixtime', wind_speed_unit='kn')
     marine_params = dict(common, hourly=','.join(FIELDS), current=','.join(FIELDS),
                          cell_selection='sea', temperature_unit='celsius', length_unit='metric')
-    weather_params = dict(common, hourly=','.join(WEATHER_FIELDS), daily='moon_phase')
+    weather_params = dict(common, hourly=','.join(WEATHER_FIELDS), daily='moon_phase', temperature_unit='celsius')
     if key:
         marine_params['apikey'] = weather_params['apikey'] = key
     marine_host = 'customer-marine-api.open-meteo.com' if key else 'marine-api.open-meteo.com'

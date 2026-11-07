@@ -2438,3 +2438,29 @@ function initDiveGalleries() {
 }
 
 document.addEventListener("DOMContentLoaded", initDiveGalleries);
+
+// Forecast links target the existing site content without changing its charts or layout.
+function initForecastDestination() {
+    const target = window.location.hash.match(/^#forecast-(current|wind|swell|tide|conditions)$/)?.[1];
+    if (!target) return;
+    const marine = document.querySelector('[data-marine-forecast]');
+    const element = target === 'conditions' ? marine?.querySelector('.site-conditions-panel')
+        : marine?.querySelector(`[data-marine-chart="${target}"]`)?.closest('.site-chart-block');
+    if (!element) return;
+    const align = () => {
+        const top = element.getBoundingClientRect().top + window.scrollY
+            - (document.querySelector('.topbar')?.getBoundingClientRect().height || 0) - 18;
+        window.scrollTo({top, behavior: 'instant'});
+    };
+    // Upstream conditions arrive asynchronously; keep the destination aligned while loading.
+    const observer = new ResizeObserver(align);
+    const stop = () => {
+        observer.disconnect(); window.clearTimeout(deadline);
+        ['wheel', 'touchstart', 'pointerdown', 'keydown'].forEach(name => window.removeEventListener(name, stop));
+    };
+    const deadline = window.setTimeout(stop, 45000);
+    ['wheel', 'touchstart', 'pointerdown', 'keydown'].forEach(name => window.addEventListener(name, stop, {passive: true}));
+    observer.observe(marine);
+    align();
+}
+document.addEventListener('DOMContentLoaded', initForecastDestination);

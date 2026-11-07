@@ -256,13 +256,13 @@ class GarminImportTest(unittest.TestCase):
         for path, destination, current in [("/home", "/home", "page"), ("/welcome", "/home", "page"), ("/feed", "/home", "location"), ("/explore", "/explore", "page"),
                                            ("/dive/new", "/dive/new", "page"), ("/dive/1/edit", "/dive/new", "location"),
                                            ("/dive/1", "/home", "location"), ("/dive-sites/2544", "/explore", "location"),
-                                           ("/you", "/you", "page"), ("/you/settings", "/you", "location")]:
+                                           ("/forecast", "/forecast", "page"), ("/you", "/you", "page"), ("/you/settings", "/you", "location")]:
             with self.subTest(path=path):
                 response = self.client.get(path)
                 self.assertEqual(response.status_code, 200)
                 navigations = re.findall(r'<nav class="(?:desktop-nav|mobile-nav)".*?</nav>', response.get_data(as_text=True), re.S)
                 self.assertEqual(len(navigations), 2)
                 for navigation in navigations:
-                    labels = ["Home", "Explore", "Log dive", "Profile"]
+                    labels = ["Home", "Explore", "Log dive", "Forecast", "Profile"]
                     self.assertEqual(re.findall(r"<span>(.*?)</span>", navigation), labels)
                     self.assertEqual(re.findall(r'<a class="active" href="([^"]+)" aria-current="([^"]+)"', navigation), [(destination, current)])
