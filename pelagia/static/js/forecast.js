@@ -1,4 +1,4 @@
-/* A circular site carousel; all eight forecast rows share one horizontal scroll. */
+/* Site tags select forecasts; all eight forecast rows share one horizontal scroll. */
 (() => {
     const finite = value => typeof value === 'number' && Number.isFinite(value);
     const valid = value => finite(value) && value >= 0;
@@ -128,38 +128,27 @@
         const host = document.querySelector('[data-forecast]'); if (!host) return;
         const track = host.querySelector('[data-forecast-track]');
         const originals = [...track.querySelectorAll('[data-forecast-site]')]; if (!originals.length) return;
-        const dots = [...host.querySelectorAll('[data-forecast-dot]')];
+        const selectors = [...host.querySelectorAll('[data-forecast-select]')];
         const units = {length: host.dataset.lengthUnit, temperature: host.dataset.temperatureUnit};
-        const count = originals.length, circular = count > 1;
+        const count = originals.length;
         const cache = new Map(), pending = new Map();
-        let stopped = false, settleTimer, clockTimer, index = 0;
+        let stopped = false, refreshTimer, index = 0;
         let selectedDay = Math.max(0, Math.min(2, Number(window.history.state?.forecastDay) || 0));
         const saved = window.history.state?.forecastSite;
         index = Math.max(0, originals.findIndex(panel => panel.dataset.forecastSite === saved));
-        if (circular) {
-            track.prepend(originals.at(-1).cloneNode(true));
-            track.appendChild(originals[0].cloneNode(true));
-        }
-        const panels = [...track.querySelectorAll('[data-forecast-site]')];
+        const panels = originals;
         const matching = id => panels.filter(panel => panel.dataset.forecastSite === id);
         const status = (panel, text, retry = false) => {
             panel.querySelector('[data-forecast-status]').textContent = text;
             panel.querySelector('[data-forecast-feedback]').hidden = !text.includes('unavailable');
             panel.querySelector('[data-forecast-retry]').hidden = !retry;
         };
-        function localClock(panel, zone) {
-            const now = Date.now();
-            panel.querySelector('[data-forecast-local]').textContent = `${new Intl.DateTimeFormat('en-US', {
-                timeZone: zone, hour: 'numeric', minute: '2-digit',
-            }).format(now)} local`;
-        }
         function render(id, data) {
             const selected = data.forecast.days[selectedDay];
             const view = {...data, forecast: selected};
             matching(id).forEach(panel => {
                 renderRows(panel, view, units); renderTide(panel, view, units.length);
                 renderDates(panel, data.forecast.days);
-                localClock(panel, data.timezone);
                 status(panel, 'Forecast ready');
                 panel.setAttribute('aria-busy', 'false');
                 panel.dataset.forecastState = 'ready';
@@ -183,7 +172,6 @@
             const days = cached?.forecast.days || JSON.parse(panel.dataset.days);
             renderDates(panel, days);
             renderRows(panel, {timezone: zone, forecast: {slots: days[selectedDay].times.map(time => ({time}))}}, units, {loading});
-            localClock(panel, zone);
         }
         function showLoading(id) {
             matching(id).forEach(panel => {
@@ -245,20 +233,17 @@
             }
             fetchForecast();
         }
-        const wrap = next => (next % count + count) % count;
-        const offset = circular ? 1 : 0;
         function announce() {
             panels.forEach(panel => {
-                const active = panel === originals[index]; panel.inert = !active;
+                const active = panel === originals[index]; panel.inert = !active; panel.hidden = !active;
                 if (active) panel.removeAttribute('aria-hidden'); else panel.setAttribute('aria-hidden', 'true');
             });
-            dots.forEach((dot, i) => {
-                if (i === index) dot.setAttribute('aria-current', 'true'); else dot.removeAttribute('aria-current');
-            });
+            selectors.forEach((button, i) => button.setAttribute('aria-pressed', String(i === index)));
             host.querySelector('[data-forecast-position]').textContent = `Site ${index + 1} of ${count}: ${originals[index].getAttribute('aria-label')}`;
             remember();
-            load(originals[index]);
-            if (circular) {load(originals[wrap(index - 1)]); load(originals[wrap(index + 1)]);}
+            const panel = originals[index], cached = cache.get(panel.dataset.forecastSite)?.data;
+            if (cached && !pending.get(panel.dataset.forecastSite)?.revealed) render(panel.dataset.forecastSite, cached);
+            load(panel);
         }
         function remember() {
             try {window.history.replaceState({...window.history.state, forecastSite: originals[index].dataset.forecastSite, forecastDay: selectedDay}, '');} catch (_error) { /* Preserve navigation if history writes are throttled. */ }
@@ -272,29 +257,11 @@
                 } else render(id, cached);
             });
         }
-        function scrollToSlot(slot, instant = false) {
-            track.scrollTo({left: slot * track.clientWidth,
-                behavior: instant || window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth'});
-        }
         function goTo(next) {
-            const slot = next === count ? count + 1 : next === -1 ? 0 : wrap(next) + offset;
-            index = wrap(next); announce(); scrollToSlot(slot);
-        }
-        function settle() {
-            window.clearTimeout(settleTimer);
-            if (!circular || !track.clientWidth) return;
-            const slot = Math.round(track.scrollLeft / track.clientWidth);
-            // Resize and interrupted gestures may stop between panels; finish the snap.
-            if (Math.abs(track.scrollLeft - slot * track.clientWidth) > 2) return;
-            const next = wrap(slot - 1);
-            const restoreFocus = originals[index].contains(document.activeElement) && next !== index;
-            index = next;
-            if (slot === 0 || slot === count + 1) scrollToSlot(index + 1, true);
-            announce();
-            if (restoreFocus) dots[index]?.focus({preventScroll: true});
+            index = Math.max(0, Math.min(count - 1, next)); announce();
         }
         host.addEventListener('click', event => {
-            const dot = event.target.closest('[data-forecast-dot]'); if (dot) goTo(Number(dot.dataset.forecastDot));
+            const selector = event.target.closest('[data-forecast-select]'); if (selector) goTo(Number(selector.dataset.forecastSelect));
             if (event.target.closest('[data-forecast-retry]')) load(event.target.closest('[data-forecast-site]'), true);
             const dayButton = event.target.closest('[data-forecast-day]');
             if (dayButton) selectDay(Number(dayButton.dataset.forecastDay));
@@ -308,28 +275,22 @@
                 event.preventDefault(); selectDay(Math.max(0, Math.min(2, next)));
                 originals[index].querySelector(`[data-forecast-day="${selectedDay}"]`).focus({preventScroll: true}); return;
             }
-            if (!circular) return;
+            if (!event.target.closest('[data-forecast-select]')) return;
             const next = {ArrowLeft: index - 1, ArrowRight: index + 1, Home: 0, End: count - 1}[event.key];
             if (next === undefined) return;
-            event.preventDefault(); goTo(next);
+            event.preventDefault(); goTo(next); selectors[index]?.focus({preventScroll: true});
         });
-        track.addEventListener('scroll', () => {window.clearTimeout(settleTimer); settleTimer = window.setTimeout(settle, 160);}, {passive: true});
-        track.addEventListener('scrollend', settle);
         new ResizeObserver(() => {
-            scrollToSlot(index + offset, true);
-            cache.forEach(({data}, id) => {if (!pending.get(id)?.revealed) matching(id).forEach(panel => renderTide(panel, {...data, forecast: data.forecast.days[selectedDay]}, units.length));});
+            const panel = originals[index], data = cache.get(panel.dataset.forecastSite)?.data;
+            if (data && !pending.get(panel.dataset.forecastSite)?.revealed) renderTide(panel, {...data, forecast: data.forecast.days[selectedDay]}, units.length);
         }).observe(track);
         function tick() {
             if (stopped) return;
-            panels.forEach(panel => {
-                const zone = cache.get(panel.dataset.forecastSite)?.data.timezone || panel.dataset.timezone;
-                if (zone) localClock(panel, zone);
-            });
             if (!document.hidden) load(originals[index]);
-            clockTimer = window.setTimeout(tick, 30000);
+            refreshTimer = window.setTimeout(tick, 30000);
         }
         window.addEventListener('pagehide', () => {
-            stopped = true; window.clearTimeout(clockTimer); window.clearTimeout(settleTimer);
+            stopped = true; window.clearTimeout(refreshTimer);
             pending.forEach(request => {request.controller.abort(); window.clearTimeout(request.poll); window.clearTimeout(request.deadline); window.clearTimeout(request.skeleton);}); pending.clear();
             cache.forEach(({data}, id) => render(id, data));
         });
@@ -337,7 +298,7 @@
         window.addEventListener('online', () => {if (!stopped) load(originals[index], true);});
         document.addEventListener('visibilitychange', () => {if (!document.hidden && !stopped) load(originals[index]);});
         panels.forEach(placeholders);
-        scrollToSlot(index + offset, true); announce(); tick();
+        announce(); tick();
     }
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initForecast); else initForecast();
     if (typeof module !== 'undefined') module.exports = {currentGrade, windGrade, compass, temperature, hour, linkUrl, renderRows, renderTide};

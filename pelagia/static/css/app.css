@@ -6953,19 +6953,17 @@ html:has(.place-profile #reviews:target) { scroll-behavior: auto; }
     .place-review-footer button { width: 100%; }
 }
 
-/* Forecast shares the feed's paper, typography, condition grades and pagination. */
+/* Forecast uses Explore's site tags and the shared paper and condition grades. */
 .forecast-page { width: min(100%, 860px); min-width: 0; margin-inline: auto; }
-.forecast-navigation { display: flex; justify-content: center; margin: -8px 0 10px; }
-.forecast-dots { display: flex; flex-wrap: wrap; justify-content: center; }
-.forecast-track { position: relative; display: flex; overflow-x: auto; overflow-y: hidden; scroll-snap-type: x mandatory; overscroll-behavior-x: contain; scrollbar-width: none; border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); box-shadow: var(--shadow-xs); }
-.forecast-track::-webkit-scrollbar, .forecast-table-scroll::-webkit-scrollbar { display: none; }
-.forecast-site { position: relative; flex: 0 0 100%; width: 100%; min-width: 0; padding: 24px 0 16px; scroll-snap-align: start; scroll-snap-stop: always; }
-.forecast-heading { padding-inline: 24px; }
-.forecast-heading h1 { margin: 0 0 8px; font-size: clamp(1.4rem, 4vw, 1.75rem); line-height: 1.25; letter-spacing: -.035em; overflow-wrap: anywhere; }
-.forecast-heading h1 a { color: var(--ink); text-decoration: none; }
-.forecast-local { min-height: 18px; margin: 0; color: var(--muted-strong); font-size: .75rem; line-height: 1.5; font-variant-numeric: tabular-nums; }
-.forecast-dates { display: flex; gap: 10px; padding: 18px 24px; }
-.forecast-dates button { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; width: 70px; min-height: 70px; padding: 6px 4px; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--panel); color: var(--muted-strong); box-shadow: none; font: inherit; font-size: .6875rem; cursor: pointer; touch-action: manipulation; transition: background 160ms, border-color 160ms; }
+.forecast-navigation { flex-wrap: wrap; }
+.forecast-navigation .explore-filter { max-width: 100%; overflow-wrap: anywhere; }
+.forecast-track { position: relative; min-width: 0; }
+.forecast-site { position: relative; width: 100%; min-width: 0; }
+.forecast-site[hidden] { display: none; }
+.forecast-card { min-width: 0; padding-bottom: 16px; overflow: hidden; border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); box-shadow: var(--shadow-xs); }
+.forecast-table-scroll::-webkit-scrollbar { display: none; }
+.forecast-dates { display: flex; justify-content: center; gap: 10px; padding: 0 0 18px; }
+.forecast-dates button { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; width: 70px; min-width: max-content; min-height: 70px; padding: 6px 4px; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--panel); color: var(--muted-strong); box-shadow: none; font: inherit; font-size: .6875rem; cursor: pointer; touch-action: manipulation; transition: background 160ms, border-color 160ms; }
 .forecast-dates button [data-calendar-month] { text-transform: uppercase; font-size: .5625rem; letter-spacing: .08em; }
 .forecast-dates button strong { color: var(--ink); font-size: 1.375rem; font-weight: 650; line-height: 1.05; font-variant-numeric: tabular-nums; }
 .forecast-dates button[aria-pressed="true"] { border-color: var(--accent-line); background: var(--accent-soft); color: var(--accent-deep); }
@@ -6977,7 +6975,10 @@ html:has(.place-profile #reviews:target) { scroll-behavior: auto; }
 .forecast-table tbody tr { height: calc(2.75rem + 1px); }
 .forecast-table th:first-child { position: sticky; z-index: 1; left: 0; width: 4.5rem; background: var(--panel); box-shadow: 1px 0 var(--line); }
 .forecast-table th:first-child a, .forecast-table thead th:first-child { padding-left: 24px; }
-.forecast-table th:nth-child(4) { width: 6.375rem; }
+.forecast-table .forecast-time-column { width: 4.5rem; }
+.forecast-table .forecast-wind-column { width: 6.375rem; }
+.forecast-table tbody td:nth-child(n + 3):nth-child(-n + 6) a { justify-content: center; }
+.forecast-table thead th[colspan] { text-align: center; }
 .forecast-table :is(td, th) a { display: flex; align-items: center; gap: 6px; min-height: 2.75rem; padding: 8px 12px; color: var(--ink); font-size: .8125rem; font-weight: 550; text-decoration: none; -webkit-tap-highlight-color: transparent; }
 .forecast-table tbody th a { font-size: .75rem; }
 .forecast-table [data-grade="green"] { color: #19704c; }
@@ -7004,21 +7005,21 @@ html:has(.place-profile #reviews:target) { scroll-behavior: auto; }
 .forecast-table .forecast-placeholder { width: 48px; height: 10px; margin: 0; }
 .forecast-table td:nth-child(3n) .forecast-placeholder { width: 38px; }
 .forecast-tide .forecast-tide-placeholder { width: 100%; height: 80px; margin: 26px 0; border-radius: 8px; }
-.forecast-clock-placeholder { width: 86px; height: 9px; margin: 4px 0; }
 .forecast-empty { display: grid; justify-items: start; gap: 16px; padding: 24px; }
 .forecast-empty h1 { margin: 0; }
-.forecast-page :is(a, button):focus-visible { outline: 2px solid var(--accent); outline-offset: -3px; border-radius: 6px; }
+.forecast-page :is(a, button):not(.explore-filter):focus-visible { outline: 2px solid var(--accent); outline-offset: -3px; border-radius: 6px; }
 .forecast-table-scroll:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 .skeleton-forecast .skeleton-card { padding: 24px; }
-.forecast-skeleton-dates { display: flex; gap: 10px; margin-block: 18px; }
+.forecast-skeleton-tags { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+.forecast-skeleton-tags .skeleton { width: 120px; height: 44px; margin: 0; border-radius: 999px; }
+.forecast-skeleton-dates { display: flex; justify-content: center; gap: 10px; margin-bottom: 18px; }
 .forecast-skeleton-dates .skeleton { width: 70px; height: 70px; margin: 0; border-radius: var(--radius-sm); }
 .forecast-skeleton-row { display: grid; grid-template-columns: repeat(8, 1fr); align-items: center; height: 45px; gap: 16px; border-top: 1px solid var(--line); }
 .forecast-skeleton-row .skeleton { width: 100%; height: 10px; margin: 0; }
 .skeleton-forecast .skeleton-chart { height: 110px; margin-block: 24px 0; }
 @media (max-width: 560px) {
-    .forecast-site { padding-top: 20px; }
-    .forecast-heading { padding-inline: 18px; }
-    .forecast-dates { padding: 16px 18px; }
+    .forecast-dates { padding-bottom: 16px; }
+    .forecast-table .forecast-time-column { width: 4rem; }
     .forecast-table th:first-child a, .forecast-table thead th:first-child { padding-left: 18px; }
     .forecast-table th:first-child { width: 4rem; }
     .forecast-tide { margin-inline: 14px; }
