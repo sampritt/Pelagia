@@ -6984,7 +6984,6 @@ html:has(.place-profile #reviews:target) { scroll-behavior: auto; }
 .forecast-table [data-grade="yellow"] { color: #806000; }
 .forecast-table [data-grade="orange"] { color: #a54908; }
 .forecast-table [data-grade="red"] { color: #b02c35; }
-.forecast-temperature-icon { display: block; width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
 .forecast-wind-marker { width: 19px; height: 19px; flex: 0 0 19px; overflow: visible; }
 .forecast-wind-marker .marine-compass-head { fill: var(--muted-strong); }
 .forecast-wind-marker .marine-compass-tail { stroke: var(--muted-strong); }

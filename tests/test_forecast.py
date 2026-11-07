@@ -114,9 +114,9 @@ class ForecastTest(unittest.TestCase):
                 self.assertLess(page.index('<span>Forecast</span>'), page.index('<span>Profile</span>'))
                 self.assertNotIn('data-forecast-site="3"', page)
                 self.assertIn('js/forecast.js', page)
-                self.assertIn('forecast-temperature-icon', page)
-                self.assertIn('Water temperature</span>', page)
-                self.assertIn('Air temperature</span>', page)
+                self.assertNotIn('forecast-temperature-icon', page)
+                self.assertIn('aria-label="Water temperature">Water</th>', page)
+                self.assertIn('aria-label="Air temperature">Air</th>', page)
                 self.assertIn('class="site-report-dot"', page)
                 for extra in ('data-forecast-prev', 'data-forecast-next', 'Regional surface forecast', 'data-tide-date'):
                     self.assertNotIn(extra, page)
