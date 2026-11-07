@@ -6971,7 +6971,8 @@ html:has(.place-profile #reviews:target) { scroll-behavior: auto; }
 .forecast-table-scroll { overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
 .forecast-table { width: 100%; min-width: 44rem; border-collapse: separate; border-spacing: 0; table-layout: fixed; text-align: left; font-variant-numeric: tabular-nums; }
 .forecast-table th, .forecast-table td { padding: 0; border: 0; border-bottom: 1px solid var(--line); white-space: nowrap; }
-.forecast-table thead th { height: 2.375rem; padding: 0 12px; color: var(--muted-strong); font-size: .6875rem; font-weight: 500; vertical-align: middle; }
+.forecast-table thead th, .forecast-tide-heading h2 { color: var(--muted-strong); font-family: inherit; font-size: .6875rem; font-weight: 500; line-height: 1.5; letter-spacing: 0; }
+.forecast-table thead th { height: 2.375rem; padding: 0 12px; vertical-align: middle; }
 .forecast-table tbody tr { height: calc(2.75rem + 1px); }
 .forecast-table th:first-child { position: sticky; z-index: 1; left: 0; width: 4.5rem; background: var(--panel); box-shadow: 1px 0 var(--line); }
 .forecast-table th:first-child a, .forecast-table thead th:first-child { padding-left: 24px; }
@@ -6988,9 +6989,9 @@ html:has(.place-profile #reviews:target) { scroll-behavior: auto; }
 .forecast-wind-marker { width: 19px; height: 19px; flex: 0 0 19px; overflow: visible; }
 .forecast-wind-marker .marine-compass-head { fill: var(--muted-strong); }
 .forecast-wind-marker .marine-compass-tail { stroke: var(--muted-strong); }
-.forecast-tide { display: block; margin: 16px 20px 0; color: var(--ink); text-decoration: none; }
-.forecast-tide-heading { display: flex; justify-content: space-between; align-items: center; padding-inline: 4px; }
-.forecast-tide-heading h2 { margin: 0; font-size: .9375rem; line-height: 1.5; }
+.forecast-tide { display: block; margin: 8px 0 0; color: var(--ink); text-decoration: none; }
+.forecast-tide-heading { display: flex; justify-content: space-between; align-items: center; padding-inline: 24px; }
+.forecast-tide-heading h2 { margin: 0; }
 .forecast-tide-heading > svg { width: 15px; height: 15px; fill: none; stroke: var(--muted); stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
 .forecast-tide [data-forecast-tide] { display: flow-root; height: 132px; color: var(--muted-strong); font-size: .75rem; }
 .forecast-tide [data-forecast-tide] svg { display: block; width: 100%; height: 132px; overflow: visible; }
@@ -7022,7 +7023,7 @@ html:has(.place-profile #reviews:target) { scroll-behavior: auto; }
     .forecast-table .forecast-time-column { width: 4rem; }
     .forecast-table th:first-child a, .forecast-table thead th:first-child { padding-left: 18px; }
     .forecast-table th:first-child { width: 4rem; }
-    .forecast-tide { margin-inline: 14px; }
+    .forecast-tide-heading { padding-inline: 18px; }
     .forecast-feedback { margin-inline: 18px; }
     .forecast-skeleton-row { grid-template-columns: repeat(4, 1fr); }
     .forecast-skeleton-row .skeleton:nth-child(n + 5) { display: none; }

@@ -86,7 +86,7 @@
         const values = points.map(point => point.value).filter(finite);
         if (!values.length) { host.textContent = 'Tide forecast unavailable'; return; }
         const width = Math.max(240, host.clientWidth), height = 132;
-        const left = 24, right = width - 24, top = 30, bottom = 86;
+        const left = 8, right = width - 8, top = 30, bottom = 86;
         let min = Math.min(...values), max = Math.max(...values);
         if (min === max) { min -= .1; max += .1; }
         const x = stamp => left + (stamp - data.forecast.start) / (data.forecast.end - data.forecast.start) * (right - left);
