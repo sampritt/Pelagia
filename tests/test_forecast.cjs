@@ -91,11 +91,50 @@ test('tide extrema show High or Low and precise local time without numeric heigh
     const host = makeNode('div'); host.clientWidth = 320;
     const panel = {querySelector: () => host, getAttribute: () => 'Gordon Rocks'};
     const start = Date.parse('2026-11-07T06:00:00Z') / 1000;
-    api.renderTide(panel, {timezone: 'Pacific/Galapagos', forecast: {start, end: start + 86400,
+    api.renderTide(panel, {timezone: 'Pacific/Galapagos', forecast: {start, end: start + 86400, times: Array.from({length: 8}, (_, i) => start + i * 10800),
         tide: [{time: start, value: 0}, {time: start + 3600, value: 1}, {time: start + 86400, value: 0}],
         extrema: [{time: start + 1800, value: .8, kind: 'High'}, {time: start + 43200, value: -.8, kind: 'Low'}]}}, 'm');
     const texts = host.children[0].children.filter(node => node.tag === 'text');
     assert.deepEqual(texts.filter(n => n.attrs.class === 'forecast-tide-label').map(n => n.textContent), ['High', 'Low']);
     assert.deepEqual(texts.filter(n => n.attrs.class === 'forecast-tide-time').map(n => n.textContent), ['12:30am', '12:00pm']);
     assert.ok(texts.every(n => !/[0-9]+\.[0-9]+\s*m/.test(n.textContent)));
+});
+
+test('smooth tide curve preserves sampled heights and does not overshoot a turn', () => {
+    const points = [{x: 0, y: 10}, {x: 5, y: 8}, {x: 15, y: 0}, {x: 17, y: 2}, {x: 35, y: 10}];
+    const path = api.tidePath(points);
+    const segments = [...path.matchAll(/C([\d.e+-]+),([\d.e+-]+) ([\d.e+-]+),([\d.e+-]+) ([\d.e+-]+),([\d.e+-]+)/g)];
+    assert.equal(segments.length, points.length - 1);
+    segments.forEach((match, i) => {
+        const [, , cy1, , cy2, endX, endY] = match.map(Number);
+        assert.equal(endX, points[i + 1].x);
+        assert.equal(endY, points[i + 1].y);
+        const lo = Math.min(points[i].y, endY), hi = Math.max(points[i].y, endY);
+        for (let n = 0; n <= 100; n++) {
+            const t = n / 100, u = 1 - t;
+            const y = u ** 3 * points[i].y + 3 * u ** 2 * t * cy1 + 3 * u * t ** 2 * cy2 + t ** 3 * endY;
+            assert.ok(y >= lo - 1e-9 && y <= hi + 1e-9);
+        }
+    });
+});
+
+test('tide rendering separates missing intervals and rounds estimated local times to minutes', () => {
+    const node = tag => ({tag, children: [], attrs: {}, appendChild(n) {this.children.push(n);},
+        append(...nodes) {this.children.push(...nodes);}, replaceChildren() {this.children = [];},
+        setAttribute(k, v) {this.attrs[k] = v;}});
+    context.document.createElement = node;
+    context.document.createElementNS = (_, tag) => node(tag);
+    const host = node('div'); host.clientWidth = 240;
+    const start = Date.parse('2026-11-07T06:00:00Z') / 1000;
+    const tide = [0, 1, null, 1, 0].map((value, i) => ({time: start + i * 3600, value}));
+    api.renderTide({querySelector: () => host, getAttribute: () => 'Test site'}, {
+        timezone: 'Pacific/Galapagos', forecast: {start, end: start + 86400,
+            times: Array.from({length: 8}, (_, i) => start + i * 10800), tide,
+            extrema: [{time: start + 3599, value: 1, kind: 'High'}]},
+    });
+    const svg = host.children[0];
+    assert.equal(svg.children.filter(n => n.attrs.class === 'forecast-tide-line').length, 2);
+    assert.equal(svg.children.find(n => n.attrs.class === 'forecast-tide-time').textContent, '1:00am');
+    assert.match(svg.attrs['aria-label'], /estimates interpolated from hourly model/);
+    assert.deepEqual(svg.children.filter(n => n.attrs.class === 'forecast-tide-axis').map(n => n.textContent), ['12am', '6am', '12pm', '6pm', '12am']);
 });

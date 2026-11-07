@@ -80,46 +80,68 @@
         });
     }
 
-    function renderTide(panel, data, lengthUnit) {
+    // Monotone cubic segments keep the hourly model smooth without overshooting turns.
+    function tidePath(points) {
+        if (points.length < 2) return '';
+        const dx = points.slice(1).map((p, i) => p.x - points[i].x);
+        const slopes = points.slice(1).map((p, i) => (p.y - points[i].y) / dx[i]);
+        const tangents = points.map((_, i) => {
+            if (!i) return slopes[0];
+            if (i === points.length - 1) return slopes.at(-1);
+            const a = slopes[i - 1], b = slopes[i];
+            if (a * b <= 0) return 0;
+            const w1 = 2 * dx[i] + dx[i - 1], w2 = dx[i] + 2 * dx[i - 1];
+            return (w1 + w2) / (w1 / a + w2 / b);
+        });
+        return `M${points[0].x},${points[0].y}` + points.slice(1).map((p, i) => {
+            const a = points[i], step = dx[i] / 3;
+            return ` C${a.x + step},${a.y + tangents[i] * step} ${p.x - step},${p.y - tangents[i + 1] * step} ${p.x},${p.y}`;
+        }).join('');
+    }
+
+    function renderTide(panel, data) {
         const host = panel.querySelector('[data-forecast-tide]'); host.replaceChildren();
         const points = data.forecast.tide || [];
         const values = points.map(point => point.value).filter(finite);
         if (!values.length) { host.textContent = 'Tide forecast unavailable'; return; }
-        const width = Math.max(240, host.clientWidth), height = 132;
-        const left = 8, right = width - 8, top = 30, bottom = 86;
+        const width = Math.max(200, host.clientWidth), height = 180;
+        const top = 48, bottom = 108;
         let min = Math.min(...values), max = Math.max(...values);
         if (min === max) { min -= .1; max += .1; }
-        const x = stamp => left + (stamp - data.forecast.start) / (data.forecast.end - data.forecast.start) * (right - left);
+        const x = stamp => (stamp - data.forecast.start) / (data.forecast.end - data.forecast.start) * width;
         const y = value => bottom - (value - min) / (max - min) * (bottom - top);
-        const svg = svgEl('svg', {viewBox: `0 0 ${width} ${height}`, role: 'img', 'aria-label': `${date(data.forecast.start, data.timezone)} tide at ${panel.getAttribute('aria-label')}. Heights in ${lengthUnit} above global mean sea level.`});
+        const svg = svgEl('svg', {viewBox: `0 0 ${width} ${height}`, role: 'img', 'aria-label': `${date(data.forecast.start, data.timezone)} tide at ${panel.getAttribute('aria-label')}. High and low times are estimates interpolated from hourly model samples, in local time.`});
         const events = document.createElement('ul'); events.className = 'sr-only';
-        svg.appendChild(svgEl('line', {x1: left, x2: right, y1: bottom, y2: bottom, class: 'forecast-tide-guide'}));
+        svg.appendChild(svgEl('line', {x1: 0, x2: width, y1: bottom, y2: bottom, class: 'forecast-tide-guide'}));
         let segment = [];
         const flush = () => {
             if (segment.length > 1) {
-                svg.appendChild(svgEl('polygon', {points: `${segment[0].split(',')[0]},${bottom} ${segment.join(' ')} ${segment.at(-1).split(',')[0]},${bottom}`, class: 'forecast-tide-fill'}));
-                svg.appendChild(svgEl('polyline', {points: segment.join(' '), class: 'forecast-tide-line'}));
+                const path = tidePath(segment);
+                svg.appendChild(svgEl('path', {d: `${path} L${segment.at(-1).x},${bottom} L${segment[0].x},${bottom} Z`, class: 'forecast-tide-fill'}));
+                svg.appendChild(svgEl('path', {d: path, class: 'forecast-tide-line'}));
             }
             segment = [];
         };
-        points.forEach(point => { if (finite(point.value)) segment.push(`${x(point.time)},${y(point.value)}`); else flush(); }); flush();
+        points.forEach((point, i) => {
+            if (i && point.time - points[i - 1].time > 3600) flush();
+            if (finite(point.value)) segment.push({x: x(point.time), y: y(point.value)}); else flush();
+        }); flush();
         (data.forecast.extrema || []).filter(point => finite(point.value)).forEach(point => {
             const px = x(point.time), py = y(point.value);
             const high = point.kind === 'High';
-            const label = point.kind;
+            const labelX = Math.max(28, Math.min(width - 28, px));
             const tideTime = new Intl.DateTimeFormat('en-US', {timeZone: data.timezone, hour: 'numeric', minute: '2-digit', hour12: true})
-                .format(point.time * 1000).replace(/\s/g, '').toLowerCase();
-            const title = `${label} · ${tideTime} local`;
-            svg.appendChild(svgEl('circle', {cx: px, cy: py, r: 3, class: 'forecast-tide-point'}));
-            const anchor = px < 60 ? 'start' : px > width - 60 ? 'end' : 'middle';
-            const labelY = high ? py - 19 : py + 17;
-            svg.appendChild(svgEl('text', {x: px, y: labelY, 'text-anchor': anchor, class: 'forecast-tide-label'}, label));
-            svg.appendChild(svgEl('text', {x: px, y: labelY + 12, 'text-anchor': anchor, class: 'forecast-tide-time'}, tideTime));
-            const item = document.createElement('li'); item.textContent = title; events.appendChild(item);
+                .format(Math.round(point.time / 60) * 60000).replace(/\s/g, '').toLowerCase();
+            svg.appendChild(svgEl('line', {x1: labelX, x2: px, y1: high ? 37 : 120, y2: high ? py - 5 : py + 5, class: 'forecast-tide-connector'}));
+            svg.appendChild(svgEl('circle', {cx: px, cy: py, r: 3.5, class: 'forecast-tide-point'}));
+            svg.appendChild(svgEl('text', {x: labelX, y: high ? 13 : 134, 'text-anchor': 'middle', class: 'forecast-tide-label'}, point.kind));
+            svg.appendChild(svgEl('text', {x: labelX, y: high ? 31 : 152, 'text-anchor': 'middle', class: 'forecast-tide-time'}, tideTime));
+            const item = document.createElement('li'); item.textContent = `${point.kind} tide, approximately ${tideTime} local`; events.appendChild(item);
         });
-        for (const [fraction, anchor] of [[0, 'start'], [.5, 'middle'], [1, 'end']]) {
-            const stamp = data.forecast.start + fraction * (data.forecast.end - data.forecast.start);
-            svg.appendChild(svgEl('text', {x: x(stamp), y: 128, 'text-anchor': anchor, class: 'forecast-tide-axis'}, hour(stamp, data.timezone)));
+        const ticks = [data.forecast.start, ...data.forecast.times.filter((_, i) => i > 0 && i % 2 === 0), data.forecast.end];
+        for (const [i, stamp] of ticks.entries()) {
+            const anchor = i === 0 ? 'start' : i === ticks.length - 1 ? 'end' : 'middle';
+            svg.appendChild(svgEl('text', {x: x(stamp), y: 176, 'text-anchor': anchor, class: 'forecast-tide-axis'}, hour(stamp, data.timezone)));
         }
         host.append(svg, events);
     }
@@ -133,7 +155,7 @@
         const count = originals.length;
         const cache = new Map(), pending = new Map();
         let stopped = false, refreshTimer, index = 0;
-        let selectedDay = Math.max(0, Math.min(2, Number(window.history.state?.forecastDay) || 0));
+        let selectedDay = Math.max(0, Math.min(6, Number(window.history.state?.forecastDay) || 0));
         const saved = window.history.state?.forecastSite;
         index = Math.max(0, originals.findIndex(panel => panel.dataset.forecastSite === saved));
         const panels = originals;
@@ -147,7 +169,7 @@
             const selected = data.forecast.days[selectedDay];
             const view = {...data, forecast: selected};
             matching(id).forEach(panel => {
-                renderRows(panel, view, units); renderTide(panel, view, units.length);
+                renderRows(panel, view, units); renderTide(panel, view);
                 renderDates(panel, data.forecast.days);
                 status(panel, 'Forecast ready');
                 panel.setAttribute('aria-busy', 'false');
@@ -155,22 +177,26 @@
             });
         }
         function renderDates(panel, days) {
-            panel.querySelectorAll('[data-forecast-day]').forEach((button, i) => {
+            if (panel !== originals[index]) return;
+            host.querySelectorAll('[data-forecast-day]').forEach((button, i) => {
                 const day = days[i];
+                if (!day) return;
                 button.setAttribute('aria-pressed', String(i === selectedDay));
                 button.setAttribute('aria-label', `${day.label}, ${day.month} ${day.day}`);
                 button.querySelector('[data-calendar-month]').textContent = day.month;
                 button.querySelector('[data-calendar-date]').textContent = day.day;
+                button.querySelector('[data-calendar-label]').textContent = day.label;
             });
             const day = days[selectedDay];
+            if (!day) return;
             panel.querySelector('.forecast-tide').href = linkUrl(panel.dataset.siteUrl, 'tide', day.start);
         }
         function placeholders(panel, loading = true) {
             const cached = cache.get(panel.dataset.forecastSite)?.data;
             const zone = cached?.timezone || panel.dataset.timezone;
-            if (!zone) return;
             const days = cached?.forecast.days || JSON.parse(panel.dataset.days);
             renderDates(panel, days);
+            if (!zone || !days[selectedDay]) return;
             renderRows(panel, {timezone: zone, forecast: {slots: days[selectedDay].times.map(time => ({time}))}}, units, {loading});
         }
         function showLoading(id) {
@@ -224,7 +250,7 @@
                     if (stopped || controller.signal.aborted) return;
                     finish();
                     if (data.status !== 'complete') {unavailable(id, data.reason || data.status); return;}
-                    if (!data.timezone || data.forecast?.days?.length !== 3 || data.forecast.days.some(day => day.slots?.length !== 8)) throw new Error('Incomplete forecast');
+                    if (!data.timezone || data.forecast?.days?.length !== 7 || data.forecast.days.some(day => day.slots?.length !== 8)) throw new Error('Incomplete forecast');
                     cache.set(id, {data, loaded: Date.now()}); render(id, data);
                 } catch (_error) {
                     finish();
@@ -240,13 +266,21 @@
             });
             selectors.forEach((button, i) => button.setAttribute('aria-pressed', String(i === index)));
             host.querySelector('[data-forecast-position]').textContent = `Site ${index + 1} of ${count}: ${originals[index].getAttribute('aria-label')}`;
-            remember();
+            remember(); revealDay();
             const panel = originals[index], cached = cache.get(panel.dataset.forecastSite)?.data;
             if (cached && !pending.get(panel.dataset.forecastSite)?.revealed) render(panel.dataset.forecastSite, cached);
+            if (!cached) placeholders(panel, panel.dataset.forecastState !== 'unavailable');
             load(panel);
         }
         function remember() {
             try {window.history.replaceState({...window.history.state, forecastSite: originals[index].dataset.forecastSite, forecastDay: selectedDay}, '');} catch (_error) { /* Preserve navigation if history writes are throttled. */ }
+        }
+        function revealDay() {
+            const rail = host.querySelector('.forecast-dates');
+            const button = rail.querySelector(`[data-forecast-day="${selectedDay}"]`);
+            const area = rail.getBoundingClientRect(), target = button.getBoundingClientRect();
+            if (target.left < area.left) rail.scrollLeft -= area.left - target.left;
+            if (target.right > area.right) rail.scrollLeft += target.right - area.right;
         }
         function selectDay(next) {
             selectedDay = next; remember();
@@ -264,26 +298,32 @@
             const selector = event.target.closest('[data-forecast-select]'); if (selector) goTo(Number(selector.dataset.forecastSelect));
             if (event.target.closest('[data-forecast-retry]')) load(event.target.closest('[data-forecast-site]'), true);
             const dayButton = event.target.closest('[data-forecast-day]');
-            if (dayButton) selectDay(Number(dayButton.dataset.forecastDay));
+            if (dayButton) {
+                selectDay(Number(dayButton.dataset.forecastDay));
+                revealDay();
+            }
         });
         host.addEventListener('keydown', event => {
             if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey || event.target.closest('.forecast-table-scroll')) return;
             const dayButton = event.target.closest('[data-forecast-day]');
             if (dayButton) {
-                const next = {ArrowLeft: selectedDay - 1, ArrowRight: selectedDay + 1, Home: 0, End: 2}[event.key];
+                const next = {ArrowLeft: selectedDay - 1, ArrowRight: selectedDay + 1, Home: 0, End: 6}[event.key];
                 if (next === undefined) return;
-                event.preventDefault(); selectDay(Math.max(0, Math.min(2, next)));
-                originals[index].querySelector(`[data-forecast-day="${selectedDay}"]`).focus({preventScroll: true}); return;
+                event.preventDefault(); selectDay(Math.max(0, Math.min(6, next)));
+                const button = host.querySelector(`[data-forecast-day="${selectedDay}"]`);
+                button.focus({preventScroll: true});
+                revealDay(); return;
             }
             if (!event.target.closest('[data-forecast-select]')) return;
             const next = {ArrowLeft: index - 1, ArrowRight: index + 1, Home: 0, End: count - 1}[event.key];
             if (next === undefined) return;
             event.preventDefault(); goTo(next); selectors[index]?.focus({preventScroll: true});
         });
-        new ResizeObserver(() => {
+        const tideResize = new ResizeObserver(() => {
             const panel = originals[index], data = cache.get(panel.dataset.forecastSite)?.data;
-            if (data && !pending.get(panel.dataset.forecastSite)?.revealed) renderTide(panel, {...data, forecast: data.forecast.days[selectedDay]}, units.length);
-        }).observe(track);
+            if (data && !pending.get(panel.dataset.forecastSite)?.revealed) renderTide(panel, {...data, forecast: data.forecast.days[selectedDay]});
+        });
+        panels.forEach(panel => tideResize.observe(panel.querySelector('[data-forecast-tide]')));
         function tick() {
             if (stopped) return;
             if (!document.hidden) load(originals[index]);
@@ -301,5 +341,5 @@
         announce(); tick();
     }
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initForecast); else initForecast();
-    if (typeof module !== 'undefined') module.exports = {currentGrade, windGrade, compass, temperature, hour, linkUrl, renderRows, renderTide};
+    if (typeof module !== 'undefined') module.exports = {currentGrade, windGrade, compass, temperature, hour, linkUrl, renderRows, renderTide, tidePath};
 })();

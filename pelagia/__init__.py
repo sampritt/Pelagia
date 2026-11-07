@@ -6,7 +6,7 @@ import unicodedata
 import statistics
 import time
 import uuid
-from datetime import date, timedelta
+from datetime import date, timedelta, timezone
 from functools import wraps
 from pathlib import Path
 from urllib.parse import parse_qs, urlencode, urlsplit
@@ -300,7 +300,7 @@ def register_routes(app):
             coords = marine.coordinates(site)
             zone = feed_report.coordinate_zone(*coords) if coords else None
             site["timezone"] = str(zone) if zone else ""
-            site["forecast_days"] = marine.forecast_days(time.time(), zone) if zone else []
+            site["forecast_days"] = marine.forecast_days(time.time(), zone or timezone.utc)
         return render_template("forecast.html", forecast_sites=sites)
 
     @app.get("/api/feed/site-report")

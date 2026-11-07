@@ -21,7 +21,7 @@ class ForecastTest(unittest.TestCase):
             zone = ZoneInfo(name)
             now = datetime.fromisoformat(stamp).timestamp()
             days = marine.forecast_days(now, zone)
-            self.assertEqual(len(days), 3)
+            self.assertEqual(len(days), 7)
             self.assertEqual(days[0]['date'], datetime.fromtimestamp(now, zone).date().isoformat())
             for day in days:
                 self.assertEqual([datetime.fromtimestamp(t, zone).hour for t in day['times']], list(range(0, 24, 3)))
@@ -36,7 +36,7 @@ class ForecastTest(unittest.TestCase):
         raw['weather']['hourly']['temperature_2m'] = [10 + i / 10 for i in range(len(times))]
         raw['weather']['hourly_units']['temperature_2m'] = '°C'
         result = marine.normalize(raw, NOW, NOW)
-        self.assertEqual(len(result['forecast']['days']), 3)
+        self.assertEqual(len(result['forecast']['days']), 7)
         for day in result['forecast']['days']:
             self.assertEqual(len(day['slots']), 8)
             self.assertEqual(day['tide'][0]['time'], day['start'])
@@ -54,6 +54,32 @@ class ForecastTest(unittest.TestCase):
                 self.assertEqual(slot['air_temperature_c'], 10 + i / 10)
                 self.assertEqual(slot['swell_height_m'], .8)
                 self.assertEqual(slot['swell_period_s'], 8)
+
+    def test_tide_turns_fit_subhour_vertices_and_preserve_plateaus_and_gaps(self):
+        for sign, kind in [(-1, 'High'), (1, 'Low')]:
+            points = [dict(time=i * 3600, value=sign * (i - 1.25) ** 2) for i in range(3)]
+            turn, = marine.tide_turns(points)
+            self.assertEqual(turn['kind'], kind)
+            self.assertAlmostEqual(turn['time'], 4500)  # 1:15, not the sampled 1:00.
+            self.assertAlmostEqual(turn['value'], 0)
+        plateau = [dict(time=i * 3600, value=v) for i, v in enumerate([0, 2, 2, 0])]
+        self.assertEqual(marine.tide_turns(plateau), [dict(time=5400, value=2, kind='High')])
+        for values in ([0, None, 0], [None, 2, 0], [0, 2, None], [1, 1, 1], [0, 1, 2]):
+            self.assertEqual(marine.tide_turns([dict(time=i * 3600, value=v) for i, v in enumerate(values)]), [])
+        self.assertEqual(marine.tide_turns([dict(time=t, value=v) for t, v in [(0, 0), (7200, 2), (10800, 0)]]), [])
+
+    def test_refined_turns_stay_on_curve_and_belong_to_correct_local_day(self):
+        start = marine.forecast_days(NOW, ZoneInfo('Pacific/Galapagos'))[0]['start']
+        for minutes, day_index in [(15, 0), (24 * 60 - 15, 0), (24 * 60 + 15, 1)]:
+            raw = payload()
+            vertex = start + minutes * 60
+            raw['hourly']['sea_level_height_msl'] = [-((t - vertex) / 3600) ** 2 for t in raw['hourly']['time']]
+            days = marine.normalize(raw, NOW, NOW)['forecast']['days']
+            self.assertEqual(sum(len(day['extrema']) for day in days), 1)
+            event, = days[day_index]['extrema']
+            self.assertAlmostEqual(event['time'], vertex)
+            self.assertAlmostEqual(event['value'], 0)
+            self.assertIn(dict(time=event['time'], value=event['value']), days[day_index]['tide'])
 
     def test_missing_air_temperature_is_unavailable_and_negative_air_is_valid(self):
         raw = payload()
@@ -99,7 +125,7 @@ class ForecastTest(unittest.TestCase):
                 self.assertNotIn('Your forecast', page)
                 self.assertNotIn('class="forecast-heading"', page)
                 self.assertNotIn('data-forecast-local', page)
-                self.assertIn('class="explore-filter"', page)
+                self.assertIn('class="forecast-site-tag"', page)
                 self.assertIn('>Featured Blue Wall</button>', page)
                 self.assertNotIn('data-forecast-dot=', page)
                 self.assertNotIn('data-forecast-site="1"', page)
@@ -110,7 +136,7 @@ class ForecastTest(unittest.TestCase):
                 featured.assert_not_called()
                 self.assertEqual(page.count('data-forecast-site='), 2)
                 self.assertEqual(page.count('data-forecast-select='), 2)
-                self.assertEqual(page.count('data-forecast-day='), 6)
+                self.assertEqual(page.count('data-forecast-day='), 7)
                 self.assertIn('data-temperature-unit="c" data-length-unit="m"', page)
                 self.assertIn('href="/forecast" aria-current="page"', page)
                 self.assertLess(page.index('<span>Log dive</span>'), page.index('<span>Forecast</span>'))
@@ -130,7 +156,8 @@ class ForecastTest(unittest.TestCase):
                 self.assertNotIn('>Swell period</th>', page)
                 self.assertIn('aria-controls="forecastSite1"', page)
                 self.assertIn('aria-label="Kelp Garden" hidden inert', page)
-                self.assertLess(page.index('class="forecast-dates"'), page.index('class="forecast-card"'))
+                self.assertLess(page.index('class="forecast-dates"'), page.index('class="forecast-navigation"'))
+                self.assertLess(page.index('class="forecast-navigation"'), page.index('class="forecast-card"'))
                 for extra in ('data-forecast-prev', 'data-forecast-next', 'Regional surface forecast', 'data-tide-date'):
                     self.assertNotIn(extra, page)
 
@@ -143,6 +170,18 @@ class ForecastTest(unittest.TestCase):
                 page = client.get('/forecast').get_data(as_text=True)
             self.assertIn('Explore dive sites', page)
             self.assertNotIn('data-forecast-site=', page)
+
+    def test_site_without_coordinates_still_has_a_week_calendar(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            app, _, _ = self.make_app(Path(tmp))
+            client = app.test_client()
+            self.signup(client)
+            with patch('pelagia.fetch_daily_featured_site', return_value=dict(
+                id=3, name='Unknown location', latitude=None, longitude=None, country_or_area='')):
+                page = client.get('/forecast').get_data(as_text=True)
+            self.assertEqual(page.count('data-forecast-day='), 7)
+            self.assertIn('data-coordinates="false"', page)
+            self.assertIn('data-calendar-label>Today</span>', page)
 
 
 if __name__ == '__main__':

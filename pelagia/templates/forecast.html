@@ -3,22 +3,23 @@
 {% block content %}
 <section class="forecast-page" data-forecast data-temperature-unit="{{ units.temperature }}" data-length-unit="{{ units.length }}" aria-label="Dive site forecasts">
     {% if forecast_sites %}
-    <div class="explore-filters forecast-navigation" role="group" aria-label="Choose a dive site">
-        {% for site in forecast_sites %}<button class="explore-filter" type="button" data-forecast-select="{{ loop.index0 }}" aria-controls="forecastSite{{ site.id }}" aria-pressed="{{ 'true' if loop.first else 'false' }}">{{ site.name }}</button>{% endfor %}
+    {% set first_site = forecast_sites[0] %}
+    <div class="forecast-dates" role="group" aria-label="Forecast date; swipe for the week">
+        {% for i in range(7) %}
+        {% set day = first_site.forecast_days[i] if first_site.forecast_days else none %}
+        <button type="button" data-forecast-day="{{ i }}" aria-pressed="{{ 'true' if loop.first else 'false' }}"{% if day %} aria-label="{{ day.label }}, {{ day.month }} {{ day.day }}"{% endif %}>
+            <span data-calendar-month>{{ day.month if day else '—' }}</span><strong data-calendar-date>{{ day.day if day else '—' }}</strong><span data-calendar-label>{{ day.label if day else '—' }}</span>
+        </button>
+        {% endfor %}
+    </div>
+    <div class="forecast-navigation" role="group" aria-label="Choose a dive site">
+        {% for site in forecast_sites %}<button class="forecast-site-tag" type="button" data-forecast-select="{{ loop.index0 }}" aria-controls="forecastSite{{ site.id }}" aria-pressed="{{ 'true' if loop.first else 'false' }}">{{ site.name }}</button>{% endfor %}
     </div>
     {% endif %}
     <p class="sr-only" role="status" aria-live="polite" data-forecast-position></p>
     <div class="forecast-track" data-forecast-track>
         {% for site in forecast_sites %}
         <article id="forecastSite{{ site.id }}" class="forecast-site" data-forecast-site="{{ site.id }}" data-url="{{ url_for('api_site_conditions', site_id=site.id) }}" data-site-url="{{ url_for('dive_site_profile', site_id=site.id) }}" data-timezone="{{ site.timezone }}" data-days='{{ site.forecast_days|tojson }}' data-coordinates="{{ 'true' if site.latitude is not none and site.longitude is not none else 'false' }}" aria-label="{{ site.name }}"{% if not loop.first %} hidden inert{% endif %}>
-            <div class="forecast-dates" role="group" aria-label="Forecast date">
-                {% for label in ['Today', 'Tomorrow', 'Day after'] %}
-                {% set day = site.forecast_days[loop.index0] if site.forecast_days else none %}
-                <button type="button" data-forecast-day="{{ loop.index0 }}" aria-pressed="{{ 'true' if loop.first else 'false' }}"{% if day %} aria-label="{{ label }}, {{ day.month }} {{ day.day }}"{% endif %}>
-                    <span data-calendar-month>{{ day.month if day else '—' }}</span><strong data-calendar-date>{{ day.day if day else '—' }}</strong><span>{{ label }}</span>
-                </button>
-                {% endfor %}
-            </div>
             <div class="forecast-card">
                 <div class="forecast-table-scroll" tabindex="0" role="region" aria-label="Hourly conditions; swipe to see all stats">
                     <table class="forecast-table">
@@ -28,7 +29,7 @@
                     </table>
                 </div>
                 <a class="forecast-tide" href="{{ url_for('dive_site_profile', site_id=site.id) }}#forecast-tide" aria-label="Open {{ site.name }} tide chart">
-                    <div class="forecast-tide-heading"><h2>Tide</h2><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17 17 7M7 7h10v10"/></svg></div>
+                    <div class="forecast-tide-heading"><h2>Tide</h2><span class="forecast-tide-note">Est. local time</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17 17 7M7 7h10v10"/></svg></div>
                     <div data-forecast-tide><span class="skeleton forecast-tide-placeholder"></span></div>
                 </a>
                 <p class="sr-only" role="status" data-forecast-status>Loading forecast</p>

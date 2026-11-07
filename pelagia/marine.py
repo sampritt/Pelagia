@@ -34,13 +34,13 @@ def strength(value):
 
 
 def forecast_days(now, zone):
-    """Three site-local calendar days, with eight wall-clock forecast slots each."""
+    """Seven site-local calendar days, with eight wall-clock forecast slots each."""
     today = datetime.fromtimestamp(now, zone).date()
     days = []
-    for offset in range(3):
+    for offset in range(7):
         day = today + timedelta(days=offset)
         start = datetime.combine(day, datetime.min.time(), zone)
-        days.append(dict(date=day.isoformat(), label=('Today', 'Tomorrow', 'Day after')[offset],
+        days.append(dict(date=day.isoformat(), label='Today' if offset == 0 else day.strftime('%a'),
                          month=day.strftime('%b'), day=day.day, weekday=day.strftime('%a'),
                          start=start.timestamp(), end=(start + timedelta(days=1)).timestamp(),
                          times=[(start + timedelta(hours=3 * i)).timestamp() for i in range(8)]))
@@ -76,8 +76,12 @@ def coordinates(site):
     return None
 
 
-def tide_extrema(points):
-    """Find extrema including plateaus; never bridge a gap in hourly samples."""
+def tide_turns(points):
+    """Estimate turns with a three-sample parabola, or a plateau's midpoint.
+
+    Sub-hour times are model estimates, not tide-station observations. Only
+    consecutive, finite hourly samples qualify; missing data is never bridged.
+    """
     extrema = []
     i = 1
     while i < len(points) - 1:
@@ -92,9 +96,19 @@ def tide_extrema(points):
             before, value, after = points[start - 1]['value'], points[start]['value'], points[end + 1]['value']
             kind = 'High' if value > before and value > after else 'Low' if value < before and value < after else None
             if kind:
-                extrema.append(((points[start]['time'] + points[end]['time']) / 2, kind))
+                stamp = (points[start]['time'] + points[end]['time']) / 2
+                if start == end:
+                    curvature = before - 2 * value + after
+                    offset = (before - after) / (2 * curvature)
+                    stamp += offset * 3600
+                    value -= (before - after) ** 2 / (8 * curvature)
+                extrema.append(dict(time=stamp, kind=kind, value=value))
         i += 1
     return extrema
+
+
+def tide_extrema(points):
+    return [(point['time'], point['kind']) for point in tide_turns(points)]
 
 
 def tide_phase(points, now):
@@ -319,7 +333,7 @@ def normalize(payload, now, fetched):
         return value % 360 if circular else value
 
     tide_lookup = lookups[FIELDS[1]]
-    extrema = tide_extrema(series[FIELDS[1]])
+    extrema = tide_turns(series[FIELDS[1]])
     days = []
     for day in forecast_days(now, zone):
         day_slots = []
@@ -331,9 +345,11 @@ def normalize(payload, now, fetched):
                                   swell_height_m=height, swell_period_s=period, swell=swell_conditions(height, period),
                                   water_temperature_c=sample(lookups[FIELDS[2]], stamp), air_temperature_c=sample(air_lookup, stamp)))
         day_times = [day['start'], *(t for t in times if day['start'] < t < day['end']), day['end']]
-        days.append(dict(day, slots=day_slots, tide=[dict(time=t, value=sample(tide_lookup, t)) for t in day_times],
-                         extrema=[dict(time=t, kind=kind, value=sample(tide_lookup, t))
-                                  for t, kind in extrema if day['start'] <= t < day['end']]))
+        turns = [point for point in extrema if day['start'] <= point['time'] < day['end']]
+        tide = {t: dict(time=t, value=sample(tide_lookup, t)) for t in day_times}
+        # Include each fitted vertex so the marker sits on the plotted curve.
+        tide.update({point['time']: dict(time=point['time'], value=point['value']) for point in turns})
+        days.append(dict(day, slots=day_slots, tide=sorted(tide.values(), key=lambda point: point['time']), extrema=turns))
     return dict(status='complete', timezone=payload['timezone'], fetched_at=fetched,
                 forecast=dict(days=days),
                 current=dict(velocity_kn=values[FIELDS[0]], strength=strength(values[FIELDS[0]]),
