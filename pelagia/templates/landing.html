@@ -23,10 +23,12 @@
 {% macro arrow(direction='right') -%}
 <svg class="marketing-arrow" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="{{ 'M12 5v14m-6-6 6 6 6-6' if direction == 'down' else 'M5 12h14m-6-6 6 6-6 6' }}"/></svg>
 {%- endmacro %}
-{% macro phone(filename, alt, extra='') -%}
+{% macro phone(filename, alt, extra='', width=591) -%}
 <div class="product-phone {{ extra }}">
-    <div class="phone-screen">
-        <img src="{{ url_for('static', filename='img/landing/' ~ filename) }}" alt="{{ alt }}" width="1170" height="2532" loading="lazy" decoding="async">
+    <div class="phone-screen" style="--screen-aspect: {{ width }} / 1280">
+        <img src="{{ url_for('static', filename='img/landing/' ~ filename) }}" alt="{{ alt }}" width="{{ width }}" height="1280" loading="lazy" decoding="async" draggable="false">
+        {% if 'phone-dive' in extra %}<span class="phone-depth-profile" aria-hidden="true"></span>{% endif %}
+        {% if 'phone-site' in extra %}<span class="phone-scrollbar-mask" aria-hidden="true"></span>{% endif %}
         <span class="phone-island" aria-hidden="true"></span>
         <span class="phone-battery" aria-hidden="true"></span>
         <span class="phone-avatar" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="3.5"/><path d="M5 21v-2a7 7 0 0 1 14 0v2"/></svg></span>
@@ -71,16 +73,17 @@
                 <p class="product-eyebrow"><span>01</span> Before you get in</p>
                 <h2 id="planTitle">Plan<span>.</span></h2>
                 <ul class="product-list plan-list">
-                    <li><span><strong class="product-stat">12,000+</strong> dive sites, global coverage</span></li>
+                    <li><span><strong class="product-stat">10,000+</strong> dive sites</span></li>
                     <li><span><strong class="product-stat">500+</strong> marine species</span></li>
-                    <li><span><strong class="product-stat">3,500+</strong> dive centers</span></li>
+                    <li><span><strong class="product-stat">Global</strong> dive center registry</span></li>
                     <li><span>Forecast surface conditions, tides, currents and more</span></li>
                     <li><span>Get daily reports on dive site conditions straight to your feed</span></li>
                 </ul>
             </div>
-            <div class="product-visual plan-visual">
+            <div class="product-visual plan-visual paired-visual">
                 <div class="visual-orbit" aria-hidden="true"></div>
-                {{ phone('plan.png', 'Pelagia dive site overview for Melissa’s Garden in Indonesia, with its map and description.') }}
+                {{ phone('plan.jpg', 'Pelagia dive site overview for Batu Bolong in Indonesia, with its map and description.', 'phone-secondary phone-site') }}
+                {{ phone('forecast.jpg', 'Pelagia forecast for Melissa’s Garden, with hourly current speed and direction and a tide chart.', 'phone-primary') }}
             </div>
         </section>
 
@@ -95,9 +98,9 @@
                     <li><span>Import dives from your Garmin device</span></li>
                 </ul>
             </div>
-            <div class="product-visual log-visual">
-                {{ phone('log-details.png', 'Pelagia dive logging with site, location, and depth metrics.', 'phone-secondary') }}
-                {{ phone('log-air.png', 'Pelagia dive logging with wetsuit selection, gas mix, air consumption, and SAC rate.', 'phone-primary') }}
+            <div class="product-visual log-visual paired-visual">
+                {{ phone('log-details.jpg', 'Pelagia dive logging with site, location, and depth metrics.', 'phone-secondary') }}
+                {{ phone('log-air.jpg', 'Pelagia dive logging with wetsuit selection, gas mix, air consumption, and SAC rate.', 'phone-primary phone-air') }}
             </div>
         </section>
 
@@ -113,7 +116,7 @@
             </div>
             <div class="product-visual track-visual">
                 <div class="visual-orbit" aria-hidden="true"></div>
-                {{ phone('track.png', 'Pelagia personalized 3 mm wetsuit and 5 kg weight recommendations and current conditions.') }}
+                {{ phone('track.jpg', 'Pelagia personalized 3 mm wetsuit and 7 kg weight recommendations and a seven-day current forecast.') }}
             </div>
         </section>
 
@@ -130,7 +133,7 @@
             </div>
             <div class="product-visual connect-visual">
                 <div class="visual-orbit" aria-hidden="true"></div>
-                {{ phone('connect.png', 'A logged Pelagia dive with its map, depth profile, 94 ft maximum depth, 38 minute duration, and marine life sightings.') }}
+                {{ phone('connect.jpg', 'A logged dive at Gordon Rocks with its depth profile, 94 ft maximum depth, 38 minute duration, marine life sightings, and community reactions.', 'phone-dive', width=605) }}
             </div>
         </section>
     </div>

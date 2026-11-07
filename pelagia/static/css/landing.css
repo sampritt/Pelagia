@@ -6,18 +6,20 @@ html:has(.marketing-body) { background: #fbfcfd; scroll-behavior: smooth; scroll
 .marketing-body .pwa-notices:has(.pwa-notice:not([hidden])) { position: fixed; z-index: 100; inset: 100px 16px auto; }
 .marketing-page { --gutter: clamp(24px, 5.55vw, 88px); }
 .marketing-page h1, .marketing-page h2, .marketing-page h3 { color: var(--marketing-ink); }
+.marketing-page a, .marketing-page button { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
 .marketing-page a:focus-visible, .marketing-page button:focus-visible { outline: 3px solid #009ea8; outline-offset: 6px; }
 .marketing-header { position: sticky; top: 0; z-index: 50; background: #fbfcfdf5; backdrop-filter: blur(18px); border-bottom: 1px solid #092d430c; }
 .marketing-nav-inner { max-width: 1600px; min-height: 88px; margin: auto; padding: 16px var(--gutter); display: flex; align-items: center; gap: 40px; }
 .marketing-brand { display: inline-flex; align-items: center; flex-shrink: 0; gap: 10px; font-size: 29px; font-weight: 700; letter-spacing: -1.3px; }
 .marketing-brand img { width: 40px; height: 40px; border-radius: 11px; }
 .marketing-navigation { display: flex; align-items: center; justify-content: center; gap: clamp(22px, 2.4vw, 40px); margin: 0 auto; }
-.marketing-navigation a, .marketing-login { padding: 10px 0; font-size: 14px; font-weight: 650; white-space: nowrap; }
+.marketing-navigation a, .marketing-login { display: inline-flex; align-items: center; min-height: 44px; padding: 10px 0; font-size: 14px; font-weight: 650; white-space: nowrap; }
 .marketing-navigation a, .marketing-login, .marketing-hero-link { transition: color 180ms; }
 .marketing-navigation a:hover, .marketing-navigation a[aria-current], .marketing-login:hover { color: var(--marketing-blue); }
 .marketing-account { display: flex; align-items: center; gap: 26px; }
-.marketing-button { display: inline-flex; justify-content: center; align-items: center; min-height: 48px; padding: 13px 22px; gap: 26px; border: 1px solid transparent; border-radius: 8px; background: var(--marketing-blue); color: #fff; font-size: 14px; font-weight: 700; white-space: nowrap; transition: background 180ms, transform 180ms, box-shadow 180ms; }
+.marketing-button { display: inline-flex; justify-content: center; align-items: center; min-height: 48px; padding: 13px 22px; gap: 26px; border: 1px solid transparent; border-radius: 12px; background: var(--marketing-blue); color: #fff; font-size: 14px; font-weight: 700; white-space: nowrap; transition: background 180ms, transform 180ms, box-shadow 180ms; }
 .marketing-button:hover { background: #005bd0; box-shadow: 0 6px 20px #0064de25; transform: translateY(-2px); }
+.marketing-button:active { transform: translateY(0) scale(.98); box-shadow: none; }
 .marketing-arrow { display: inline-block; flex: 0 0 20px; width: 20px; height: 20px; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
 .marketing-menu-toggle { display: none; }
 .marketing-hero { position: relative; isolation: isolate; display: flex; align-items: center; min-height: 690px; min-height: min(820px, calc(100svh - 88px)); padding: 76px var(--gutter) 114px; background: #064c64 url('../img/landing/coral-hero.jpg') center / cover; color: #fff; scroll-margin-top: 88px; }
@@ -35,6 +37,9 @@ html:has(.marketing-body) { background: #fbfcfd; scroll-behavior: smooth; scroll
 .marketing-product { overflow: clip; padding: 40px var(--gutter) 90px; scroll-margin-top: 88px; }
 .product-section { --section-accent: #009da6; position: relative; display: grid; grid-template-columns: 1fr 1fr; align-items: center; gap: clamp(45px, 7vw, 105px); max-width: 1180px; min-height: 800px; margin: 0 auto; padding: 70px 0; }
 .product-section + .product-section { border-top: 1px solid #dce7eb; }
+.product-copy, .product-visual { transition: opacity 600ms ease, translate 600ms cubic-bezier(.2, .7, .2, 1); }
+.product-section[data-reveal-pending] .product-copy, .product-section[data-reveal-pending] .product-visual { opacity: 0; translate: 0 18px; }
+.product-visual { transition-delay: 80ms; }
 .product-copy { position: relative; z-index: 2; }
 .product-eyebrow { display: flex; align-items: center; gap: 13px; margin: 0 0 20px; color: #667e8b; font-size: 11px; font-weight: 650; line-height: 1.5; letter-spacing: 1.7px; text-transform: uppercase; }
 .product-eyebrow > span { color: var(--section-accent); font-size: 12px; letter-spacing: 1px; }
@@ -53,24 +58,29 @@ html:has(.marketing-body) { background: #fbfcfd; scroll-behavior: smooth; scroll
 .product-phone { position: relative; width: 278px; flex: 0 0 auto; padding: 7px; background: #15232c; border: 1px solid #71808a; border-radius: 40px; box-shadow: inset 0 0 0 2px #36454e, 0 25px 44px -14px #062d4340, 0 5px 12px #062d4320; transform: rotate(5deg); }
 .product-phone::before { position: absolute; content: ''; top: 112px; left: -3px; width: 3px; height: 43px; border-radius: 2px 0 0 2px; background: #56656e; box-shadow: 0 52px #56656e; }
 .product-phone::after { position: absolute; content: ''; top: 155px; right: -3px; width: 3px; height: 64px; border-radius: 0 2px 2px 0; background: #56656e; }
-.phone-screen { position: relative; overflow: hidden; border-radius: 32px; background: #f1f7fa; aspect-ratio: 1170 / 2532; }
-.phone-screen > img { width: 100%; height: 100%; object-fit: cover; }
+.phone-screen { position: relative; overflow: hidden; border-radius: 32px; background: #f1f7fa; aspect-ratio: var(--screen-aspect); }
+.phone-screen > img { display: block; width: 100%; height: 100%; object-fit: cover; }
 .phone-island { position: absolute; top: 1.5%; left: 38%; width: 24%; height: 2.7%; border-radius: 20px; background: #10171d; }
 /* Presentation overlays preserve the supplied screen while anonymizing its avatar. */
-.phone-avatar { position: absolute; top: 7.35%; left: 87.15%; width: 9.15%; aspect-ratio: 1; border: 1px solid #fff; border-radius: 50%; background: #19516a; display: grid; place-items: center; }
+.phone-avatar { position: absolute; top: var(--avatar-top, 7.3%); left: 87%; width: 9.45%; aspect-ratio: 1; border: 1px solid #fff; border-radius: 50%; background: #19516a; display: grid; place-items: center; }
+.phone-dive { --avatar-top: 7.5%; }
+/* Extend the supplied depth card over the adjacent photo peek without changing its trace. */
+.phone-depth-profile { position: absolute; left: 7.6%; top: 25.39%; width: 84.96%; height: 29.22%; background: url('../img/landing/connect.jpg') 29.68% 35.87% / 134.45% 342.25% no-repeat; }
+.phone-scrollbar-mask { position: absolute; top: 5.6%; right: 0; width: 1.8%; height: 19%; background: linear-gradient(to bottom, #082e44 0 41%, #edf4f8 41%); }
 .phone-avatar svg { width: 72%; height: 72%; stroke: #c7e4f0; stroke-width: 1.6; }
 .phone-battery { position: absolute; left: 85.8%; top: 2.18%; width: 8%; height: 1.85%; background: #f1f7fa; }
 .phone-battery::before { position: absolute; content: ''; inset: 8% 11% 8% 3%; border: 1px solid #151c21; border-radius: 2px; background: #151c21; box-shadow: inset 0 0 0 1px #f1f7fa; }
 .phone-battery::after { position: absolute; content: ''; right: 2%; top: 32%; width: 7%; height: 36%; border-radius: 0 1px 1px 0; background: #151c21; }
 .phone-home { position: absolute; bottom: .65%; left: 34%; width: 32%; height: .6%; border-radius: 20px; background: #0e293a; }
+.phone-air .phone-home { left: 31.9%; width: 36.2%; bottom: .85%; height: .75%; }
 .product-reversed .product-copy { grid-column: 2; grid-row: 1; }
 .product-reversed .product-visual { grid-column: 1; grid-row: 1; }
 .product-log { --section-accent: #086bec; }
-.log-visual { height: 690px; }
+.paired-visual { height: 690px; }
 .log-visual::before { inset: 80px -30px 70px; background: #eaf1ff; border-radius: 42% 48% 44% 43%; transform: rotate(6deg); }
-.log-visual .product-phone { width: 248px; }
-.log-visual .phone-secondary { position: absolute; top: 30px; left: -6px; transform: rotate(-9deg); }
-.log-visual .phone-primary { position: absolute; right: -6px; top: 105px; transform: rotate(7deg); }
+.paired-visual .product-phone { width: 248px; }
+.paired-visual .phone-secondary { position: absolute; top: 30px; left: -6px; transform: rotate(-9deg); }
+.paired-visual .phone-primary { position: absolute; right: -6px; top: 105px; transform: rotate(7deg); }
 .product-track { --section-accent: #009ba5; }
 .track-visual::before { background: #e4f3ef; transform: rotate(9deg); }
 .track-visual .product-phone { transform: rotate(-5deg); }
@@ -102,10 +112,10 @@ html:has(.marketing-body) { background: #fbfcfd; scroll-behavior: smooth; scroll
     .product-section { gap: 50px; }
     .product-phone { width: 253px; }
     .product-visual { height: 610px; }
-    .log-visual { height: 650px; }
-    .log-visual .product-phone { width: 226px; }
-    .log-visual .phone-secondary { left: -6px; }
-    .log-visual .phone-primary { right: -6px; }
+    .paired-visual { height: 650px; }
+    .paired-visual .product-phone { width: 226px; }
+    .paired-visual .phone-secondary { left: -6px; }
+    .paired-visual .phone-primary { right: -6px; }
     .product-list > li { font-size: 17px; }
 }
 @media (max-width: 900px) {
@@ -133,9 +143,9 @@ html:has(.marketing-body) { background: #fbfcfd; scroll-behavior: smooth; scroll
     .product-phone { width: 234px; }
     .product-list > li { font-size: 16px; gap: 10px; }
     .product-stat { font-size: 23px; }
-    .log-visual .product-phone { width: 200px; }
-    .log-visual .phone-secondary { top: 28px; left: -10px; }
-    .log-visual .phone-primary { top: 112px; right: -8px; }
+    .paired-visual .product-phone { width: 200px; }
+    .paired-visual .phone-secondary { top: 28px; left: -10px; }
+    .paired-visual .phone-primary { top: 112px; right: -8px; }
     .marketing-support-inner { gap: 40px; }
     .support-contact > a { gap: 12px; }
 }
@@ -146,7 +156,7 @@ html:has(.marketing-body) { background: #fbfcfd; scroll-behavior: smooth; scroll
     .marketing-brand { font-size: 24px; gap: 7px; }
     .marketing-account { gap: 16px; }
     .marketing-login { font-size: 12px; }
-    .marketing-signup { min-height: 42px; padding: 10px 15px; font-size: 12px; }
+    .marketing-signup { min-height: 44px; padding: 10px 15px; font-size: 12px; }
     .marketing-signup .marketing-arrow { display: none; }
     .marketing-navigation { justify-content: space-between; gap: 12px; }
     .marketing-navigation a { font-size: 13px; }
@@ -173,10 +183,10 @@ html:has(.marketing-body) { background: #fbfcfd; scroll-behavior: smooth; scroll
     .product-visual::before { inset: 50px -5px 60px; }
     .visual-orbit { inset: 80px -5px 100px; }
     .visual-orbit::before { inset-inline: -5px; }
-    .log-visual { height: 650px; }
-    .log-visual .product-phone { width: 225px; }
-    .log-visual .phone-secondary { top: 25px; left: 0; }
-    .log-visual .phone-primary { top: 110px; right: 0; }
+    .paired-visual { height: 650px; }
+    .paired-visual .product-phone { width: 225px; }
+    .paired-visual .phone-secondary { top: 25px; left: 16px; }
+    .paired-visual .phone-primary { top: 110px; right: 16px; }
     .marketing-support { padding-top: 55px; }
     .marketing-support-inner { grid-template-columns: minmax(0, 1fr); gap: 30px; margin-bottom: 44px; }
     .marketing-support h2 { font-size: 42px; }
@@ -199,12 +209,13 @@ html:has(.marketing-body) { background: #fbfcfd; scroll-behavior: smooth; scroll
     .marketing-hero .welcome-actions { gap: 7px 16px; }
     .product-visual { height: 590px; }
     .product-phone { width: 239px; }
-    .log-visual .product-phone { width: 199px; }
-    .log-visual .phone-primary { top: 105px; }
+    .paired-visual .product-phone { width: 199px; }
+    .paired-visual .phone-primary { top: 105px; }
     .support-contact > a { font-size: 17px; gap: 10px; }
 }
 @media (prefers-reduced-motion: reduce) {
     html:has(.marketing-body) { scroll-behavior: auto; }
     .marketing-page *, .marketing-page *::before, .marketing-page *::after { transition: none !important; animation: none !important; }
-    .marketing-button:hover { transform: none; }
+    .marketing-button:hover, .marketing-button:active { transform: none; }
+    .product-section[data-reveal-pending] .product-copy, .product-section[data-reveal-pending] .product-visual { opacity: 1; translate: none; }
 }
