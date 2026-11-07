@@ -5105,7 +5105,7 @@ body:has(.pwa-install-dialog[open]) { overflow: hidden; }
 .diver-identity-content { flex: 1; min-width: 0; }
 .diver-eyebrow { margin: 0 0 7px; color: var(--muted); font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.13em; }
 .diver-identity h1 { font-size: clamp(1.65rem, 3vw, 2.4rem); letter-spacing: -0.045em; overflow-wrap: anywhere; }
-.diver-headline { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; margin-top: 12px; min-height: 30px; }
+.diver-headline { position: relative; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; margin-top: 12px; min-height: 30px; }
 .diver-dive-count { font-size: 0.85rem; white-space: nowrap; color: var(--muted-strong); }
 .diver-dive-count strong { color: var(--ink); font-weight: 700; }
 .certification-tag { display: inline-flex; align-items: center; gap: 7px; max-width: 100%; padding: 5px 11px; border: 1px solid var(--accent-line); border-radius: 6px; color: var(--accent-deep); background: var(--accent-soft); font-size: 0.73rem; font-weight: 700; }
@@ -5114,12 +5114,12 @@ body:has(.pwa-install-dialog[open]) { overflow: hidden; }
 .certification-tag button svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
 .profile-text-button { border: 0; color: var(--muted); background: transparent; font-size: 0.8rem; cursor: pointer; }
 .profile-text-button:hover { color: var(--accent-deep); }
-.certification-editor { position: relative; }
+.certification-editor { min-width: 0; max-width: 100%; }
 .certification-editor summary { list-style: none; }
 .certification-editor summary::-webkit-details-marker { display: none; }
-.certification-form { position: absolute; z-index: 12; top: 32px; left: -10px; width: 300px; padding: 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); box-shadow: var(--shadow-sm); }
+.certification-form { position: absolute; z-index: 12; top: calc(100% + 8px); left: 0; width: min(360px, 100%); padding: 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); box-shadow: var(--shadow-sm); }
 .certification-form label { display: block; margin-bottom: 8px; font-size: 0.75rem; font-weight: 700; }
-.certification-form input { width: 100%; }
+.certification-form input { width: 100%; min-width: 0; }
 .certification-form .autocomplete-menu { position: static; margin-top: 6px; max-height: 250px; box-shadow: none; }
 .certification-form .autocomplete-menu button { width: 100%; text-align: left; }
 .certification-form [aria-selected="true"] { background: var(--accent-soft); color: var(--accent-deep); }
@@ -5213,7 +5213,9 @@ body:has(.pwa-install-dialog[open]) { overflow: hidden; }
     .profile-bio-row,
     .profile-bio-form { grid-column: 1 / -1; }
     .profile-bio { font-size: 0.8rem; }
-    .certification-form { left: auto; right: -12px; width: min(280px, calc(100vw - 52px)); }
+    .certification-editor[open] { flex-basis: 100%; }
+    .certification-form { position: static; width: 100%; margin-top: 8px; padding: 12px; box-shadow: none; }
+    .certification-form .autocomplete-menu { max-height: min(250px, 35dvh); }
     .profile-section-heading { gap: 8px; margin-bottom: 16px; }
     .profile-section-heading > span { font-size: 0.65rem; }
     .diver-metrics-grid > div { padding: 18px 12px; }
