@@ -72,7 +72,7 @@ html:has(.marketing-body) { background: #fbfcfd; scroll-behavior: smooth; scroll
 .phone-battery::before { position: absolute; content: ''; inset: 8% 11% 8% 3%; border: 1px solid #151c21; border-radius: 2px; background: #151c21; box-shadow: inset 0 0 0 1px #f1f7fa; }
 .phone-battery::after { position: absolute; content: ''; right: 2%; top: 32%; width: 7%; height: 36%; border-radius: 0 1px 1px 0; background: #151c21; }
 .phone-home { position: absolute; bottom: .65%; left: 34%; width: 32%; height: .6%; border-radius: 20px; background: #0e293a; }
-.phone-air .phone-home { left: 31.9%; width: 36.2%; bottom: .85%; height: .75%; }
+.phone-air .phone-home, .phone-forecast .phone-home { left: 31.9%; width: 36.2%; bottom: .85%; height: .75%; }
 .product-reversed .product-copy { grid-column: 2; grid-row: 1; }
 .product-reversed .product-visual { grid-column: 1; grid-row: 1; }
 .product-log { --section-accent: #086bec; }
