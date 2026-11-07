@@ -266,7 +266,7 @@
             });
             selectors.forEach((button, i) => button.setAttribute('aria-pressed', String(i === index)));
             host.querySelector('[data-forecast-position]').textContent = `Site ${index + 1} of ${count}: ${originals[index].getAttribute('aria-label')}`;
-            remember(); revealDay();
+            remember(); revealDay(); revealSite();
             const panel = originals[index], cached = cache.get(panel.dataset.forecastSite)?.data;
             if (cached && !pending.get(panel.dataset.forecastSite)?.revealed) render(panel.dataset.forecastSite, cached);
             if (!cached) placeholders(panel, panel.dataset.forecastState !== 'unavailable');
@@ -281,6 +281,13 @@
             const area = rail.getBoundingClientRect(), target = button.getBoundingClientRect();
             if (target.left < area.left) rail.scrollLeft -= area.left - target.left;
             if (target.right > area.right) rail.scrollLeft += target.right - area.right;
+        }
+        function revealSite(button = selectors[index]) {
+            const rail = host.querySelector('.forecast-navigation');
+            const area = rail.getBoundingClientRect(), target = button.getBoundingClientRect();
+            const left = area.left + 5, right = area.right - 5;
+            if (target.width > right - left || target.left < left) rail.scrollLeft += target.left - left;
+            else if (target.right > right) rail.scrollLeft += target.right - right;
         }
         function selectDay(next) {
             selectedDay = next; remember();
@@ -302,6 +309,10 @@
                 selectDay(Number(dayButton.dataset.forecastDay));
                 revealDay();
             }
+        });
+        host.addEventListener('focusin', event => {
+            const selector = event.target.closest('[data-forecast-select]');
+            if (selector) revealSite(selector);
         });
         host.addEventListener('keydown', event => {
             if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey || event.target.closest('.forecast-table-scroll')) return;

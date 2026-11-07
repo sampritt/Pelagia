@@ -125,7 +125,7 @@ class ForecastTest(unittest.TestCase):
                 self.assertNotIn('Your forecast', page)
                 self.assertNotIn('class="forecast-heading"', page)
                 self.assertNotIn('data-forecast-local', page)
-                self.assertIn('class="forecast-site-tag"', page)
+                self.assertIn('class="explore-filter"', page)
                 self.assertIn('>Featured Blue Wall</button>', page)
                 self.assertNotIn('data-forecast-dot=', page)
                 self.assertNotIn('data-forecast-site="1"', page)
@@ -156,8 +156,8 @@ class ForecastTest(unittest.TestCase):
                 self.assertNotIn('>Swell period</th>', page)
                 self.assertIn('aria-controls="forecastSite1"', page)
                 self.assertIn('aria-label="Kelp Garden" hidden inert', page)
-                self.assertLess(page.index('class="forecast-dates"'), page.index('class="forecast-navigation"'))
-                self.assertLess(page.index('class="forecast-navigation"'), page.index('class="forecast-card"'))
+                self.assertLess(page.index('class="forecast-dates"'), page.index('class="explore-filters forecast-navigation"'))
+                self.assertLess(page.index('class="explore-filters forecast-navigation"'), page.index('class="forecast-card"'))
                 for extra in ('data-forecast-prev', 'data-forecast-next', 'Regional surface forecast', 'data-tide-date'):
                     self.assertNotIn(extra, page)
 

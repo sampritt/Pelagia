@@ -12,8 +12,8 @@
         </button>
         {% endfor %}
     </div>
-    <div class="forecast-navigation" role="group" aria-label="Choose a dive site">
-        {% for site in forecast_sites %}<button class="forecast-site-tag" type="button" data-forecast-select="{{ loop.index0 }}" aria-controls="forecastSite{{ site.id }}" aria-pressed="{{ 'true' if loop.first else 'false' }}">{{ site.name }}</button>{% endfor %}
+    <div class="explore-filters forecast-navigation" role="group" aria-label="Choose a dive site">
+        {% for site in forecast_sites %}<button class="explore-filter" type="button" data-forecast-select="{{ loop.index0 }}" aria-controls="forecastSite{{ site.id }}" aria-pressed="{{ 'true' if loop.first else 'false' }}">{{ site.name }}</button>{% endfor %}
     </div>
     {% endif %}
     <p class="sr-only" role="status" aria-live="polite" data-forecast-position></p>
