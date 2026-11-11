@@ -15,6 +15,9 @@
 {% block content %}
 <section class="profile-layout shared-site" aria-label="{{ site.name }} dive site">
     {% include "_dive_site_headline.html" %}
+    <div class="site-report">
+        <a class="site-report-gate-link" href="#siteAccountGate"><span>Today’s report</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></a>
+    </div>
     {% include "_dive_site_season.html" %}
     <section class="marine-forecast" data-public-rainfall data-url="{{ url_for('api_public_site_rainfall', site_id=site.id) }}" aria-label="Monthly rainfall">
         {% include "_dive_site_rainfall.html" %}
@@ -33,7 +36,7 @@
             </div>
             <div class="detail-panel"><h2>Dive log</h2><div class="preview-skeleton"></div><div class="preview-skeleton short"></div><div class="preview-skeleton"></div></div>
         </div>
-        <div class="dive-gate-content">
+        <div class="dive-gate-content" id="siteAccountGate" tabindex="-1">
             <span class="dive-gate-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="11" rx="3"></rect><path d="M8 10V7a4 4 0 0 1 8 0v3M12 14v3"></path></svg></span>
             <h2>See what’s happening below.</h2>
             <p>Create a free Pelagia account to access live dive site conditions and the dive log.</p>

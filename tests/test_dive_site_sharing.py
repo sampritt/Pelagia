@@ -60,6 +60,10 @@ class DiveSiteSharingTest(unittest.TestCase):
         guest = self.app.test_client()
         for path in ("/explore/dive-sites/1", "/share/dive-site/1"):
             html = guest.get(path).get_data(as_text=True)
+            self.assertIn('href="#siteAccountGate"', html)
+            self.assertIn('id="siteAccountGate" tabindex="-1"', html)
+            self.assertNotIn('data-site-report', html)
+            self.assertLess(html.index('class="site-report-gate-link"'), html.index('class="site-season-advice"'))
             self.assertLess(html.index('class="site-season-advice"'), html.index('data-public-rainfall'))
             self.assertLess(html.index('data-marine-chart="rainfall"'), html.index('Harbor Seal'))
             self.assertIn('Create your free account', html)
