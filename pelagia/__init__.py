@@ -48,6 +48,7 @@ from . import water_type
 from . import dive_import
 from .depth_profile import depth_profile_chart
 from . import explore
+from .search import search_text
 from .garmin_fit import FitImportError
 from .sharing import TRANSPARENT_LAYOUTS, fetch_public_dive, fetch_public_dive_site, fetch_public_dive_center, render_share_image, render_transparent_share_image, share_description
 
@@ -754,20 +755,20 @@ def register_routes(app):
     @app.route("/api/search", methods=("GET",))
     @login_required
     def api_search():
-        query = request.args.get("q", "").strip()
+        query = search_text(request.args.get("q", "").strip())
         if not query:
             return jsonify([])
 
-        like = f"%{query.lower()}%"
-        prefix = f"{query.lower()}%"
+        like = f"%{query}%"
+        prefix = f"{query}%"
         db = database.get_db()
         users = db.execute(
             """
             SELECT id, username, profile_photo
             FROM users
-            WHERE lower(username) LIKE ?
+            WHERE search_text(username) LIKE ?
             ORDER BY
-                CASE WHEN lower(username) LIKE ? THEN 0 ELSE 1 END,
+                CASE WHEN search_text(username) LIKE ? THEN 0 ELSE 1 END,
                 username
             LIMIT 5
             """,
@@ -777,10 +778,10 @@ def register_routes(app):
             """
             SELECT id, name, country_or_area, logged_dive_count
             FROM dive_sites
-            WHERE lower(name) LIKE ? OR lower(country_or_area) LIKE ?
+            WHERE search_text(name) LIKE ? OR search_text(country_or_area) LIKE ?
             ORDER BY
                 logged_dive_count DESC,
-                CASE WHEN lower(name) LIKE ? THEN 0 ELSE 1 END,
+                CASE WHEN search_text(name) LIKE ? THEN 0 ELSE 1 END,
                 name
             LIMIT 5
             """,
@@ -790,16 +791,15 @@ def register_routes(app):
             """
             SELECT id, name, location, physical_address
             FROM dive_centers
-            WHERE lower(name) LIKE ? OR lower(location) LIKE ? OR lower(physical_address) LIKE ?
+            WHERE search_text(name) LIKE ? OR search_text(location) LIKE ? OR search_text(physical_address) LIKE ?
             ORDER BY
-                CASE WHEN lower(name) LIKE ? THEN 0 ELSE 1 END,
+                CASE WHEN search_text(name) LIKE ? THEN 0 ELSE 1 END,
                 name
             LIMIT 5
             """,
             (like, like, like, prefix),
         ).fetchall()
-        regions = [name for name in explore.locations() if query.casefold() in name.casefold()]
-        regions.sort(key=lambda name: (not name.casefold().startswith(query.casefold()), name.casefold()))
+        regions = explore.matching_locations(query)
         return jsonify(
             [{"type": "region", "label": name, "detail": "Country or region",
               "url": url_for("explore.index", location=name)} for name in regions[:5]]
