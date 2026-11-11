@@ -203,11 +203,11 @@ class ExploreTest(unittest.TestCase):
             'query': 'Victoria', 'radius': 15, 'unit': 'mi', 'kind': [],
         }, headers={'X-Requested-With': 'fetch'}).status_code, 400)
 
-    def test_requires_login_and_adds_explore_in_both_navigation_bars(self):
+    def test_public_explore_and_signed_in_navigation(self):
         anonymous = self.app.test_client()
         for path in ("/explore", "/api/explore", "/api/explore/locations?q=Canada",
-                     "/api/explore/nearby?query=x&radius=1&unit=mi"):
-            self.assertEqual(anonymous.get(path).status_code, 302)
+                     "/api/explore/nearby?query=x&radius=1&unit=mi&display_name=x&latitude=0&longitude=0"):
+            self.assertEqual(anonymous.get(path).status_code, 200)
         html = self.client.get("/explore").get_data(as_text=True)
         for nav in re.findall(r'<nav class="(?:desktop-nav|mobile-nav)".*?</nav>', html, re.S):
             links = re.findall(r'href="([^"]+)"', nav)
@@ -220,6 +220,70 @@ class ExploreTest(unittest.TestCase):
         self.assertNotIn('data-explore-input', html)
         self.assertIn('data-global-search-input', html)
         self.assertIn('type="range" min="1" max="160"', html)
+
+    def test_public_search_excludes_users_and_uses_public_destinations(self):
+        self.add_center("Maple Center")
+        self.db.execute("INSERT INTO users (username) VALUES ('MapleDiver')")
+        self.db.commit()
+        anonymous = self.app.test_client()
+        for client, suffix in ((anonymous, ""), (anonymous, "&public=0"), (self.client, "&public=1")):
+            response = client.get("/api/search?q=Maple" + suffix)
+            results = response.get_json()
+            self.assertEqual({item["type"] for item in results}, {"site", "center"})
+            self.assertTrue(all(item["url"].startswith("/explore/dive-") for item in results))
+            self.assertIn("no-store", response.headers["Cache-Control"])
+            self.assertIn("Cookie", response.headers["Vary"])
+        self.assertIn("user", {item["type"] for item in self.client.get("/api/search?q=Maple").get_json()})
+        self.assertEqual(anonymous.get("/api/search?q=diver").get_json(), [])
+        region = anonymous.get("/api/search?q=Canada").get_json()[0]
+        self.assertEqual(region["url"], "/explore?location=Canada")
+
+    def test_public_results_and_pagination_keep_preview_gate(self):
+        anonymous = self.app.test_client()
+        self.add_center("Maple Center")
+        for path in ("/explore?location=Canada", "/api/explore?location=Canada",
+                     "/api/explore/nearby?query=x&radius=15&unit=mi&display_name=x&latitude=48.4&longitude=-123.3"):
+            response = anonymous.get(path)
+            html = response.get_json()["html"] if path.startswith("/api/") else response.get_data(as_text=True)
+            self.assertIn('/explore/dive-sites/1', html)
+            self.assertNotIn('href="/dive-sites/1"', html)
+        centers = anonymous.get("/api/explore?location=Canada&kind=centers").get_json()["html"]
+        self.assertIn('/explore/dive-centers/', centers)
+        for path in ("/explore/dive-sites/1", "/explore/dive-centers/1"):
+            response = anonymous.get(path)
+            self.assertEqual(response.status_code, 200)
+            self.assertIn("Create your free account", response.get_data(as_text=True))
+            self.assertEqual(self.client.get(path).status_code, 302)
+        self.assertEqual(anonymous.get("/dive-sites/1").status_code, 302)
+        self.assertEqual(anonymous.post("/api/explore/location", json={"location": "Canada"}).status_code, 302)
+        self.assertEqual(anonymous.post("/api/explore/nearby/preference", json={}).status_code, 302)
+
+    def test_public_nearby_search_does_not_save_account_preferences(self):
+        anonymous = self.app.test_client()
+        place = {"display_name": "Victoria, Canada", "latitude": 48.4, "longitude": -123.3}
+        with patch("pelagia.explore.geocode_place", return_value=place):
+            response = anonymous.post("/api/explore/nearby", json={
+                "query": "Victoria", "radius": 15, "unit": "mi",
+            }, headers={"X-Requested-With": "fetch"})
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('/explore/dive-sites/1', response.get_json()["html"])
+        self.assertIsNone(self.db.execute("SELECT explore_nearby_json FROM users WHERE id=1").fetchone()[0])
+        html = anonymous.get("/explore?nearby=Victoria").get_data(as_text=True)
+        self.assertIn('data-public-explore="true"', html)
+        self.assertEqual(html.count('data-global-search-input'), 1)
+
+    def test_search_landing_and_navigation(self):
+        anonymous = self.app.test_client()
+        for client in (anonymous, self.client):
+            html = client.get("/search").get_data(as_text=True)
+            self.assertIn("Search dive sites, dive centers, country or region", html)
+            self.assertEqual(html.count('data-global-search-input'), 1)
+            self.assertIn('data-public-search="true"', html)
+            self.assertNotIn('class="topbar feed-topbar"', html)
+        html = anonymous.get("/").get_data(as_text=True)
+        nav = re.search(r'<nav class="marketing-navigation".*?</nav>', html, re.S)[0]
+        self.assertLess(nav.index('>Product<'), nav.index('>Explore<'))
+        self.assertLess(nav.index('>Explore<'), nav.index('>The Dive Brief<'))
 
     def test_universal_search_in_each_signed_in_header(self):
         self.db.execute("INSERT INTO dive_centers (name) VALUES ('Center')")

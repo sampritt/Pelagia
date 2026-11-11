@@ -1,6 +1,7 @@
 /* Public landing page. Scoped to keep the signed-in app and auth screens independent. */
 html:has(.marketing-body) { background: #fbfcfd; scroll-behavior: smooth; scroll-padding-top: 0; }
-.marketing-body { --marketing-ink: #082d43; --marketing-muted: #536b79; --marketing-blue: #086bec; --marketing-teal: #009ea8; background: #fbfcfd; color: var(--marketing-ink); color-scheme: light; -webkit-font-smoothing: antialiased; }
+.marketing-body, .public-explore-body { --marketing-ink: #082d43; --marketing-muted: #536b79; --marketing-blue: #086bec; --marketing-teal: #009ea8; }
+.marketing-body { background: #fbfcfd; color: var(--marketing-ink); color-scheme: light; -webkit-font-smoothing: antialiased; }
 .marketing-body::before { display: none; }
 .marketing-body .page-shell { width: 100%; max-width: none; margin: 0; padding: 0; }
 .marketing-body .pwa-notices:has(.pwa-notice:not([hidden])) { position: fixed; z-index: 100; inset: 100px 16px auto; }
@@ -126,7 +127,7 @@ html:has(.marketing-body) { background: #fbfcfd; scroll-behavior: smooth; scroll
     .marketing-menu-toggle > span { height: 2px; width: 20px; background: #082d43; transition: transform 180ms; }
     .marketing-menu-toggle[aria-expanded='true'] > span:first-child { transform: translateY(3.5px) rotate(45deg); }
     .marketing-menu-toggle[aria-expanded='true'] > span:last-child { transform: translateY(-3.5px) rotate(-45deg); }
-    .marketing-navigation { order: 4; flex-basis: 100%; margin: 0; padding: 6px 0 12px; justify-content: flex-start; gap: 28px; }
+    .marketing-navigation { order: 4; flex-wrap: wrap; flex-basis: 100%; margin: 0; padding: 6px 0 12px; justify-content: flex-start; gap: 28px; }
     .marketing-nav-inner { flex-wrap: wrap; gap: 12px 22px; }
     .marketing-page[data-navigation-ready] .marketing-navigation { display: none; }
     .marketing-page[data-navigation-ready] .marketing-navigation { position: absolute; top: calc(100% + 8px); right: var(--gutter); width: min(288px, calc(100vw - 2 * var(--gutter))); flex-direction: column; align-items: stretch; gap: 4px; padding: 8px; border: 1px solid #dbe7ed; border-radius: 12px; background: #fbfcfd; box-shadow: 0 16px 40px #062d4326, 0 3px 8px #062d430d; }

@@ -1,0 +1,17 @@
+    <header class="marketing-header">
+        <div class="marketing-nav-inner">
+            <a class="marketing-brand" href="{{ url_for('landing') }}#home" aria-label="Pelagia home"><img src="{{ url_for('static', filename='img/pelagia-mark.png') }}" width="40" height="40" alt="">Pelagia</a>
+            <nav class="marketing-navigation" aria-label="Main navigation" id="landingNavigation">
+                <a href="{{ url_for('landing') }}#home"{% if request.endpoint == 'landing' %} aria-current="page"{% endif %}>Home</a>
+                <a href="{{ url_for('landing') }}#product">Product</a>
+                <a href="{{ url_for('public_search') }}"{% if request.endpoint in ('public_search', 'explore.index') %} aria-current="page"{% endif %}>Explore</a>
+                <a href="{{ url_for('today_dive_brief') }}">The Dive Brief</a>
+                <a href="{{ url_for('landing') }}#support">Support</a>
+            </nav>
+            <div class="marketing-account">
+                <a class="marketing-login" href="{{ url_for('login', next=auth_next|default(url_for('explore.index'))) }}"><span data-nosnippet>Log in</span></a>
+                <a class="marketing-button marketing-signup" href="{{ url_for('signup', next=auth_next|default(url_for('explore.index'))) }}"><span data-nosnippet>Sign Up</span><svg class="marketing-arrow" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6"/></svg></a>
+            </div>
+            <button class="marketing-menu-toggle" type="button" aria-expanded="false" aria-controls="landingNavigation" aria-label="Open navigation" hidden><span></span><span></span></button>
+        </div>
+    </header>

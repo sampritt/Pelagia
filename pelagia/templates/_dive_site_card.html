@@ -1,6 +1,6 @@
 {% set is_center = kind|default('sites') == 'centers' %}
 {% set has_coords = item.latitude is not none and item.longitude is not none %}
-<a class="explore-card {{ 'explore-center-card' if is_center else 'explore-site-card' }}" href="{{ url_for('dive_center_profile', center_id=item.id) if is_center else url_for('dive_site_profile', site_id=item.id) }}">
+<a class="explore-card {{ 'explore-center-card' if is_center else 'explore-site-card' }}" href="{{ url_for('public_dive_center' if public_explore else 'dive_center_profile', center_id=item.id) if is_center else url_for('public_dive_site' if public_explore else 'dive_site_profile', site_id=item.id) }}">
     <div class="explore-card-copy">
         <span class="explore-card-kind">{{ 'Dive center' if is_center else 'Dive site' }}</span><h2>{{ item.name }}</h2>
         <p>{{ (item.location if is_center else item.country_or_area) or 'Location pending' }}</p>

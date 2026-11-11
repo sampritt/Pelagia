@@ -353,14 +353,20 @@ def feed_data(location, page=1, kind="sites"):
 def init_app(app, login_required):
     blueprint = Blueprint("explore", __name__)
 
+    @blueprint.context_processor
+    def public_context():
+        from . import current_user
+        return {"public_explore": not current_user()}
+
     @blueprint.get("/explore")
-    @login_required
     def index():
+        from . import current_user
+        user = current_user()
         kind = feed_kind(request.args)
         saved = get_db().execute(
             "SELECT explore_location, explore_nearby_json FROM users WHERE id = ?",
-            (session["user_id"],),
-        ).fetchone()
+            (user["id"],),
+        ).fetchone() if user else {"explore_location": None, "explore_nearby_json": None}
         initial_nearby = None
         if "nearby" in request.args:
             query = request.args["nearby"].strip()
@@ -397,6 +403,8 @@ def init_app(app, login_required):
             )
         if "location" in request.args:
             requested = request.args.get("location")
+        elif not user:
+            requested = ""
         elif saved["explore_location"] is not None:
             requested = saved["explore_location"]
         else:
@@ -412,13 +420,12 @@ def init_app(app, login_required):
         )
 
     @blueprint.after_request
-    def no_api_cache(response):
-        if request.path.startswith("/api/explore"):
-            response.headers["Cache-Control"] = "no-store"
+    def no_explore_cache(response):
+        response.headers["Cache-Control"] = "no-store"
+        response.vary.add("Cookie")
         return response
 
     @blueprint.get("/api/explore/locations")
-    @login_required
     def search_locations():
         query = request.args.get("q", "").strip().casefold()
         if not query:
@@ -428,7 +435,6 @@ def init_app(app, login_required):
         return jsonify(matches[:14])
 
     @blueprint.get("/api/explore")
-    @login_required
     def feed():
         page = request.args.get("page", type=int) if "page" in request.args else 1
         if page is None or page < 1 or page > 10000:
@@ -442,7 +448,6 @@ def init_app(app, login_required):
         return response
 
     @blueprint.post("/api/explore/nearby")
-    @login_required
     def nearby_search():
         if request.headers.get("X-Requested-With") != "fetch":
             abort(403)
@@ -469,12 +474,15 @@ def init_app(app, login_required):
             "radius": radius,
             "unit": unit,
         }
-        db = get_db()
-        db.execute(
-            "UPDATE users SET explore_location = NULL, explore_nearby_json = ? WHERE id = ?",
-            (json.dumps(saved_nearby, separators=(",", ":")), session["user_id"]),
-        )
-        db.commit()
+        from . import current_user
+        user = current_user()
+        if user:
+            db = get_db()
+            db.execute(
+                "UPDATE users SET explore_location = NULL, explore_nearby_json = ? WHERE id = ?",
+                (json.dumps(saved_nearby, separators=(",", ":")), user["id"]),
+            )
+            db.commit()
         return jsonify(
             html=render_template("_explore_results.html", **data),
             next_page=data["next_page"],
@@ -486,7 +494,6 @@ def init_app(app, login_required):
         )
 
     @blueprint.get("/api/explore/nearby")
-    @login_required
     def nearby_page():
         query, radius, unit = parse_nearby_request(request.args)
         display_name = request.args.get("display_name", "").strip()

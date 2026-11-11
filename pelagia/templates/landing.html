@@ -37,22 +37,7 @@
 {%- endmacro %}
 {% block content %}
 <div class="marketing-page">
-    <header class="marketing-header">
-        <div class="marketing-nav-inner">
-            <a class="marketing-brand" href="#home" aria-label="Pelagia home"><img src="{{ url_for('static', filename='img/pelagia-mark.png') }}" width="40" height="40" alt="">Pelagia</a>
-            <nav class="marketing-navigation" aria-label="Main navigation" id="landingNavigation">
-                <a href="#home" aria-current="page">Home</a>
-                <a href="#product">Product</a>
-                <a href="{{ url_for('today_dive_brief') }}">The Dive Brief</a>
-                <a href="#support">Support</a>
-            </nav>
-            <div class="marketing-account">
-                <a class="marketing-login" href="{{ url_for('login', next=auth_next) }}"><span data-nosnippet>Log in</span></a>
-                <a class="marketing-button marketing-signup" href="{{ url_for('signup', next=auth_next) }}"><span data-nosnippet>Sign Up</span>{{ arrow() }}</a>
-            </div>
-            <button class="marketing-menu-toggle" type="button" aria-expanded="false" aria-controls="landingNavigation" aria-label="Open navigation" hidden><span></span><span></span></button>
-        </div>
-    </header>
+    {% include "_marketing_header.html" %}
 
     <section class="marketing-hero" id="home" aria-labelledby="welcomeTitle">
         <div class="marketing-hero-inner">

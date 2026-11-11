@@ -24,6 +24,7 @@ function initExplore() {
     const radiusLimit = unit => unit === "mi" ? 100 : 160;
 
     async function rememberNearby(value) {
+        if (root.dataset.publicExplore === "true") return;
         pendingPreference = value;
         if (savingPreference) return;
         savingPreference = true;

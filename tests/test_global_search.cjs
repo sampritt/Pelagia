@@ -13,13 +13,16 @@ function element() {
         scrollIntoView() {},
     };
 }
-function setup() {
+function setup(publicSearch = false) {
     const input = element(), results = element(), search = element(), document = element();
     const requests = [], navigations = [];
+    search.dataset = { publicSearch: String(publicSearch) };
+    input.getBoundingClientRect = () => ({ bottom: 500 });
+    results.style = { setProperty() {} };
     search.querySelector = selector => selector.includes("-input") ? input : results;
     search.contains = target => [input, search, ...results.children].includes(target);
     document.querySelector = () => search; document.createElement = element; document.activeElement = input;
-    const window = { setTimeout: () => 1, clearTimeout() {}, location: { assign: url => navigations.push(url) } };
+    const window = { innerHeight: 900, addEventListener() {}, setTimeout: () => 1, clearTimeout() {}, location: { assign: url => navigations.push(url) } };
     const context = vm.createContext({
         document, window, URLSearchParams, AbortController,
         debounce(fn) { fn.cancel = () => {}; return fn; },
@@ -124,4 +127,16 @@ test("a matching catalog region remains explicit while unselected Enter searches
     submit();
     assert.equal(navigations[0], "/explore?nearby=Canada");
     assert.equal(requests.length, 1);
+});
+
+
+test("public autocomplete requests no accounts and navigates regions without saving a preference", async () => {
+    const { type, requests, results, navigations } = setup(true);
+    type("Canada");
+    assert.equal(requests[0].url, "/api/search?q=Canada&public=1");
+    requests[0].resolve([{ label: "Canada", type: "region", url: "/explore?location=Canada" }]);
+    await flush();
+    results.children[1].emit("click");
+    assert.equal(requests.length, 1);
+    assert.equal(navigations[0], "/explore?location=Canada");
 });

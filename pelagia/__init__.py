@@ -237,6 +237,17 @@ def register_routes(app):
             return redirect(url_for("login", next=auth_next) if request.args["mode"] == "login" else "/signup?" + urlencode({"next": auth_next}))
         return render_template("landing.html", auth_next=auth_next, brief_date=dive_brief.effective_date())
 
+    @app.get("/search")
+    def public_search():
+        return render_template("public_search.html", public_search=True, auth_next=url_for("explore.index"))
+
+    @app.after_request
+    def search_cache_policy(response):
+        if request.path == "/api/search":
+            response.headers["Cache-Control"] = "private, no-store"
+            response.vary.add("Cookie")
+        return response
+
     @app.get("/login", endpoint="login")
     @app.get("/signup", endpoint="signup")
     def auth_entry():
@@ -752,8 +763,8 @@ def register_routes(app):
         return jsonify([user_payload(row) for row in rows])
 
     @app.route("/api/search", methods=("GET",))
-    @login_required
     def api_search():
+        public_search = not current_user() or request.args.get("public") == "1"
         query = request.args.get("q", "").strip()
         if not query:
             return jsonify([])
@@ -772,7 +783,7 @@ def register_routes(app):
             LIMIT 5
             """,
             (like, prefix),
-        ).fetchall()
+        ).fetchall() if not public_search else []
         sites = db.execute(
             """
             SELECT id, name, country_or_area, logged_dive_count
@@ -804,8 +815,8 @@ def register_routes(app):
             [{"type": "region", "label": name, "detail": "Country or region",
               "url": url_for("explore.index", location=name)} for name in regions[:5]]
             + [search_user_payload(row) for row in users]
-            + [search_site_payload(row) for row in sites]
-            + [search_center_payload(row) for row in centers]
+            + [search_site_payload(row, public=public_search) for row in sites]
+            + [search_center_payload(row, public=public_search) for row in centers]
         )
 
     @app.route("/api/species-suggestions", methods=("GET",))
@@ -889,6 +900,7 @@ def register_routes(app):
             review_error=review_error, review_draft=review_draft,
         )
 
+    @app.get("/explore/dive-centers/<int:center_id>", endpoint="public_dive_center")
     @app.get("/share/dive-center/<int:center_id>")
     def shared_dive_center(center_id):
         center = fetch_public_dive_center(center_id)
@@ -902,7 +914,7 @@ def register_routes(app):
                 "shared_dive_center.html", center=center, public_preview=True,
                 center_description=site_descriptions.read_cache(center_id, kind="center"),
                 description=f"Explore {center['name']}{location}. Discover this dive center on Pelagia.",
-                share_url=public_url("shared_dive_center", center_id=center_id),
+                share_url=public_url("public_dive_center" if request.endpoint == "public_dive_center" else "shared_dive_center", center_id=center_id),
                 center_url=url_for("dive_center_profile", center_id=center_id),
             ))
         response.headers["Cache-Control"] = "private, no-store"
@@ -936,6 +948,7 @@ def register_routes(app):
             review_error=review_error, review_draft=review_draft,
         )
 
+    @app.get("/explore/dive-sites/<int:site_id>", endpoint="public_dive_site")
     @app.get("/share/dive-site/<int:site_id>")
     def shared_dive_site(site_id):
         site = fetch_public_dive_site(site_id)
@@ -952,7 +965,7 @@ def register_routes(app):
             response = app.make_response(render_template(
                 "shared_dive_site.html", site=site, site_description=site_description,
                 sightings=dive_site_species_sightings(site_id), description=description,
-                share_url=public_url("shared_dive_site", site_id=site_id),
+                share_url=public_url("public_dive_site" if request.endpoint == "public_dive_site" else "shared_dive_site", site_id=site_id),
                 site_url=url_for("dive_site_profile", site_id=site_id), public_preview=True,
             ))
         response.headers["Cache-Control"] = "private, no-store"
@@ -2278,25 +2291,25 @@ def search_user_payload(row):
     }
 
 
-def search_site_payload(row):
+def search_site_payload(row, *, public=False):
     detail = f"Dive site | {row['country_or_area']}" if row["country_or_area"] else "Dive site"
     return {
         "type": "site",
         "label": row["name"],
         "detail": detail,
-        "url": url_for("dive_site_profile", site_id=row["id"]),
+        "url": url_for("public_dive_site" if public else "dive_site_profile", site_id=row["id"]),
         "logged_dive_count": row["logged_dive_count"],
     }
 
 
-def search_center_payload(row):
+def search_center_payload(row, *, public=False):
     place = row["location"] or row["physical_address"]
     detail = f"Dive center | {place}" if place else "Dive center"
     return {
         "type": "center",
         "label": row["name"],
         "detail": detail,
-        "url": url_for("dive_center_profile", center_id=row["id"]),
+        "url": url_for("public_dive_center" if public else "dive_center_profile", center_id=row["id"]),
     }
 
 

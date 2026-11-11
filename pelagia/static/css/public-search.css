@@ -1,0 +1,51 @@
+/* Public discovery shares the landing navigation and the app's search behavior. */
+html:has(.public-search-body) { overflow: hidden; }
+.public-search-body { height: 100dvh; min-height: 0; overflow: hidden; }
+.public-search-page { height: var(--search-viewport-height, 100dvh); display: flex; flex-direction: column; }
+.public-search-page .marketing-header { flex: 0 0 auto; }
+.public-search-hero { position: relative; isolation: isolate; flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; padding: 24px var(--gutter) 90px; background: #064c64 url('../img/landing/coral-hero.jpg') center / cover; }
+.public-search-hero::before { position: absolute; content: ''; inset: 0; z-index: -1; background: linear-gradient(90deg, #002a3cb8, #002d3f65 65%, #003c4635), linear-gradient(0deg, #002a3a40, transparent); }
+.public-search-content { width: min(100%, 800px); }
+.public-search-content h1 { margin: 0 0 32px; text-align: center; color: #fff; font-size: clamp(40px, 5.5vw, 76px); font-weight: 650; letter-spacing: -.055em; line-height: 1.1; }
+.public-search-form { width: 100%; margin: 0; }
+.public-search-form input { width: 100%; height: 76px; margin: 0; padding: 20px 78px 20px 26px; border: 1px solid #ffffff85; border-radius: 18px; background: #ffffff14; box-shadow: 0 12px 40px #00253526; backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); color: #fff; font-size: 19px; font-weight: 450; outline: none; appearance: none; }
+.public-search-form input::placeholder { color: #f0f7fa; opacity: 1; }
+.public-search-form input:focus { border-color: #bbf3f4; box-shadow: 0 0 0 3px #9ce6e530, 0 12px 40px #00253526; }
+.public-search-form input::-webkit-search-cancel-button { display: none; }
+.public-search-submit { position: absolute; top: 14px; right: 14px; width: 48px; height: 48px; display: grid; place-items: center; padding: 12px; border: 0; border-radius: 12px; color: #fff; background: #ffffff1a; }
+.public-search-submit:hover { background: #ffffff30; }
+.public-search-submit svg { width: 24px; height: 24px; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; }
+.public-search-prompt { display: none; }
+.public-search-menu { top: calc(100% + 10px); max-height: var(--search-menu-height, 280px); border-color: #d5e5eb; background: #fbfcfd; text-align: left; }
+.public-search-menu button { padding: 13px 18px; color: #082d43; }
+.public-search-menu button[aria-selected='true'] { background: #e6f3f8; }
+.public-search-menu button.global-search-place { grid-template-columns: 30px minmax(0, 1fr); align-items: center; gap: 10px; background: var(--accent-soft); border-bottom-color: var(--accent-line); }
+.public-search-menu small { color: #536b79; }
+.public-explore-body .page-shell { width: 100%; max-width: none; margin: 0; padding: 0; }
+.public-explore-navigation { position: sticky; top: 0; z-index: 50; color: #082d43; }
+.public-explore-content { width: min(100%, 808px); margin: auto; padding: 40px 24px 60px; }
+.public-explore-content > h1 { margin: 0 0 22px; color: var(--ink); font-size: 32px; letter-spacing: -.04em; }
+.public-explore-content > .public-search-form { margin-bottom: 28px; z-index: 30; }
+.public-explore-content .public-search-form input { height: 64px; padding-block: 16px; color: var(--ink); border-color: var(--line-strong); background: var(--panel); box-shadow: var(--shadow-xs); font-size: 16px; }
+.public-explore-content .public-search-form input::placeholder { color: var(--muted-strong); }
+.public-explore-content .public-search-submit { top: 8px; right: 8px; color: var(--accent-deep); background: var(--accent-soft); }
+@media (max-width: 700px) {
+    .public-search-hero { padding-bottom: 80px; background-position: 55% center; }
+    .public-search-content h1 { margin-bottom: 26px; font-size: clamp(36px, 8.5vw, 54px); }
+    .public-search-form input { height: 80px; padding: 18px 68px 18px 18px; font-size: 16px; }
+    .public-search-form input::placeholder { color: transparent; }
+    .public-search-prompt { position: absolute; top: 0; left: 18px; right: 68px; height: 80px; display: flex; align-items: center; color: #f0f7fa; font-size: 16px; line-height: 1.5; pointer-events: none; }
+    .public-search-form input:focus + .public-search-prompt, .public-search-form input:not(:placeholder-shown) + .public-search-prompt { display: none; }
+    .public-search-submit { top: 16px; right: 10px; }
+    .public-explore-content { padding: 28px 20px 40px; }
+    .public-explore-content .public-search-form input { height: 80px; }
+    .public-explore-content .public-search-form input::placeholder { color: transparent; }
+    .public-explore-content .public-search-prompt { color: var(--muted-strong); }
+    .public-explore-content .public-search-submit { top: 16px; }
+}
+.public-search-page[data-compact-viewport] .public-search-hero { align-items: flex-start; padding-top: 18px; padding-bottom: 0; }
+.public-search-page[data-compact-viewport] h1 { margin-bottom: 14px; font-size: 32px; }
+.public-search-page[data-compact-viewport] .public-search-form input { height: 60px; }
+.public-search-page[data-compact-viewport] .public-search-prompt { height: 60px; }
+.public-search-page[data-compact-viewport] .public-search-submit { top: 6px; }
+.public-search-body > .sr-only { top: 0; left: 0; }
