@@ -263,7 +263,7 @@ def generate_description(site, *, kind="site"):
 def init_app(app, login_required):
     @app.after_request
     def description_cache_headers(response):
-        if request.path.startswith(("/api/dive-sites/", "/api/dive-centers/")) and request.path.endswith("/description"):
+        if request.path.startswith(("/api/dive-sites/", "/api/dive-centers/", "/api/explore/dive-sites/")) and request.path.endswith("/description"):
             response.headers["Cache-Control"] = "no-store"
         return response
 
@@ -272,12 +272,16 @@ def init_app(app, login_required):
     def api_dive_site_description(site_id):
         return description_response(site_id)
 
+    @app.post("/api/explore/dive-sites/<int:site_id>/description")
+    def api_public_dive_site_description(site_id):
+        return description_response(site_id, allow_force=False)
+
     @app.post("/api/dive-centers/<int:center_id>/description")
     @login_required
     def api_dive_center_description(center_id):
         return description_response(center_id, kind="center")
 
-    def description_response(site_id, kind="site"):
+    def description_response(site_id, kind="site", *, allow_force=True):
         # This endpoint spends account funds; require the same-origin fetch header.
         if request.headers.get("X-Requested-With") != "fetch":
             return jsonify(error="Same-origin request required"), 403
@@ -286,7 +290,7 @@ def init_app(app, login_required):
         site = db.execute(f"SELECT * FROM {table} WHERE id = ?", (site_id,)).fetchone()
         if site is None:
             return jsonify(error="Dive center not found" if kind == "center" else "Dive site not found"), 404
-        force = force_regeneration(kind=kind)
+        force = allow_force and force_regeneration(kind=kind)
         if not force:
             cached = read_cache(site_id, db, kind=kind)
             if cached is not None:

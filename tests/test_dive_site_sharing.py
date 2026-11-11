@@ -140,7 +140,7 @@ class DiveSiteSharingTest(unittest.TestCase):
         self.assertEqual(guest.get("/dive-sites/1").status_code, 302)
         self.assertEqual(guest.post("/api/dive-sites/1/description").status_code, 302)
 
-    def test_uncached_or_empty_sites_do_not_generate_descriptions_for_guests(self):
+    def test_uncached_public_sites_load_descriptions_asynchronously(self):
         with self.app.app_context():
             db = database.get_db()
             db.execute("UPDATE dive_sites SET latitude = NULL, longitude = NULL, country_or_area = '' WHERE id = 2")
@@ -151,6 +151,6 @@ class DiveSiteSharingTest(unittest.TestCase):
         self.assertIn("Location pending", html)
         self.assertIn("Coordinates pending", html)
         self.assertIn("No marine species observations yet.", html)
-        self.assertNotIn("data-description-url", html)
+        self.assertIn('data-description-url="/api/explore/dive-sites/2/description"', html)
         for client in (self.client, self.app.test_client()):
             self.assertEqual(client.get("/share/dive-site/99999").status_code, 404)

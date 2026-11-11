@@ -214,6 +214,45 @@ class SiteDescriptionTest(unittest.TestCase):
                 self.assertEqual(db.execute("SELECT COUNT(*) FROM dive_site_descriptions").fetchone()[0], 0)
                 result.close.assert_called_once()
 
+    def test_public_preview_generates_once_and_reuses_cache_even_with_force_enabled(self):
+        guest = self.app.test_client()
+        endpoint = "/api/explore/dive-sites/1/description"
+        for path in ("/explore/dive-sites/1", "/share/dive-site/1"):
+            self.assertIn(endpoint.encode(), guest.get(path).data)
+        with patch.object(descriptions.requests, "post", return_value=upstream()) as post:
+            response = guest.post(endpoint, headers=self.headers)
+            self.assertEqual(response.status_code, 200)
+            self.assertIn("rocky reef", response.json["description"])
+            self.assertEqual(response.headers["Cache-Control"], "no-store")
+            self.assertEqual(post.call_args.kwargs["json"]["model"], descriptions.MODEL)
+            self.app.config["FORCE_DIVE_SITE_DESCRIPTION_REGENERATION"] = True
+            self.assertEqual(guest.post(endpoint, headers=self.headers).json, response.json)
+            for path in ("/explore/dive-sites/1", "/share/dive-site/1"):
+                html = guest.get(path).data
+                self.assertIn(b"rocky reef", html)
+                self.assertNotIn(b"data-description-url", html)
+                self.assertIn(b"Create your free account", html)
+            post.assert_called_once()
+
+    def test_public_description_validates_requests_and_reuses_pending_and_failure_states(self):
+        guest = self.app.test_client()
+        endpoint = "/api/explore/dive-sites/1/description"
+        with patch.object(descriptions.requests, "post") as post:
+            self.assertEqual(guest.post(endpoint).status_code, 403)
+            self.assertEqual(guest.get(endpoint).status_code, 405)
+            self.assertEqual(guest.post("/api/explore/dive-sites/999/description", headers=self.headers).status_code, 404)
+            with self.app.app_context():
+                descriptions.claim_generation(database.get_db(), 1)
+            self.assertEqual(guest.post(endpoint, headers=self.headers).status_code, 202)
+            post.assert_not_called()
+        with self.app.app_context():
+            database.get_db().execute("DELETE FROM dive_site_description_attempts")
+            database.get_db().commit()
+        with patch.object(descriptions.requests, "post", side_effect=requests.Timeout()) as post:
+            self.assertEqual(guest.post(endpoint, headers=self.headers).status_code, 503)
+            self.assertEqual(guest.post(endpoint, headers=self.headers).status_code, 503)
+            post.assert_called_once()
+
     def test_authenticated_same_origin_requests_and_unknown_sites(self):
         with patch.object(descriptions.requests, "post") as post:
             guest = self.app.test_client().post(self.url, headers=self.headers)
