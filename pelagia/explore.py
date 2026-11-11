@@ -9,7 +9,6 @@ import requests
 from flask import Blueprint, abort, current_app, jsonify, render_template, request, session
 
 from .db import get_db
-from .search import search_text
 
 
 PAGE_SIZE = 24
@@ -279,15 +278,6 @@ def resolve_location(value):
     return next((name for name in locations() if name.casefold() == clean), "")
 
 
-def matching_locations(query):
-    query = search_text(query.strip())
-    if not query:
-        return []
-    matches = [name for name in locations() if query in search_text(name)]
-    matches.sort(key=lambda name: (not search_text(name).startswith(query), search_text(name), name))
-    return matches
-
-
 def latest_dive_location(user_id):
     row = get_db().execute(
         """SELECT country_or_area FROM dives
@@ -430,7 +420,12 @@ def init_app(app, login_required):
     @blueprint.get("/api/explore/locations")
     @login_required
     def search_locations():
-        return jsonify(matching_locations(request.args.get("q", ""))[:14])
+        query = request.args.get("q", "").strip().casefold()
+        if not query:
+            return jsonify([])
+        matches = [name for name in locations() if query in name.casefold()]
+        matches.sort(key=lambda name: (not name.casefold().startswith(query), name.casefold()))
+        return jsonify(matches[:14])
 
     @blueprint.get("/api/explore")
     @login_required

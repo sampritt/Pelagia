@@ -244,57 +244,6 @@ class ExploreTest(unittest.TestCase):
         self.assertEqual(self.client.get("/api/search?q=Victoria+Harbour").get_json(), [])
         self.assertEqual(self.client.get("/api/search?q=komodo").get_json()[0]["type"], "region")
 
-    def test_universal_autocomplete_ignores_accents_and_preserves_original_names(self):
-        self.db.execute(
-            "INSERT INTO dive_sites (name, country_or_area, latitude, longitude) VALUES (?, ?, 0, -90)",
-            ("Peñón Reef", "Galápagos Islands"),
-        )
-        self.db.execute("INSERT INTO users (username) VALUES ('galápagos_diver')")
-        self.db.execute(
-            "INSERT INTO dive_centers (name, location, physical_address) VALUES (?, ?, ?)",
-            ("Galápagos Divers", "Galápagos Islands", "Calle Peñón"),
-        )
-        self.db.commit()
-        for query in ("galapagos", "GALÁPAGOS", "Gala\u0301pagos", "Gàlapagós"):
-            with self.subTest(query=query):
-                results = self.client.get("/api/search", query_string={"q": query}).get_json()
-                self.assertEqual({item["type"] for item in results}, {"region", "site", "center", "user"})
-                self.assertEqual(results[0]["label"], "Galápagos Islands")
-                by_type = {item["type"]: item for item in results}
-                self.assertEqual(by_type["site"]["label"], "Peñón Reef")
-                self.assertEqual(by_type["center"]["label"], "Galápagos Divers")
-                self.assertEqual(by_type["user"]["label"], "galápagos_diver")
-                self.assertEqual(self.client.get(results[0]["url"]).status_code, 200)
-        # Both site names and center addresses participate in normalized matching.
-        results = self.client.get("/api/search?q=penon").get_json()
-        self.assertEqual({item["type"] for item in results}, {"site", "center"})
-
-    def test_accent_insensitive_autocomplete_keeps_prefix_matches_first(self):
-        self.db.executemany(
-            "INSERT INTO dive_sites (name, country_or_area) VALUES (?, ?)",
-            [("Élite Reef", "Galápagos Islands"), ("A Élite Reef", "A Galápagos region")],
-        )
-        self.db.commit()
-        results = self.client.get("/api/search?q=elite").get_json()
-        self.assertEqual([item["label"] for item in results], ["Élite Reef", "A Élite Reef"])
-        expected = ["Galápagos Islands", "A Galápagos region"]
-        for query in ("galapagos", "GALÁPAGOS", "Gala\u0301pagos"):
-            self.assertEqual(self.client.get(
-                "/api/explore/locations", query_string={"q": query},
-            ).get_json(), expected)
-            regions = self.client.get("/api/search", query_string={"q": query}).get_json()
-            self.assertEqual([item["label"] for item in regions if item["type"] == "region"], expected)
-
-    def test_autocomplete_normalizes_query_accents_without_erasing_other_scripts(self):
-        self.db.execute("INSERT INTO dive_sites (name, country_or_area) VALUES ('東京 Reef', 'Japan')")
-        self.db.commit()
-        results = self.client.get("/api/search?q=Cánàda").get_json()
-        self.assertEqual(results[0]["label"], "Canada")
-        results = self.client.get("/api/search", query_string={"q": "東京"}).get_json()
-        self.assertEqual([item["label"] for item in results], ["東京 Reef"])
-        for endpoint in ("/api/search", "/api/explore/locations"):
-            self.assertEqual(self.client.get(endpoint, query_string={"q": " \u0301 "}).get_json(), [])
-
     def test_free_text_destination_and_coordinate_urls_restore_without_geocoding(self):
         with patch("pelagia.explore.geocode_place") as geocode:
             pending = self.client.get("/explore?nearby=Victoria").get_data(as_text=True)

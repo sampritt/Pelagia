@@ -6,7 +6,6 @@ from flask import current_app, g
 
 from .units import UNIT_OPTIONS
 from .dive_options import CURRENT_TYPES
-from .search import search_text
 
 
 def get_db():
@@ -15,7 +14,6 @@ def get_db():
         db_path.parent.mkdir(parents=True, exist_ok=True)
         g.db = sqlite3.connect(db_path, timeout=30)
         g.db.row_factory = sqlite3.Row
-        g.db.create_function("search_text", 1, search_text, deterministic=True)
         g.db.execute("PRAGMA foreign_keys = ON")
         g.db.execute("PRAGMA journal_mode = WAL")
     return g.db
