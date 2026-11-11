@@ -3,6 +3,7 @@
 import json
 import math
 from bisect import bisect_left, bisect_right
+from statistics import median, pstdev
 
 import requests
 from flask import Blueprint, abort, current_app, jsonify, render_template, request, session
@@ -161,7 +162,7 @@ def nearby_feed_data(latitude, longitude, radius_km, display_name, page=1, kind=
         return center_feed_data(display_name, page, origin=(latitude, longitude), radius_km=radius_km)
     rows = get_db().execute(
         f"""SELECT {SITE_COLUMNS} FROM dive_sites
-            WHERE latitude IS NOT NULL AND longitude IS NOT NULL"""
+            WHERE latitude BETWEEN -90 AND 90 AND longitude BETWEEN -180 AND 180"""
     ).fetchall()
     matches = []
     for row in rows:
@@ -324,24 +325,28 @@ def add_observations(rows):
 
 
 def feed_data(location, page=1, kind="sites"):
+    """Infer a regional radius from labeled sites and search the full catalog."""
     if kind == "centers":
         return center_feed_data(location, page)
     result = {"location": location, "kind": "sites", "items": [], "total": 0, "next_page": None}
     if not location:
         return result
-    db = get_db()
-    result["total"] = db.execute(
-        "SELECT count(*) FROM dive_sites WHERE trim(country_or_area) = ? COLLATE NOCASE", (location,)
-    ).fetchone()[0]
-    rows = db.execute(
-        f"""SELECT {SITE_COLUMNS}, {SPECIES_COUNT} FROM dive_sites
+    rows = get_db().execute(
+        """SELECT latitude, longitude FROM dive_sites
            WHERE trim(country_or_area) = ? COLLATE NOCASE
-           ORDER BY logged_dive_count DESC, observed_species_count DESC, name COLLATE NOCASE, id
-           LIMIT ? OFFSET ?""", (location, PAGE_SIZE, (page - 1) * PAGE_SIZE)
+               AND latitude BETWEEN -90 AND 90 AND longitude BETWEEN -180 AND 180""",
+        (location,),
     ).fetchall()
-    result["items"] = add_observations(rows)
-    if page * PAGE_SIZE < result["total"]:
-        result["next_page"] = page + 1
+    if not rows:
+        return result
+    latitude = median(row["latitude"] for row in rows)
+    longitude = median(row["longitude"] for row in rows)
+    radius_km = 3 * pstdev(
+        cartesian_distance_km(latitude, longitude, row["latitude"], row["longitude"])
+        for row in rows
+    )
+    nearby = nearby_feed_data(latitude, longitude, radius_km, location, page)
+    result.update(items=nearby["items"], total=nearby["total"], next_page=nearby["next_page"])
     return result
 
 

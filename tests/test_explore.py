@@ -135,9 +135,6 @@ class ExploreTest(unittest.TestCase):
         self.add_center('Alpha later-site tie', rating=4, dives=2)
         self.add_center('Later site more dives', rating=4, dives=3)
         self.add_center('Later site best rating', rating=5)
-        sites = self.client.get('/api/explore?location=Canada').get_json()
-        self.assertEqual(re.findall(r'<h2>(.*?)</h2>', sites['html']),
-                         ['Northern Wall', 'Maple Reef'])
         data = self.client.get('/api/explore?location=Canada&kind=centers').get_json()
         self.assertEqual(re.findall(r'<h2>(.*?)</h2>', data['html']), [
             'Later site best rating', 'Later site more dives',
@@ -424,6 +421,103 @@ class ExploreTest(unittest.TestCase):
             with self.subTest(query=query):
                 self.assertEqual(self.client.get("/api/explore/locations", query_string={"q": query}).get_json(), expected)
 
+    def test_region_uses_coordinate_medians_and_three_population_standard_deviations(self):
+        # Distances in degrees are [1, 0, 0, 0, 3]: 3 population SDs = 3.49857.
+        # A mean coordinate would exclude Inside; sample SD would include Outside.
+        for axis in ("latitude", "longitude"):
+            with self.subTest(axis=axis):
+                self.db.execute("DELETE FROM dive_sites")
+                def coordinates(offset):
+                    return (offset, -90) if axis == "latitude" else (0, -90 + offset)
+                self.db.executemany(
+                    "INSERT INTO dive_sites (name, country_or_area, latitude, longitude) VALUES (?, ?, ?, ?)",
+                    [(f"Seed {index}", " Galapagos " if index % 2 else "galapagos", *coordinates(offset))
+                     for index, offset in enumerate((-1, 0, 0, 0, 3))]
+                    + [("Inside", "Ecuador", *coordinates(3.49)),
+                       ("Outside", "Ecuador", *coordinates(3.51))],
+                )
+                self.db.commit()
+                with patch("pelagia.explore.geocode_place") as geocode:
+                    data = self.client.get("/api/explore?location=GALAPAGOS").get_json()
+                    html = self.client.get("/explore?location=GALAPAGOS").get_data(as_text=True)
+                self.assertEqual(data["total"], 6)
+                self.assertIn("Inside", data["html"])
+                self.assertNotIn("Outside", data["html"])
+                self.assertIn("Inside", html)
+                self.assertNotIn("Outside", html)
+                self.assertIn('data-explore-distance hidden', html)
+                geocode.assert_not_called()
+
+    def test_region_uses_every_seed_before_ranking_and_paginating_global_matches(self):
+        self.db.execute("DELETE FROM dive_sites")
+        self.db.executemany(
+            "INSERT INTO dive_sites (name, country_or_area, latitude, longitude) VALUES (?, 'Galapagos', ?, -90)",
+            [(f"Seed {index:02}", 0) for index in range(PAGE_SIZE)] + [("Far seed", 10)],
+        )
+        self.db.executemany(
+            "INSERT INTO dive_sites (name, country_or_area, latitude, longitude) VALUES (?, 'Ecuador', 5.8, -90)",
+            [(f"Nearby {index}",) for index in range(4)],
+        )
+        self.db.execute("INSERT INTO dive_sites (name, country_or_area, latitude, longitude) VALUES ('Outside', 'Ecuador', 6, -90)")
+        popular = self.db.execute("SELECT id FROM dive_sites WHERE name = 'Nearby 3'").fetchone()[0]
+        self.add_dive(popular)
+        first = self.client.get("/api/explore?location=Galapagos").get_json()
+        second = self.client.get("/api/explore?location=Galapagos&page=2").get_json()
+        ids = lambda data: re.findall(r'href="/dive-sites/(\d+)"', data["html"])
+        self.assertEqual(first["total"], PAGE_SIZE + 4)
+        self.assertEqual(first["next_page"], 2)
+        self.assertIsNone(second["next_page"])
+        self.assertEqual(ids(first)[0], str(popular))
+        self.assertEqual(len(ids(first)), PAGE_SIZE)
+        self.assertEqual(len(ids(second)), 4)
+        self.assertFalse(set(ids(first)) & set(ids(second)))
+        self.assertNotIn("Far seed", first["html"] + second["html"])
+        self.assertNotIn("Outside", first["html"] + second["html"])
+
+    def test_region_single_or_coincident_seeds_only_match_colocated_sites(self):
+        self.db.executemany(
+            "INSERT INTO dive_sites (name, country_or_area, latitude, longitude) VALUES (?, ?, ?, ?)",
+            [("Colocated", "Other region", 48.4, -123.3),
+             ("Too far", "Canada", None, -123.3),
+             ("Invalid latitude", "Canada", 91, -123.3),
+             ("Invalid longitude", "Canada", 48.4, -181),
+             ("Invalid result", "Other region", 91, -123.3),
+             ("Almost colocated", "Other region", 48.400001, -123.3)],
+        )
+        self.db.commit()
+        for coincident in (False, True):
+            if coincident:
+                self.db.execute("UPDATE dive_sites SET latitude = 48.4, longitude = -123.3 WHERE id = 2")
+                self.db.commit()
+            data = self.client.get("/api/explore?location=Canada").get_json()
+            self.assertEqual(data["total"], 3 if coincident else 2)
+            self.assertIn("Colocated", data["html"])
+            for name in ("Too far", "Invalid latitude", "Invalid longitude", "Invalid result", "Almost colocated"):
+                self.assertNotIn(name, data["html"])
+
+    def test_region_with_no_valid_coordinates_is_empty(self):
+        self.db.execute("UPDATE dive_sites SET latitude = NULL WHERE country_or_area = 'Canada'")
+        self.db.commit()
+        data = self.client.get("/api/explore?location=Canada").get_json()
+        self.assertEqual(data["total"], 0)
+        self.assertIsNone(data["next_page"])
+        self.assertIn("No dive sites here yet", data["html"])
+        self.assertNotIn("expanding the search radius", data["html"])
+
+    def test_region_equal_nonzero_distances_produce_zero_radius(self):
+        self.db.execute("DELETE FROM dive_sites")
+        self.db.executemany(
+            "INSERT INTO dive_sites (name, country_or_area, latitude, longitude) VALUES (?, ?, ?, -90)",
+            [("North", "Galapagos", 1), ("South", "Galapagos", -1),
+             ("At median", "Ecuador", 0), ("Off median", "Ecuador", 0.01)],
+        )
+        self.db.commit()
+        data = self.client.get("/api/explore?location=Galapagos").get_json()
+        self.assertEqual(data["total"], 1)
+        self.assertIn("At median", data["html"])
+        for name in ("North", "South", "Off median"):
+            self.assertNotIn(name, data["html"])
+
     def save_location(self, location, client=None):
         return (client or self.client).post("/api/explore/location", json={"location": location},
                                             headers={"X-Requested-With": "fetch"})
@@ -573,12 +667,12 @@ class ExploreTest(unittest.TestCase):
         self.db.commit()
         self.assertIn("1 logged dive</span>", self.client.get("/api/explore?location=Canada").get_json()["html"])
 
-    def test_feed_links_maps_missing_coordinates_and_escaping(self):
+    def test_feed_links_maps_excludes_missing_coordinates_and_escapes_names(self):
         data = self.client.get("/api/explore?location=canada").get_json()
-        self.assertEqual(data["total"], 2)
+        self.assertEqual(data["total"], 1)
         self.assertIn('href="/dive-sites/1"', data["html"])
         self.assertIn('data-map-lat="48.4"', data["html"])
-        self.assertIn("Coordinates pending", data["html"])
+        self.assertNotIn("Northern Wall", data["html"])
         self.assertNotIn("Manta Point", data["html"])
         self.assertIsNone(data["next_page"])
         response = self.client.get("/api/explore", query_string={"location": "Côte d’Ivoire"})
@@ -599,6 +693,7 @@ class ExploreTest(unittest.TestCase):
         self.add_obis_species(1, " turtle ", "overlap")
         self.add_obis_species(1, "Octopus <&>", "octopus-1")
         self.add_obis_species(1, " Octopus <&> ", "octopus-2")
+        self.db.execute("UPDATE dive_sites SET latitude = 48.4, longitude = -123.3 WHERE id = 2")
         self.add_obis_species(2, "Seal", "seal")
         for html in (
             self.client.get("/explore?location=Canada").get_data(as_text=True),
@@ -624,7 +719,7 @@ class ExploreTest(unittest.TestCase):
         )
         rich_site = self.db.execute(
             """INSERT INTO dive_sites (name, country_or_area, latitude, longitude)
-               VALUES ('Z Rich Reef', 'Canada', 48.45, -123.3)"""
+               VALUES ('Z Rich Reef', 'Canada', 48.4, -123.3)"""
         ).lastrowid
         self.add_dive(1)
         rich_dive = self.add_dive(rich_site)
@@ -658,7 +753,7 @@ class ExploreTest(unittest.TestCase):
             self.assertEqual(len(ids(first)) + len(ids(second)), first["total"])
 
     def test_feed_is_paginated_without_duplicates(self):
-        self.db.executemany("INSERT INTO dive_sites (name, country_or_area) VALUES (?, 'Canada')",
+        self.db.executemany("INSERT INTO dive_sites (name, country_or_area, latitude, longitude) VALUES (?, 'Canada', 48.4, -123.3)",
                             [(f"Site {index:02}",) for index in range(PAGE_SIZE + 3)])
         self.db.commit()
         first = self.client.get("/api/explore?location=Canada").get_json()
