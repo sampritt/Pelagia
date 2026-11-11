@@ -15,6 +15,10 @@
 {% block content %}
 <section class="profile-layout shared-site" aria-label="{{ site.name }} dive site">
     {% include "_dive_site_headline.html" %}
+    {% include "_dive_site_season.html" %}
+    <section class="marine-forecast" data-public-rainfall data-url="{{ url_for('api_public_site_rainfall', site_id=site.id) }}" aria-label="Monthly rainfall">
+        {% include "_dive_site_rainfall.html" %}
+    </section>
     {% include "_dive_site_sightings.html" %}
     <div class="dive-preview-gate site-preview-gate">
         <div class="dive-preview-placeholder" aria-hidden="true" inert>
@@ -39,4 +43,8 @@
     </div>
 </section>
 <footer class="shared-footer">Pelagia <span aria-hidden="true">·</span> Log your dive. Find your buddy.</footer>
+{% endblock %}
+
+{% block scripts %}
+<script defer src="{{ url_for('static', filename='js/marine.js', v=pwa_asset_version) }}"></script>
 {% endblock %}

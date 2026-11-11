@@ -13,18 +13,19 @@ function node(tag = 'div') {
     };
 }
 const flush = async () => { for (let i = 0; i < 12; i++) await Promise.resolve(); };
-function setup(coordinates = 'true') {
+function setup(coordinates = 'true', publicRainfall = false) {
     const equipment=node(), exposureAdvice=node(), exposureName=node(), weightAsterisk=node(), exposureAsterisk=node(), exposureHistory=node(), exposureHistoryLink=node(), weightAdvice=node(), weightCaveat=node(), source=node();
     const host = node(), status = node(), retry = node(), charts = [node(), node(), node(), node(), node()], values = ['temperature', 'tide', 'swell', 'wind'].map(v => { const n = node(); n.dataset.marineValue = v; return n; });
     charts.forEach(n => { n.dataset.chart = true; });
     const buttons = ['daily', 'hourly', 'daily', 'hourly', 'daily', 'hourly'].map((v, i) => { const n = node(); n.dataset.marineRange = v; if (i > 1) n.dataset.marineTarget = i > 3 ? 'swell' : 'wind'; return n; });
     host.dataset = {coordinates, url: '/api/dive-sites/1/conditions', temperatureUnit: 'f', lengthUnit: 'ft'};
+    if (publicRainfall) host.dataset = {publicRainfall: '', url: '/api/explore/dive-sites/1/rainfall'};
     host.querySelector = s => ({'[data-equipment-advice]':equipment,'[data-exposure-advice]':exposureAdvice,'[data-exposure-name]':exposureName,'[data-weight-asterisk]':weightAsterisk,'[data-exposure-asterisk]':exposureAsterisk,'[data-exposure-history]':exposureHistory,'[data-exposure-history-link]':exposureHistoryLink,'[data-weight-advice]':weightAdvice,'[data-weight-caveat]':weightCaveat,'[data-marine-status]':status,'[data-marine-retry]':retry,'[data-marine-source]':source,'[data-marine-chart="current"]':charts[0],'[data-marine-chart="tide"]':charts[1],'[data-marine-chart="wind"]':charts[2],'[data-marine-chart="rainfall"]':charts[3],'[data-marine-chart="swell"]':charts[4]})[s];
     host.querySelectorAll = s => s.includes('value') ? values : buttons;
     const window = node(); let id = 0; const timers = new Map(); const requests = []; let ended = 0;
     window.setTimeout = (fn, delay) => { timers.set(++id, {fn, delay}); return id; }; window.clearTimeout = n => timers.delete(n);
     window.PelagiaLoading = {begin: () => () => { ended++; }};
-    const document = {readyState: 'complete', querySelector: () => host, createElement: node, createElementNS: (_, tag) => node(tag), createTextNode: text => ({textContent:text})};
+    const document = {readyState: 'complete', querySelector: s => s === (publicRainfall ? '[data-public-rainfall]' : '[data-marine-forecast]') ? host : null, createElement: node, createElementNS: (_, tag) => node(tag), createTextNode: text => ({textContent:text})};
     const context = vm.createContext({window, document, Intl, Date, AbortController, module: {exports: {}}, fetch: (url, options) => new Promise((resolve, reject) => requests.push({url, options, resolve, reject}))});
     vm.runInContext(fs.readFileSync('pelagia/static/js/marine.js', 'utf8'), context);
     return {equipment,exposureAdvice,exposureName,weightAsterisk,exposureAsterisk,exposureHistory,exposureHistoryLink,weightAdvice,weightCaveat,source,host, status, retry, charts, values, buttons, window, timers, requests, context, ended: () => ended};
@@ -286,4 +287,16 @@ test('completed ocean conditions need no additional requests', async () => {
     assert.equal(s.values[0].textContent, '83°F');
     assert.equal(s.requests.length, 1);
     assert.equal(s.timers.size, 0);
+});
+
+
+test('public rainfall renders the existing monthly chart from rainfall-only data', async () => {
+    const {requests, charts} = setup('true', true);
+    assert.equal(requests.length, 1);
+    assert.equal(requests[0].url, '/api/explore/dive-sites/1/rainfall');
+    requests[0].resolve({ok:true, status:200, json:async()=>({status:'complete', timezone:'UTC', rainfall_monthly:data().charts.rainfall_monthly})});
+    await flush();
+    assert(charts[3].children.length > 0);
+    assert(charts[3].children.some(child => child.tag === 'div'));
+    assert.equal(charts[0].children.length, 0);
 });

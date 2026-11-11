@@ -42,11 +42,7 @@
                 </div>
             </div>
         </div>
-        {% if season %}
-        <div class="site-season-advice" aria-label="Season">
-            <p><strong>{{ season.label }}</strong> from {{ season.start_month }} to {{ season.end_month }}</p>
-        </div>
-        {% endif %}
+        {% include "_dive_site_season.html" %}
         <div class="site-chart-block">
             <div class="site-chart-head">
                 <h2>Current</h2>
@@ -62,10 +58,7 @@
             <div class="site-chart-head"><h2>Tide</h2><span class="chart-unit">Next 24 hours</span></div>
             <div class="marine-chart" data-marine-chart="tide"><p class="muted">Forecast unavailable</p></div>
         </div>
-        <div class="site-chart-block">
-            <div class="site-chart-head"><h2>Rain</h2><span class="chart-unit">Past 12 months</span></div>
-            <div class="marine-chart" data-marine-chart="rainfall"><p class="muted">History unavailable</p></div>
-        </div>
+        {% include "_dive_site_rainfall.html" %}
         <div class="site-chart-block">
             <div class="site-chart-head">
                 <h2>Wind</h2>

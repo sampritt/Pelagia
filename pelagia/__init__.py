@@ -964,6 +964,9 @@ def register_routes(app):
             )
             response = app.make_response(render_template(
                 "shared_dive_site.html", site=site, site_description=site_description,
+                season=seasons.for_site(database.get_db().execute(
+                    "SELECT master_site_id FROM dive_sites WHERE id = ?", (site_id,)
+                ).fetchone()[0]),
                 sightings=dive_site_species_sightings(site_id), description=description,
                 share_url=public_url("public_dive_site" if request.endpoint == "public_dive_site" else "shared_dive_site", site_id=site_id),
                 site_url=url_for("dive_site_profile", site_id=site_id), public_preview=True,

@@ -382,6 +382,38 @@
         window.addEventListener('pageshow', event => { if (event.persisted && host.dataset.coordinates === 'true') load(); });
         if (host.dataset.coordinates === 'true') load(); else unavailable(true);
     }
+    function initPublicRainfall() {
+        const host = document.querySelector('[data-public-rainfall]');
+        if (!host) return;
+        const chart = host.querySelector('[data-marine-chart="rainfall"]');
+        const controller = new AbortController();
+        let result, poll;
+        const deadline = window.setTimeout(() => controller.abort(), 45000);
+        async function load() {
+            try {
+                const response = await fetch(host.dataset.url, { cache: 'no-store', signal: controller.signal });
+                if (response.status === 202) { poll = window.setTimeout(load, 2000); return; }
+                if (!response.ok) return;
+                const data = await response.json();
+                if (data.status === 'complete') {
+                    result = data;
+                    renderChart(chart, data.rainfall_monthly, { rainfall: true, zone: data.timezone });
+                }
+            } catch (_) { /* Keep the existing history-unavailable state. */ }
+            finally { if (result || controller.signal.aborted) window.clearTimeout(deadline); }
+        }
+        let width = host.clientWidth;
+        window.addEventListener('resize', () => {
+            if (result && width !== host.clientWidth) {
+                width = host.clientWidth;
+                renderChart(chart, result.rainfall_monthly, { rainfall: true, zone: result.timezone });
+            }
+        });
+        window.addEventListener('pagehide', () => { controller.abort(); window.clearTimeout(poll); window.clearTimeout(deadline); });
+        load();
+    }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initPublicRainfall);
+    else initPublicRainfall();
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initMarine);
     else initMarine();
     if (typeof module !== 'undefined') module.exports = { renderChart, localDate, localMonth, localHour, hourNumber, compassHeading, windHeading };

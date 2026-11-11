@@ -52,6 +52,25 @@ class DiveSiteSharingTest(unittest.TestCase):
             db.execute("INSERT INTO dive_site_favorites (dive_site_id, user_id) VALUES (1, 1)")
             db.commit()
 
+    def test_public_season_and_rainfall_precede_sightings_and_keep_conditions_gated(self):
+        with self.app.app_context():
+            db = database.get_db()
+            db.execute("UPDATE dive_sites SET master_site_id='DS005429' WHERE id=1")
+            db.commit()
+        guest = self.app.test_client()
+        for path in ("/explore/dive-sites/1", "/share/dive-site/1"):
+            html = guest.get(path).get_data(as_text=True)
+            self.assertLess(html.index('class="site-season-advice"'), html.index('data-public-rainfall'))
+            self.assertLess(html.index('data-marine-chart="rainfall"'), html.index('Harbor Seal'))
+            self.assertIn('Create your free account', html)
+        data = dict(status='complete', timezone='UTC', charts=dict(rainfall_monthly=[dict(time=1, value=20)]), current=dict(temperature_c=25))
+        with patch('pelagia.marine.load', return_value=(data, 200)):
+            response = guest.get('/api/explore/dive-sites/1/rainfall')
+        self.assertEqual(response.json, dict(status='complete', timezone='UTC', rainfall_monthly=[dict(time=1, value=20)]))
+        self.assertEqual(response.headers['Cache-Control'], 'no-store')
+        self.assertEqual(guest.get('/api/dive-sites/1/conditions').status_code, 302)
+        self.assertEqual(guest.get('/api/explore/dive-sites/99999/rainfall').status_code, 404)
+
     def test_public_preview_shows_headline_description_and_aggregated_sightings(self):
         response = self.app.test_client().get("/share/dive-site/1")
         self.assertEqual(response.status_code, 200)

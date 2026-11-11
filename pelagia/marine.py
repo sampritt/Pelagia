@@ -465,6 +465,23 @@ def load(site, now):
 
 
 def init_app(app, login_required):
+    @app.get('/api/explore/dive-sites/<int:site_id>/rainfall')
+    def api_public_site_rainfall(site_id):
+        site = get_db().execute('SELECT * FROM dive_sites WHERE id=?', (site_id,)).fetchone()
+        if site is None:
+            result, status = dict(status='unavailable'), 404
+        elif coordinates(site) is None:
+            result, status = dict(status='unavailable', reason='coordinates'), 200
+        else:
+            data, status = load(site, time.time())
+            result = dict(status=data['status'])
+            if status == 200 and data['status'] == 'complete':
+                result.update(timezone=data['timezone'], rainfall_monthly=data['charts']['rainfall_monthly'])
+        response = jsonify(result)
+        response.status_code = status
+        response.headers['Cache-Control'] = 'no-store'
+        return response
+
     @app.get('/api/dive-sites/<int:site_id>/conditions')
     @login_required
     def api_site_conditions(site_id):
