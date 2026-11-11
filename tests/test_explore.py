@@ -421,8 +421,8 @@ class ExploreTest(unittest.TestCase):
             with self.subTest(query=query):
                 self.assertEqual(self.client.get("/api/explore/locations", query_string={"q": query}).get_json(), expected)
 
-    def test_region_uses_coordinate_medians_and_three_population_standard_deviations(self):
-        # Distances in degrees are [1, 0, 0, 0, 3]: 3 population SDs = 3.49857.
+    def test_region_uses_coordinate_medians_and_six_population_standard_deviations(self):
+        # Distances in degrees are [1, 0, 0, 0, 3]: 6 population SDs = 6.99714.
         # A mean coordinate would exclude Inside; sample SD would include Outside.
         for axis in ("latitude", "longitude"):
             with self.subTest(axis=axis):
@@ -433,8 +433,8 @@ class ExploreTest(unittest.TestCase):
                     "INSERT INTO dive_sites (name, country_or_area, latitude, longitude) VALUES (?, ?, ?, ?)",
                     [(f"Seed {index}", " Galapagos " if index % 2 else "galapagos", *coordinates(offset))
                      for index, offset in enumerate((-1, 0, 0, 0, 3))]
-                    + [("Inside", "Ecuador", *coordinates(3.49)),
-                       ("Outside", "Ecuador", *coordinates(3.51))],
+                    + [("Inside", "Ecuador", *coordinates(6.99)),
+                       ("Outside", "Ecuador", *coordinates(7.01))],
                 )
                 self.db.commit()
                 with patch("pelagia.explore.geocode_place") as geocode:
@@ -455,23 +455,23 @@ class ExploreTest(unittest.TestCase):
             [(f"Seed {index:02}", 0) for index in range(PAGE_SIZE)] + [("Far seed", 10)],
         )
         self.db.executemany(
-            "INSERT INTO dive_sites (name, country_or_area, latitude, longitude) VALUES (?, 'Ecuador', 5.8, -90)",
+            "INSERT INTO dive_sites (name, country_or_area, latitude, longitude) VALUES (?, 'Ecuador', 11.7, -90)",
             [(f"Nearby {index}",) for index in range(4)],
         )
-        self.db.execute("INSERT INTO dive_sites (name, country_or_area, latitude, longitude) VALUES ('Outside', 'Ecuador', 6, -90)")
+        self.db.execute("INSERT INTO dive_sites (name, country_or_area, latitude, longitude) VALUES ('Outside', 'Ecuador', 12, -90)")
         popular = self.db.execute("SELECT id FROM dive_sites WHERE name = 'Nearby 3'").fetchone()[0]
         self.add_dive(popular)
         first = self.client.get("/api/explore?location=Galapagos").get_json()
         second = self.client.get("/api/explore?location=Galapagos&page=2").get_json()
         ids = lambda data: re.findall(r'href="/dive-sites/(\d+)"', data["html"])
-        self.assertEqual(first["total"], PAGE_SIZE + 4)
+        self.assertEqual(first["total"], PAGE_SIZE + 5)
         self.assertEqual(first["next_page"], 2)
         self.assertIsNone(second["next_page"])
         self.assertEqual(ids(first)[0], str(popular))
         self.assertEqual(len(ids(first)), PAGE_SIZE)
-        self.assertEqual(len(ids(second)), 4)
+        self.assertEqual(len(ids(second)), 5)
         self.assertFalse(set(ids(first)) & set(ids(second)))
-        self.assertNotIn("Far seed", first["html"] + second["html"])
+        self.assertIn("Far seed", first["html"] + second["html"])
         self.assertNotIn("Outside", first["html"] + second["html"])
 
     def test_region_single_or_coincident_seeds_only_match_colocated_sites(self):

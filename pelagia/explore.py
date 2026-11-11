@@ -341,7 +341,7 @@ def feed_data(location, page=1, kind="sites"):
         return result
     latitude = median(row["latitude"] for row in rows)
     longitude = median(row["longitude"] for row in rows)
-    radius_km = 3 * pstdev(
+    radius_km = 6 * pstdev(
         cartesian_distance_km(latitude, longitude, row["latitude"], row["longitude"])
         for row in rows
     )
