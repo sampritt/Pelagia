@@ -276,7 +276,8 @@ class ExploreTest(unittest.TestCase):
         anonymous = self.app.test_client()
         for client in (anonymous, self.client):
             html = client.get("/search").get_data(as_text=True)
-            self.assertIn("Search dive sites, dive centers, country or region", html)
+            self.assertIn('placeholder="Search dive sites, locations…"', html)
+            self.assertIn('class="auth-back public-search-home" href="/"', html)
             self.assertEqual(html.count('data-global-search-input'), 1)
             self.assertIn('data-public-search="true"', html)
             self.assertNotIn('class="topbar feed-topbar"', html)

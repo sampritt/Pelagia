@@ -13,6 +13,7 @@
 <div class="marketing-page public-search-page">
     {% include "_marketing_header.html" %}
     <section class="public-search-hero" aria-labelledby="searchTitle">
+        <a class="auth-back public-search-home" href="{{ url_for('landing') }}"><span aria-hidden="true">←</span> Back to home</a>
         <div class="public-search-content">
             <h1 id="searchTitle">Search Pelagia</h1>
             {% include "_public_search_form.html" %}

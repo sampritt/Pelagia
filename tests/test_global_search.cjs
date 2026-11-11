@@ -17,8 +17,6 @@ function setup(publicSearch = false) {
     const input = element(), results = element(), search = element(), document = element();
     const requests = [], navigations = [];
     search.dataset = { publicSearch: String(publicSearch) };
-    input.getBoundingClientRect = () => ({ bottom: 500 });
-    results.style = { setProperty() {} };
     search.querySelector = selector => selector.includes("-input") ? input : results;
     search.contains = target => [input, search, ...results.children].includes(target);
     document.querySelector = () => search; document.createElement = element; document.activeElement = input;

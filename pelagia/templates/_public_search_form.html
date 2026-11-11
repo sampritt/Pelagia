@@ -1,7 +1,6 @@
 <form class="public-search-form autocomplete-field" action="{{ url_for('explore.index') }}" method="get" data-global-search data-public-search="true" role="search">
     <label class="sr-only" for="globalSearch">Search dive sites, dive centers, country or region</label>
-    <input id="globalSearch" name="nearby" type="search" enterkeyhint="search" maxlength="160" value="{{ request.args.get('nearby', request.args.get('location', '')) }}" autocomplete="off" placeholder="Search dive sites, dive centers, country or region" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="globalSearchResults" data-global-search-input>
-    <span class="public-search-prompt" aria-hidden="true">Search dive sites, dive centers, country or region</span>
+    <input id="globalSearch" name="nearby" type="search" enterkeyhint="search" maxlength="160" value="{{ request.args.get('nearby', request.args.get('location', '')) }}" autocomplete="off" placeholder="Search dive sites, locations…" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="globalSearchResults" data-global-search-input>
     <button class="public-search-submit" type="submit" aria-label="Search"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4.5 4.5"/></svg></button>
     <div id="globalSearchResults" class="autocomplete-menu public-search-menu" role="listbox" aria-label="Search suggestions" data-global-search-results hidden></div>
 </form>

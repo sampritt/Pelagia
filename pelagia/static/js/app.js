@@ -626,20 +626,6 @@ function initGlobalSearch() {
     let renderedQuery = "";
     const publicSearch = search.dataset?.publicSearch === "true";
 
-    function fitPublicSuggestions() {
-        if (!publicSearch) return;
-        const viewport = window.visualViewport;
-        const bottom = (viewport?.height || window.innerHeight) + (viewport?.offsetTop || 0);
-        const available = bottom - input.getBoundingClientRect().bottom - 22;
-        results.style.setProperty('--search-menu-height', `${Math.max(0, Math.min(320, available))}px`);
-    }
-    if (publicSearch) {
-        const fitAfterLayout = () => window.requestAnimationFrame(fitPublicSuggestions);
-        window.visualViewport?.addEventListener('resize', fitAfterLayout);
-        window.visualViewport?.addEventListener('scroll', fitAfterLayout);
-        window.addEventListener('resize', fitAfterLayout);
-    }
-
     function close() {
         request?.abort();
         request = null;
@@ -698,7 +684,6 @@ function initGlobalSearch() {
             button.addEventListener("click", () => item.placeSearch ? searchPlace() : selectResult(item));
             results.appendChild(button);
         });
-        fitPublicSuggestions();
         results.hidden = false;
         input.setAttribute("aria-expanded", "true");
     }

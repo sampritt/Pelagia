@@ -4,17 +4,6 @@
     const navigation = document.querySelector('.marketing-navigation');
     if (!page || !toggle || !navigation) return;
 
-    if (page.classList.contains('public-search-page')) {
-        const fitViewport = () => {
-            const height = window.visualViewport?.height || window.innerHeight;
-            page.style.setProperty('--search-viewport-height', `${height}px`);
-            page.toggleAttribute('data-compact-viewport', height < 560);
-        };
-        fitViewport();
-        window.visualViewport?.addEventListener('resize', fitViewport);
-        window.addEventListener('resize', fitViewport);
-    }
-
     const setMenu = open => {
         page.toggleAttribute('data-menu-open', open);
         toggle.setAttribute('aria-expanded', String(open));
