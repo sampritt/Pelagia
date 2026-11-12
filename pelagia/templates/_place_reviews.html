@@ -4,6 +4,7 @@
         <h2 id="placeReviewsTitle">Diver reviews</h2>
         <span>{% if place.review_count %}<strong>{{ '%.1f'|format(place.average_rating) }}</strong> <span class="review-summary-star" aria-hidden="true">★</span> · {{ place.review_count }} {{ 'review' if place.review_count == 1 else 'reviews' }}{% else %}No reviews yet{% endif %}</span>
     </div>
+    {% if not public_preview %}
     {% set draft = review_draft if review_draft else place.my_review %}
     <form class="place-review-form" method="post" action="{{ url_for('save_dive_center_review', center_id=place.id) if place_kind == 'center' else url_for('save_dive_site_review', site_id=place.id) }}#reviews">
         <input type="hidden" name="csrf_token" value="{{ google_csrf_token() }}">
@@ -16,6 +17,7 @@
         {% if review_error %}<p class="review-error" id="placeReviewError" role="alert">{{ review_error }}</p>{% endif %}
         <div class="place-review-footer"><span>Share your experience with other divers.</span><button class="primary-button compact" type="submit">{{ 'Update review' if place.my_review else 'Post review' }}</button></div>
     </form>
+    {% endif %}
     <div class="place-review-list">
         {% for review in place.reviews %}
         <article class="place-review">

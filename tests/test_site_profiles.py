@@ -186,9 +186,14 @@ class SiteProfileTest(unittest.TestCase):
             self.assertEqual(db.execute('SELECT COUNT(*) FROM dive_site_reviews').fetchone()[0], 0)
             self.assertEqual(db.execute('PRAGMA foreign_key_check').fetchall(), [])
 
-    def test_public_preview_keeps_reviews_and_nearby_center_discovery_gated(self):
-        self.review(body='Private community review text.')
+    def test_public_preview_shows_reviews_and_nearby_centers_without_review_inputs(self):
+        self.review(body='Community review text.')
+        with self.app.app_context():
+            db = database.get_db()
+            self.add_center(db, 20, 1)
+            db.commit()
         html = self.app.test_client().get('/share/dive-site/1').get_data(as_text=True)
-        self.assertNotIn('Private community review text.', html)
+        self.assertIn('Community review text.', html)
         self.assertNotIn('name="rating"', html)
-        self.assertNotIn('nearby-center-card', html)
+        self.assertIn('nearby-center-card', html)
+        self.assertIn('href="/explore/dive-centers/20"', html)

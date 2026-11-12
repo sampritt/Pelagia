@@ -910,8 +910,10 @@ def register_routes(app):
             response = redirect(url_for("dive_center_profile", center_id=center_id))
         else:
             location = f" in {center['location']}" if center["location"] else ""
+            center.update(place_profiles.reviews(center_id, None))
             response = app.make_response(render_template(
                 "shared_dive_center.html", center=center, public_preview=True,
+                nearby_sites=place_profiles.nearby_sites(center),
                 center_description=site_descriptions.read_cache(center_id, kind="center"),
                 description=f"Explore {center['name']}{location}. Discover this dive center on Pelagia.",
                 share_url=public_url("public_dive_center" if request.endpoint == "public_dive_center" else "shared_dive_center", center_id=center_id),
@@ -957,6 +959,7 @@ def register_routes(app):
         if current_user():
             response = redirect(url_for("dive_site_profile", site_id=site_id))
         else:
+            site.update(place_profiles.reviews(site_id, None, kind="site"))
             site_description = site_descriptions.read_cache(site_id)
             description = (site_description or {}).get("description") or (
                 f"Explore {site['name']}" + (f" in {site['country_or_area']}" if site['country_or_area'] else "")
@@ -964,9 +967,7 @@ def register_routes(app):
             )
             response = app.make_response(render_template(
                 "shared_dive_site.html", site=site, site_description=site_description,
-                season=seasons.for_site(database.get_db().execute(
-                    "SELECT master_site_id FROM dive_sites WHERE id = ?", (site_id,)
-                ).fetchone()[0]),
+                nearby_centers=place_profiles.nearby_centers(site),
                 sightings=dive_site_species_sightings(site_id), description=description,
                 share_url=public_url("public_dive_site" if request.endpoint == "public_dive_site" else "shared_dive_site", site_id=site_id),
                 site_url=url_for("dive_site_profile", site_id=site_id), public_preview=True,

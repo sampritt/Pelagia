@@ -13,21 +13,33 @@
     <meta name="twitter:card" content="summary">
 {% endblock %}
 {% block content %}
-<section class="profile-layout shared-center" aria-label="{{ center.name }} dive center">
+<section class="profile-layout place-profile shared-center" aria-label="{{ center.name }} dive center">
     {% include "_dive_center_overview.html" %}
+    <section class="place-nearby" aria-labelledby="nearbySitesTitle">
+        <div class="profile-section-heading"><h2 id="nearbySitesTitle">Nearby dive sites</h2><span>Within 30 miles</span></div>
+        {% if nearby_sites %}
+        <div class="site-reports feed-site-reports" data-nearby-carousel data-nearby-label="Dive site">
+            {% with report_selection={'sites': nearby_sites}, nearby=true %}{% include "_home_site_reports.html" %}{% endwith %}
+        </div>
+        {% else %}<p class="place-section-empty">{{ 'No dive sites listed within 30 miles yet.' if center.latitude is not none and center.longitude is not none else 'Nearby dive sites will appear when this center’s location is available.' }}</p>{% endif %}
+    </section>
+    {% with place=center, place_kind="center" %}{% include "_place_reviews.html" %}{% endwith %}
     <div class="dive-preview-gate center-preview-gate">
         <div class="dive-preview-placeholder" aria-hidden="true" inert>
             <div class="detail-panel"><h2>Recent dives</h2><div class="preview-skeleton"></div><div class="preview-skeleton short"></div><div class="preview-skeleton"></div></div>
-            <div class="detail-panel"><h2>Diver reviews</h2><div class="preview-skeleton"></div><div class="preview-skeleton short"></div></div>
         </div>
         <div class="dive-gate-content">
             <span class="dive-gate-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="11" rx="3"></rect><path d="M8 10V7a4 4 0 0 1 8 0v3M12 14v3"></path></svg></span>
             <h2>Dive deeper with this center.</h2>
-            <p>Create a free Pelagia account to explore this dive center’s logged dives and diver reviews.</p>
+            <p>Create a free Pelagia account to explore this dive center’s logged dives.</p>
             <a class="primary-button" href="{{ url_for('landing', next=center_url, mode='signup') }}">Create your free account <span aria-hidden="true">→</span></a>
             <p class="dive-gate-login">Already diving with us? <a href="{{ url_for('landing', next=center_url) }}">Log in</a></p>
         </div>
     </div>
 </section>
-<footer class="shared-footer">Pelagia <span aria-hidden="true">·</span> Log your dive. Find your buddy.</footer>
+<footer class="shared-footer">Pelagia</footer>
+{% endblock %}
+{% block scripts %}
+<script defer src="{{ url_for('static', filename='js/site-carousel.js', v=pwa_asset_version) }}"></script>
+<script defer src="{{ url_for('static', filename='js/place-profile.js', v=pwa_asset_version) }}"></script>
 {% endblock %}

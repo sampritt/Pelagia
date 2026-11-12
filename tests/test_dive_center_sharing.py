@@ -34,7 +34,7 @@ class DiveCenterSharingTest(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         html = response.get_data(as_text=True)
         for visible in ("Shark Bay Dive Center", "Galapagos Ecuador", "1 Ocean Road", 'href="https://example.test"',
-                        "Create your free account", "logged dives and diver reviews"):
+                        "Create your free account", "logged dives", "Nearby dive sites", "Diver reviews"):
             self.assertIn(visible, html)
         for private in ("PRIVATE_DIVER", "PRIVATE_LOG_TITLE", "PRIVATE_LOG_NOTES", "PRIVATE_SPECIES", "PRIVATE_CENTER_COMMENT",
                         "data-center-comment", "data-center-like", 'class="feed-list', 'class="shared-topbar"', 'href="/dive/1"'):
@@ -44,6 +44,26 @@ class DiveCenterSharingTest(unittest.TestCase):
         self.assertEqual(response.headers["Cache-Control"], "private, no-store")
         self.assertEqual(response.headers["X-Robots-Tag"], "noindex, nofollow")
         self.assertIn("Cookie", response.headers["Vary"])
+        self.assertNotIn("Log your dive. Find your buddy.", html)
+
+    def test_public_center_shows_nearby_sites_and_reviews_without_a_review_form(self):
+        with self.app.app_context():
+            db = database.get_db()
+            db.execute("UPDATE dive_centers SET latitude=54.1, longitude=-132.9 WHERE id=1")
+            db.execute("INSERT INTO users (id, username) VALUES (2, 'reef_reviewer')")
+            db.execute("INSERT INTO dive_center_reviews (dive_center_id, user_id, rating, body) VALUES (1, 2, 5, 'Helpful guides and a great boat.')")
+            db.commit()
+        guest = self.app.test_client()
+        for path in ('/explore/dive-centers/1', '/share/dive-center/1'):
+            html = guest.get(path).get_data(as_text=True)
+            for visible in ('Nearby dive sites', 'Alert Rock', 'href="/explore/dive-sites/1"',
+                            'Diver reviews', 'reef_reviewer', 'Helpful guides and a great boat.', '<strong>5.0</strong>',
+                            '5 out of 5 stars', 'js/site-carousel.js', 'js/place-profile.js'):
+                self.assertIn(visible, html)
+            self.assertLess(html.index('Helpful guides and a great boat.'), html.index('class="dive-preview-gate'))
+            self.assertNotIn('class="place-review-form"', html)
+            self.assertNotIn('logged dives and diver reviews', html)
+            self.assertEqual(guest.get('/explore/dive-sites/1').status_code, 200)
 
     def test_guest_preview_does_not_load_the_feed_or_private_center_fields(self):
         with patch("pelagia.fetch_dives", side_effect=AssertionError("Guest feed loaded")), \
@@ -91,6 +111,8 @@ class DiveCenterSharingTest(unittest.TestCase):
         html = guest.get("/share/dive-center/2").get_data(as_text=True)
         self.assertIn("Kelp House", html)
         self.assertIn("Location pending", html)
+        self.assertIn("Nearby dive sites will appear when this center’s location is available.", html)
+        self.assertIn("No reviews yet", html)
         self.assertEqual(html.count("Not listed"), 2)
         self.assertIn("Create your free account", html)
         self.assertNotIn('href="None"', html)

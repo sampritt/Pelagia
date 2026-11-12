@@ -52,7 +52,7 @@ class DiveSiteSharingTest(unittest.TestCase):
             db.execute("INSERT INTO dive_site_favorites (dive_site_id, user_id) VALUES (1, 1)")
             db.commit()
 
-    def test_public_season_and_rainfall_precede_sightings_and_keep_conditions_gated(self):
+    def test_public_site_omits_season_and_rainfall_and_keeps_conditions_gated(self):
         with self.app.app_context():
             db = database.get_db()
             db.execute("UPDATE dive_sites SET master_site_id='DS005429' WHERE id=1")
@@ -63,9 +63,12 @@ class DiveSiteSharingTest(unittest.TestCase):
             self.assertIn('href="#siteAccountGate"', html)
             self.assertIn('id="siteAccountGate" tabindex="-1"', html)
             self.assertNotIn('data-site-report', html)
-            self.assertLess(html.index('class="site-report-gate-link"'), html.index('class="site-season-advice"'))
-            self.assertLess(html.index('class="site-season-advice"'), html.index('data-public-rainfall'))
-            self.assertLess(html.index('data-marine-chart="rainfall"'), html.index('Harbor Seal'))
+            self.assertNotIn('class="site-season-advice"', html)
+            self.assertNotIn('data-public-rainfall', html)
+            self.assertNotIn('data-marine-chart="rainfall"', html)
+            self.assertNotIn('js/marine.js', html)
+            self.assertNotIn('Log your dive. Find your buddy.', html)
+            self.assertIn('Harbor Seal', html)
             self.assertIn('Create your free account', html)
         data = dict(status='complete', timezone='UTC', charts=dict(rainfall_monthly=[dict(time=1, value=20)]), current=dict(temperature_c=25))
         with patch('pelagia.marine.load', return_value=(data, 200)):
@@ -74,6 +77,25 @@ class DiveSiteSharingTest(unittest.TestCase):
         self.assertEqual(response.headers['Cache-Control'], 'no-store')
         self.assertEqual(guest.get('/api/dive-sites/1/conditions').status_code, 302)
         self.assertEqual(guest.get('/api/explore/dive-sites/99999/rainfall').status_code, 404)
+
+    def test_public_site_shows_nearby_centers_and_reviews_without_a_review_form(self):
+        with self.app.app_context():
+            db = database.get_db()
+            db.execute("UPDATE dive_centers SET latitude=54.1, longitude=-132.9 WHERE id=1")
+            db.execute("INSERT INTO users (id, username) VALUES (2, 'reef_reviewer')")
+            db.execute("INSERT INTO dive_site_reviews (dive_site_id, user_id, rating, body) VALUES (1, 2, 4, 'Beautiful kelp and seals.')")
+            db.commit()
+        guest = self.app.test_client()
+        for path in ('/explore/dive-sites/1', '/share/dive-site/1'):
+            html = guest.get(path).get_data(as_text=True)
+            for visible in ('Nearby dive centers', 'Shark Bay Dive Center', 'href="/explore/dive-centers/1"',
+                            'Diver reviews', 'reef_reviewer', 'Beautiful kelp and seals.', '<strong>4.0</strong>',
+                            '4 out of 5 stars', 'js/site-carousel.js', 'js/place-profile.js'):
+                self.assertIn(visible, html)
+            self.assertLess(html.index('Beautiful kelp and seals.'), html.index('class="dive-preview-gate'))
+            self.assertNotIn('class="place-review-form"', html)
+            self.assertEqual(guest.get('/explore/dive-centers/1').status_code, 200)
+        self.assertEqual(guest.post('/dive-sites/1/reviews', data={'rating': '5', 'body': 'Guest review'}).status_code, 302)
 
     def test_public_preview_shows_headline_description_and_aggregated_sightings(self):
         response = self.app.test_client().get("/share/dive-site/1")
@@ -174,6 +196,8 @@ class DiveSiteSharingTest(unittest.TestCase):
         self.assertIn("Location pending", html)
         self.assertIn("Coordinates pending", html)
         self.assertIn("No marine species observations yet.", html)
+        self.assertIn("Nearby dive centers will appear when this site’s location is available.", html)
+        self.assertIn("No reviews yet", html)
         self.assertIn('data-description-url="/api/explore/dive-sites/2/description"', html)
         for client in (self.client, self.app.test_client()):
             self.assertEqual(client.get("/share/dive-site/99999").status_code, 404)
