@@ -10,7 +10,6 @@
 {% if public_explore %}
 <div class="marketing-page public-explore-navigation">{% include "_marketing_header.html" %}</div>
 <div class="public-explore-content">
-    <h1>Search Pelagia</h1>
     {% include "_public_search_form.html" %}
 {% endif %}
 {% set distance_unit = initial_nearby.unit if initial_nearby else ('mi' if units.length == 'ft' else 'km') %}

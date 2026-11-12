@@ -21,7 +21,6 @@
 .public-explore-body .page-shell { width: 100%; max-width: none; margin: 0; padding: 0; }
 .public-explore-navigation { position: sticky; top: 0; z-index: 50; color: #082d43; }
 .public-explore-content { width: min(100%, 808px); margin: auto; padding: 40px 24px 60px; }
-.public-explore-content > h1 { margin: 0 0 22px; color: var(--ink); font-size: 32px; letter-spacing: -.04em; }
 .public-explore-content > .public-search-form { margin-bottom: 28px; z-index: 30; }
 .public-explore-content .public-search-form #globalSearch { height: 64px; padding-block: 16px; color: var(--ink); border-color: var(--line-strong); background: var(--panel); box-shadow: var(--shadow-xs); font-size: 16px; }
 .public-explore-content .public-search-form #globalSearch::placeholder { color: var(--muted-strong); }
