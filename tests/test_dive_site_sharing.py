@@ -204,7 +204,9 @@ class DiveSiteSharingTest(unittest.TestCase):
         self.assertIn("Coordinates pending", html)
         self.assertIn("No marine species observations yet.", html)
         self.assertIn("Nearby dive centers will appear when this site’s location is available.", html)
-        self.assertIn("No reviews yet", html)
+        self.assertNotIn('id="reviews"', html)
+        self.assertNotIn("Diver reviews", html)
+        self.assertNotIn("No reviews yet", html)
         self.assertIn('data-description-url="/api/explore/dive-sites/2/description"', html)
         for client in (self.client, self.app.test_client()):
             self.assertEqual(client.get("/share/dive-site/99999").status_code, 404)

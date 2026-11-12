@@ -34,7 +34,7 @@ class DiveCenterSharingTest(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         html = response.get_data(as_text=True)
         for visible in ("Shark Bay Dive Center", "Galapagos Ecuador", "1 Ocean Road", 'href="https://example.test"',
-                        "Create your free account", "logged dives", "Nearby dive sites", "Diver reviews"):
+                        "Create your free account", "logged dives", "Nearby dive sites"):
             self.assertIn(visible, html)
         for private in ("PRIVATE_DIVER", "PRIVATE_LOG_TITLE", "PRIVATE_LOG_NOTES", "PRIVATE_SPECIES", "PRIVATE_CENTER_COMMENT",
                         "data-center-comment", "data-center-like", 'class="feed-list', 'class="shared-topbar"', 'href="/dive/1"'):
@@ -119,7 +119,9 @@ class DiveCenterSharingTest(unittest.TestCase):
         self.assertIn("Kelp House", html)
         self.assertIn("Location pending", html)
         self.assertIn("Nearby dive sites will appear when this center’s location is available.", html)
-        self.assertIn("No reviews yet", html)
+        self.assertNotIn('id="reviews"', html)
+        self.assertNotIn("Diver reviews", html)
+        self.assertNotIn("No reviews yet", html)
         self.assertEqual(html.count("Not listed"), 2)
         self.assertIn("Create your free account", html)
         self.assertNotIn('href="None"', html)
