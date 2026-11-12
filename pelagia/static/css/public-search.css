@@ -1,15 +1,10 @@
 /* Public discovery shares the landing navigation and the app's search behavior. */
-/* Keep document geometry independent of the keyboard's visual viewport.
-   Native scrolling can reveal the input and suggestions without re-centering. */
-html:has(.public-search-body) { scroll-behavior: auto; }
-.public-search-body { min-height: 100svh; background: #064c64; }
-.public-search-page { min-height: 100svh; }
-.public-search-hero { position: relative; isolation: isolate; min-height: calc(100svh - 89px); padding: clamp(96px, 26svh, 270px) var(--gutter) 60px; }
-.public-search-hero::before { position: fixed; content: ''; inset: 0 0 auto; height: 100lvh; z-index: -1; background: linear-gradient(90deg, #002a3cb8, #002d3f65 65%, #003c4635), linear-gradient(0deg, #002a3a40, transparent), #064c64 url('../img/landing/coral-hero.jpg') center / cover; }
-.public-search-home { position: absolute; top: 22px; right: var(--gutter); }
-.public-search-home.auth-back:focus-visible { outline: 3px solid #00a2aa; outline-offset: 5px; }
+/* Fixed spacing keeps the search steady when the mobile keyboard opens.
+   The image fades into the product background without clipping suggestions. */
+.marketing-explore { --explore-fade: 230px; position: relative; isolation: isolate; min-height: 600px; padding: 250px var(--gutter) 160px; scroll-margin-top: 88px; }
+.marketing-explore::before { position: absolute; content: ''; inset: 0; z-index: -1; pointer-events: none; background: linear-gradient(90deg, #002a3cb8, #002d3f65 65%, #003c4635), linear-gradient(0deg, #002a3a40, transparent), #064c64 url('../img/landing/coral-hero.jpg') center / cover; -webkit-mask-image: linear-gradient(to bottom, transparent, #00000014 calc(var(--explore-fade) * .2), #00000080 calc(var(--explore-fade) * .55), #000000eb calc(var(--explore-fade) * .85), #000 var(--explore-fade)); mask-image: linear-gradient(to bottom, transparent, #00000014 calc(var(--explore-fade) * .2), #00000080 calc(var(--explore-fade) * .55), #000000eb calc(var(--explore-fade) * .85), #000 var(--explore-fade)); }
 .public-search-content { width: min(100%, 800px); margin-inline: auto; }
-.public-search-content h1 { margin: 0 0 32px; text-align: center; color: #fff; font-size: clamp(40px, 5.5vw, 76px); font-weight: 650; letter-spacing: -.055em; line-height: 1.1; }
+.public-search-content h2 { margin: 0 0 32px; text-align: center; color: #fff; font-size: clamp(40px, 5.5vw, 76px); font-weight: 650; letter-spacing: -.055em; line-height: 1.1; }
 .public-search-form { width: 100%; margin: 0; }
 .public-search-form #globalSearch { width: 100%; height: 76px; margin: 0; padding: 20px 78px 20px 26px; border: 1px solid #ffffff85; border-radius: 18px; background: #ffffff14; box-shadow: 0 12px 40px #00253526; backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); color: #fff; font-size: 19px; font-weight: 450; outline: none; appearance: none; }
 .public-search-form #globalSearch::placeholder { color: #f0f7fa; opacity: 1; }
@@ -32,14 +27,14 @@ html:has(.public-search-body) { scroll-behavior: auto; }
 .public-explore-content .public-search-form #globalSearch::placeholder { color: var(--muted-strong); }
 .public-explore-content .public-search-submit { top: 8px; right: 8px; color: var(--accent-deep); background: var(--accent-soft); }
 @media (max-width: 900px) {
-    .public-search-hero { min-height: calc(100svh - 77px); padding-top: clamp(88px, 16svh, 144px); padding-bottom: 48px; }
+    .marketing-explore { scroll-margin-top: 81px; }
 }
 @media (max-width: 700px) {
-    .public-search-hero::before { background-position: 55% center; }
-    .public-search-content h1 { margin-bottom: 24px; font-size: clamp(36px, 8.5vw, 54px); }
+    .marketing-explore { --explore-fade: 170px; min-height: 440px; padding-top: 190px; padding-bottom: 100px; scroll-margin-top: 76px; }
+    .marketing-explore::before { background-position: 55% center; }
+    .public-search-content h2 { margin-bottom: 24px; font-size: clamp(36px, 8.5vw, 54px); }
     .public-search-form #globalSearch { height: 64px; padding: 16px 54px 16px 14px; font-size: 16px; border-radius: 16px; }
     .public-search-submit { top: 10px; right: 8px; width: 44px; height: 44px; padding: 10px; }
     .public-explore-content { padding: 28px 20px 40px; }
     .public-explore-content .public-search-submit { top: 10px; }
 }
-.public-search-body > .sr-only { top: 0; left: 0; }

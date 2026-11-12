@@ -4,7 +4,7 @@
             <nav class="marketing-navigation" aria-label="Main navigation" id="landingNavigation">
                 <a href="{{ url_for('landing') }}#home"{% if request.endpoint == 'landing' %} aria-current="page"{% endif %}>Home</a>
                 <a href="{{ url_for('landing') }}#product">Product</a>
-                <a href="{{ url_for('public_search') }}"{% if request.endpoint in ('public_search', 'explore.index') %} aria-current="page"{% endif %}>Explore</a>
+                <a href="{{ url_for('landing') }}#explore"{% if request.endpoint == 'explore.index' %} aria-current="page"{% endif %}>Explore</a>
                 <a href="{{ url_for('today_dive_brief') }}">The Dive Brief</a>
                 <a href="{{ url_for('landing') }}#support">Support</a>
             </nav>

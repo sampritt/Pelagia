@@ -274,17 +274,29 @@ class ExploreTest(unittest.TestCase):
 
     def test_search_landing_and_navigation(self):
         anonymous = self.app.test_client()
-        for client in (anonymous, self.client):
-            html = client.get("/search").get_data(as_text=True)
-            self.assertIn('placeholder="Search dive sites, locations…"', html)
-            self.assertIn('class="auth-back public-search-home" href="/"', html)
-            self.assertEqual(html.count('data-global-search-input'), 1)
-            self.assertIn('data-public-search="true"', html)
-            self.assertNotIn('class="topbar feed-topbar"', html)
         html = anonymous.get("/").get_data(as_text=True)
+        self.assertIn('placeholder="Search dive sites, locations…"', html)
+        self.assertEqual(html.count('data-global-search-input'), 1)
+        self.assertIn('data-public-search="true"', html)
+        self.assertNotIn('class="topbar feed-topbar"', html)
+        self.assertIn('<h2 id="exploreTitle">Explore Pelagia</h2>', html)
+        self.assertLess(html.index('id="connectTitle"'), html.index('id="explore"'))
+        self.assertLess(html.index('id="explore"'), html.index('id="support"'))
         nav = re.search(r'<nav class="marketing-navigation".*?</nav>', html, re.S)[0]
+        self.assertIn('href="/#explore"', nav)
         self.assertLess(nav.index('>Product<'), nav.index('>Explore<'))
         self.assertLess(nav.index('>Explore<'), nav.index('>The Dive Brief<'))
+
+    def test_retired_search_page_redirects_and_preserves_query(self):
+        anonymous = self.app.test_client()
+        response = anonymous.get("/search")
+        self.assertEqual(response.status_code, 301)
+        self.assertEqual(response.location, "/#explore")
+        response = anonymous.get("/search?nearby=Victoria")
+        self.assertEqual(response.location, "/?nearby=Victoria#explore")
+        self.assertIn('value="Victoria"', anonymous.get(response.location).get_data(as_text=True))
+        self.assertEqual(anonymous.get("/search?location=Canada").location, "/?location=Canada#explore")
+        self.assertEqual(self.client.get("/search?nearby=Victoria").location, "/explore?nearby=Victoria")
 
     def test_universal_search_in_each_signed_in_header(self):
         self.db.execute("INSERT INTO dive_centers (name) VALUES ('Center')")

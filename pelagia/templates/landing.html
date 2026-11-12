@@ -17,6 +17,7 @@
 <meta name="twitter:image" content="{{ public_url('static', filename='img/landing/coral-hero.jpg') }}">
 <link rel="preload" as="image" href="{{ url_for('static', filename='img/landing/coral-hero.jpg') }}" fetchpriority="high">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/landing.css', v=pwa_asset_version) }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/public-search.css', v=pwa_asset_version) }}">
 <script defer src="{{ url_for('static', filename='js/landing.js', v=pwa_asset_version) }}"></script>
 <script type="application/ld+json">{{ {"@context": "https://schema.org", "@type": "WebApplication", "name": "Pelagia", "url": public_url('landing'), "applicationCategory": "LifestyleApplication", "operatingSystem": "Web", "description": description, "offers": {"@type": "Offer", "price": "0", "priceCurrency": "USD"}}|tojson }}</script>
 {% endblock %}
@@ -121,6 +122,13 @@
             </div>
         </section>
     </div>
+
+    <section class="marketing-explore" id="explore" aria-labelledby="exploreTitle">
+        <div class="public-search-content">
+            <h2 id="exploreTitle">Explore Pelagia</h2>
+            {% include "_public_search_form.html" %}
+        </div>
+    </section>
 
     <section class="marketing-support" id="support" aria-labelledby="supportTitle">
         <div class="marketing-support-inner">

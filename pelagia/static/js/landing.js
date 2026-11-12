@@ -36,6 +36,30 @@
     });
     window.matchMedia('(max-width: 900px)').addEventListener('change', () => setMenu(false));
 
+    const searchInput = page.querySelector('.marketing-explore [data-global-search-input]');
+    const searchResults = page.querySelector('.marketing-explore [data-global-search-results]');
+    if (searchInput && searchResults) {
+        // Leave room below the focused field for suggestions, including when
+        // a mobile keyboard reduces the visible viewport after focus.
+        const revealSearch = () => {
+            if (document.activeElement !== searchInput) return;
+            const viewport = window.visualViewport;
+            const visibleTop = viewport?.offsetTop || 0;
+            const visibleBottom = visibleTop + (viewport?.height || window.innerHeight);
+            const headerBottom = page.querySelector('.marketing-header').getBoundingClientRect().bottom;
+            const input = searchInput.getBoundingClientRect();
+            const roomAbove = input.top - Math.max(visibleTop, headerBottom) - 16;
+            const suggestionSpace = searchResults.hidden ? 160 : Math.min(searchResults.offsetHeight + 10, 200);
+            const needed = input.bottom + suggestionSpace + 16 - visibleBottom;
+            if (needed > 0 && roomAbove > 0) {
+                window.scrollBy({ top: Math.min(needed, roomAbove), behavior: 'instant' });
+            }
+        };
+        searchInput.addEventListener('focus', revealSearch);
+        window.visualViewport?.addEventListener('resize', revealSearch);
+        new MutationObserver(revealSearch).observe(searchResults, { attributes: true, attributeFilter: ['hidden'], childList: true });
+    }
+
     if ('IntersectionObserver' in window) {
         const motion = window.matchMedia('(prefers-reduced-motion: reduce)');
         if (!motion.matches) {

@@ -239,7 +239,10 @@ def register_routes(app):
 
     @app.get("/search")
     def public_search():
-        return render_template("public_search.html", public_search=True, auth_next=url_for("explore.index"))
+        query = {key: request.args[key] for key in ("nearby", "location") if key in request.args}
+        if current_user():
+            return redirect(url_for("explore.index", **query))
+        return redirect(url_for("landing", _anchor="explore", **query), code=301)
 
     @app.after_request
     def search_cache_policy(response):
