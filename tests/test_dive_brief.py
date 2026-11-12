@@ -175,7 +175,7 @@ class DiveBriefTest(unittest.TestCase):
         self.assertIn(b'href="/thedivebrief"', guest.get("/").data)
         self.assertIn(b"The complete public story.", guest.get("/share/brief/2026-10-22").data)
 
-    def test_public_today_url_follows_editorial_date_and_keeps_dated_share_links(self):
+    def test_public_latest_url_follows_editorial_date_and_keeps_dated_share_links(self):
         self.write_edition(date(2026, 10, 22), "Today's public edition.")
         self.write_edition(date(2026, 10, 23), "The next public edition.")
         guest = self.app.test_client()
@@ -193,6 +193,34 @@ class DiveBriefTest(unittest.TestCase):
         self.assertIn(b"The next public edition.", response.data)
         self.assertIn(b'/share/brief/2026-10-23', response.data)
         self.edition_clock.return_value = date(2026, 10, 24)
+        response = guest.get("/thedivebrief")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"The next public edition.", response.data)
+        self.assertIn(b'/share/brief/2026-10-23', response.data)
+
+    def test_public_latest_url_selects_by_date_and_skips_invalid_editions(self):
+        older = self.write_edition(date(2026, 10, 17), "The older edition.")
+        latest = self.write_edition(date(2026, 10, 20), "The latest published edition.")
+        self.write_edition(date(2026, 10, 21)).write_text("# Missing metadata")
+        self.write_edition(date(2026, 10, 23), "The unpublished edition.")
+        # Modification time must not override the edition date.
+        os.utime(older, (2000000000, 2000000000))
+        folder = latest.parent
+        (folder / "the_dive_brief_invalid.md").write_text("# Invalid filename")
+        (folder / "the_dive_brief_2026-10-99.md").write_text("# Invalid date")
+        guest = self.app.test_client()
+        response = guest.get("/thedivebrief")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"The latest published edition.", response.data)
+        self.assertNotIn(b"The older edition.", response.data)
+        self.assertNotIn(b"The unpublished edition.", response.data)
+        self.assertIn(b'/share/brief/2026-10-20', response.data)
+
+    def test_public_latest_url_returns_404_without_a_valid_published_edition(self):
+        guest = self.app.test_client()
+        self.assertEqual(guest.get("/thedivebrief").status_code, 404)
+        self.write_edition(date(2026, 10, 23))
+        self.write_edition(date(2026, 10, 21)).write_text("# Missing metadata")
         self.assertEqual(guest.get("/thedivebrief").status_code, 404)
 
     def test_reader_share_uses_its_own_edition_and_public_origin(self):

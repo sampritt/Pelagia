@@ -341,8 +341,11 @@ def register_routes(app):
         return response
 
     @app.get("/thedivebrief")
-    def today_dive_brief():
-        return shared_dive_brief(dive_brief.effective_date().isoformat())
+    def latest_dive_brief():
+        brief = dive_brief.load_latest_brief()
+        if brief is None:
+            abort(404)
+        return shared_dive_brief(brief.effective_date.isoformat())
 
     def render_dive_brief(edition, public_brief=False):
         try:

@@ -134,6 +134,28 @@ def edition_filename(edition):
     return f"the_dive_brief_{edition.isoformat()}.md"
 
 
+def load_latest_brief():
+    """Return the newest valid edition available through the publication day."""
+    today = effective_date()
+    folder = Path(current_app.config["DIVE_BRIEF_DIR"])
+    try:
+        paths = sorted(folder.glob("the_dive_brief_*.md"), reverse=True)
+    except OSError as error:
+        current_app.logger.warning("Cannot list Dive Brief editions: %s", error)
+        return None
+    for path in paths:
+        try:
+            edition = date.fromisoformat(path.stem.removeprefix("the_dive_brief_"))
+        except ValueError:
+            continue
+        if edition > today or path.name != edition_filename(edition):
+            continue
+        brief = load_brief(edition)
+        if brief is not None:
+            return brief
+    return None
+
+
 def _atomic_write(path, payload):
     """Readers see the complete previous or new edition, never a partial file."""
     path.parent.mkdir(parents=True, exist_ok=True)
