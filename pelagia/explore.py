@@ -31,6 +31,161 @@ NOMINATIM_ENDPOINT = "https://nominatim.openstreetmap.org/search"
 RADIUS_LIMITS = {"mi": 100, "km": 160}
 CENTER_RADIUS_KM = 30 * 1.609344
 
+# Whole-country/territory labels and their catalog aliases. These locations are
+# too broad for a single inferred radius. Audit: docs/explore-location-search.md.
+TAG_MATCH_LOCATIONS = frozenset(name.casefold() for name in (
+    "Albania",
+    "Antigua and Barbuda",
+    "Argentina",
+    "Aruba",
+    "Australia",
+    "Austria",
+    "Azerbaijan",
+    "Bahamas",
+    "Barbados",
+    "Belgium",
+    "Belize",
+    "Benin",
+    "Bermuda",
+    "Brazil",
+    "British Indian Ocean Territory",
+    "British Virgin Islands",
+    "Brunei",
+    "Bulgaria",
+    "Cabo Verde",
+    "Cambodia",
+    "Canada",
+    "Cape Verde",
+    "Caribbean Netherlands",
+    "Cayman Islands",
+    "Chile",
+    "China",
+    "Christmas Island",
+    "Colombia",
+    "Cook Islands",
+    "Costa Rica",
+    "Croatia",
+    "Cuba",
+    "Curacao",
+    "Curaçao",
+    "Cyprus",
+    "Czech Republic",
+    "Denmark",
+    "Djibouti",
+    "Dominica",
+    "Dominican Republic",
+    "Ecuador",
+    "Egypt",
+    "El Salvador",
+    "Federated States Of Micronesia",
+    "Fiji",
+    "Finland",
+    "France",
+    "French Polynesia",
+    "Germany",
+    "Gibraltar",
+    "Greece",
+    "Greenland",
+    "Grenada",
+    "Guadeloupe",
+    "Guam",
+    "Guatemala",
+    "Honduras",
+    "Hungary",
+    "Iceland",
+    "India",
+    "Indonesia",
+    "Iran",
+    "Ireland",
+    "Israel",
+    "Italy",
+    "Jamaica",
+    "Japan",
+    "Jordan",
+    "Kenya",
+    "Kuwait",
+    "KY",
+    "Latvia",
+    "Libya",
+    "Madagascar",
+    "Malaysia",
+    "Maldives",
+    "Malta",
+    "Malta and Gozo",
+    "Marshall Islands",
+    "Martinique",
+    "Mauritius",
+    "Mexico",
+    "Montenegro",
+    "Mozambique",
+    "Netherlands",
+    "New Caledonia",
+    "New Zealand",
+    "Nicaragua",
+    "Niue",
+    "Northern Mariana Islands",
+    "Oman",
+    "Palau",
+    "Panama",
+    "Papua New Guinea",
+    "Peru",
+    "Philippines",
+    "Poland",
+    "Portugal",
+    "Puerto Rico",
+    "Qatar",
+    "Republic Of Mauritius",
+    "Reunion",
+    "Romania",
+    "Russia",
+    "Réunion",
+    "Saint Kitts Nevis",
+    "Saint Vincent The Grenadines",
+    "Saudi Arabia",
+    "Seychelles",
+    "Singapore",
+    "Sint Maarten",
+    "Slovakia",
+    "Slovenia",
+    "Solomon Islands",
+    "South Africa",
+    "South Korea",
+    "Spain",
+    "Sri Lanka",
+    "St. Kitts & Nevis",
+    "St. Kitts and Nevis",
+    "St. Lucia",
+    "St. Vincent & Grenadines",
+    "St. Vincent and the Grenadines",
+    "Sudan",
+    "Sweden",
+    "Switzerland",
+    "São Tomé & Príncipe",
+    "Taiwan",
+    "Tanzania",
+    "Thailand",
+    "The Guadeloupe Islands",
+    "Timor Leste East Timor",
+    "Tonga",
+    "Trinidad & Tobago",
+    "Trinidad And Tobago",
+    "Tunisia",
+    "Turkey",
+    "Turks and Caicos",
+    "Turks And Caicos Islands",
+    "United Arab Emirates",
+    "United Kingdom",
+    "United States",
+    "United States of America",
+    "United States Of America Usa",
+    "United States Virgin Islands",
+    "US Virgin Islands",
+    "Vanuatu",
+    "Venezuela",
+    "Vietnam",
+    "Western Sahara",
+))
+
 
 def feed_kind(source):
     kind = source.get("kind", "sites")
@@ -325,11 +480,28 @@ def add_observations(rows):
 
 
 def feed_data(location, page=1, kind="sites"):
-    """Infer a regional radius from labeled sites and search the full catalog."""
+    """Match broad location tags, or infer a radius for smaller regions."""
     if kind == "centers":
         return center_feed_data(location, page)
     result = {"location": location, "kind": "sites", "items": [], "total": 0, "next_page": None}
     if not location:
+        return result
+    if location.strip().casefold() in TAG_MATCH_LOCATIONS:
+        db = get_db()
+        result["total"] = db.execute(
+            "SELECT count(*) FROM dive_sites WHERE trim(country_or_area) = ? COLLATE NOCASE",
+            (location.strip(),),
+        ).fetchone()[0]
+        rows = db.execute(
+            f"""SELECT {SITE_COLUMNS}, {SPECIES_COUNT} FROM dive_sites
+                WHERE trim(country_or_area) = ? COLLATE NOCASE
+                ORDER BY logged_dive_count DESC, observed_species_count DESC, name COLLATE NOCASE, id
+                LIMIT ? OFFSET ?""",
+            (location.strip(), PAGE_SIZE, (page - 1) * PAGE_SIZE),
+        ).fetchall()
+        result["items"] = add_observations(rows)
+        if page * PAGE_SIZE < result["total"]:
+            result["next_page"] = page + 1
         return result
     rows = get_db().execute(
         """SELECT latitude, longitude FROM dive_sites

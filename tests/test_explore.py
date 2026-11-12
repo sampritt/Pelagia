@@ -8,7 +8,7 @@ from unittest.mock import Mock, patch
 import requests
 
 from pelagia import create_app, db as database
-from pelagia.explore import PAGE_SIZE, GeocodingError, cartesian_distance_km, geocode_place
+from pelagia.explore import PAGE_SIZE, TAG_MATCH_LOCATIONS, GeocodingError, cartesian_distance_km, geocode_place
 
 
 class ExploreTest(unittest.TestCase):
@@ -486,6 +486,47 @@ class ExploreTest(unittest.TestCase):
             with self.subTest(query=query):
                 self.assertEqual(self.client.get("/api/explore/locations", query_string={"q": query}).get_json(), expected)
 
+    def test_country_search_only_matches_location_tags_including_distant_and_unmapped_sites(self):
+        self.db.executemany(
+            """INSERT INTO dive_sites (name, country_or_area, country_code, latitude, longitude)
+               VALUES (?, ?, ?, ?, ?)""",
+            [("Caribbean Mexico", " Mexico ", "MX", 20.47, -87.18),
+             ("Pacific Mexico", "mexico", "MX", 32.42, -117.26),
+             ("Unmapped Mexico", "Mexico", "MX", None, None),
+             ("Neighboring country", "Belize", "BZ", 20.47, -87.18),
+             ("Separate Mexican subregion", "Cozumel", "MX", 20.47, -87.18),
+             ("Different tag", "Mexico coast", "MX", 20.47, -87.18)],
+        )
+        self.db.commit()
+        with patch("pelagia.explore.nearby_feed_data", side_effect=AssertionError("Country must use tag matching")):
+            for client in (self.client, self.app.test_client()):
+                data = client.get("/api/explore", query_string={"location": " mExIcO "}).get_json()
+                self.assertEqual(data["total"], 3)
+                self.assertIsNone(data["next_page"])
+                for name in ("Caribbean Mexico", "Pacific Mexico", "Unmapped Mexico"):
+                    self.assertIn(name, data["html"])
+                for name in ("Neighboring country", "Separate Mexican subregion", "Different tag"):
+                    self.assertNotIn(name, data["html"])
+                html = client.get("/explore?location=Mexico").get_data(as_text=True)
+                self.assertIn("Pacific Mexico", html)
+                self.assertNotIn("Neighboring country", html)
+
+    def test_whole_country_and_territory_aliases_use_tag_matching(self):
+        for location in ("United States", "United States of America", "United States Of America Usa",
+                         "Curaçao", "Curacao", "Malta and Gozo", "Republic Of Mauritius",
+                         "Federated States Of Micronesia", "French Polynesia", "KY"):
+            with self.subTest(location=location):
+                self.assertIn(location.casefold(), TAG_MATCH_LOCATIONS)
+                self.db.execute(
+                    "INSERT INTO dive_sites (name, country_or_area) VALUES ('Unmapped country site', ?)",
+                    (location,),
+                )
+                self.db.commit()
+                with patch("pelagia.explore.nearby_feed_data", side_effect=AssertionError("Country must use tag matching")):
+                    data = self.client.get("/api/explore", query_string={"location": location.upper()}).get_json()
+                self.assertEqual(data["total"], 1)
+                self.assertIn("Unmapped country site", data["html"])
+
     def test_region_uses_coordinate_medians_and_four_point_five_population_standard_deviations(self):
         # Distances in degrees are [1, 0, 0, 0, 3]: 4.5 population SDs = 5.24786.
         # A mean coordinate would exclude Inside; sample SD would include Outside.
@@ -540,12 +581,13 @@ class ExploreTest(unittest.TestCase):
         self.assertNotIn("Outside", first["html"] + second["html"])
 
     def test_region_single_or_coincident_seeds_only_match_colocated_sites(self):
+        self.db.execute("UPDATE dive_sites SET country_or_area = 'Local reef area' WHERE country_or_area = 'Canada'")
         self.db.executemany(
             "INSERT INTO dive_sites (name, country_or_area, latitude, longitude) VALUES (?, ?, ?, ?)",
             [("Colocated", "Other region", 48.4, -123.3),
-             ("Too far", "Canada", None, -123.3),
-             ("Invalid latitude", "Canada", 91, -123.3),
-             ("Invalid longitude", "Canada", 48.4, -181),
+             ("Too far", "Local reef area", None, -123.3),
+             ("Invalid latitude", "Local reef area", 91, -123.3),
+             ("Invalid longitude", "Local reef area", 48.4, -181),
              ("Invalid result", "Other region", 91, -123.3),
              ("Almost colocated", "Other region", 48.400001, -123.3)],
         )
@@ -554,16 +596,16 @@ class ExploreTest(unittest.TestCase):
             if coincident:
                 self.db.execute("UPDATE dive_sites SET latitude = 48.4, longitude = -123.3 WHERE id = 2")
                 self.db.commit()
-            data = self.client.get("/api/explore?location=Canada").get_json()
+            data = self.client.get("/api/explore?location=Local+reef+area").get_json()
             self.assertEqual(data["total"], 3 if coincident else 2)
             self.assertIn("Colocated", data["html"])
             for name in ("Too far", "Invalid latitude", "Invalid longitude", "Invalid result", "Almost colocated"):
                 self.assertNotIn(name, data["html"])
 
     def test_region_with_no_valid_coordinates_is_empty(self):
-        self.db.execute("UPDATE dive_sites SET latitude = NULL WHERE country_or_area = 'Canada'")
+        self.db.execute("UPDATE dive_sites SET country_or_area = 'Local reef area', latitude = NULL WHERE country_or_area = 'Canada'")
         self.db.commit()
-        data = self.client.get("/api/explore?location=Canada").get_json()
+        data = self.client.get("/api/explore?location=Local+reef+area").get_json()
         self.assertEqual(data["total"], 0)
         self.assertIsNone(data["next_page"])
         self.assertIn("No dive sites here yet", data["html"])
@@ -732,12 +774,13 @@ class ExploreTest(unittest.TestCase):
         self.db.commit()
         self.assertIn("1 logged dive</span>", self.client.get("/api/explore?location=Canada").get_json()["html"])
 
-    def test_feed_links_maps_excludes_missing_coordinates_and_escapes_names(self):
+    def test_country_feed_links_maps_includes_missing_coordinates_and_escapes_names(self):
         data = self.client.get("/api/explore?location=canada").get_json()
-        self.assertEqual(data["total"], 1)
+        self.assertEqual(data["total"], 2)
         self.assertIn('href="/dive-sites/1"', data["html"])
         self.assertIn('data-map-lat="48.4"', data["html"])
-        self.assertNotIn("Northern Wall", data["html"])
+        self.assertIn("Northern Wall", data["html"])
+        self.assertIn("Coordinates pending", data["html"])
         self.assertNotIn("Manta Point", data["html"])
         self.assertIsNone(data["next_page"])
         response = self.client.get("/api/explore", query_string={"location": "Côte d’Ivoire"})
