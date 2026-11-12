@@ -263,7 +263,7 @@ def generate_description(site, *, kind="site"):
 def init_app(app, login_required):
     @app.after_request
     def description_cache_headers(response):
-        if request.path.startswith(("/api/dive-sites/", "/api/dive-centers/", "/api/explore/dive-sites/")) and request.path.endswith("/description"):
+        if request.path.startswith(("/api/dive-sites/", "/api/dive-centers/", "/api/explore/dive-sites/", "/api/explore/dive-centers/")) and request.path.endswith("/description"):
             response.headers["Cache-Control"] = "no-store"
         return response
 
@@ -280,6 +280,10 @@ def init_app(app, login_required):
     @login_required
     def api_dive_center_description(center_id):
         return description_response(center_id, kind="center")
+
+    @app.post("/api/explore/dive-centers/<int:center_id>/description")
+    def api_public_dive_center_description(center_id):
+        return description_response(center_id, kind="center", allow_force=False)
 
     def description_response(site_id, kind="site", *, allow_force=True):
         # This endpoint spends account funds; require the same-origin fetch header.

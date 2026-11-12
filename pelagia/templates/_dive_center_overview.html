@@ -11,8 +11,8 @@
                 <p class="profile-meta">{{ center.location or "Location pending" }}</p>
                 {% if center_description is defined and center_description and center_description.description %}
                 <p class="site-description">{{ center_description.description }}</p>
-                {% elif not public_preview and not center_description %}
-                <div class="site-description" data-site-description data-description-url="{{ url_for('api_dive_center_description', center_id=center.id) }}" aria-live="polite" hidden></div>
+                {% elif not center_description %}
+                <div class="site-description" data-site-description data-description-url="{{ url_for('api_public_dive_center_description' if public_preview else 'api_dive_center_description', center_id=center.id) }}" aria-live="polite" hidden></div>
                 {% endif %}
             </div>
             <div class="profile-actions">

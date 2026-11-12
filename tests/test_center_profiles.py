@@ -154,6 +154,71 @@ class CenterProfileTest(unittest.TestCase):
             self.assertIsNone(descriptions.read_cache(1))
             self.assertIsNotNone(descriptions.read_cache(1, kind='center'))
 
+    def test_public_description_generates_once_and_shares_permanent_cache(self):
+        guest = self.app.test_client()
+        endpoint = '/api/explore/dive-centers/1/description'
+        pages = ('/explore/dive-centers/1', '/share/dive-center/1')
+        for text in ('Guided boat dives and equipment rentals are available.', descriptions.NO_DESCRIPTION):
+            with self.subTest(text=text):
+                with self.app.app_context():
+                    db = database.get_db()
+                    db.execute('DELETE FROM dive_center_descriptions WHERE dive_center_id=1')
+                    db.commit()
+                self.app.config['FORCE_DIVE_CENTER_DESCRIPTION_REGENERATION'] = True
+                with patch.object(descriptions.requests, 'post', return_value=upstream(response_payload(text))) as post:
+                    for page in pages:
+                        html = guest.get(page).data
+                        self.assertIn(f'data-description-url="{endpoint}"'.encode(), html)
+                        self.assertIn(b'js/app.js', html)
+                    post.assert_not_called()
+                    response = guest.post(endpoint, headers={'X-Requested-With': 'fetch'})
+                    self.assertEqual(response.status_code, 200)
+                    self.assertEqual(response.headers['Cache-Control'], 'no-store')
+                    expected = None if text == descriptions.NO_DESCRIPTION else text
+                    self.assertEqual(response.json['description'], expected)
+                    payload = post.call_args.kwargs['json']
+                    self.assertEqual(payload['model'], descriptions.MODEL)
+                    self.assertEqual(payload['instructions'], descriptions.CENTER_INSTRUCTIONS)
+                    self.assertIn('Shark Bay Dive Center', payload['input'])
+                    self.assertEqual(guest.post(endpoint, headers={'X-Requested-With': 'fetch'}).json, response.json)
+                    self.app.config['FORCE_DIVE_CENTER_DESCRIPTION_REGENERATION'] = False
+                    self.assertEqual(self.description().json, response.json)
+                    self.app.config['FORCE_DIVE_CENTER_DESCRIPTION_REGENERATION'] = True
+                    for page in pages:
+                        html = guest.get(page).data
+                        self.assertNotIn(b'data-description-url', html)
+                        if expected:
+                            self.assertIn(expected.encode(), html)
+                        self.assertIn(b'Create your free account', html)
+                    post.assert_called_once()
+
+    def test_public_description_validates_requests_and_reuses_pending_and_failure_states(self):
+        guest = self.app.test_client()
+        endpoint = '/api/explore/dive-centers/1/description'
+        headers = {'X-Requested-With': 'fetch'}
+        with patch.object(descriptions.requests, 'post') as post:
+            self.assertEqual(guest.post(endpoint).status_code, 403)
+            self.assertEqual(guest.get(endpoint).status_code, 405)
+            self.assertEqual(guest.post('/api/explore/dive-centers/999/description', headers=headers).status_code, 404)
+            self.assertEqual(self.description(client=guest).status_code, 302)
+            with self.app.app_context():
+                descriptions.claim_generation(database.get_db(), 1, kind='center')
+            pending = guest.post(endpoint, headers=headers)
+            self.assertEqual(pending.status_code, 202)
+            self.assertEqual(pending.headers['Retry-After'], '2')
+            post.assert_not_called()
+        with self.app.app_context():
+            db = database.get_db()
+            db.execute('DELETE FROM dive_center_description_attempts')
+            db.commit()
+        with patch.object(descriptions.requests, 'post', side_effect=requests.Timeout()) as post:
+            for _ in range(2):
+                response = guest.post(endpoint, headers=headers)
+                self.assertEqual(response.status_code, 503)
+                self.assertEqual(response.headers['Cache-Control'], 'no-store')
+                self.assertEqual(response.headers['Retry-After'], str(descriptions.COOLDOWN_SECONDS))
+            post.assert_called_once()
+
     def test_explicit_center_refresh_replaces_cached_descriptions_and_null_results(self):
         for cached_text in ('Boat trips are available.', descriptions.NO_DESCRIPTION):
             with self.subTest(cached_text=cached_text):
