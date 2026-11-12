@@ -286,7 +286,7 @@ class ExploreTest(unittest.TestCase):
         self.assertIn('href="/#explore"', nav)
         self.assertLess(nav.index('>Product<'), nav.index('>Explore<'))
         self.assertLess(nav.index('>Explore<'), nav.index('>Support<'))
-        self.assertLess(nav.index('>Support<'), nav.index('>The Dive Brief<'))
+        self.assertNotIn('>The Dive Brief<', nav)
 
     def test_retired_search_page_redirects_and_preserves_query(self):
         anonymous = self.app.test_client()

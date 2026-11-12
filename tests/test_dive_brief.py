@@ -146,7 +146,7 @@ class DiveBriefTest(unittest.TestCase):
         self.app.config["PUBLIC_BASE_URL"] = "https://pelagia.example"
         guest = self.app.test_client()
         landing = guest.get("/?next=/dive/42").get_data(as_text=True)
-        self.assertIn('href="/thedivebrief"', landing)
+        self.assertNotIn('href="/thedivebrief"', landing)
         self.assertIn('href="/login?next=/dive/42"', landing)
         self.assertIn('href="/signup?next=/dive/42"', landing)
         response = guest.get("/share/brief/2026-10-22")
@@ -172,7 +172,7 @@ class DiveBriefTest(unittest.TestCase):
             self.assertNotIn(b'class="mobile-nav"', page.data)
             self.assertNotIn(b'class="topbar ', page.data)
         self.edition_clock.return_value = date(2026, 10, 23)
-        self.assertIn(b'href="/thedivebrief"', guest.get("/").data)
+        self.assertNotIn(b'href="/thedivebrief"', guest.get("/").data)
         self.assertIn(b"The complete public story.", guest.get("/share/brief/2026-10-22").data)
 
     def test_public_latest_url_follows_editorial_date_and_keeps_dated_share_links(self):
