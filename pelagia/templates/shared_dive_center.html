@@ -11,6 +11,10 @@
     <meta property="og:description" content="{{ description }}">
     <meta property="og:url" content="{{ share_url }}">
     <meta name="twitter:card" content="summary">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/landing.css', v=pwa_asset_version) }}">
+{% endblock %}
+{% block public_navigation %}
+<div class="marketing-page public-profile-navigation">{% with auth_next=center_url %}{% include "_marketing_header.html" %}{% endwith %}</div>
 {% endblock %}
 {% block content %}
 <section class="profile-layout place-profile shared-center" aria-label="{{ center.name }} dive center">
@@ -40,6 +44,7 @@
 <footer class="shared-footer">Pelagia</footer>
 {% endblock %}
 {% block scripts %}
+<script defer src="{{ url_for('static', filename='js/landing.js', v=pwa_asset_version) }}"></script>
 <script defer src="{{ url_for('static', filename='js/site-carousel.js', v=pwa_asset_version) }}"></script>
 <script defer src="{{ url_for('static', filename='js/place-profile.js', v=pwa_asset_version) }}"></script>
 {% endblock %}

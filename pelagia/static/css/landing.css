@@ -1,11 +1,12 @@
 /* Public landing page. Scoped to keep the signed-in app and auth screens independent. */
 html:has(.marketing-body) { background: #fbfcfd; scroll-behavior: smooth; scroll-padding-top: 0; }
-.marketing-body, .public-explore-body { --marketing-ink: #082d43; --marketing-muted: #536b79; --marketing-blue: #086bec; --marketing-teal: #009ea8; }
+.marketing-body, .public-explore-body, .public-profile-navigation { --marketing-ink: #082d43; --marketing-muted: #536b79; --marketing-blue: #086bec; --marketing-teal: #009ea8; }
 .marketing-body { background: #fbfcfd; color: var(--marketing-ink); color-scheme: light; -webkit-font-smoothing: antialiased; }
 .marketing-body::before { display: none; }
 .marketing-body .page-shell { width: 100%; max-width: none; margin: 0; padding: 0; }
 .marketing-body .pwa-notices:has(.pwa-notice:not([hidden])) { position: fixed; z-index: 100; inset: 100px 16px auto; }
 .marketing-page { --gutter: clamp(24px, 5.55vw, 88px); }
+.public-profile-navigation { position: sticky; top: 0; z-index: 50; color: var(--marketing-ink); color-scheme: light; }
 .marketing-page h1, .marketing-page h2, .marketing-page h3 { color: var(--marketing-ink); }
 .marketing-page a, .marketing-page button { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
 .marketing-page a:focus-visible, .marketing-page button:focus-visible { outline: 3px solid #009ea8; outline-offset: 6px; }

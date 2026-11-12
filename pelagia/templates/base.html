@@ -51,6 +51,7 @@
         </div>
     </header>
     {% endif %}
+    {% block public_navigation %}{% endblock %}
 
     {% with messages = get_flashed_messages() %}
         {% if messages %}

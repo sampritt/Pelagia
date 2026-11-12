@@ -56,6 +56,13 @@ class DiveCenterSharingTest(unittest.TestCase):
         guest = self.app.test_client()
         for path in ('/explore/dive-centers/1', '/share/dive-center/1'):
             html = guest.get(path).get_data(as_text=True)
+            self.assertEqual(html.count('<header class="marketing-header">'), 1)
+            self.assertLess(html.index('public-profile-navigation'), html.index('<main '))
+            self.assertIn('css/landing.css', html)
+            self.assertIn('js/landing.js', html)
+            self.assertIn('aria-controls="landingNavigation"', html)
+            self.assertIn('href="/login?next=/dive-centers/1"', html)
+            self.assertIn('href="/signup?next=/dive-centers/1"', html)
             for visible in ('Nearby dive sites', 'Alert Rock', 'href="/explore/dive-sites/1"',
                             'Diver reviews', 'reef_reviewer', 'Helpful guides and a great boat.', '<strong>5.0</strong>',
                             '5 out of 5 stars', 'js/site-carousel.js', 'js/place-profile.js'):
