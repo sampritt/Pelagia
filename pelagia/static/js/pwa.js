@@ -5,11 +5,9 @@
     const installButtons = [...document.querySelectorAll("[data-pwa-install]")];
     const dialog = document.querySelector("[data-pwa-install-dialog]");
     const offlineNotice = document.querySelector("[data-pwa-offline-notice]");
-    const updateNotice = document.querySelector("[data-pwa-update-notice]");
     let installPrompt = null;
     let dialogTrigger = null;
     let registration = null;
-    let updateRequested = false;
 
     function syncInstallation() {
         const installed = isStandalone();
@@ -108,32 +106,29 @@
     syncKeyboard();
 
     if (!("serviceWorker" in navigator) || !window.isSecureContext) return;
+    let hadController = Boolean(navigator.serviceWorker.controller);
+    let reloading = false;
     navigator.serviceWorker.addEventListener("controllerchange", () => {
-        if (!updateRequested) return;
-        updateRequested = false;
-        window.location.reload();
-    });
-    document.querySelector("[data-pwa-update]")?.addEventListener("click", () => {
-        if (navigator.onLine === false) return;
-        if (!registration?.waiting) {
-            window.location.reload();
+        if (!hadController) {
+            hadController = true;
             return;
         }
-        updateRequested = true;
-        registration.waiting.postMessage({type: "SKIP_WAITING"});
+        if (reloading) return;
+        reloading = true;
+        window.location.reload();
     });
     navigator.serviceWorker.register("/service-worker.js", {scope: "/", updateViaCache: "none"}).then((next) => {
         registration = next;
-        const showUpdate = () => {
-            if (registration.waiting && navigator.serviceWorker.controller && updateNotice) updateNotice.hidden = false;
+        const applyUpdate = () => {
+            if (registration.waiting && navigator.serviceWorker.controller) registration.waiting.postMessage({type: "SKIP_WAITING"});
         };
         const watchWorker = (worker) => {
-            worker?.addEventListener("statechange", showUpdate);
+            worker?.addEventListener("statechange", applyUpdate);
         };
-        showUpdate();
+        applyUpdate();
         watchWorker(registration.installing);
         registration.addEventListener("updatefound", () => watchWorker(registration.installing));
-        // Recheck when returning from the background, without forcing a reload.
+        // Recheck when returning from the background.
         document.addEventListener("visibilitychange", () => {
             if (document.visibilityState === "visible" && navigator.onLine !== false) registration.update().catch(() => {});
         });

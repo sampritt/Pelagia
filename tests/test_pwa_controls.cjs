@@ -121,16 +121,8 @@ test("offline POST submissions are blocked including submitter overrides; reconn
     assert.equal(s.parts["offline-notice"].hidden, true);
 });
 
-test("waiting updates never reload an open form until requested, and update checks resume on foregrounding", async () => {
+test("waiting updates activate automatically and reload controlled pages once", async () => {
     const s = await setup({waiting: true});
-    assert.equal(s.parts["update-notice"].hidden, false);
-    s.serviceWorker.handlers.controllerchange();
-    assert.equal(s.reloads, 0);
-    s.navigator.onLine = false;
-    s.parts.update.handlers.click();
-    assert.deepEqual(s.messages, []);
-    s.navigator.onLine = true;
-    s.parts.update.handlers.click();
     assert.deepEqual(s.messages, ["SKIP_WAITING"]);
     assert.equal(s.reloads, 0);
     s.serviceWorker.handlers.controllerchange();
@@ -139,15 +131,16 @@ test("waiting updates never reload an open form until requested, and update chec
     s.document.handlers.visibilitychange();
     assert.equal(s.checks, 1);
     const first = await setup({waiting: true, firstInstall: true});
-    assert.equal(first.parts["update-notice"].hidden, true);
+    assert.deepEqual(first.messages, []);
+    first.serviceWorker.handlers.controllerchange();
+    assert.equal(first.reloads, 0);
 });
 
-test("updates detected after load show a notice and install prompt failures offer the browser menu", async () => {
+test("updates detected after load activate and install prompt failures offer the browser menu", async () => {
     const s = await setup();
-    assert.equal(s.parts["update-notice"].hidden, true);
-    s.registration.waiting = {postMessage() {}};
+    s.registration.waiting = {postMessage(message) {s.messages.push(message.type);}};
     s.worker.handlers.statechange();
-    assert.equal(s.parts["update-notice"].hidden, false);
+    assert.deepEqual(s.messages, ["SKIP_WAITING"]);
     s.window.handlers.beforeinstallprompt({preventDefault() {}, prompt() {throw new Error("Unavailable");}});
     await s.install.handlers.click();
     assert.equal(s.parts["install-notice"].hidden, false);

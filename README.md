@@ -190,7 +190,7 @@ Pelagia can be installed from its HTTPS website and opened from a home-screen ic
 
 The service worker caches only explicitly listed public assets and a generic offline screen. Dive pages, account pages, APIs, uploads and external map tiles are not cached. Viewing or saving dives still requires internet access. When the browser reports that it is offline, form submissions are blocked and a notice asks users to keep the page open to preserve their changes. This release does not persist offline dive drafts or sync them later.
 
-Asset cache versions are derived automatically from deployed files. An update notice offers Reload to update; an open form is never automatically reloaded. Users should save their changes before accepting an update.
+Asset cache versions are derived automatically from deployed files. Available updates activate automatically and reload open app pages, including any unsaved forms.
 
 Pages paint a plain dark background before the stylesheet loads. There is no custom logo launch overlay or Apple startup image. The post-login welcome screen with its Dive in action remains separate and unchanged.
 
@@ -203,7 +203,7 @@ Pages paint a plain dark background before the stylesheet loads. There is no cus
 5. Redeploy from **`main`** (or allow Render's automatic deployment). Keep the existing Gunicorn command and `/var/data` persistent disk. Database and upload path settings are unchanged; no new environment variables, dependencies or disk storage are required for PWA caching, which lives on each user's device.
 6. If a CDN or proxy overrides cache headers, preserve revalidation for **`/service-worker.js`**, **`/manifest.webmanifest`**, and **`/offline.html`**, and honor the `v` query parameter on static asset URLs. These public routes must be reachable without authentication and must not be rewritten to a login page. A standard Render deployment needs no special routing or cache configuration.
 
-After deployment, install from the public URL on a real iPhone and Android phone. Check standalone launch, Google login, closing and reopening the app, photo uploads, dive sharing and navigation. After the first online launch, enable airplane mode and navigate/relaunch: the branded offline screen should appear, and an already-open form should block saving. Reconnect and retry. With an installed app open, deploy a subsequent update and confirm the update notice only reloads after the user selects it.
+After deployment, install from the public URL on a real iPhone and Android phone. Check standalone launch, Google login, closing and reopening the app, photo uploads, dive sharing and navigation. After the first online launch, enable airplane mode and navigate/relaunch: the branded offline screen should appear, and an already-open form should block saving. Reconnect and retry. With an installed app open, deploy a subsequent update and confirm the app reloads automatically.
 
 Automated PWA checks are included in the normal Python and JavaScript test suites:
 

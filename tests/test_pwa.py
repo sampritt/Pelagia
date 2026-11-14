@@ -124,7 +124,7 @@ class PWATest(unittest.TestCase):
         self.assertIn(b"data-pwa-install hidden", profile)
         self.assertIn(b"data-pwa-install-dialog", profile)
         self.assertNotIn(b"data-pwa-back", profile)
-        self.assertIn(b"data-pwa-update", profile)
+        self.assertNotIn(b"data-pwa-update", profile)
 
 
 if __name__ == "__main__":
