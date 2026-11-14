@@ -18,7 +18,6 @@
 {% endblock %}
 {% block content %}
 <section class="profile-layout place-profile shared-site" aria-label="{{ site.name }} dive site">
-    {% if indexable %}<nav aria-label="Breadcrumb"><a href="{{ url_for('dive_site_directory') }}">Dive sites around the world</a> / {{ site.name }}</nav>{% endif %}
     {% include "_dive_site_headline.html" %}
     <div class="site-report">
         <a class="site-report-gate-link" href="#siteAccountGate"><span>Today’s report</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></a>

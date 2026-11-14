@@ -275,7 +275,9 @@ def register_routes(app):
 
     @app.get("/dive-sites")
     def dive_site_directory():
-        return render_template("dive_site_directory.html", sites=seo.directory_sites(), public_search=True)
+        return render_template("dive_site_directory.html",
+                               sites=explore.add_observations(seo.directory_sites()),
+                               public_search=True, public_explore=True)
 
     @app.route("/logout", methods=("POST",))
     def logout():

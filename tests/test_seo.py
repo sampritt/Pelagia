@@ -48,6 +48,11 @@ class PublicSeoTest(unittest.TestCase):
         self.assertEqual(len(site_urls), 100)
         self.assertEqual(len(urls), len(set(urls)))
         directory = self.client.get("/dive-sites").get_data(as_text=True)
+        self.assertEqual(directory.count('class="explore-card explore-site-card"'), 100)
+        self.assertEqual(directory.count('data-static-map'), 100)
+        self.assertEqual(directory.count('class="explore-card-description"'), 100)
+        self.assertNotIn('Dive sites around the world', directory)
+        self.assertNotIn('Discover iconic reefs', directory)
         with patch("pelagia.site_descriptions.generate_description", side_effect=AssertionError("Paid request")):
             for url in site_urls:
                 path = url.removeprefix("https://pelagia.example")
@@ -60,7 +65,8 @@ class PublicSeoTest(unittest.TestCase):
                 self.assertIn(f'rel="canonical" href="{url}"', html)
                 self.assertIn('class="site-description"', html)
                 self.assertNotIn("data-description-url", html)
-                self.assertIn('href="/dive-sites"', html)
+                self.assertNotIn('aria-label="Breadcrumb"', html)
+                self.assertNotIn('Dive sites around the world', html)
         homepage = self.client.get("/").get_data(as_text=True)
         footer = homepage.split('<footer class="marketing-footer">', 1)[1].split('</footer>', 1)[0]
         self.assertIn('<a href="/dive-sites">Dive Sites</a>', footer)

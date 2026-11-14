@@ -11,6 +11,7 @@
     <div class="mini-map explore-card-map {{ 'map-pending' if not has_coords else '' }}" role="img" aria-label="Map of {{ item.name }}{% if not has_coords %}: coordinates pending{% endif %}" {% if has_coords %}data-static-map data-map-lat="{{ item.latitude }}" data-map-lng="{{ item.longitude }}" data-map-zoom="10"{% endif %}>
         {% if has_coords %}<span class="map-pin"></span>{% else %}<span class="coordinate-label">Coordinates pending</span>{% endif %}
     </div>
+    {% if show_description and item.description %}<p class="explore-card-description">{{ item.description }}</p>{% endif %}
     {% if item.sightings %}
     <div class="explore-sightings" aria-label="Observed marine species">
         <div class="species-row site-sightings-tags">

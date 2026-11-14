@@ -25,7 +25,7 @@ def directory_sites():
     selection = selected_sites()
     placeholders = ",".join("?" for _ in selection)
     rows = get_db().execute(
-        f"SELECT id, master_site_id, name, country_or_area FROM dive_sites "
+        f"SELECT id, master_site_id, name, country_or_area, latitude, longitude, logged_dive_count FROM dive_sites "
         f"WHERE master_site_id IN ({placeholders})", tuple(selection),
     )
     return sorted((dict(row, **{key: value for key, value in selection[row["master_site_id"]].items()

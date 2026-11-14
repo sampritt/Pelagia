@@ -6326,6 +6326,7 @@ img.is-media-loading {
 .explore-card-link { display: inline-flex; align-items: center; gap: 9px; margin-top: auto; color: var(--accent-deep); font-size: .78rem; font-weight: 600; }
 .explore-dive-count { margin: -7px 0 15px; color: var(--ink-soft); font-size: .8rem; font-weight: 600; }
 .explore-sightings { grid-column: 1 / -1; display: grid; gap: 10px; padding: 0 4px 3px; }
+.explore-card-description { grid-column: 1 / -1; margin: 0; padding: 0 4px; color: var(--muted-strong); font-size: .85rem; line-height: 1.6; }
 .explore-card .explore-card-map { width: 100%; height: 164px; min-height: 164px; max-height: 164px; border-radius: 12px; }
 .explore-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 280px; padding: 32px 22px; border: 1px dashed var(--line-strong); border-radius: var(--radius); text-align: center; }
 .explore-empty-mark { width: 34px; height: 34px; margin-bottom: 20px; fill: none; stroke: var(--accent); stroke-width: 1.3; stroke-linecap: round; }
