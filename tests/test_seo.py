@@ -5,9 +5,10 @@ from collections import Counter
 from pathlib import Path
 from unittest.mock import patch
 from xml.etree import ElementTree
+from markupsafe import escape
 
 import test_reference_autocomplete as fixtures
-from pelagia import db as database, seo
+from pelagia import db as database, seo, site_descriptions
 
 
 class PublicSeoTest(unittest.TestCase):
@@ -64,6 +65,9 @@ class PublicSeoTest(unittest.TestCase):
                 self.assertIn('name="robots" content="index, follow"', html)
                 self.assertIn(f'rel="canonical" href="{url}"', html)
                 self.assertIn('class="site-description"', html)
+                master_id = list(seo.selected_sites())[int(path.rsplit('/', 1)[1]) - 50000]
+                self.assertNotIn(seo.selected_sites()[master_id]['description'], html)
+                self.assertIn(str(escape(site_descriptions.selected_site_descriptions()[master_id]['description'])), html)
                 self.assertNotIn("data-description-url", html)
                 self.assertNotIn('aria-label="Breadcrumb"', html)
                 self.assertNotIn('Dive sites around the world', html)
@@ -73,6 +77,38 @@ class PublicSeoTest(unittest.TestCase):
         self.assertEqual(homepage.count('href="/dive-sites"'), 1)
         self.assertIn('https://pelagia.example/dive-sites', urls)
         self.assertNotIn("/share/", " ".join(urls))
+
+    def test_generated_summaries_cover_selection_and_are_shared_with_profile_and_api(self):
+        generated = site_descriptions.selected_site_descriptions()
+        self.assertEqual(set(generated), set(seo.selected_sites()))
+        for master_id, record in generated.items():
+            self.assertGreater(len(record['description'].split()),
+                               len(seo.selected_sites()[master_id]['description'].split()))
+        master_id = next(iter(seo.selected_sites()))
+        description = generated[master_id]['description']
+        with self.app.app_context():
+            self.assertEqual(site_descriptions.read_cache(50000)['description'], description)
+            db = database.get_db()
+            db.execute("INSERT INTO dive_site_descriptions (dive_site_id, model) VALUES (50000, 'test')")
+            db.commit()
+            self.assertEqual(site_descriptions.read_cache(50000)['description'], description)
+        with patch.object(site_descriptions, 'generate_description', side_effect=AssertionError('Paid request')):
+            response = self.client.post('/api/explore/dive-sites/50000/description',
+                                        headers={'X-Requested-With': 'fetch'})
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.json['description'], description)
+
+    def test_directory_blurb_follows_species_tags(self):
+        with self.app.app_context():
+            db = database.get_db()
+            db.execute("INSERT INTO users (id, username) VALUES (1, 'diver')")
+            dive_id = db.execute("INSERT INTO dives (user_id, dive_site_id, date, site_name) "
+                                 "VALUES (1, 50000, '2026-11-01', 'Site')").lastrowid
+            db.execute("INSERT INTO dive_species (dive_id, common_name) VALUES (?, 'Nurse shark')", (dive_id,))
+            db.commit()
+        html = self.client.get('/dive-sites').get_data(as_text=True)
+        card = html.split('href="/explore/dive-sites/50000"', 1)[1].split('</a>', 1)[0]
+        self.assertLess(card.index('Nurse shark'), card.index('explore-card-description'))
 
     def test_unselected_and_share_pages_stay_noindexed(self):
         for path in ("/explore/dive-sites/1", "/share/dive-site/50000", "/share/dive/999999"):

@@ -986,9 +986,6 @@ def register_routes(app):
         else:
             site.update(place_profiles.reviews(site_id, None, kind="site"))
             site_description = site_descriptions.read_cache(site_id)
-            if selection and not (site_description or {}).get("description"):
-                site_description = {"description": selection["description"],
-                                    "fragments": [{"text": selection["description"]}]}
             description = (site_description or {}).get("description") or (
                 f"Explore {site['name']}" + (f" in {site['country_or_area']}" if site['country_or_area'] else "")
                 + ". See marine sightings and discover this dive site on Pelagia."

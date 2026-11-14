@@ -4,6 +4,8 @@ import json
 import re
 import time
 import uuid
+from functools import lru_cache
+from pathlib import Path
 from urllib.parse import urlsplit
 
 import requests
@@ -99,8 +101,10 @@ def read_cache(site_id, db=None, *, kind="site"):
     prefix = "dive_center" if kind == "center" else "dive_site"
     db = db if db is not None else get_db()
     row = db.execute(f"SELECT * FROM {prefix}_descriptions WHERE {prefix}_id = ?", (site_id,)).fetchone()
-    if row is None:
-        return None
+    if row is None or (kind == "site" and row["description"] is None):
+        generated = selected_site_description(site_id, db) if kind == "site" else None
+        if generated is not None or row is None:
+            return generated
     citations = json.loads(row["citations_json"])
     description = row["description"]
     legacy_citations = [citation for citation in citations
@@ -113,6 +117,22 @@ def read_cache(site_id, db=None, *, kind="site"):
         "citations": citations,
         "fragments": description_fragments(description, citations) if description is not None else [],
     }
+
+
+@lru_cache(maxsize=1)
+def selected_site_descriptions():
+    """Pre-researched page copy, separate from the short directory blurbs."""
+    return json.loads(Path(__file__).with_name("seo_site_descriptions.json").read_text(encoding="utf-8"))
+
+
+def selected_site_description(site_id, db):
+    row = db.execute("SELECT master_site_id FROM dive_sites WHERE id = ?", (site_id,)).fetchone()
+    generated = selected_site_descriptions().get(row["master_site_id"]) if row else None
+    if not generated:
+        return None
+    description = generated["description"]
+    return {"status": "complete", "description": description,
+            "citations": generated["citations"], "fragments": [{"text": description}]}
 
 
 def read_page_cache(site_id, *, kind="site"):

@@ -1,0 +1,602 @@
+{
+  "DS000123": {
+    "citations": [],
+    "description": "The SS Antilla lies off Malmok on Aruba’s northwest coast and is accessible only by boat, resting on its port side in approximately 5–18 m of water. Its broken, sponge- and coral-covered hull supports tropical fish and moray eels; generally shallow and suitable for Open Water divers, but currents, boat traffic, and unstable jagged metal require caution, with penetration not recommended.",
+    "generated_at": "2026-11-14T21:44:14.393783+00:00",
+    "model": "gpt-5.6-luna"
+  },
+  "DS000210": {
+    "citations": [],
+    "description": "Boat-accessed Cod Hole lies on Ribbon No. 10 Reef in the northern Great Barrier Reef, north of Cairns, along a reef edge beside deep water. Diving is from a vessel using designated moorings; the site is a sensitive, unmarked no-anchoring area and is best suited to divers comfortable with open-water reef conditions.",
+    "generated_at": "2026-11-14T21:45:54.540992+00:00",
+    "model": "gpt-5.6-luna"
+  },
+  "DS000239": {
+    "citations": [],
+    "description": "Exmouth Navy Pier is a shore-access dive beneath a naval pier on Western Australia’s Ningaloo Coast, reachable only through a licensed operator rather than by boat. The sheltered structure descends to about 15 m and supports dense marine life including reef sharks, wobbegongs, sea snakes, schooling fish and macro species; visibility is often 3–10 m, with strong tidal currents requiring slack-water timing and intermediate experience.",
+    "generated_at": "2026-11-14T21:45:54.418668+00:00",
+    "model": "gpt-5.6-luna"
+  },
+  "DS000477": {
+    "citations": [],
+    "description": "The SS Yongala is an offshore wreck in the Great Barrier Reef Marine Park, reached by charter boat or liveaboard from Townsville or Alva rather than from shore. The 109-metre wreck lies in about 16–30 metres, supports abundant reef and pelagic life, and is exposed to strong currents, making it best suited to experienced divers with good buoyancy and current skills.",
+    "generated_at": "2026-11-14T21:45:51.183303+00:00",
+    "model": "gpt-5.6-luna"
+  },
+  "DS000480": {
+    "citations": [],
+    "description": "An isolated coral pinnacle on Australia’s northern Great Barrier Reef, Steve’s Bommie is accessed by liveaboard or dive boat via moorings and rises from about 30–32 m to within 3–5 m of the surface. Dense reef fish and soft corals surround the structure; exposure to weather and possible surge or currents make it best suited to experienced divers comfortable with deeper, open-water conditions.",
+    "generated_at": "2026-11-14T21:45:52.985255+00:00",
+    "model": "gpt-5.6-luna"
+  },
+  "DS000601": {
+    "citations": [],
+    "description": "Princess Alice Bank is a remote open-ocean seamount in the Azores, reached by boat rather than from shore. Its pinnacle lies around 30–35 m, with groupers, tunas and mobulas possible; strong currents and blue-water conditions make it an advanced dive requiring experience.",
+    "generated_at": "2026-11-14T21:46:24.098201+00:00",
+    "model": "gpt-5.6-luna"
+  },
+  "DS000614": {
+    "citations": [],
+    "description": "Dean’s Blue Hole lies in a sheltered bay on Long Island near Clarence Town and is accessible by a short walk from a sandy beach for shore entry. The rim is shallow before dropping almost vertically to about 202 m; calm, clear water supports turtles, tarpon and reef fish, but the extreme depth and sudden drop-off make it suitable only for experienced divers or trained freedivers.",
+    "generated_at": "2026-11-14T21:44:30.352002+00:00",
+    "model": "gpt-5.6-luna"
+  },
+  "DS000636": {
+    "citations": [],
+    "description": "Tiger Beach is a shallow white-sand site on the Little Bahama Bank, reached by boat from Grand Bahama’s West End or by liveaboard. Typically 6–10 m deep with clear water and gentle conditions, it features baited encounters with tiger, lemon, and Caribbean reef sharks; the open-water setting and close proximity to large sharks require strong buoyancy control and comfort with supervised shark diving.",
+    "generated_at": "2026-11-14T21:44:28.193812+00:00",
+    "model": "gpt-5.6-luna"
+  },
+  "DS000647": {
+    "citations": [],
+    "description": "Crystal Bay lies on the west coast of Nusa Penida and is typically reached by dive boat, with sheltered bay reefs, coral gardens and a drop-off spanning roughly 5–40 m. Clear water and mola mola are characteristic, but cold upwellings, surge and strong, unpredictable currents—including downcurrents—make it suitable for experienced divers.",
+    "generated_at": "2026-11-14T21:45:23.860806+00:00",
+    "model": "gpt-5.6-luna"
+  },
+  "DS000669": {
+    "citations": [],
+    "description": "The USAT Liberty lies off Tulamben on Bali’s northeast coast and is accessed directly from the beach, with the wreck spanning roughly 5–30 m on a volcanic-sand slope. Coral-covered, broken sections shelter abundant reef fish, trevally and moray eels; generally suitable for beginners, though surge, occasional currents, reduced visibility and heavy diver traffic can require good buoyancy control.",
+    "generated_at": "2026-11-14T21:45:22.764977+00:00",
+    "model": "gpt-5.6-luna"
+  },
+  "DS000740": {
+    "citations": [],
+    "description": "Located in Lighthouse Reef Atoll offshore Belize, the Great Blue Hole is accessed by dive boat and descends from a shallow coral rim into a near-vertical marine sinkhole, with recreational dives typically reaching about 40 m. Stalactites, limited marine life, deep-water narcosis and short no-decompression limits make it most suitable for experienced or advanced divers.",
+    "generated_at": "2026-11-14T21:44:13.570143+00:00",
+    "model": "gpt-5.6-luna"
+  },
+  "DS000742": {
+    "citations": [],
+    "description": "Half Moon Caye Wall lies off the southeastern edge of Lighthouse Reef Atoll and is reached by boat, with moorings near the site rather than shore access. The reef begins around 6–15 m before dropping dramatically along a coral wall; diverse corals and fish inhabit generally calmer protected waters, though depth and occasional currents make it best suited to experienced divers.",
+    "generated_at": "2026-11-14T21:44:14.510510+00:00",
+    "model": "gpt-5.6-luna"
+  },
+  "DS000816": {
+    "citations": [],
+    "description": "A shore dive on Bonaire’s northwest coast, 1000 Steps is reached by descending a steep flight of stone steps to a pebble beach; the reef begins in shallow water and drops into a sloping wall. Depths commonly range from 3–12 meters, making it suitable for beginners, though the climb back up with gear is strenuous.",
+    "generated_at": "2026-11-14T21:44:15.578930+00:00",
+    "model": "gpt-5.6-luna"
+  },
+  "DS000838": {
+    "citations": [],
+    "description": "The Hilma Hooker is a 60-meter wreck lying on its side between Bonaire’s southern reefs, with the deck around 18 m and sand near 30 m; it can be reached from shore or by boat, depending on local access. Moderate currents, depth, and the complex wreck structure make it best suited to experienced or appropriately trained divers, with tarpon, barracuda, reef fish, and crustaceans commonly encountered.",
+    "generated_at": "2026-11-14T21:44:18.404330+00:00",
+    "model": "gpt-5.6-luna"
+  },
+  "DS001212": {
+    "citations": [],
+    "description": "Offshore northwest of Tortola in the British Virgin Islands, Chikuzen is a boat-access-only wreck dive on a 73–75 m refrigerated cargo ship lying on its side on sand. The wreck spans roughly 15–23 m, attracts horse-eye jacks, barracuda and cobia, and can have moderate current and surge, making it better suited to experienced divers.",
+    "generated_at": "2026-11-14T21:44:27.169736+00:00",
+    "model": "gpt-5.6-luna"
+  },
+  "DS001257": {
+    "citations": [],
+    "description": "Off Salt Island in the British Virgin Islands, the RMS Rhone is a boat-access wreck dive in a protected marine park, with two sections resting roughly 10–26 m deep and notable swim-throughs. Coral growth and reef fish inhabit the hull, while surge and occasional current—plus overhead environments—make it best suited to experienced divers.",
+    "generated_at": "2026-11-14T21:44:26.872553+00:00",
+    "model": "gpt-5.6-luna"
+  },
+  "DS001564": {
+    "citations": [],
+    "description": "Salt Pier is a shore-access dive beneath Bonaire’s industrial loading pier, about 20 minutes south of Kralendijk, where pilings form an artificial reef. The relatively shallow site is generally suitable for Open Water divers and offers day or night diving, but access is restricted when salt ships occupy the pier.",
+    "generated_at": "2026-11-14T21:44:20.215061+00:00",
+    "model": "gpt-5.6-luna"
+  },
+  "DS001604": {
+    "citations": [],
+    "description": "Babylon is an exposed wall-and-pinnacle dive off Grand Cayman’s East End, reached by boat via a mooring and characterized by steep reef topography. Its depth and exposure make it more suitable for experienced divers; currents, surge, and variable visibility may occur.",
+    "generated_at": "2026-11-14T21:44:22.639314+00:00",
+    "model": "gpt-5.6-luna"
+  },
+  "DS001615": {
+    "citations": [],
+    "description": "Located off Little Cayman’s north shore, Bloody Bay Wall is accessed by boat and features a shallow reef crest dropping almost vertically beyond recreational depths. Dives commonly range from about 6–30 m, with coral, sponges and abundant Caribbean fish; depth control and experience with wall diving are important, as the bottom quickly disappears into blue water.",
+    "generated_at": "2026-11-14T21:44:18.986686+00:00",
+    "model": "gpt-5.6-luna"
+  },
+  "DS001702": {
+    "citations": [],
+    "description": "Stingray City is a shallow, reef-protected dive site in Grand Cayman’s North Sound, reached by boat rather than shore. Depth is roughly 3–5 m, with sandy bottom, resident southern stingrays and reef fish; calm water, minimal current and good visibility make it suitable for beginners, though boat traffic and close wildlife interaction require care.",
+    "generated_at": "2026-11-14T21:44:22.299444+00:00",
+    "model": "gpt-5.6-luna"
+  },
+  "DS001717": {
+    "citations": [],
+    "description": "The USS Kittiwake lies upright off the northern end of Seven Mile Beach, Grand Cayman, on a sandy bottom and is accessed by boat; swimming from shore is prohibited because of vessel traffic. Depths range from about 15–65 feet in generally clear, warm water, with open wreck passages and marine life including turtles, groupers, stingrays, and barracuda; suitable for beginners with appropriate supervision.",
+    "generated_at": "2026-11-14T21:44:23.408472+00:00",
+    "model": "gpt-5.6-luna"
+  },
+  "DS001776": {
+    "citations": [],
+    "description": "Fujikawa Maru is an upright World War II aircraft-ferry wreck in Chuuk Lagoon, reached by boat from Weno, with coral-covered decks, masts and abundant reef fish at approximately 12–30 m. Generally sheltered with mild currents, it suits experienced recreational divers; wreck penetration requires appropriate training because of confined, silty interiors.",
+    "generated_at": "2026-11-14T21:45:42.809233+00:00",
+    "model": "gpt-5.6-luna"
+  },
+  "DS001796": {
+    "citations": [],
+    "description": "Shinkoku Maru is a Japanese fleet-oiler wreck in Chuuk Lagoon, reached by moored dive boat rather than from shore. Lying roughly 10–36 m deep, it has coral-covered decks, superstructure and machinery supporting abundant reef life; sheltered lagoon conditions are often calm, but enclosed areas require wreck-diving experience and appropriate training.",
+    "generated_at": "2026-11-14T21:45:45.754668+00:00",
+    "model": "gpt-5.6-luna"
+  },
+  "DS001799": {
+    "citations": [],
+    "description": "Bajo Alcyone is an exposed seamount off Cocos Island, reachable only by liveaboard boat, with a flattened summit around 25–30 m and deep-water drop-offs. Strong currents, blue-water ascents, and depth make it an advanced dive; hammerhead sharks, manta rays, and other pelagic species are characteristic encounters.",
+    "generated_at": "2026-11-14T21:44:35.314222+00:00",
+    "model": "gpt-5.6-luna"
+  },
+  "DS001800": {
+    "citations": [],
+    "description": "Dirty Rock, also known as Roca Sucia, is an offshore Cocos Island site reached by liveaboard boat, featuring volcanic rock pinnacles and channels. Strong currents and surge make it suitable for experienced divers; hammerhead sharks, rays, schooling fish and other pelagic wildlife are characteristic, with dives commonly reaching about 30 metres.",
+    "generated_at": "2026-11-14T21:44:37.728659+00:00",
+    "model": "gpt-5.6-luna"
+  },
+  "DS002214": {
+    "citations": [],
+    "description": "The Superior Producer is an upright cargo-ship wreck near Curaçao’s Willemstad harbor, accessible from shore by a deep entry and surface swim, or by boat, with the wreck lying at approximately 22–30 m. Coral- and sponge-encrusted holds and bridge attract tarpon and barracuda; strong currents and harbor traffic require advanced wreck/deep-diving experience, and diving is prohibited when cruise ships are moored nearby.",
+    "generated_at": "2026-11-14T21:44:24.072856+00:00",
+    "model": "gpt-5.6-luna"
+  },
+  "DS002273": {
+    "citations": [],
+    "description": "Tugboat lies a few metres offshore from Tugboat Beach in Caracasbaai, Curaçao, and is easily reached by shore entry; boat access is also possible. The small wreck rests in about 5 m of water beside a reef and wall, offering a shallow, beginner-friendly dive and snorkeling site, though boat traffic and occasional surge require awareness.",
+    "generated_at": "2026-11-14T21:44:25.930070+00:00",
+    "model": "gpt-5.6-luna"
+  },
+  "DS002351": {
+    "citations": [],
+    "description": "The Zenobia is a 172-metre ro-ro ferry lying on its side in Larnaca Bay, accessed by boat roughly 1.5 km offshore. The wreck spans 16–42 metres, with cargo decks, swim-throughs and abundant marine life; visibility often exceeds 25 metres, while depth, occasional currents and penetration make it best suited to appropriately trained, experienced divers.",
+    "generated_at": "2026-11-14T21:44:46.018555+00:00",
+    "model": "gpt-5.6-luna"
+  },
+  "DS002432": {
+    "citations": [],
+    "description": "At Dominica’s volcanic Scotts Head headland within the Soufrière–Scotts Head Marine Reserve, this steep wall dive is accessible from shore or by boat. The wall is typically dived from about 12–30 m, with corals, sponges and reef fish; conditions can vary, so local guidance is advisable.",
+    "generated_at": "2026-11-14T21:44:31.668224+00:00",
+    "model": "gpt-5.6-luna"
+  },
+  "DS002553": {
+    "citations": [],
+    "description": "Kicker Rock (León Dormido) is an offshore volcanic tuff formation near San Cristóbal Island, reached by boat with no landing or shore entry. Dives follow steep walls and a narrow channel, typically around 12–20 m, with sea lions, sharks, rays and turtles; currents, surge, swell and variable visibility make it best suited to divers comfortable in moving water.",
+    "generated_at": "2026-11-14T21:44:34.325709+00:00",
+    "model": "gpt-5.6-luna"
+  },
+  "DS002579": {
+    "citations": [],
+    "description": "Blue Hole lies on the Gulf of Aqaba coast north of Dahab and is accessed from shore via a reef entry. The near-circular sinkhole descends beyond 100 m, with a shallow-to-deep recreational range and reef fish, while the Arch is an extreme overhead-environment dive requiring advanced technical training; depth, navigation and gas-management hazards are significant.",
+    "generated_at": "2026-11-14T21:44:58.249971+00:00",
+    "model": "gpt-5.6-luna"
+  },
+  "DS002589": {
+    "citations": [],
+    "description": "Elphinstone Reef is an offshore Red Sea reef near Marsa Alam, reached by boat or liveaboard rather than from shore. Its shallow plateaus begin around 5–10 m, while steep walls descend beyond recreational limits; currents, surge and open-water exposure make it best suited to experienced divers, with coral walls and possible encounters with reef and oceanic whitetip sharks.",
+    "generated_at": "2026-11-14T21:44:54.616761+00:00",
+    "model": "gpt-5.6-luna"
+  },
+  "DS002629": {
+    "citations": [],
+    "description": "At the southern tip of Egypt’s Sinai Peninsula in Ras Mohammed National Park, Shark and Yolanda Reef is usually reached by dive boat, with limited shore access via Anemone City. The site combines a sheer wall, coral saddle and Yolanda wreck debris on a shallow plateau, descending beyond recreational depths; strong currents and blue-water exposure make it best for experienced divers, with barracuda, jacks, snappers and abundant corals.",
+    "generated_at": "2026-11-14T21:44:54.563333+00:00",
+    "model": "gpt-5.6-luna"
+  },
+  "DS002636": {
+    "citations": [],
+    "description": "The Canyon is a shore-accessed Red Sea site north of Dahab, entered through a shallow sandy lagoon. A fissure-like cavern descends to about 30 m, with coral gardens, glassfish, anthias, lionfish and octopus; overhead rock and depth make cavern-diving experience and careful guidance appropriate.",
+    "generated_at": "2026-11-14T21:44:58.431572+00:00",
+    "model": "gpt-5.6-luna"
+  },
+  "DS002725": {
+    "citations": [],
+    "description": "A boat-accessed site on Rainbow Reef in Fiji’s Somosomo Strait, the Great White Wall begins through a lava-tube swim-through and follows a sheer wall covered in white soft corals, typically from about 8–40 m. Moderate to strong currents, depth, and surge make it an advanced drift dive requiring good buoyancy and current experience; visibility is often excellent.",
+    "generated_at": "2026-11-14T21:45:45.921536+00:00",
+    "model": "gpt-5.6-luna"
+  },
+  "DS002814": {
+    "citations": [],
+    "description": "A boat-accessed shark-diving site in the Beqa Passage off southern Viti Levu, reached in about 15–20 minutes from Pacific Harbour. The patch reef slopes below 12 metres and drops steeply to roughly 28–30 metres, with multiple shark species and reef fish; the deep drop-off and open-water setting suit experienced divers.",
+    "generated_at": "2026-11-14T21:45:47.360105+00:00",
+    "model": "gpt-5.6-luna"
+  },
+  "DS003213": {
+    "citations": [],
+    "description": "Passe de Tiputa is a deep channel on Rangiroa Atoll’s northeastern rim, separating Tiputa and Avatoru, accessed by boat for drift dives through approximately 12–46 m. Strong tidal currents and blue-water conditions make it an advanced site, with frequent sightings of dolphins, sharks, rays, turtles and schooling tropical fish.",
+    "generated_at": "2026-11-14T21:45:44.934285+00:00",
+    "model": "gpt-5.6-luna"
+  },
+  "DS003249": {
+    "citations": [],
+    "description": "Remote open-ocean site off Darwin Island in Ecuador’s Galápagos, accessible only by liveaboard boat with no shore entry. Divers explore a submerged rocky plateau and ledges around 9–40+ m, often in strong currents and surge, with hammerheads, Galápagos sharks, rays, turtles and seasonal whale sharks; advanced divers with current experience are best suited.",
+    "generated_at": "2026-11-14T21:44:32.297406+00:00",
+    "model": "gpt-5.6-luna"
+  },
+  "DS003250": {
+    "citations": [],
+    "description": "Gordon Rocks is an eroded volcanic crater off northeastern Santa Cruz Island, reached by boat from the Itabaca Channel or nearby islands. The three-pinnacle site offers roughly 8–30 m depths, with hammerhead and other sharks, rays, turtles and sea lions; strong, shifting currents, surge and drift-diving conditions make it suitable for experienced intermediate or advanced divers.",
+    "generated_at": "2026-11-14T21:44:33.218714+00:00",
+    "model": "gpt-5.6-luna"
+  },
+  "DS004050": {
+    "citations": [],
+    "description": "Batu Bolong is a boat-accessed pinnacle in the strait between Komodo and Tatawa islands, with coral-covered walls typically explored from about 5–25 m. Strong, tide-dependent currents and occasional downcurrents make it suitable for experienced divers; visibility is often 15–30 m, with dense reef fish, turtles, trevally, tuna, and reef sharks.",
+    "generated_at": "2026-11-14T21:45:18.165079+00:00",
+    "model": "gpt-5.6-luna"
+  },
+  "DS004093": {
+    "citations": [],
+    "description": "Blue Magic is a boat-accessed underwater pinnacle in the Dampier Strait between Kri and Waigeo, Raja Ampat. Descending roughly 7–24 m, it features steep reef contours and pelagic life such as manta rays, sharks, barracuda, and trevally; strong currents make it an advanced dive requiring appropriate experience.",
+    "generated_at": "2026-11-14T21:45:15.744572+00:00",
+    "model": "gpt-5.6-luna"
+  },
+  "DS004279": {
+    "citations": [],
+    "description": "Melissa’s Garden lies off Penemu Island in Raja Ampat and is reached by dive boat, commonly from a liveaboard or nearby resort. The site features extensive shallow coral gardens and pinnacles from roughly 10–25 m, with exceptional reef-fish diversity; generally accessible to intermediate divers, though currents and surge may occur.",
+    "generated_at": "2026-11-14T21:45:14.660404+00:00",
+    "model": "gpt-5.6-luna"
+  },
+  "DS004876": {
+    "citations": [],
+    "description": "Japanese Garden lies in Aqaba’s Marine Reserve, south of the Shipwreck, and is accessible from shore or by boat. Its shallow coral garden ranges roughly 2–20 m, with sandy areas and abundant reef life, making it suitable for beginners, snorkellers, and training dives.",
+    "generated_at": "2026-11-14T21:45:03.918345+00:00",
+    "model": "gpt-5.6-luna"
+  },
+  "DS004950": {
+    "citations": [],
+    "description": "Cannibal Rock is a boat-accessed seamount in sheltered Loh Dasami Bay between Rinca and Nusa Kode, with soft-corals, gorgonians, anemones and abundant macro life including pygmy seahorses and nudibranchs. Diving commonly ranges from shallow water to about 45 m; cooler water, limited visibility and potentially strong tidal currents make it best suited to advanced divers.",
+    "generated_at": "2026-11-14T21:45:21.945684+00:00",
+    "model": "gpt-5.6-luna"
+  },
+  "DS004951": {
+    "citations": [],
+    "description": "Castle Rock is a boat-accessed submerged pinnacle in northern Komodo National Park, near Gili Lawa, rising to about 4 m and descending to roughly 35 m. Strong tidal currents, often 2–4 knots, attract schooling fish and reef sharks but make this an advanced site requiring careful timing and excellent current-diving skills.",
+    "generated_at": "2026-11-14T21:45:19.287497+00:00",
+    "model": "gpt-5.6-luna"
+  },
+  "DS004954": {
+    "citations": [],
+    "description": "Crystal Rock is an exposed pinnacle in northern Komodo National Park, reached by boat near Castle Rock and Gili Lawa Laut. Slopes and a saddle extend from about 5–30 m, with excellent visibility and reef sharks, trevally, tuna, barracuda and eagle rays; strong, unpredictable currents make it suitable only for experienced divers.",
+    "generated_at": "2026-11-14T21:45:20.047845+00:00",
+    "model": "gpt-5.6-luna"
+  },
+  "DS004983": {
+    "citations": [],
+    "description": "The Cauldron, also called Shotgun, is a boat-access drift dive in a narrow passage between Gili Lawa Laut and Gili Lawa Darat in northern Komodo National Park, featuring bowl-shaped reef topography and depths of roughly 5–16 m. Strong tidal currents, eddies and surge can attract sharks, rays and schooling pelagic fish, making it suitable only for experienced current divers.",
+    "generated_at": "2026-11-14T21:45:20.908179+00:00",
+    "model": "gpt-5.6-luna"
+  },
+  "DS005009": {
+    "citations": [],
+    "description": "A boat-accessed site in the northern Lembeh Strait, Nudi Falls features a sheer wall descending over rocks, a sand slope, and a rubble channel with soft corals, typically from 5–25 m. It is known for abundant nudibranchs, pygmy seahorses, frogfish, ghost pipefish, and wonderpus; light to moderate current and muck-diving conditions suit divers comfortable with macro searches.",
+    "generated_at": "2026-11-14T21:45:24.838904+00:00",
+    "model": "gpt-5.6-luna"
+  },
+  "DS005234": {
+    "citations": [],
+    "description": "Located in Vaavu Atoll, Alimatha House Reef is accessed by boat and from the island jetty, with reef slopes and walls descending from about 3 to 25–30 m. Current direction can create drift conditions; nurse sharks, reef sharks and eagle rays are characteristic sightings, making experience with current management advisable.",
+    "generated_at": "2026-11-14T21:45:12.215392+00:00",
+    "model": "gpt-5.6-luna"
+  },
+  "DS005321": {
+    "citations": [],
+    "description": "Fish Head is an isolated submerged pinnacle in North Ari Atoll, reached by boat rather than shore entry. The site descends from roughly 8 to 35 metres and is known for grey reef sharks and other pelagic life; currents and exposed reef topography make it better suited to experienced divers.",
+    "generated_at": "2026-11-14T21:45:08.842557+00:00",
+    "model": "gpt-5.6-luna"
+  },
+  "DS005369": {
+    "citations": [],
+    "description": "Kandooma Thila, also known as Cocoa Thila, is a submerged, teardrop-shaped pinnacle in South Malé Atoll, reached by boat from nearby islands and resorts. Diving typically ranges from 12–30 m around steep reef walls and channels, with abundant reef fish and possible grey reef sharks; strong, changeable currents make it suitable for experienced divers.",
+    "generated_at": "2026-11-14T21:45:10.223750+00:00",
+    "model": "gpt-5.6-luna"
+  },
+  "DS005408": {
+    "citations": [],
+    "description": "Maalhos Thila is an offshore reef in North Ari Atoll, about 1.8 km north of Maalhos and reached by boat. The several-hundred-metre thila includes blue-cave formations and abundant soft corals; key features lie deeper than 25 m, with possible strong currents, making it best suited to experienced divers.",
+    "generated_at": "2026-11-14T21:45:08.278543+00:00",
+    "model": "gpt-5.6-luna"
+  },
+  "DS005413": {
+    "citations": [],
+    "description": "Maaya Thila is a protected, isolated pinnacle in North Ari Atoll, reached by boat for open-water entry. Its reef rises from roughly 30 metres to 6–8 metres, with caves, overhangs and swim-throughs, supporting abundant reef fish and sharks; currents can be moderate to strong, making it best suited to experienced divers.",
+    "generated_at": "2026-11-14T21:45:06.167847+00:00",
+    "model": "gpt-5.6-luna"
+  },
+  "DS005429": {
+    "citations": [],
+    "description": "Miyaru Kandu is a boat-accessible channel dive in Vaavu Atoll, Maldives, with caves, overhangs and reef walls descending to roughly 30 m. Strong currents and drift conditions attract sharks and other pelagic life, making it best suited to experienced divers.",
+    "generated_at": "2026-11-14T21:45:11.397613+00:00",
+    "model": "gpt-5.6-luna"
+  },
+  "DS005508": {
+    "citations": [],
+    "description": "On Gozo’s exposed west coast at Dwejra, Blue Hole is a shore-entry dive reached by walking over uneven limestone, descending into a natural rock pool, and passing beneath an arch into the open sea. The route features walls, caves and reef from shallow water to roughly 30–50 m, with sponges, tubeworms and other Mediterranean life; surge and swell require suitable conditions and confident divers.",
+    "generated_at": "2026-11-14T21:44:47.678878+00:00",
+    "model": "gpt-5.6-luna"
+  },
+  "DS005548": {
+    "citations": [],
+    "description": "At Dwejra on Gozo’s western coast, this shore-accessed dive begins in a sheltered, shallow lagoon and follows an approximately 80 m natural tunnel to open sea; the route descends from about 6 m to 25–30 m, with reef walls and varied marine life. Small tour boats, surge and changing conditions near the tunnel exit require good buoyancy and appropriate experience.",
+    "generated_at": "2026-11-14T21:44:49.215449+00:00",
+    "model": "gpt-5.6-luna"
+  },
+  "DS005585": {
+    "citations": [],
+    "description": "Off Wied iż-Żurrieq on Malta’s south coast, the Um El Faroud is a large upright oil-tanker wreck reached by shore entry and a short swim. It rests in roughly 10–40 m, with the stern and propeller deepest; its size, depth, and wreck-penetration hazards make it most suitable for experienced divers with appropriate deep and wreck training.",
+    "generated_at": "2026-11-14T21:44:49.859351+00:00",
+    "model": "gpt-5.6-luna"
+  },
+  "DS005880": {
+    "citations": [],
+    "description": "Cenote Dos Ojos is a shore-access cavern dive north of Tulum, reached via the Dos Ojos park and featuring wide passages, chambers, and stalactites. Clear freshwater typically reaches about 8–14 m, with excellent visibility and few aquatic animals; overhead environments, darkness, and silting require buoyancy control and a qualified cavern guide.",
+    "generated_at": "2026-11-14T21:44:37.876461+00:00",
+    "model": "gpt-5.6-luna"
+  },
+  "DS006005": {
+    "citations": [],
+    "description": "Off Cozumel’s southwest coast, Palancar Gardens is reached by boat and features coral towers, pinnacles, sandy channels, and a gently dropping wall. Typical depths are about 9–24 m, with generally mild currents, abundant Caribbean reef fish, turtles, stingrays, and lobsters; suitable for newer divers, though wall-edge depth and drift require good buoyancy control.",
+    "generated_at": "2026-11-14T21:44:39.143906+00:00",
+    "model": "gpt-5.6-luna"
+  },
+  "DS006037": {
+    "citations": [],
+    "description": "Roca Partida is a remote volcanic pinnacle in Mexico’s Revillagigedo Archipelago, reached by liveaboard and entered from a tender in exposed open ocean. Sheer walls and ledges are typically dived at 18–30 m, with blue-water visibility often 20–40 m; strong currents, surge, depth, and drifting hazards make it an advanced site for experienced divers.",
+    "generated_at": "2026-11-14T21:46:24.577050+00:00",
+    "model": "gpt-5.6-luna"
+  },
+  "DS006169": {
+    "citations": [],
+    "description": "Manta Reef is an offshore boat dive from Tofo, Mozambique, featuring an amphitheater of rocky pinnacles and manta cleaning stations at approximately 21–26 m. Typically conducted as a drift dive, it may involve current and requires advanced-level experience, with reef fish, morays, nudibranchs, and occasional large pelagic sightings.",
+    "generated_at": "2026-11-14T21:45:03.181993+00:00",
+    "model": "gpt-5.6-luna"
+  },
+  "DS006203": {
+    "citations": [],
+    "description": "Two Mile Reef is a barrier reef between Bazaruto and Benguerra islands, reached by boat from nearby resorts or mainland launch points. Its flat-topped coral formations range from shallow inner-reef snorkeling to dives of roughly 14–22 m, with turtles, reef sharks, rays and schooling tropical fish; tidal currents can be moderate to strong, though the site suits all experience levels.",
+    "generated_at": "2026-11-14T21:45:06.640194+00:00",
+    "model": "gpt-5.6-luna"
+  },
+  "DS006561": {
+    "citations": [],
+    "description": "The Rainbow Warrior lies on sand in the Cavalli Islands off Matauri Bay, Northland, and is accessible only by boat, typically a short trip from shore or charter departures. This artificial-reef wreck reaches about 26 m, supports abundant marine life, and is a non-penetration dive requiring certified divers and suitable conditions.",
+    "generated_at": "2026-11-14T21:45:54.826842+00:00",
+    "model": "gpt-5.6-luna"
+  },
+  "DS006815": {
+    "citations": [],
+    "description": "Blue Corner is a boat-accessed site off Ngemelis Island in Palau’s Rock Islands, featuring a triangular coral plateau around 15–20 m with steep walls descending to roughly 30 m. Strong, reversing currents and possible downcurrents attract grey reef sharks, barracuda, jacks, turtles, and schooling fish; reef-hook drift diving makes it suitable for experienced divers.",
+    "generated_at": "2026-11-14T21:45:39.024539+00:00",
+    "model": "gpt-5.6-luna"
+  },
+  "DS006816": {
+    "citations": [],
+    "description": "Blue Holes lies on Ngemelis Reef, just south of Blue Corner in Palau’s Rock Islands, and is reached by dive boat. Four shallow reef openings descend into a cavern reaching about 40 m, with reef fish beneath the ceiling; overhead conditions, surge and nearby currents make it suitable for experienced, properly trained divers.",
+    "generated_at": "2026-11-14T21:45:40.975063+00:00",
+    "model": "gpt-5.6-luna"
+  },
+  "DS006817": {
+    "citations": [],
+    "description": "Chandelier Cave is a boat-accessed limestone cavern in Palau’s Rock Islands, with four chambers, stalactites, air pockets, and depths typically around 4–11 m. Mandarin gobies and shrimp may occur near the entrance; inner sections are dark and require a torch, making this a guided cavern dive suited to divers comfortable in enclosed spaces.",
+    "generated_at": "2026-11-14T21:45:41.417451+00:00",
+    "model": "gpt-5.6-luna"
+  },
+  "DS006831": {
+    "citations": [],
+    "description": "Ulong Channel, also known as Ngerumekaol Pass, cuts through the western barrier reef off Ulong Island and is reached by boat. This drift dive typically ranges from 3–20 m, with sandy channel terrain, extensive cabbage coral, schooling reef fish, groupers and reef sharks; moderate to strong, potentially changing currents and reef-hook use make it suitable for intermediate to advanced divers.",
+    "generated_at": "2026-11-14T21:45:39.699351+00:00",
+    "model": "gpt-5.6-luna"
+  },
+  "DS006956": {
+    "citations": [],
+    "description": "Apo Island, off Negros Oriental, is primarily reached by boat, with some beach/shore entry options. Its protected coral reefs range from shallow coral gardens to about 40 m, supporting abundant reef fish and turtles; currents may be strong at some sites, and drift-diving experience is advisable, while gentler areas suit beginners.",
+    "generated_at": "2026-11-14T21:45:37.325292+00:00",
+    "model": "gpt-5.6-luna"
+  },
+  "DS007070": {
+    "citations": [],
+    "description": "Kimud Shoal is an offshore, boat-accessed dive site in the Philippines, reached from Malapascua Island. This sunken-island reef has a coral-covered top around 12–16 m, steep sides descending beyond 200 m, and is known for possible thresher-shark encounters; deep drop-offs and variable conditions make guided diving advisable.",
+    "generated_at": "2026-11-14T21:46:25.252469+00:00",
+    "model": "gpt-5.6-luna"
+  },
+  "DS007281": {
+    "citations": [],
+    "description": "Monad Shoal is a submerged seamount off Malapascua, reached by boat for dawn dives, with a relatively flat plateau and drop-offs at roughly 15–30 m. Visibility is commonly 10–25 m, with mild to occasionally strong currents; thresher sharks are now uncommon here, while rays and occasional tiger sharks may be encountered, making it best suited to advanced divers.",
+    "generated_at": "2026-11-14T21:45:36.227544+00:00",
+    "model": "gpt-5.6-luna"
+  },
+  "DS007305": {
+    "citations": [],
+    "description": "The Canyons is a boat-access drift dive off Puerto Galera, featuring three successive coral-covered canyon drop-offs from roughly 22–30 m. Strong currents and blue-water ascent conditions make it suitable for advanced, experienced divers; octopus, scorpionfish, sea snakes, reef fish, and schooling trevally may be encountered.",
+    "generated_at": "2026-11-14T21:45:37.644909+00:00",
+    "model": "gpt-5.6-luna"
+  },
+  "DS007500": {
+    "citations": [],
+    "description": "Boo Windows is a boat-accessed site off the Boo Islands in Misool, southern Raja Ampat, known for reef arches, swim-through windows, shallow coral gardens, and a wall descending to roughly 30–35 m. Moderate current, especially along the exposed southwest face, makes it better suited to experienced or Advanced Open Water divers; pygmy seahorses, batfish, reef sharks, turtles, and schooling reef fish may be encountered.",
+    "generated_at": "2026-11-14T21:45:16.329724+00:00",
+    "model": "gpt-5.6-luna"
+  },
+  "DS007504": {
+    "citations": [],
+    "description": "Cape Kri lies off the northern tip of Kri Island in Raja Ampat’s Dampier Strait and is accessed by boat. Its sloping reef and plateau range from about 5–40 m, supporting dense corals, barracuda, trevally, sharks and turtles; visibility is commonly 15–30 m, but strong, shifting currents make it best suited to experienced divers.",
+    "generated_at": "2026-11-14T21:45:12.380783+00:00",
+    "model": "gpt-5.6-luna"
+  },
+  "DS007543": {
+    "citations": [],
+    "description": "Manta Sandy is a shallow boat-access dive in Raja Ampat’s Dampier Strait, near Arborek, featuring a broad sandy plateau used as a reef-manta cleaning station. Depths are typically 5–20 m, with frequent manta encounters and generally beginner-friendly conditions, though divers should be comfortable with open-water procedures and variable local conditions.",
+    "generated_at": "2026-11-14T21:45:16.874944+00:00",
+    "model": "gpt-5.6-luna"
+  },
+  "DS007641": {
+    "citations": [],
+    "description": "Big Brother Island is a remote Egyptian Red Sea site reached by liveaboard boat, with steep coral walls, a shallow southern plateau, and the Numidia and Aida wrecks descending to about 40 m. Strong currents, surge, deep water, and exposure to open sea make it suitable for experienced divers; pelagic sharks and schooling fish may be encountered.",
+    "generated_at": "2026-11-14T21:44:59.455613+00:00",
+    "model": "gpt-5.6-luna"
+  },
+  "DS007657": {
+    "citations": [],
+    "description": "Daedalus Reef is a remote, isolated Red Sea reef off Marsa Alam, accessible by liveaboard rather than shore, with vertical walls, coral plateaus and dives typically from 5–40 m. Moderate to strong currents, excellent visibility and exposure to blue-water conditions attract hammerheads, oceanic whitetips and other pelagics; it is best suited to experienced drift divers.",
+    "generated_at": "2026-11-14T21:44:55.290395+00:00",
+    "model": "gpt-5.6-luna"
+  },
+  "DS007762": {
+    "citations": [],
+    "description": "Jackson Reef lies in the Straits of Tiran near Sharm El Sheikh and is accessed by boat, with wall dives typically ranging from shallow reefs to about 30 m and deeper drop-offs. Strong, fast currents make it an advanced site; coral walls support abundant reef fish and occasional pelagic species, while the rusting Lara wreck marks the reef top.",
+    "generated_at": "2026-11-14T21:44:56.623000+00:00",
+    "model": "gpt-5.6-luna"
+  },
+  "DS007979": {
+    "citations": [],
+    "description": "The SS Thistlegorm is a WWII cargo wreck in Egypt’s Strait of Gubal, accessed by day boat or liveaboard rather than from shore. Descending from roughly 15–32 m, divers encounter locomotives, trucks, motorcycles and abundant reef fish, but strong currents, variable visibility and silting inside the holds make it an advanced dive requiring good buoyancy and wreck experience.",
+    "generated_at": "2026-11-14T21:44:52.835760+00:00",
+    "model": "gpt-5.6-luna"
+  },
+  "DS008235": {
+    "citations": [],
+    "description": "Half Moon Bay Wall lies off West End at the mouth of sheltered Half Moon Bay, reached by a very short boat ride or shore entry near the beach. Its shallow coral garden slopes into a wall commonly dived from about 5–30 m, with mild current, turtles, morays, lobsters, and reef fish; generally calm and suitable for beginners, though deeper sections require appropriate certification.",
+    "generated_at": "2026-11-14T21:44:30.052125+00:00",
+    "model": "gpt-5.6-luna"
+  },
+  "DS008656": {
+    "citations": [],
+    "description": "Silfra is a freshwater fissure in Þingvellir National Park, Iceland, reached from shore via a short walk and typically dived with a guide. The narrow, rocky fissure averages 7–12 m and is limited to 18 m, with visibility often exceeding 100 m, slight current, near-freezing water, sparse algae and occasional Arctic char; cold-water dry-suit experience is required.",
+    "generated_at": "2026-11-14T21:44:41.537746+00:00",
+    "model": "gpt-5.6-luna"
+  },
+  "DS008702": {
+    "citations": [],
+    "description": "Barracuda Point lies off Sipadan’s north coast and is typically reached by boat; shore entry is not practical. The dive follows a steep wall beginning around 10 m and descending beyond recreational limits, with barracuda schools, turtles and reef sharks; currents can be strong, making it best suited to experienced or advanced divers.",
+    "generated_at": "2026-11-14T21:45:25.616397+00:00",
+    "model": "gpt-5.6-luna"
+  },
+  "DS008708": {
+    "citations": [],
+    "description": "At Sipadan’s exposed southern tip, South Point is typically reached by boat and features a steep coral wall descending about 20–40 m into the Celebes Sea. Strong, variable currents and possible downcurrents make it an advanced drift dive; turtles, reef sharks, schooling fish and other pelagics are commonly associated with the site.",
+    "generated_at": "2026-11-14T21:45:27.441704+00:00",
+    "model": "gpt-5.6-luna"
+  },
+  "DS008842": {
+    "citations": [],
+    "description": "Aliwal Shoal is an offshore rocky reef about 5 km from KwaZulu-Natal, reached by boat from Umkomaas rather than from shore. Depths generally range from 9–27 m, with turtles, rays, moray eels, sharks and schooling fish; currents, swell and variable 10–20 m visibility make it best suited to experienced divers.",
+    "generated_at": "2026-11-14T21:45:00.065815+00:00",
+    "model": "gpt-5.6-luna"
+  },
+  "DS008951": {
+    "citations": [],
+    "description": "An offshore Protea Banks site on South Africa’s KwaZulu-Natal south coast, reached by boat, featuring jagged sandstone pinnacles, cavernous overhangs and swim-through caves at roughly 28–38 m. Strong currents, open-ocean swell and negative-entry drift profiles make it suitable for advanced divers; ragged-tooth sharks are characteristic, with bull and other pelagic sharks also possible.",
+    "generated_at": "2026-11-14T21:45:01.381110+00:00",
+    "model": "gpt-5.6-luna"
+  },
+  "DS009003": {
+    "citations": [],
+    "description": "Two Mile Reef is a large coral-reef complex off Sodwana Bay in South Africa, reached by boat from the Jesser Point launch rather than from shore. Pinnacles, caves, swim-throughs, ledges and sandy channels span roughly 6–27 m, supporting abundant reef fish, corals and invertebrates; shallow sections suit Open Water divers, while deeper areas require greater experience and conditions may include surge or currents.",
+    "generated_at": "2026-11-14T21:45:02.619094+00:00",
+    "model": "gpt-5.6-luna"
+  },
+  "DS009178": {
+    "citations": [],
+    "description": "El Bajón is an offshore volcanic seamount in the La Restinga–Mar de las Calmas Marine Reserve, reached by boat from La Restinga. Twin pinnacles rise to about 6–9 m, with steep walls descending to roughly 100 m; large groupers and morays inhabit the rock, while exposed currents can make it better suited to experienced divers.",
+    "generated_at": "2026-11-14T21:44:50.464553+00:00",
+    "model": "gpt-5.6-luna"
+  },
+  "DS009946": {
+    "citations": [],
+    "description": "Bida Nok is a boat-accessed dive site at the southern end of Thailand’s Phi Phi Islands, with steep limestone walls, coral gardens, and sandy shallows. Expect varied reef life including reef fish, sea turtles, moray eels, and occasional blacktip reef sharks; conditions can include currents and reduced visibility, so it suits beginners with appropriate supervision through experienced divers.",
+    "generated_at": "2026-11-14T21:45:35.353549+00:00",
+    "model": "gpt-5.6-luna"
+  },
+  "DS009954": {
+    "citations": [],
+    "description": "An offshore granite pinnacle in the Gulf of Thailand, reached by boat from Koh Tao with no shore entry, Chumphon Pinnacle drops from about 14 to 36–40 m and suits experienced divers. Strong currents, open-water descents and variable 10–30 m visibility are possible; schools of barracuda, trevally, batfish and groupers are common, with occasional whale sharks.",
+    "generated_at": "2026-11-14T21:45:29.642363+00:00",
+    "model": "gpt-5.6-luna"
+  },
+  "DS009997": {
+    "citations": [],
+    "description": "Koh Bon is an uninhabited lava-rock island north of the Similan Islands, reached by dive boat or liveaboard rather than shore access. Sites include walls, pinnacles and sloping reefs from roughly 5–22 m, with manta rays a notable attraction; conditions can suit experienced divers, particularly on the deeper West Ridge.",
+    "generated_at": "2026-11-14T21:45:33.103771+00:00",
+    "model": "gpt-5.6-luna"
+  },
+  "DS010049": {
+    "citations": [],
+    "description": "Richelieu Rock is an isolated horseshoe-shaped limestone pinnacle in the Andaman Sea near Thailand’s Surin Islands, accessible only by boat, typically via liveaboard. Descending from about 5 to 35 meters, its walls, overhangs, caves, and soft-coral gardens support abundant reef and macro life, but moderate to strong currents and exposed conditions make it best suited to experienced divers.",
+    "generated_at": "2026-11-14T21:45:27.623995+00:00",
+    "model": "gpt-5.6-luna"
+  },
+  "DS010050": {
+    "citations": [],
+    "description": "Sail Rock (Hin Bai) is an isolated granite pinnacle in the Gulf of Thailand between Koh Tao and Koh Phangan, accessible only by dive boat, with trips commonly departing from either island. It rises from about 40–45 m to near the surface and features a vertical chimney, dense schooling fish and pelagics; visibility is variable, currents may be strong, and deeper or drift sections suit experienced divers.",
+    "generated_at": "2026-11-14T21:45:29.295920+00:00",
+    "model": "gpt-5.6-luna"
+  },
+  "DS010077": {
+    "citations": [],
+    "description": "Elephant Head Rock is a boat-access site southwest of Similan Island 8, formed by granite boulders with arches, caves, and swim-throughs descending roughly 5–40 m. Surge and strong currents can occur, making it better suited to experienced divers; reef sharks, leopard sharks, barracuda, and other reef life may be encountered.",
+    "generated_at": "2026-11-14T21:45:32.168685+00:00",
+    "model": "gpt-5.6-luna"
+  },
+  "DS010315": {
+    "citations": [],
+    "description": "Off the Northumberland coast, the Farne Islands are primarily boat-accessed from Seahouses, with rocky reefs, kelp, gullies and wrecks ranging from shallow seal sites to about 35 m. Cold North Sea water, variable visibility and strong tidal currents demand careful tide planning; sheltered shallow areas suit newer divers, while exposed sites require experience.",
+    "generated_at": "2026-11-14T21:44:45.273981+00:00",
+    "model": "gpt-5.6-luna"
+  },
+  "DS010322": {
+    "citations": [],
+    "description": "HMS Scylla is an artificial frigate reef in Whitsand Bay, South Cornwall, accessed by boat from Plymouth or southeast Cornwall; the wreck lies in roughly 9–26 m of water. Its structure supports diverse marine life, but discarded fishing gear and debris create entanglement hazards, so careful buoyancy and wreck-diving awareness are advisable.",
+    "generated_at": "2026-11-14T21:44:46.484825+00:00",
+    "model": "gpt-5.6-luna"
+  },
+  "DS010344": {
+    "citations": [],
+    "description": "Scapa Flow is a sheltered sea loch in Orkney, Scotland, best accessed by charter dive boat from Stromness to explore historic German fleet wrecks and blockships. Sites range from shallow blockships to wrecks around 15–45 m, with typically 5–10 m visibility, cold water, occasional current, and abundant anemone-covered structure; drysuit and advanced wreck-diving experience are appropriate.",
+    "generated_at": "2026-11-14T21:44:43.356884+00:00",
+    "model": "gpt-5.6-luna"
+  },
+  "DS010428": {
+    "citations": [],
+    "description": "Off Kona’s airport in Makako Bay, Garden Eel Cove—also called Manta Ray Heaven—is primarily a boat-accessed site with a sheltered coral shelf descending from about 6 to 19 meters over reef and sand, including garden-eel beds. Night dives use lights to attract plankton-feeding manta rays; generally suitable for all divers, though darkness, boat operations, and surge require comfort in open-water conditions.",
+    "generated_at": "2026-11-14T21:45:56.615769+00:00",
+    "model": "gpt-5.6-luna"
+  },
+  "DS010497": {
+    "citations": [],
+    "description": "Blue Heron Bridge is a shallow shore dive from Phil Foster Park in Riviera Beach, Florida, with sandy bottom, artificial reefs, bridge pilings and wrecks spanning roughly 4–25 feet. Easy beach entry suits beginners, while strong tidal currents and reduced visibility outside slack high tide require careful timing; macro life includes seahorses, frogfish, octopuses, nudibranchs and other invertebrates.",
+    "generated_at": "2026-11-14T21:44:41.505475+00:00",
+    "model": "gpt-5.6-luna"
+  },
+  "DS010714": {
+    "citations": [],
+    "description": "Spiegel Grove is a 510-foot artificial wreck lying upright about six miles offshore from Key Largo, Florida, accessible by dive boat and mooring lines. Its structure spans roughly 70–130 feet, supporting reef fish and occasional sharks; current and depth make it best suited to advanced divers, with wreck-penetration areas requiring specialized training.",
+    "generated_at": "2026-11-14T21:44:42.129435+00:00",
+    "model": "gpt-5.6-luna"
+  },
+  "DS010871": {
+    "citations": [],
+    "description": "Million Dollar Point is a shore-access wreck site on Espiritu Santo near Luganville, where rusting World War II vehicles and machinery form an artificial reef on a sloping seabed about 15–25 m deep. It suits open-water divers, but careful buoyancy and awareness of sharp, unstable wreckage are necessary.",
+    "generated_at": "2026-11-14T21:45:50.276851+00:00",
+    "model": "gpt-5.6-luna"
+  },
+  "DS010878": {
+    "citations": [],
+    "description": "Off Espiritu Santo near Luganville, the 200 m SS President Coolidge rests on its port side along a sloping seabed and is accessible from shore or by boat. Depths range roughly 20–60 m, with warm 25–30°C water and generally good visibility; abundant marine life complements the wreck, but depth, penetration hazards, and navigation require advanced wreck-diving experience.",
+    "generated_at": "2026-11-14T21:45:49.406059+00:00",
+    "model": "gpt-5.6-luna"
+  }
+}

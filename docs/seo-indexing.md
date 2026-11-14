@@ -7,7 +7,7 @@ Selection context: [PADI’s world dive sites](https://blog.padi.com/the-10-best
 ## Behavior
 
 - `/dive-sites` is a public directory linked from the homepage footer as “Dive Sites”, styled like the Terms & Conditions and Privacy Policy links, and included in `/sitemap.xml`. All selected sites have ordinary HTML links. The Explore section has no additional directory link.
-- Only selected `/explore/dive-sites/<id>` pages are indexable. Their initial HTML includes a cached description or the original editorial introduction in `pelagia/seo_sites.tsv`.
+- Only selected `/explore/dive-sites/<id>` pages are indexable. Their initial HTML includes a cached description or the researched page summary in `pelagia/seo_site_descriptions.json`. The short introductions in `pelagia/seo_sites.tsv` appear only on directory cards, below any species tags.
 - Public browse pages do not initiate paid description generation. Existing signed-in and share-page behavior is preserved.
 - `/explore/dive-centers/<id>` qualifies only with a nonempty cached description, name, location and valid coordinates.
 - Share previews, unselected sites and thin center pages remain noindexed. Search-result pages use `noindex, follow`.
@@ -16,9 +16,9 @@ Selection context: [PADI’s world dive sites](https://blog.padi.com/the-10-best
 
 ## Deployment
 
-Deploy the code and `pelagia/seo_sites.tsv` together, with the current reference catalog. Set `PELAGIA_PUBLIC_BASE_URL=https://pelagiadivelog.com`. Verify that `/sitemap.xml` contains exactly 100 `/explore/dive-sites/` URLs, then submit it in Search Console. Inspect representative URLs for their rendered descriptions, canonical URLs and indexing eligibility. The application makes pages eligible; Google controls actual indexing and rankings.
+Deploy the code, `pelagia/seo_sites.tsv` and `pelagia/seo_site_descriptions.json` together, with the current reference catalog. Set `PELAGIA_PUBLIC_BASE_URL=https://pelagiadivelog.com`. Verify that `/sitemap.xml` contains exactly 100 `/explore/dive-sites/` URLs, then submit it in Search Console. Inspect representative URLs for their rendered descriptions, canonical URLs and indexing eligibility. The application makes pages eligible; Google controls actual indexing and rankings.
 
-The implementation does not overwrite production description caches or modify catalog coordinates. Cached descriptions are preferred over the editorial fallback. Review any catalog location conflicts before changing map positions.
+The implementation does not overwrite production description caches or modify catalog coordinates. Nonempty cached descriptions are preferred over the bundled researched summaries. These summaries are also available to signed-in profiles, share pages and the description API through the shared cache reader. They are generated with the existing web-grounded `site_descriptions.generate_description` function, with its normal model, instructions and search limits. Run `scripts/generate_selected_site_descriptions.py` with `OPENAI_API_KEY` to resume missing summaries; saved records are reused. Review any catalog location conflicts before changing map positions.
 
 ## Selected sites
 
