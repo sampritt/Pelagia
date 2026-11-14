@@ -37,7 +37,7 @@ from .metrics import format_metric
 from .units import UNIT_OPTIONS, display_measurement, metric_measurement, pressure_display
 from .dive_options import DIVE_TYPES, CURRENT_TYPES, normalize_options, dive_type_options, current_type_options, gas_mix_label
 from . import google_auth, email_auth
-from . import pwa, seo
+from . import pwa, seo, branding
 from . import dive_brief
 from . import site_descriptions, place_profiles
 from . import seasons
@@ -123,6 +123,7 @@ def create_app(test_config=None):
     site_reports.init_app(app, login_required)
     water_type.init_app(app, login_required)
     dive_brief.init_app(app)
+    branding.init_app(app)
     pwa.init_app(app)
     google_auth.init_app(app)
     email_auth.init_app(app)
@@ -425,7 +426,7 @@ def register_routes(app):
             response = app.make_response(render_template(
                 "shared_dive.html", dive=dive, description=share_description(dive),
                 share_url=public_url("shared_dive", dive_id=dive_id),
-                share_image_url=public_url("shared_dive_image", dive_id=dive_id),
+                share_image_url=public_url("shared_dive_image", dive_id=dive_id, brand="fin-v1"),
                 dive_url=url_for("dive_detail", dive_id=dive_id),
             ))
         response.headers["Cache-Control"] = "private, no-store"

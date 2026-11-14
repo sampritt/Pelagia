@@ -1,6 +1,6 @@
     <header class="marketing-header">
         <div class="marketing-nav-inner">
-            <a class="marketing-brand" href="{{ url_for('landing') }}#home" aria-label="Pelagia home"><img src="{{ url_for('static', filename='img/pelagia-mark.png') }}" width="40" height="40" alt="">Pelagia</a>
+            <a class="marketing-brand" href="{{ url_for('landing') }}#home" aria-label="Pelagia home"><img src="{{ url_for('brand_asset', filename='fin-mark.png') }}" width="40" height="40" alt="">Pelagia</a>
             <nav class="marketing-navigation" aria-label="Main navigation" id="landingNavigation">
                 <a href="{{ url_for('landing') }}#home"{% if request.endpoint == 'landing' %} aria-current="page"{% endif %}>Home</a>
                 <a href="{{ url_for('landing') }}#product">Product</a>

@@ -6,9 +6,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="theme-color" content="#062a46">
     <title>{% block title %}Pelagia{% endblock %}</title>
-    <link rel="icon" href="{{ url_for('static', filename='img/favicon.png') }}" type="image/png" sizes="32x32">
+    <link rel="icon" href="{{ url_for('brand_asset', filename='fin-icon-512.png') }}" type="image/png" sizes="512x512">
     <link rel="manifest" href="{{ url_for('pwa_manifest') }}">
-    <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='img/apple-touch-icon.png') }}">
+    <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('brand_asset', filename='fin-touch-icon.png') }}">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-title" content="Pelagia">
     <meta name="color-scheme" content="dark">
@@ -17,6 +17,7 @@
     <script defer src="{{ url_for('static', filename='js/loading.js', v=pwa_asset_version) }}"></script>
     <script defer src="{{ url_for('static', filename='js/app.js', v=pwa_asset_version) }}"></script>
     <script defer src="{{ url_for('static', filename='js/pwa.js', v=pwa_asset_version) }}"></script>
+    {% block social_image %}{% include '_brand_social_image.html' %}{% endblock %}
     {% block head %}{% endblock %}
 </head>
 <body class="{% block body_class %}{% endblock %}">
@@ -27,7 +28,7 @@
     <header class="topbar feed-topbar">
         <a class="brand" href="{{ url_for('home') }}" aria-label="Pelagia Home">
             <span class="brand-mark" aria-hidden="true">
-                <img src="{{ url_for('static', filename='img/pelagia-mark.png') }}" width="36" height="36" alt="">
+                <img src="{{ url_for('brand_asset', filename='fin-mark.png') }}" width="36" height="36" alt="">
             </span>
             <span>Pelagia</span>
         </a>

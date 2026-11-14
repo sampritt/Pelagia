@@ -10,7 +10,6 @@
     <meta property="og:title" content="{{ page_title if indexable else site.name ~ ' · Dive site on Pelagia' }}">
     <meta property="og:description" content="{{ description }}">
     <meta property="og:url" content="{{ share_url }}">
-    <meta name="twitter:card" content="summary">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/landing.css', v=pwa_asset_version) }}">
 {% endblock %}
 {% block public_navigation %}

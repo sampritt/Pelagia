@@ -7,8 +7,8 @@
     <meta name="robots" content="noindex">
     <title>You're offline - Pelagia</title>
     <link rel="manifest" href="{{ url_for('pwa_manifest') }}">
-    <link rel="icon" href="{{ url_for('static', filename='img/favicon.png') }}" type="image/png" sizes="32x32">
-    <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='img/apple-touch-icon.png') }}">
+    <link rel="icon" href="{{ url_for('brand_asset', filename='fin-icon-512.png') }}" type="image/png" sizes="512x512">
+    <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('brand_asset', filename='fin-touch-icon.png') }}">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-title" content="Pelagia">
     <meta name="color-scheme" content="dark">
@@ -18,7 +18,7 @@
 </head>
 <body class="offline-body">
     <main class="offline-card">
-        <img class="offline-icon" src="{{ url_for('static', filename='img/icon-192.png') }}" width="80" height="80" alt="Pelagia">
+        <img class="offline-icon" src="{{ url_for('brand_asset', filename='fin-icon-192.png') }}" width="80" height="80" alt="Pelagia">
         <p class="eyebrow">Pelagia</p>
         <h1>You're offline</h1>
         <p>Reconnect to view or save your dives, then try again.</p>

@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 
 from flask import Response, render_template, send_from_directory
+from .branding import ASSETS
 
 
 def init_app(app):
@@ -15,6 +16,8 @@ def init_app(app):
     worker = (static / "service-worker.js").read_text()
     digest = hashlib.sha256(worker.encode())
     digest.update(Path(__file__).read_bytes())
+    digest.update(Path(__file__).with_name("branding.py").read_bytes())
+    digest.update((static / "img/pelagia-lockup-source.png").read_bytes())
     for path in [*(static / asset for asset in assets),
                  *(static / "img" / icon for icon in icons),
                  static / "manifest.webmanifest", templates / "offline.html"]:
@@ -23,7 +26,8 @@ def init_app(app):
     app.jinja_env.globals["pwa_asset_version"] = version
     precache = ["/offline.html", "/manifest.webmanifest",
                 *(f"/static/{asset}?v={version}" for asset in assets),
-                *(f"/static/img/{icon}" for icon in icons)]
+                *(f"/static/img/{icon}" for icon in icons),
+                *(f"/brand/{filename}" for filename in ASSETS)]
     source = worker.replace("__PELAGIA_CACHE_VERSION__", version).replace("__PELAGIA_PRECACHE__", json.dumps(precache))
 
     @app.get("/service-worker.js")
