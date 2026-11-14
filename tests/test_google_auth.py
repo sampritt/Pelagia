@@ -77,7 +77,7 @@ class GoogleAuthTest(unittest.TestCase):
             self.assertNotIn('name="username"', page)
         root = ElementTree.fromstring(client.get("/sitemap.xml").data)
         locations = [node.text for node in root.iter('{http://www.sitemaps.org/schemas/sitemap/0.9}loc')]
-        self.assertEqual(locations, ['https://pelagia.example/', 'https://pelagia.example/terms', 'https://pelagia.example/privacy'])
+        self.assertEqual(locations, ['https://pelagia.example/', 'https://pelagia.example/terms', 'https://pelagia.example/privacy', 'https://pelagia.example/dive-sites'])
         robots = client.get('/robots.txt').data
         self.assertIn(b'Sitemap: https://pelagia.example/sitemap.xml', robots)
         self.assertNotIn(b'Disallow: /login', robots)

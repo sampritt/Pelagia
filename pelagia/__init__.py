@@ -37,7 +37,7 @@ from .metrics import format_metric
 from .units import UNIT_OPTIONS, display_measurement, metric_measurement, pressure_display
 from .dive_options import DIVE_TYPES, CURRENT_TYPES, normalize_options, dive_type_options, current_type_options, gas_mix_label
 from . import google_auth, email_auth
-from . import pwa
+from . import pwa, seo
 from . import dive_brief
 from . import site_descriptions, place_profiles
 from . import seasons
@@ -267,8 +267,15 @@ def register_routes(app):
     @app.get("/sitemap.xml")
     def sitemap():
         from xml.sax.saxutils import escape
-        urls = "".join(f"<url><loc>{escape(public_url(endpoint))}</loc></url>" for endpoint in ("landing", "terms", "privacy"))
+        locations = [public_url(endpoint) for endpoint in ("landing", "terms", "privacy", "dive_site_directory")]
+        locations.extend(public_url("public_dive_site", site_id=site["id"]) for site in seo.directory_sites())
+        locations.extend(public_url("public_dive_center", center_id=center["id"]) for center in seo.indexable_centers())
+        urls = "".join(f"<url><loc>{escape(location)}</loc></url>" for location in locations)
         return Response('<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' + urls + '</urlset>', mimetype="application/xml")
+
+    @app.get("/dive-sites")
+    def dive_site_directory():
+        return render_template("dive_site_directory.html", sites=seo.directory_sites(), public_search=True)
 
     @app.route("/logout", methods=("POST",))
     def logout():
@@ -912,21 +919,27 @@ def register_routes(app):
         center = fetch_public_dive_center(center_id)
         if center is None:
             abort(404)
+        browse_page = request.endpoint == "public_dive_center"
+        indexable = browse_page and bool(seo.indexable_centers(center_id))
         if current_user():
             response = redirect(url_for("dive_center_profile", center_id=center_id))
         else:
             location = f" in {center['location']}" if center["location"] else ""
+            center_description = site_descriptions.read_cache(center_id, kind="center")
             center.update(place_profiles.reviews(center_id, None))
             response = app.make_response(render_template(
                 "shared_dive_center.html", center=center, public_preview=True,
                 nearby_sites=place_profiles.nearby_sites(center),
-                center_description=site_descriptions.read_cache(center_id, kind="center"),
-                description=f"Explore {center['name']}{location}. Discover this dive center on Pelagia.",
+                center_description=center_description,
+                description=((center_description or {}).get("description") if indexable else None)
+                or f"Explore {center['name']}{location}. Discover this dive center on Pelagia.",
                 share_url=public_url("public_dive_center" if request.endpoint == "public_dive_center" else "shared_dive_center", center_id=center_id),
                 center_url=url_for("dive_center_profile", center_id=center_id),
+                indexable=indexable, browse_page=browse_page,
+                page_title=f"{center['name']} · Dive center in {center['location']} | Pelagia",
             ))
         response.headers["Cache-Control"] = "private, no-store"
-        response.headers["X-Robots-Tag"] = "noindex, nofollow"
+        response.headers["X-Robots-Tag"] = "index, follow" if indexable else "noindex, nofollow"
         response.vary.add("Cookie")
         return response
 
@@ -962,11 +975,17 @@ def register_routes(app):
         site = fetch_public_dive_site(site_id)
         if site is None:
             abort(404)
+        browse_page = request.endpoint == "public_dive_site"
+        selection = seo.site_selection(site_id) if browse_page else None
+        indexable = selection is not None
         if current_user():
             response = redirect(url_for("dive_site_profile", site_id=site_id))
         else:
             site.update(place_profiles.reviews(site_id, None, kind="site"))
             site_description = site_descriptions.read_cache(site_id)
+            if selection and not (site_description or {}).get("description"):
+                site_description = {"description": selection["description"],
+                                    "fragments": [{"text": selection["description"]}]}
             description = (site_description or {}).get("description") or (
                 f"Explore {site['name']}" + (f" in {site['country_or_area']}" if site['country_or_area'] else "")
                 + ". See marine sightings and discover this dive site on Pelagia."
@@ -977,9 +996,11 @@ def register_routes(app):
                 sightings=dive_site_species_sightings(site_id), description=description,
                 share_url=public_url("public_dive_site" if request.endpoint == "public_dive_site" else "shared_dive_site", site_id=site_id),
                 site_url=url_for("dive_site_profile", site_id=site_id), public_preview=True,
+                indexable=indexable, browse_page=browse_page,
+                page_title=f"{site['name']} · Diving in {selection['country']} | Pelagia" if selection else None,
             ))
         response.headers["Cache-Control"] = "private, no-store"
-        response.headers["X-Robots-Tag"] = "noindex, nofollow"
+        response.headers["X-Robots-Tag"] = "index, follow" if indexable else "noindex, nofollow"
         response.vary.add("Cookie")
         return response
 

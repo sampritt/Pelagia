@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Iconic Dive Sites Around the World | Pelagia Dive Log{% endblock %}
+{% block head %}
+<meta name="description" content="Explore a selection of iconic dive sites across the Caribbean, Red Sea, Indian Ocean, Southeast Asia, Pacific and beyond. Discover reefs, wrecks and marine life.">
+<meta name="robots" content="index, follow">
+<link rel="canonical" href="{{ public_url('dive_site_directory') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/landing.css', v=pwa_asset_version) }}">
+<script defer src="{{ url_for('static', filename='js/landing.js', v=pwa_asset_version) }}"></script>
+{% endblock %}
+{% block public_navigation %}<div class="marketing-page public-profile-navigation">{% include '_marketing_header.html' %}</div>{% endblock %}
+{% block content %}
+<section class="profile-layout place-profile">
+    <h1>Dive sites around the world</h1>
+    <p>Discover iconic reefs, historic wrecks and distinctive underwater landscapes. This selection spans the world’s major diving regions.</p>
+    {% for region, places in sites|groupby('region') %}
+    <section class="place-nearby" aria-labelledby="region{{ loop.index }}">
+        <h2 id="region{{ loop.index }}">{{ region }}</h2>
+        {% for site in places %}
+        <article class="detail-panel">
+            <h3><a href="{{ url_for('public_dive_site', site_id=site.id) }}">{{ site.name }}</a></h3>
+            <p class="profile-meta">{{ site.country }}</p>
+            <p>{{ site.description }}</p>
+        </article>
+        {% endfor %}
+    </section>
+    {% endfor %}
+</section>
+{% endblock %}

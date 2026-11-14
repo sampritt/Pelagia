@@ -217,8 +217,8 @@ class SiteDescriptionTest(unittest.TestCase):
     def test_public_preview_generates_once_and_reuses_cache_even_with_force_enabled(self):
         guest = self.app.test_client()
         endpoint = "/api/explore/dive-sites/1/description"
-        for path in ("/explore/dive-sites/1", "/share/dive-site/1"):
-            self.assertIn(endpoint.encode(), guest.get(path).data)
+        self.assertNotIn(endpoint.encode(), guest.get("/explore/dive-sites/1").data)
+        self.assertIn(endpoint.encode(), guest.get("/share/dive-site/1").data)
         with patch.object(descriptions.requests, "post", return_value=upstream()) as post:
             response = guest.post(endpoint, headers=self.headers)
             self.assertEqual(response.status_code, 200)

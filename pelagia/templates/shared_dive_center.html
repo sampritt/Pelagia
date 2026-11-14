@@ -1,13 +1,13 @@
 {% extends "base.html" %}
-{% block title %}{{ center.name }} · Dive center on Pelagia{% endblock %}
+{% block title %}{{ page_title if indexable else center.name ~ ' · Dive center on Pelagia' }}{% endblock %}
 {% block body_class %}shared-dive-body shared-center-body{% endblock %}
 {% block head %}
     <meta name="description" content="{{ description }}">
-    <meta name="robots" content="noindex, nofollow">
+    <meta name="robots" content="{{ 'index, follow' if indexable else 'noindex, nofollow' }}">
     <link rel="canonical" href="{{ share_url }}">
     <meta property="og:type" content="website">
     <meta property="og:site_name" content="Pelagia">
-    <meta property="og:title" content="{{ center.name }} · Dive center on Pelagia">
+    <meta property="og:title" content="{{ page_title if indexable else center.name ~ ' · Dive center on Pelagia' }}">
     <meta property="og:description" content="{{ description }}">
     <meta property="og:url" content="{{ share_url }}">
     <meta name="twitter:card" content="summary">

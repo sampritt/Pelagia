@@ -135,7 +135,7 @@
             <div><p class="product-eyebrow">Here to help</p><h2 id="supportTitle">Questions?<br>Get in touch<span>.</span></h2></div>
             <div class="support-contact"><p>For questions or support, contact us at</p><a href="mailto:{{ config.PELAGIA_CONTACT_EMAIL }}">{{ config.PELAGIA_CONTACT_EMAIL }} {{ arrow() }}</a></div>
         </div>
-        <footer class="marketing-footer"><a class="marketing-brand" href="#home" aria-label="Pelagia home"><img src="{{ url_for('static', filename='img/pelagia-mark.png') }}" width="28" height="28" alt="">Pelagia</a><div><a href="{{ url_for('terms') }}">Terms &amp; Conditions</a><a href="{{ url_for('privacy') }}">Privacy Policy</a><span>© {{ brief_date.year }} Pelagia</span></div></footer>
+        <footer class="marketing-footer"><a class="marketing-brand" href="#home" aria-label="Pelagia home"><img src="{{ url_for('static', filename='img/pelagia-mark.png') }}" width="28" height="28" alt="">Pelagia</a><div><a href="{{ url_for('dive_site_directory') }}">Dive Sites</a><a href="{{ url_for('terms') }}">Terms &amp; Conditions</a><a href="{{ url_for('privacy') }}">Privacy Policy</a><span>© {{ brief_date.year }} Pelagia</span></div></footer>
     </section>
 </div>
 {% endblock %}

@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Explore - Pelagia{% endblock %}
 {% block body_class %}{{ 'public-explore-body' if public_explore else '' }}{% endblock %}
-{% block head %}{% if public_explore %}
+{% block head %}<meta name="robots" content="noindex, follow">{% if public_explore %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/landing.css', v=pwa_asset_version) }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/public-search.css', v=pwa_asset_version) }}">
 <script defer src="{{ url_for('static', filename='js/landing.js', v=pwa_asset_version) }}"></script>
