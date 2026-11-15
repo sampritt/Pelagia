@@ -112,6 +112,14 @@ def create_app(test_config=None):
     with app.app_context():
         database.init_db()
         _ensure_reference_data(app)
+        # TEMPORARY: seed the new wreck in existing databases; remove after rollout.
+        db = database.get_db()
+        db.execute("""INSERT INTO dive_sites
+            (master_site_id, name, country_or_area, country_code, latitude, longitude, max_depth_m)
+            VALUES ('DS012972', 'SS United States', 'United States Of America Usa',
+                    'US', 30.1191333, -86.77925, 54.864)
+            ON CONFLICT(master_site_id) DO NOTHING""")
+        db.commit()
         center_registry.refresh_centers(database.get_db(), center_registry.configured_csv(app))
 
     register_routes(app)
