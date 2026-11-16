@@ -19,7 +19,7 @@ from .static_maps import render_static_map
 
 def fetch_public_dive(dive_id):
     # Do not fetch private fields and then hide them with CSS. Guests get only
-    # this allowlist, including no buddy, email, notes, species or comments.
+    # this allowlist, including no buddy, email, notes or comments.
     row = get_db().execute(
         """
         SELECT d.id, d.site_name, d.country_or_area, d.date, d.latitude,
@@ -42,6 +42,9 @@ def fetch_public_dive(dive_id):
     dive["dive_types"] = dive_type_options(dive)
     dive["photos"] = get_db().execute(
         "SELECT filename FROM photos WHERE dive_id = ? ORDER BY id", (dive_id,),
+    ).fetchall()
+    dive["species"] = get_db().execute(
+        "SELECT common_name FROM dive_species WHERE dive_id = ? ORDER BY common_name", (dive_id,),
     ).fetchall()
     return dive
 

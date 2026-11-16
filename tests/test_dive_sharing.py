@@ -50,7 +50,7 @@ class DiveSharingTest(unittest.TestCase):
                        VALUES (1, 2, '2026-10-01', 'Blue Corner', 'Palau', 7.134, 134.22, 24, 52,
                        'PRIVATE DIVE NOTES', 'dry suit', 7.5)""")
             db.execute("INSERT INTO comments (dive_id, user_id, body) VALUES (1, 2, 'PRIVATE COMMENT')")
-            db.execute("INSERT INTO dive_species (dive_id, common_name) VALUES (1, 'PRIVATE SPECIES')")
+            db.execute("INSERT INTO dive_species (dive_id, common_name) VALUES (1, 'Green turtle')")
             db.commit()
 
     def add_depth_profile(self, points=None):
@@ -73,9 +73,9 @@ class DiveSharingTest(unittest.TestCase):
     def test_guest_preview_allowlist_and_metadata(self):
         response = self.client.get("/share/dive/1")
         self.assertEqual(response.status_code, 200)
-        for visible in (b"Blue Corner", b"Palau", b"maya", b"profiles/maya.jpg", b"data-map-lat", b"See the whole dive."):
+        for visible in (b"Blue Corner", b"Palau", b"maya", b"profiles/maya.jpg", b"data-map-lat", b"See the whole dive.", b"Green turtle"):
             self.assertIn(visible, response.data)
-        for secret in (b"PRIVATE DIVE NOTES", b"PRIVATE COMMENT", b"PRIVATE SPECIES", b"private-buddy", b"private@example.com", b"dry suit", b"7.5"):
+        for secret in (b"PRIVATE DIVE NOTES", b"PRIVATE COMMENT", b"private-buddy", b"private@example.com", b"dry suit", b"7.5"):
             self.assertNotIn(secret, response.data)
         self.assertIn(b'content="maya logged a dive', response.data)
         self.assertIn(b'https://pelagia.example/share/dive/1/preview.jpg', response.data)
@@ -84,6 +84,25 @@ class DiveSharingTest(unittest.TestCase):
             dive = fetch_public_dive(1)
             self.assertNotIn("notes", dive)
             self.assertNotIn("user_id", dive)
+
+    def test_guest_navigation_preserves_dive_destination_and_sightings_are_ungated(self):
+        html = self.client.get("/share/dive/1").get_data(as_text=True)
+        self.assertEqual(html.count('<header class="marketing-header">'), 1)
+        self.assertLess(html.index('public-profile-navigation'), html.index('<main '))
+        for visible in ('css/landing.css', 'js/landing.js', 'aria-controls="landingNavigation"',
+                        'href="/login?next=/dive/1"', 'href="/signup?next=/dive/1"'):
+            self.assertIn(visible, html)
+        headline, gate = html.split('<div class="dive-preview-gate">', 1)
+        self.assertLess(headline.index('detail-headline-stats'), headline.index('site-sightings-panel'))
+        self.assertIn('Green turtle', headline)
+        self.assertNotIn('marine life', gate)
+
+    def test_guest_dive_without_species_shows_sightings_empty_state(self):
+        with self.app.app_context():
+            database.get_db().execute("DELETE FROM dive_species WHERE dive_id = 1")
+            database.get_db().commit()
+        html = self.client.get("/share/dive/1").get_data(as_text=True)
+        self.assertIn('No marine species observations yet.', html)
 
     def test_signed_in_visitor_redirects_to_normal_dive(self):
         self.login_session(2)

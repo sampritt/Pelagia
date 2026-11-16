@@ -5,7 +5,7 @@
             {% for sighting in sightings %}
                 <span>
                     {{ sighting.common_name }}
-                    {% if sighting.dive_count > 1 %}
+                    {% if sighting.dive_count|default(0) > 1 %}
                         <strong>{{ sighting.dive_count }}</strong>
                     {% endif %}
                 </span>

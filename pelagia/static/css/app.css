@@ -4824,7 +4824,7 @@ body:has(.share-dialog[open]) { overflow: hidden; }
     .share-option:active .share-option-icon { transform: none; }
 }
 
-.shared-dive-body .page-shell { width: min(980px, calc(100% - 48px)); padding-top: 110px; padding-bottom: 28px; }
+.shared-dive-body .page-shell { width: min(980px, calc(100% - 48px)); padding-top: 24px; padding-bottom: 28px; }
 .shared-topbar { position: absolute; top: 0; left: 0; right: 0; display: flex; align-items: center; justify-content: space-between; min-height: 74px; padding: 16px max(24px, calc((100vw - 980px) / 2)); background: var(--navy); }
 .shared-topbar .brand { min-width: 0; }
 .shared-login { color: white; font-size: 0.9rem; font-weight: 650; }
@@ -4846,7 +4846,7 @@ body:has(.share-dialog[open]) { overflow: hidden; }
 .shared-footer { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; padding: 26px 0 12px; border-top: 1px solid var(--line); color: var(--muted); font-size: 0.78rem; }
 
 @media (max-width: 640px) {
-    .shared-dive-body .page-shell { width: calc(100% - 32px); padding-top: 100px; }
+    .shared-dive-body .page-shell { width: calc(100% - 32px); padding-top: 24px; }
     .shared-topbar { padding-inline: 18px; }
     .shared-dive .detail-map,
     .shared-dive .detail-photo-carousel { min-height: 260px; max-height: 260px; }
@@ -4904,7 +4904,7 @@ body::before { inset-block-start: calc(var(--pwa-topbar-height) + env(safe-area-
 
 .shared-dive-body .page-shell {
     width: min(980px, calc(100% - 48px - env(safe-area-inset-left) - env(safe-area-inset-right)));
-    padding-top: calc(110px + env(safe-area-inset-top));
+    padding-top: calc(24px + env(safe-area-inset-top));
     padding-bottom: calc(28px + env(safe-area-inset-bottom));
 }
 .shared-topbar {
@@ -4978,7 +4978,7 @@ body:has(.pwa-install-dialog[open]) { overflow: hidden; }
     }
 }
 @media (max-width: 640px) {
-    .shared-dive-body .page-shell { width: calc(100% - 32px - env(safe-area-inset-left) - env(safe-area-inset-right)); padding-top: calc(100px + env(safe-area-inset-top)); }
+    .shared-dive-body .page-shell { width: calc(100% - 32px - env(safe-area-inset-left) - env(safe-area-inset-right)); padding-top: calc(24px + env(safe-area-inset-top)); }
     .shared-topbar { padding-left: max(18px, env(safe-area-inset-left)); padding-right: max(18px, env(safe-area-inset-right)); }
 }
 @media (max-width: 560px) { :root { --pwa-page-gutter: 10px; } }
